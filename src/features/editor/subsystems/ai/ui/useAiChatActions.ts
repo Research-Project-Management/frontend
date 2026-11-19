@@ -18,7 +18,7 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import { editorCommandBus, getEditorEngineForFile, usePageStore } from '@/features/editor/core';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { aiCoordinator } from '../coordinator/ai.coordinator';
 
@@ -26,42 +26,71 @@ export type AttachmentSource = 'library' | 'storage' | 'documents';
 
 export interface UseAiChatActionsOptions {
   engine?: IEditorEngine | null;
+  selectionFileId?: string | null;
 }
 
-export function useAiChatActions({ engine }: UseAiChatActionsOptions = {}) {
+export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOptions = {}) {
   const insertAtCursor = useCallback(
     (text: string) => {
+      if (engine?.isReadOnly?.()) {
+        toast.info('Editor is in read-only mode', { id: 'ai-insert-readonly' });
+        return;
+      }
       editorCommandBus.dispatch({ type: 'editor:insert-text', text });
       editorCommandBus.dispatch({ type: 'editor:focus' });
       toast.success('Inserted code into document', { id: 'ai-insert-code' });
     },
-    [],
+    [engine],
   );
 
   const replaceSelection = useCallback(
     (text: string) => {
-      if (!engine) {
-        toast.error('Editor not ready', { id: 'ai-insert-code' });
+      const pageState = usePageStore.getState();
+      const activeId = pageState.activeFilePage?.id || pageState.currentPage?.id || null;
+      const targetEngine =
+        selectionFileId && selectionFileId !== activeId
+          ? getEditorEngineForFile(selectionFileId)
+          : engine;
+
+      if (!targetEngine) {
+        toast.error(
+          selectionFileId && selectionFileId !== activeId
+            ? 'Switch back to the file where the selection originated to replace it'
+            : 'Editor not ready',
+          { id: 'ai-insert-code' },
+        );
         return;
       }
-      engine.insertText(text);
-      engine.focus();
+      if (targetEngine.isReadOnly?.()) {
+        toast.info('Editor is in read-only mode', { id: 'ai-insert-readonly' });
+        return;
+      }
+      targetEngine.insertText(text);
+      targetEngine.focus();
       toast.success('Replaced selection with AI code', { id: 'ai-insert-code' });
     },
-    [engine],
+    [engine, selectionFileId],
   );
 
   const proposeDiff = useCallback(
     (code: string, title?: string) => {
-      if (!engine) {
+      const pageState = usePageStore.getState();
+      const activeId = pageState.activeFilePage?.id || pageState.getActiveDocument()?.id || 'main.tex';
+      const targetFileId = selectionFileId || activeId;
+      const targetEngine = selectionFileId ? getEditorEngineForFile(selectionFileId) || engine : engine;
+
+      if (!targetEngine) {
         toast.error('Editor not ready', { id: 'ai-insert-code' });
         return;
       }
-      const fileId = usePageStore.getState().getActiveDocument()?.id || 'main.tex';
-      aiCoordinator.proposeDiff(fileId, code, { title });
-      engine.focus();
+      if (targetEngine.isReadOnly?.()) {
+        toast.info('Editor is in read-only mode', { id: 'ai-insert-readonly' });
+        return;
+      }
+      aiCoordinator.proposeDiff(targetFileId, code, { title });
+      targetEngine.focus();
     },
-    [engine],
+    [engine, selectionFileId],
   );
 
   const copyCode = useCallback(async (code: string, onSuccess?: () => void) => {

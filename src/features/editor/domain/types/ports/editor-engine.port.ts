@@ -22,6 +22,8 @@ export type LatexFormatType =
   | 'subsubsection'
   | 'paragraph'
   | 'subparagraph'
+  | 'title'
+  | 'chapter'
   | 'normal'
   | 'itemize'
   | 'enumerate'
@@ -87,6 +89,9 @@ export interface IEditorEngine {
 
   /** Applies LaTeX semantic formatting to selection or cursor */
   format(type: LatexFormatType): void;
+
+  /** Returns whether the active editor buffer is read-only */
+  isReadOnly?(): boolean;
 
   /** Navigates editor viewport to line and optionally decorates highlight, with optional column offset and selection length */
   jumpToLine(line: number, highlight?: 'error' | 'synctex', column?: number, length?: number): void;

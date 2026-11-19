@@ -28,7 +28,8 @@ import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { editorCommandBus, usePageStore, useSettingsStore } from '@/features/editor/core';
+import { editorCommandBus, usePageStore, useSettingsStore, workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { listAuxFiles, suggestLatexFix, manuscriptService } from '@/features/editor/sdk/pages.service';
 import { type AuxFileItem } from '@/features/editor/sdk/pages/types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
@@ -245,8 +246,27 @@ export function CompilerLogs({
 
   // AI Error Assist state
   const [fixState, setFixState] = useState<
-    Record<string, { loading: boolean; result?: AiErrorFixResult; applied?: boolean }>
+    Record<string, { loading: boolean; result?: AiErrorFixResult; proposed?: boolean; applied?: boolean }>
   >({});
+
+  useEffect(() => {
+    return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
+      setFixState((prev) => {
+        let changed = false;
+        const next: typeof prev = { ...prev };
+        for (const [k, st] of Object.entries(prev)) {
+          if (st.proposed && !st.applied) {
+            changed = true;
+            next[k] =
+              cmd.action === 'accept'
+                ? { ...st, proposed: false, applied: true }
+                : { ...st, proposed: false };
+          }
+        }
+        return changed ? next : prev;
+      });
+    });
+  }, []);
 
   const getEntryKey = useCallback((entry: LogEntry, index: number) =>
     `${entry.file || ''}-${entry.line || 0}-${entry.message}-${index}`, []);
@@ -267,9 +287,33 @@ export function CompilerLogs({
       [key]: { loading: true },
     }));
 
+    const pageStore = usePageStore.getState();
+    let targetContent = '';
+    if (entry.file) {
+      const cleanEntryFile = entry.file.replace(/^\/+/, '');
+      const projectFiles = workspaceCoordinator.getProjectFiles?.() || [];
+      const found = projectFiles.find(
+        (f: { id: string; title?: string; name?: string; path?: string }) =>
+          f.title === cleanEntryFile ||
+          f.name === cleanEntryFile ||
+          (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile),
+      );
+      if (found?.id) {
+        const cached = lruDocumentCache.getModel(found.id);
+        if (cached?.content) {
+          targetContent = cached.content;
+        } else if (found.id === pageStore.activeFilePage?.id && engine) {
+          targetContent = engine.getContent();
+        }
+      }
+    }
+    if (!targetContent && engine) {
+      targetContent = engine.getContent();
+    }
+
     let surroundingCode = '';
-    if (engine && entry.line) {
-      const lines = engine.getContent().split('\n');
+    if (targetContent && entry.line) {
+      const lines = targetContent.split('\n');
       const start = Math.max(0, entry.line - 4);
       const end = Math.min(lines.length, entry.line + 3);
       surroundingCode = lines.slice(start, end).join('\n');
@@ -282,6 +326,8 @@ export function CompilerLogs({
         errorFile: entry.file,
         detail: entry.detail,
         surroundingCode,
+        spaceId: pageStore.spaceId || pageStore.projectId || undefined,
+        pageId: pageStore.rootPageId || pageStore.parentPageId || pageStore.currentPage?.id || undefined,
       });
 
       setFixState((prev) => ({
@@ -299,10 +345,15 @@ export function CompilerLogs({
 
   const handleApplyFix = useCallback((entry: LogEntry, fix: AiErrorFixResult, index: number) => {
     const key = getEntryKey(entry, index);
-    applyAiFix(entry, fix, () => {
+    applyAiFix(entry, fix, (outcome) => {
       setFixState((prev) => ({
         ...prev,
-        [key]: { loading: false, applied: true, result: fix },
+        [key]: {
+          loading: false,
+          proposed: outcome === 'proposed',
+          applied: outcome === 'applied',
+          result: fix,
+        },
       }));
     });
   }, [applyAiFix, getEntryKey]);
@@ -564,6 +615,7 @@ export function CompilerLogs({
           onSuggestFix={() => handleSuggestFix(entry, categoryIndex)}
           isFixLoading={aiState?.loading}
           fixResult={aiState?.result}
+          isFixProposed={aiState?.proposed}
           isFixApplied={aiState?.applied}
           onApplyFix={(_entry, fix) => handleApplyFix(entry, fix, categoryIndex)}
           onApplyQuickFix={handleApplyQuickFix}

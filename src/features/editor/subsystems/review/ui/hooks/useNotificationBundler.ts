@@ -22,7 +22,7 @@ export function usePendingBundles(options?: { enabled?: boolean; refetchInterval
   return useQuery({
     queryKey: notificationBundlerKeys.bundles(),
     queryFn: () => notificationBundlerService.getPendingBundles(),
-    enabled: options?.enabled ?? false,
+    enabled: options?.enabled ?? true,
     refetchInterval: options?.refetchInterval ?? false,
     placeholderData: [],
   });
@@ -50,13 +50,24 @@ export function useFlushBundle() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      scopeId,
-      projectId,
-    }: {
-      scopeId?: string;
-      projectId?: string;
-    }) => notificationBundlerService.flushBundle(scopeId, projectId),
+    mutationFn: (
+      input?:
+        | string
+        | {
+            scopeId?: string;
+            spaceId?: string;
+            pageId?: string;
+          },
+    ) => {
+      if (typeof input === 'string') {
+        return notificationBundlerService.flushBundle(input);
+      }
+      return notificationBundlerService.flushBundle(
+        input?.scopeId,
+        input?.spaceId,
+        input?.pageId,
+      );
+    },
     onSuccess: (digest) => {
       queryClient.invalidateQueries({
         queryKey: notificationBundlerKeys.bundles(),

@@ -9,6 +9,8 @@
 export const EDITOR_STORAGE_KEYS = {
   SETTINGS: 'flux-editor-settings',
   WORKBENCH_LAYOUT: 'flux_editor_workbench_layout',
+  EDITOR_TABS: 'flux_editor_tabs_v1',
+  EDITOR_WINDOW_STATE: 'flux_editor_window_state_v1',
   OFFLINE_DRAFTS_DB: 'flux_offline_drafts_v1',
   OFFLINE_MUTATIONS_QUEUE: 'flux_offline_mutations_v1',
   DRAFT_PREFIX: 'flux_draft:',
@@ -16,6 +18,11 @@ export const EDITOR_STORAGE_KEYS = {
 } as const;
 
 export const SYNCTEX_BROADCAST_CHANNEL = 'flux-synctex-bus';
+
+export function getSyncTexChannelName(scopeId?: string | null): string {
+  const clean = typeof scopeId === 'string' ? scopeId.trim() : '';
+  return clean ? `${SYNCTEX_BROADCAST_CHANNEL}:${clean}` : SYNCTEX_BROADCAST_CHANNEL;
+}
 
 export const DEFAULT_MAIN_FILE = 'main.tex';
 export const DEFAULT_BIB_FILE = 'references.bib';
@@ -38,6 +45,9 @@ export const EDITOR_LIMITS = {
   MAX_FSM_CONTEXTS: 200,
   MAX_MEMORY_DRAFTS: 50,
   MAX_PROJECT_FILES_CACHE: 50,
+  MAX_EDITOR_TABS: 15,
+  MAX_PERSISTED_EDITOR_PAGES: 30,
+  OFFLINE_REPLAY_LOCK_NAME: 'flux:editor:offline-mutations-replay',
   MAX_FOLD_SCAN_LINES: 2500,
   MAX_WORD_VALIDITY_CACHE_SIZE: 5000,
   MAX_WORD_SUGGESTIONS_CACHE_SIZE: 1000,

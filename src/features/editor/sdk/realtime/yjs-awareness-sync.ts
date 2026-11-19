@@ -88,6 +88,10 @@ export interface YjsSocketIOProviderOptions {
   onEvicted?: (docId: string) => void;
   onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
   onChatMessage?: (message: ProjectChatMessage) => void;
+  enableCrossTabSync?: boolean;
+  enableCrossTabMultiplexing?: boolean;
+  broadcastChannelFactory?: (name: string) => BroadcastChannel;
+  locksApi?: { request: LockManager['request'] };
 }
 
 /**

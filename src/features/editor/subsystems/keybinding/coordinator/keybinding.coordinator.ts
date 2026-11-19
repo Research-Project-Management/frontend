@@ -19,6 +19,7 @@ import {
   useSettingsStore,
   isPrimaryModKey,
 } from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { gotoLine } from '@codemirror/search';
 import type { EditorView } from '@codemirror/view';
 
@@ -314,6 +315,62 @@ export class KeybindingCoordinator {
         editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
       },
     });
+
+    // 17. Tab Navigation & Lifecycle Shortcuts (Alt-[ / Alt-] / Ctrl-PageUp / Ctrl-PageDown / Alt-w)
+    this.register({
+      id: 'navigation.nextTab',
+      key: 'Alt-]',
+      description: 'Switch to Next Open Tab (Alt+])',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        navigationCoordinator.activateAdjacentTab(1);
+      },
+    });
+
+    this.register({
+      id: 'navigation.nextTabPageDown',
+      key: 'Ctrl-PageDown',
+      description: 'Switch to Next Open Tab (Ctrl+PageDown)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        navigationCoordinator.activateAdjacentTab(1);
+      },
+    });
+
+    this.register({
+      id: 'navigation.prevTab',
+      key: 'Alt-[',
+      description: 'Switch to Previous Open Tab (Alt+[)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        navigationCoordinator.activateAdjacentTab(-1);
+      },
+    });
+
+    this.register({
+      id: 'navigation.prevTabPageUp',
+      key: 'Ctrl-PageUp',
+      description: 'Switch to Previous Open Tab (Ctrl+PageUp)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        navigationCoordinator.activateAdjacentTab(-1);
+      },
+    });
+
+    this.register({
+      id: 'navigation.closeActiveTab',
+      key: 'Alt-w',
+      description: 'Close Active Editor Tab (Alt+W)',
+      scope: 'any',
+      handler: (e) => {
+        e.preventDefault();
+        navigationCoordinator.closeActiveDocument();
+      },
+    });
   }
 
   public register(shortcut: ShortcutDefinition): () => void {
@@ -325,12 +382,13 @@ export class KeybindingCoordinator {
 
   private handleGlobalKeyDown(e: KeyboardEvent): void {
     const mod = isPrimaryModKey(e);
+    const ctrl = e.ctrlKey;
     const shift = e.shiftKey;
     const alt = e.altKey;
     const keyLower = e.key.toLowerCase();
 
     for (const shortcut of this.shortcuts) {
-      if (this.matchesKey(shortcut.key, keyLower, mod, shift, alt, e.key)) {
+      if (this.matchesKey(shortcut.key, keyLower, mod, ctrl, shift, alt, e.key)) {
         if (this.isScopeActive(shortcut.scope)) {
           shortcut.handler(e);
           return;
@@ -343,6 +401,7 @@ export class KeybindingCoordinator {
     pattern: string,
     keyLower: string,
     mod: boolean,
+    ctrl: boolean,
     shift: boolean,
     alt: boolean,
     rawKey: string
@@ -350,14 +409,21 @@ export class KeybindingCoordinator {
     const parts = pattern.split('-');
     const targetKey = parts[parts.length - 1].toLowerCase();
     const needsMod = parts.includes('Mod');
+    const needsCtrl = parts.includes('Ctrl');
     const needsShift = parts.includes('Shift');
     const needsAlt = parts.includes('Alt');
 
-    if (needsMod !== mod) return false;
+    if (needsCtrl) {
+      if (!ctrl) return false;
+    } else if (needsMod !== mod) {
+      return false;
+    }
     if (needsShift !== shift) return false;
     if (needsAlt !== alt) return false;
 
     if (targetKey === 'enter' && keyLower === 'enter') return true;
+    if (targetKey === 'pagedown' && (keyLower === 'pagedown' || rawKey === 'PageDown')) return true;
+    if (targetKey === 'pageup' && (keyLower === 'pageup' || rawKey === 'PageUp')) return true;
     if (targetKey.startsWith('f') && rawKey.toLowerCase() === targetKey) return true;
     return targetKey === keyLower;
   }

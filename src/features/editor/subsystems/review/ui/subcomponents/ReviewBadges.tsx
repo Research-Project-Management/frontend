@@ -22,6 +22,7 @@ import {
   Bot,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { usePageStore } from '@/features/editor/core';
 import { parseMentionTokens } from '@/features/editor/domain/collaboration/mention';
 import {
   usePendingBundles,
@@ -146,25 +147,34 @@ export const MentionRenderer = React.memo(function MentionRenderer({
 // ── Notification Digest Badge ───────────────────────────────────────────────
 
 export interface NotificationDigestBadgeProps {
+  spaceId?: string;
   projectId?: string;
   pageId?: string;
 }
 
 export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = ({
+  spaceId: propSpaceId,
   projectId,
-  pageId,
+  pageId: propPageId,
 }) => {
-  const { data: bundles = [], isLoading } = usePendingBundles();
-  const { data: history = [] } = useDigestHistory(5);
-  const flushBundle = useFlushBundle();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
+  const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || s.currentPage?.id);
+  const resolvedSpaceId = propSpaceId || storeSpaceId || projectId;
+  const resolvedPageId = propPageId || storeRootPageId || undefined;
 
-  const activeBundleInfo = bundles.find(
-    (b) =>
-      (projectId && b.bundle.projectId === projectId) ||
-      (pageId && b.bundle.pageId === pageId) ||
-      (!b.bundle.projectId && !b.bundle.pageId),
-  ) || bundles[0];
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { data: bundles = [], isLoading } = usePendingBundles({ enabled: true });
+  const { data: history = [] } = useDigestHistory(5, { enabled: true });
+  const flushBundle = useFlushBundle();
+
+  const activeBundleInfo =
+    bundles.find(
+      (b) =>
+        (resolvedPageId && b.bundle.pageId === resolvedPageId) ||
+        (resolvedSpaceId &&
+          (b.bundle.spaceId === resolvedSpaceId || b.bundle.projectId === resolvedSpaceId)) ||
+        (!b.bundle.spaceId && !b.bundle.projectId && !b.bundle.pageId),
+    ) || bundles[0];
 
   const [remainingSecs, setRemainingSecs] = useState<number>(
     activeBundleInfo?.remainingSeconds || 0,
@@ -192,8 +202,13 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
   const handleFlushNow = (e: React.MouseEvent) => {
     e.stopPropagation();
     flushBundle.mutate({
-      projectId,
-      scopeId: activeBundleInfo?.bundle.projectId || projectId || pageId,
+      scopeId:
+        activeBundleInfo?.bundle.scopeId ||
+        (resolvedSpaceId && resolvedPageId
+          ? `${resolvedSpaceId}:${resolvedPageId}`
+          : resolvedSpaceId || resolvedPageId),
+      spaceId: activeBundleInfo?.bundle.spaceId || resolvedSpaceId,
+      pageId: activeBundleInfo?.bundle.pageId || resolvedPageId,
     });
   };
 

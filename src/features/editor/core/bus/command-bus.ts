@@ -327,8 +327,25 @@ export {
  * Strategy Lookup Table Pattern: Visual Command -> Engine Execution Strategy
  */
 export const VISUAL_COMMAND_STRATEGIES: Readonly<
-  Record<string, (engine: IEditorEngine) => void>
+  Record<
+    string,
+    (
+      engine: IEditorEngine,
+      cmd?: { level?: 0 | 1 | 2 | 3; contentHtml?: string },
+    ) => void
+  >
 > = Object.freeze({
+  normal: (engine) => engine.format('normal'),
+  title: (engine) => engine.format('title'),
+  heading: (engine, cmd) => {
+    const levelMap: Record<number, 'title' | 'section' | 'subsection' | 'subsubsection'> = {
+      0: 'title',
+      1: 'section',
+      2: 'subsection',
+      3: 'subsubsection',
+    };
+    engine.format(levelMap[cmd?.level ?? 1] ?? 'section');
+  },
   bold: (engine) => engine.format('bold'),
   italic: (engine) => engine.format('italic'),
   underline: (engine) => engine.format('underline'),
@@ -337,17 +354,24 @@ export const VISUAL_COMMAND_STRATEGIES: Readonly<
   code: (engine) => engine.format('code'),
   math: (engine) => engine.format('inlineMath'),
   inlineMath: (engine) => engine.format('inlineMath'),
+  insertMath: (engine) => engine.format('inlineMath'),
   section: (engine) => engine.format('section'),
   subsection: (engine) => engine.format('subsection'),
   subsubsection: (engine) => engine.format('subsubsection'),
   paragraph: (engine) => engine.format('paragraph'),
   subparagraph: (engine) => engine.format('subparagraph'),
   bulletList: (engine) =>
-    engine.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n'),
+    engine.wrapSelection('\\begin{itemize}\n  \\item ', '\n\\end{itemize}\n'),
   orderedList: (engine) =>
-    engine.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n'),
+    engine.wrapSelection('\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}\n'),
+  quote: (engine) =>
+    engine.wrapSelection('\\begin{quote}\n', '\n\\end{quote}\n'),
   codeBlock: (engine) =>
-    engine.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n'),
+    engine.wrapSelection('\\begin{verbatim}\n', '\n\\end{verbatim}\n'),
+  createLink: (engine, cmd) => {
+    const rawUrl = (cmd?.contentHtml || 'https://').trim();
+    engine.wrapSelection(`\\href{${rawUrl}}{`, '}', 'link');
+  },
 });
 
 let defaultBridgesUnsub: Array<() => void> = [];
@@ -415,7 +439,7 @@ export function registerDefaultBridges(): void {
       const engine = getEditorEngineOrNoop();
       const strategy = VISUAL_COMMAND_STRATEGIES[cmd.command];
       if (strategy) {
-        strategy(engine);
+        strategy(engine, cmd);
       } else if (cmd.contentHtml) {
         engine.insertText(cmd.contentHtml);
       }

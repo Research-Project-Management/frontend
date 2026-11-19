@@ -145,7 +145,7 @@ export function useActiveDocument() {
   const storeActiveFilePage = usePageStore((s) => s.activeFilePage);
   const storeActiveFileId = storeActiveFilePage?.id ?? null;
   const activeTabId = useWorkspaceStore((s) => {
-    for (const key of [projectId, pageId]) {
+    for (const key of [pageId, projectId]) {
       if (key && s.activeByProject[key]) {
         return s.activeByProject[key];
       }
@@ -280,7 +280,9 @@ export function useActiveDocument() {
         ...(activeFileDoc.spaceId ? { spaceId: activeFileDoc.spaceId } : {}),
         ...(pageId ? { pageId } : {}),
         ...(typeof activeFileDoc.rev === 'number' ? { serverRev: activeFileDoc.rev } : {}),
+        ...(activeFileDoc.hash !== undefined ? { hash: activeFileDoc.hash } : {}),
         ...(activeFileDoc.updatedAt ? { serverUpdatedAt: activeFileDoc.updatedAt } : {}),
+        isAuthoritative: true,
       });
     }
   }, [activeFileDoc, effectiveProjectId, pageId]);
@@ -294,7 +296,9 @@ export function useActiveDocument() {
         ...(parentPage.spaceId ? { spaceId: parentPage.spaceId } : {}),
         ...(pageId ? { pageId } : {}),
         ...(typeof parentPage.rev === 'number' ? { serverRev: parentPage.rev } : {}),
+        ...(parentPage.hash !== undefined ? { hash: parentPage.hash } : {}),
         ...(parentPage.updatedAt ? { serverUpdatedAt: parentPage.updatedAt } : {}),
+        isAuthoritative: true,
       });
     }
   }, [parentPage, effectiveProjectId, pageId]);
@@ -310,6 +314,8 @@ export function useActiveDocument() {
 
   const openTab = useWorkspaceStore((s) => s.openTab);
   const setActive = useWorkspaceStore((s) => s.setActiveTab);
+  const hydratePageTabs = useWorkspaceStore((s) => s.hydratePageTabs);
+  const hydratedPageScopeRef = useRef<string | null>(null);
 
   useEffect(() => {
     const resolvedSpaceId =
@@ -347,6 +353,22 @@ export function useActiveDocument() {
     }
   }, [serverFiles, parentPage, effectiveProjectId, pageId, bootstrapData]);
 
+  // Hydrate persisted per-page tabs + per-window session split state on Page mount/F5 reload
+  useEffect(() => {
+    if (!pageId || !parentPage) return;
+    const scopeKey = `${pageId}:${parentPage.id}`;
+    if (hydratedPageScopeRef.current === scopeKey) return;
+    hydratedPageScopeRef.current = scopeKey;
+
+    const configuredMain = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+    const resolvedTitle = (parentPage.title || '').trim() || configuredMain;
+    hydratePageTabs(pageId, {
+      rootDocId: parentPage.id,
+      rootTitle: resolvedTitle,
+      urlFileId: fileId,
+    });
+  }, [pageId, parentPage, fileId, hydratePageTabs]);
+
   useEffect(() => {
     if (!parentPage) return;
 
@@ -371,7 +393,7 @@ export function useActiveDocument() {
       const resolvedTitle = !rawTitle ? configuredMain : rawTitle;
 
       syncWorkspaceTabs(
-        [pageId, projectId],
+        [pageId || projectId],
         { id: parentPage.id, title: resolvedTitle },
         { onlyIfUninitialized: true, openTab, setActive },
       );
@@ -384,7 +406,7 @@ export function useActiveDocument() {
       }
 
       syncWorkspaceTabs(
-        [pageId, projectId],
+        [pageId || projectId],
         { id: activeFile.id, title: activeFile.title, path: activeFile.path },
         { openTab, setActive },
       );
@@ -419,7 +441,7 @@ export function useActiveDocument() {
     const targetTitle = targetFile?.title || (isTargetMain ? configuredMain : targetFileId);
 
     syncWorkspaceTabs(
-      [pageId, projectId],
+      [pageId || projectId],
       { id: targetTabId, title: targetTitle },
       { openTab, setActive },
     );

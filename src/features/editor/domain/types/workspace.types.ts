@@ -15,6 +15,7 @@ export interface WorkspaceTab {
   readonly fileUrl?: string;
   readonly isDirty?: boolean;
   readonly isPinned?: boolean;
+  readonly isPreview?: boolean;
   readonly isRoot?: boolean;
   readonly lastAccessedAt?: number;
 }

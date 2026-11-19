@@ -115,6 +115,9 @@ export function mapStructureNodesToPageFiles(
         content: '',
         pageId,
         projectId: n.projectId,
+        ...(typeof n.rev === 'number' ? { rev: n.rev } : {}),
+        ...(n.hash !== undefined ? { hash: n.hash } : {}),
+        ...(typeof n.sizeBytes === 'number' ? { sizeBytes: n.sizeBytes } : {}),
         createdAt: n.createdAt,
         updatedAt: n.updatedAt,
       };

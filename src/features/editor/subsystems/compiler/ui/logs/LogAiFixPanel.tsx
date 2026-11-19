@@ -10,6 +10,7 @@ export interface LogAiFixPanelProps {
   entry: LogEntry;
   isFixLoading?: boolean;
   fixResult?: AiErrorFixResult | null;
+  isFixProposed?: boolean;
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
 }
@@ -18,6 +19,7 @@ export function LogAiFixPanel({
   entry,
   isFixLoading,
   fixResult,
+  isFixProposed,
   isFixApplied,
   onApplyFix,
 }: LogAiFixPanelProps) {
@@ -90,11 +92,11 @@ export function LogAiFixPanel({
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
-                disabled={isFixApplied}
+                disabled={isFixApplied || isFixProposed}
                 onClick={() => onApplyFix?.(entry, fixResult)}
                 className={cn(
                   'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                  isFixApplied
+                  isFixApplied || isFixProposed
                     ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed inline-flex items-center gap-1.5'
                     : 'bg-ai hover:bg-ai-hover text-ai-foreground'
                 )}
@@ -104,6 +106,8 @@ export function LogAiFixPanel({
                     <Check className="size-3.5" />
                     <span>Applied & Recompiled</span>
                   </>
+                ) : isFixProposed ? (
+                  <span>Pending in editor (Tab to accept)</span>
                 ) : (
                   <span>Apply suggestion</span>
                 )}

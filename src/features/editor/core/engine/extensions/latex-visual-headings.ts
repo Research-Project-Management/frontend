@@ -71,7 +71,7 @@ export function findMatchingBrace(text: string, openBraceIndex: number): number 
   return null;
 }
 
-const HEADING_PREFIX_REGEX = /\\(chapter|section|subsection|subsubsection|paragraph)\*?\{/g;
+const HEADING_PREFIX_REGEX = /\\(title|chapter|section|subsection|subsubsection|paragraph)\*?\{/g;
 const BOLD_PREFIX_REGEX = /\\textbf\{/g;
 const ITALIC_PREFIX_REGEX = /\\textit\{/g;
 
@@ -233,12 +233,15 @@ class VisualHeadingsPlugin {
       readonly deco: Decoration;
     }
     const pending: PendingDecoration[] = [];
+    const seenLines = new Set<number>();
 
     for (const { from, to } of view.visibleRanges) {
       const startLine = doc.lineAt(from);
       const endLine = doc.lineAt(to);
 
       for (let l = startLine.number; l <= endLine.number; l++) {
+        if (seenLines.has(l)) continue;
+        seenLines.add(l);
         const line = doc.line(l);
         const lineText = line.text;
         // Fast-path guard: skip regex engines on lines with no LaTeX commands
@@ -259,7 +262,7 @@ class VisualHeadingsPlugin {
           const cmdType = headingMatch[1];
 
           const level: HeadingMatch['level'] =
-            cmdType === 'chapter'
+            cmdType === 'title' || cmdType === 'chapter'
               ? 'chapter'
               : cmdType === 'section'
               ? 'h1'

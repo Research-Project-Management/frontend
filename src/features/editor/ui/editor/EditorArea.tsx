@@ -132,19 +132,24 @@ export function EditorArea() {
   const editorSplitRatio = useWorkspaceStore((s) => s.editorSplitRatio);
   const activeEditorPane = useWorkspaceStore((s) => s.activeEditorPane);
   const secondaryFileId = useWorkspaceStore((s) => s.secondaryFileId);
+  const secondaryActiveByProject = useWorkspaceStore((s) => s.secondaryActiveByProject);
   const setEditorSplitRatio = useWorkspaceStore((s) => s.setEditorSplitRatio);
   const setActiveEditorPane = useWorkspaceStore((s) => s.setActiveEditorPane);
   const setSecondaryFileId = useWorkspaceStore((s) => s.setSecondaryFileId);
+  const setSecondaryActiveTab = useWorkspaceStore((s) => s.setSecondaryActiveTab);
   const setEditorSplitMode = useWorkspaceStore((s) => s.setEditorSplitMode);
 
+  const effectiveSecondaryFileId =
+    (pageId ? secondaryActiveByProject[pageId] : undefined) ?? secondaryFileId;
+
   const secondaryFile = React.useMemo(() => {
-    if (secondaryFileId) {
-      if (parentPage && parentPage.id === secondaryFileId) return parentPage;
-      const found = childFiles.find((f) => f.id === secondaryFileId);
+    if (effectiveSecondaryFileId) {
+      if (parentPage && parentPage.id === effectiveSecondaryFileId) return parentPage;
+      const found = childFiles.find((f) => f.id === effectiveSecondaryFileId);
       if (found) return found;
     }
     return childFiles.find((f) => f.id !== displayPage?.id) ?? parentPage ?? displayPage ?? null;
-  }, [secondaryFileId, childFiles, parentPage, displayPage]);
+  }, [effectiveSecondaryFileId, childFiles, parentPage, displayPage]);
 
   const allSelectableFiles = React.useMemo(() => {
     const list: Array<{ id: string; title?: string; filename?: string; name?: string }> = [];
@@ -394,6 +399,9 @@ export function EditorArea() {
                 onCloseSplit={() => editorCommandBus.dispatch({ type: 'editor:close-split' })}
                 onSwapPanes={() => editorCommandBus.dispatch({ type: 'editor:swap-panes' })}
                 onSelectFile={(selectedId) => {
+                  if (pageId) {
+                    setSecondaryActiveTab(pageId, selectedId);
+                  }
                   setSecondaryFileId(selectedId);
                 }}
               />
@@ -413,6 +421,9 @@ export function EditorArea() {
               const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
               const targetId = otherFile?.id || parentPage?.id || displayPage?.id;
               if (targetId) {
+                if (pageId) {
+                  setSecondaryActiveTab(pageId, targetId);
+                }
                 setSecondaryFileId(targetId);
               }
               setEditorSplitMode('vertical');

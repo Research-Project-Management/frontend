@@ -134,12 +134,14 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
   }
 
   proposeDiff(proposal: DiffProposal): void {
+    if (this.view.state.readOnly) return;
     this.view.dispatch({
       effects: [proposeDiffEffect.of(proposal)],
     });
     // Scroll cursor into view near the diff proposal
+    const safePos = Math.max(0, Math.min(proposal.from, this.view.state.doc.length));
     this.view.dispatch({
-      selection: EditorSelection.cursor(proposal.from),
+      selection: EditorSelection.cursor(safePos),
       scrollIntoView: true,
     });
   }
@@ -151,22 +153,27 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
   }
 
   acceptDiff(diffId?: string): void {
+    if (this.view.state.readOnly) return;
     const current = this.view.state.field(diffProposalField, false);
     if (current?.proposal && (!diffId || current.proposal.id === diffId)) {
+      const docLen = this.view.state.doc.length;
+      const from = Math.max(0, Math.min(current.proposal.from, docLen));
+      const to = Math.max(from, Math.min(current.proposal.to, docLen));
+      const resolvedProposal: DiffProposal = { ...current.proposal, from, to };
       this.view.dispatch({
         changes: {
-          from: current.proposal.from,
-          to: current.proposal.to,
-          insert: current.proposal.replacementText,
+          from,
+          to,
+          insert: resolvedProposal.replacementText,
         },
-        effects: [acceptDiffEffect.of(current.proposal.id)],
+        effects: [acceptDiffEffect.of(resolvedProposal.id)],
         userEvent: 'ai.accept-diff',
       });
       editorCommandBus.dispatch({
         type: 'ai:diff-resolved',
         action: 'accept',
-        proposalId: current.proposal.id,
-        proposal: current.proposal,
+        proposalId: resolvedProposal.id,
+        proposal: resolvedProposal,
       });
       this.view.focus();
     }
@@ -216,6 +223,8 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     subsubsection: ['\\subsubsection{', '}\n'],
     paragraph: ['\\paragraph{', '}\n'],
     subparagraph: ['\\subparagraph{', '}\n'],
+    title: ['\\title{', '}\n'],
+    chapter: ['\\chapter{', '}\n'],
     itemize: ['\\begin{itemize}\n  \\item ', '\n\\end{itemize}'],
     enumerate: ['\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}'],
     table: [
@@ -231,15 +240,19 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     align: ['\\begin{align}\n  ', '\n\\end{align}'],
   };
 
+  isReadOnly(): boolean {
+    return Boolean(this.view.state?.readOnly);
+  }
+
   format(type: LatexFormatType): void {
+    if (this.view.state.readOnly) return;
     if (type === 'normal') {
       const { from, to } = this.view.state.selection.main;
       const hasSelection = from !== to;
       const range = hasSelection ? { from, to } : this.view.state.doc.lineAt(from);
       const sourceText = hasSelection ? this.view.state.sliceDoc(from, to) : (range as { text: string }).text;
       const unformatted = sourceText
-        .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '')
-        .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '');
+        .replace(/\\(?:title|chapter|(?:sub){0,2}section|(?:sub)?paragraph)\*?\{([^}]*)\}/g, '$1');
       if (hasSelection || unformatted !== sourceText) {
         this.view.dispatch({
           changes: { from: range.from, to: range.to, insert: unformatted },

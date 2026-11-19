@@ -38,6 +38,9 @@ import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store'
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
+import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
+import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
+import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
 import {
   editorCommandBus,
   getActiveEditorEngine,
@@ -136,6 +139,7 @@ export class SessionCoordinator {
   private readonly realtimeConnected = new Map<string, boolean>();
   /** Draft recovery & conflict sub-coordinator */
   private readonly draftRecovery: DraftRecoveryCoordinator;
+  private multiTabUnsubscriber: (() => void) | null = null;
 
   constructor(options: DocumentSessionOptions = {}) {
     this.options = options;
@@ -147,6 +151,7 @@ export class SessionCoordinator {
     this.initVisibilityFlushHandler();
     this.initCommandSubscriptions();
     this.initOnlineListener();
+    this.initMultiTabSubscriptions();
   }
 
   public getFsmState(fileId: string): DocumentSessionState {
@@ -357,6 +362,16 @@ export class SessionCoordinator {
       this.clearWorkspaceTabDirty(fileId, model.projectId);
       this.clearDraftSnapshot(fileId);
       const effectiveProjectId = this.resolveEffectiveProjectId(model.projectId);
+      void draftStorageService.saveProjectFileSnapshot({
+        id: fileId,
+        projectId: effectiveProjectId,
+        title: model.filePath || fileId,
+        content: sentContent,
+        filePath: model.filePath,
+        rev: model.serverRev,
+        hash: model.hash,
+        updatedAt: Date.now(),
+      });
       latexSymbolsIndex.refreshFromServer(effectiveProjectId);
       return true;
     }
@@ -419,6 +434,38 @@ export class SessionCoordinator {
     });
   }
 
+  private initMultiTabSubscriptions(): void {
+    this.multiTabUnsubscriber?.();
+    this.multiTabUnsubscriber = multiTabBus.subscribe((event) => {
+      if (event.type === 'OFFLINE_OUTBOX_MUTATED') {
+        useConnectivityStore.getState().setPendingMutationsCount(event.count);
+        if (event.action === 'FLUSHED' && event.count === 0) {
+          const conn = useConnectivityStore.getState();
+          if (conn.isOnline && conn.pendingSaveCount === 0) {
+            conn.setSyncStatus('synced');
+          }
+        }
+        return;
+      }
+
+      if (event.type === 'EDITOR_OFFLINE_DRAFT_UPDATED') {
+        if (getActiveYjsProvider(event.fileId)) {
+          return;
+        }
+        const model = lruDocumentCache.getModel(event.fileId);
+        if (model && model.content !== event.content) {
+          lruDocumentCache.applyRemoteContent(event.fileId, event.content);
+          this.reindex(event.fileId, event.content);
+          editorCommandBus.dispatch({
+            type: 'editor:set-content',
+            fileId: event.fileId,
+            content: event.content,
+          });
+        }
+      }
+    });
+  }
+
   /**
    * Handles a remote full-content update (server broadcast). Never silently drops data:
    * - local clean  -> apply remote content.
@@ -447,6 +494,25 @@ export class SessionCoordinator {
 
     this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
     this.draftRecovery.recordConflict(fileId, model.content, remoteContent, model.projectId);
+  }
+
+  public recordOfflineDraftConflict(
+    fileId: string,
+    localContent: string,
+    remoteContent: string,
+    options?: { projectId?: string; currentRev?: number },
+  ): void {
+    this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
+    this.draftRecovery.recordConflict(
+      fileId,
+      localContent,
+      remoteContent,
+      options?.projectId,
+      {
+        currentRev: options?.currentRev,
+        hasAuthoritativeRemote: true,
+      },
+    );
   }
 
   private initVisibilityFlushHandler(): void {
@@ -480,6 +546,7 @@ export class SessionCoordinator {
             m.content,
             this.resolveEffectiveProjectId(m.projectId),
             m.filePath,
+            m.serverRev,
           );
         }
         this.flushPendingDrafts();
@@ -596,14 +663,17 @@ export class SessionCoordinator {
         if (res && typeof res === 'object') {
           const r = res as {
             rev?: number;
+            hash?: string | null;
             updatedAt?: string;
-            page?: { rev?: number; updatedAt?: string };
+            page?: { rev?: number; hash?: string | null; updatedAt?: string };
           };
           const rev = r.rev ?? r.page?.rev;
+          const hash = r.hash ?? r.page?.hash;
           const updatedAt = r.updatedAt ?? r.page?.updatedAt;
-          if (rev !== undefined || updatedAt !== undefined) {
+          if (rev !== undefined || hash !== undefined || updatedAt !== undefined) {
             lruDocumentCache.updateServerVersion(fileId, {
               rev,
+              hash,
               updatedAt,
             });
           }
@@ -927,65 +997,85 @@ export class SessionCoordinator {
   }
 
   public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
-    const pending = await draftStorageService.getPendingMutations();
-    useConnectivityStore.getState().setPendingMutationsCount(pending.length);
-    if (pending.length === 0) {
+    const lockResult = await withWebLock(
+      EDITOR_LIMITS.OFFLINE_REPLAY_LOCK_NAME,
+      async () => {
+        const pending = await draftStorageService.getPendingMutations();
+        useConnectivityStore.getState().setPendingMutationsCount(pending.length);
+        if (pending.length === 0) {
+          return { total: 0, succeeded: 0, failed: 0 };
+        }
+
+        let succeeded = 0;
+        let failed = 0;
+
+        // Group mutations by fileId so independent files replay in parallel while
+        // preserving sequential order within each fileId.
+        const mutationsByFile = new Map<string, typeof pending>();
+        for (const mut of pending) {
+          const list = mutationsByFile.get(mut.fileId);
+          if (list) {
+            list.push(mut);
+          } else {
+            mutationsByFile.set(mut.fileId, [mut]);
+          }
+        }
+
+        await Promise.allSettled(
+          Array.from(mutationsByFile.values()).map(async (fileMutations) => {
+            for (const mut of fileMutations) {
+              if (mut.type === 'update_content' && mut.payload.content !== undefined) {
+                const content = mut.payload.content as string;
+                const cachedModel = lruDocumentCache.getModel(mut.fileId);
+                const expectedRev =
+                  (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
+                try {
+                  await this.persistWithRetry(mut.fileId, content, expectedRev);
+                  await this.finalizeSuccessfulSave(mut.fileId, content);
+                  if (mut.id) {
+                    await draftStorageService.removeMutation(mut.id);
+                  }
+                  await draftStorageService.clearDraft(mut.fileId);
+                  succeeded++;
+                } catch (err) {
+                  await this.handleSaveConflictOrError(mut.fileId, content, err);
+                  const errMsg = err instanceof Error ? err.message : String(err);
+                  if (mut.id) {
+                    await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
+                  }
+                  failed++;
+                }
+              }
+            }
+          }),
+        );
+
+        const remaining = await draftStorageService.getPendingMutations().catch(() => []);
+        useConnectivityStore.getState().setPendingMutationsCount(remaining.length);
+
+        if (succeeded > 0 && failed === 0) {
+          useConnectivityStore.getState().setSyncStatus('synced');
+          useConnectivityStore.getState().setLastSavedAt(new Date());
+        }
+
+        if (succeeded > 0 || failed > 0) {
+          multiTabBus.publish({
+            type: 'OFFLINE_OUTBOX_MUTATED',
+            action: failed > 0 && succeeded === 0 ? 'FAILED' : 'FLUSHED',
+            count: remaining.length,
+          });
+        }
+
+        return { total: pending.length, succeeded, failed };
+      },
+      { ifAvailable: true },
+    );
+
+    if (lockResult === null) {
       return { total: 0, succeeded: 0, failed: 0 };
     }
 
-    let succeeded = 0;
-    let failed = 0;
-
-    // Group mutations by fileId so independent files replay in parallel while
-    // preserving sequential order within each fileId.
-    const mutationsByFile = new Map<string, typeof pending>();
-    for (const mut of pending) {
-      const list = mutationsByFile.get(mut.fileId);
-      if (list) {
-        list.push(mut);
-      } else {
-        mutationsByFile.set(mut.fileId, [mut]);
-      }
-    }
-
-    await Promise.allSettled(
-      Array.from(mutationsByFile.values()).map(async (fileMutations) => {
-        for (const mut of fileMutations) {
-          if (mut.type === 'update_content' && mut.payload.content !== undefined) {
-            const content = mut.payload.content as string;
-            const cachedModel = lruDocumentCache.getModel(mut.fileId);
-            const expectedRev =
-              (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
-            try {
-              await this.persistWithRetry(mut.fileId, content, expectedRev);
-              await this.finalizeSuccessfulSave(mut.fileId, content);
-              if (mut.id) {
-                await draftStorageService.removeMutation(mut.id);
-              }
-              await draftStorageService.clearDraft(mut.fileId);
-              succeeded++;
-            } catch (err) {
-              await this.handleSaveConflictOrError(mut.fileId, content, err);
-              const errMsg = err instanceof Error ? err.message : String(err);
-              if (mut.id) {
-                await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
-              }
-              failed++;
-            }
-          }
-        }
-      }),
-    );
-
-    const remaining = await draftStorageService.getPendingMutations().catch(() => []);
-    useConnectivityStore.getState().setPendingMutationsCount(remaining.length);
-
-    if (succeeded > 0 && failed === 0) {
-      useConnectivityStore.getState().setSyncStatus('synced');
-      useConnectivityStore.getState().setLastSavedAt(new Date());
-    }
-
-    return { total: pending.length, succeeded, failed };
+    return lockResult;
   }
 
   public flushPendingDrafts(): void {
@@ -1089,6 +1179,7 @@ export class SessionCoordinator {
     }
     this.transitionFsm(fileId, { type: 'EVICT' });
     this.fsmContexts.delete(fileId);
+    warmEditorStatePool.delete(fileId);
     lruDocumentCache.markClean(fileId);
     lruDocumentCache.evictModel(fileId, { skipPersistence: true });
     useCompileStore.getState().clearDirty(fileId);
@@ -1102,6 +1193,7 @@ export class SessionCoordinator {
 
   public closeTab(fileId: string): void {
     this.transitionFsm(fileId, { type: 'EVICT' });
+    warmEditorStatePool.delete(fileId);
     const model = lruDocumentCache.getModel(fileId);
     if (model?.isDirty) {
       this.saveDraftSnapshot(fileId, model.content, model.projectId);
@@ -1145,6 +1237,7 @@ export class SessionCoordinator {
     this.fsmContexts.clear();
     this.lastCompiledContentMap.clear();
     this.realtimeConnected.clear();
+    warmEditorStatePool.clear();
     this.draftRecovery.clearAll();
   }
 

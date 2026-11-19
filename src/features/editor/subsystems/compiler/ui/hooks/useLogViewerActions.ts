@@ -155,7 +155,11 @@ export function useLogViewerActions({
   );
 
   const applyAiFix = useCallback(
-    (entry: LogEntry, fix: AiErrorFixResult, onApplied?: () => void) => {
+    (
+      entry: LogEntry,
+      fix: AiErrorFixResult,
+      onOutcome?: (outcome: 'proposed' | 'applied') => void,
+    ) => {
       const pageStore = usePageStore.getState();
       const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
       let targetFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || configuredMainFile;
@@ -165,7 +169,10 @@ export function useLogViewerActions({
         const cleanEntryFile = entry.file.replace(/^\/+/, '');
         const projectFiles = workspaceCoordinator.getProjectFiles() || [];
         const found = projectFiles.find(
-          (f: { id: string; title?: string; name?: string; path?: string }) => f.title === cleanEntryFile || f.name === cleanEntryFile || (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile)
+          (f: { id: string; title?: string; name?: string; path?: string }) =>
+            f.title === cleanEntryFile ||
+            f.name === cleanEntryFile ||
+            (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile),
         );
         if (found) {
           targetFileId = found.id;
@@ -184,22 +191,32 @@ export function useLogViewerActions({
       const endLine = fix.endLine && startLine && fix.endLine >= startLine ? fix.endLine : startLine;
 
       // Consistent Flow: Always propose interactive Diff for user review (Tab to Accept, Esc to Reject)
-      const success = aiCoordinator.proposeDiff(targetFileId, fix.fixedSnippet, {
+      const proposed = aiCoordinator.proposeDiff(targetFileId, fix.fixedSnippet, {
         line: startLine,
         endLine,
         title: `AI Fix: ${fix.explanation || entry.message}`,
       });
 
-      if (!success && engine && typeof engine.getContent === 'function' && typeof engine.setContent === 'function' && startLine && startLine >= 1) {
+      if (proposed) {
+        onOutcome?.('proposed');
+        return;
+      }
+
+      if (
+        engine &&
+        typeof engine.getContent === 'function' &&
+        typeof engine.setContent === 'function' &&
+        startLine &&
+        startLine >= 1
+      ) {
         const content = engine.getContent();
         const lines = content.split('\n');
         const startIdx = Math.min(startLine - 1, Math.max(0, lines.length - 1));
         const endIdx = Math.min((endLine || startLine) - 1, Math.max(startIdx, lines.length - 1));
         lines.splice(startIdx, endIdx - startIdx + 1, fix.fixedSnippet);
         engine.setContent(lines.join('\n'));
+        onOutcome?.('applied');
       }
-
-      onApplied?.();
       // Notice: Do NOT call onCompile?.() immediately on diff proposal — compile only after diff is accepted!
     },
     [engine],

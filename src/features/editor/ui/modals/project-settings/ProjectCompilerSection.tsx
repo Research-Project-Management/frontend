@@ -60,6 +60,10 @@ export function ProjectCompilerSection({
   const setLinterEnabled = useSettingsStore((s) => s.setLinterEnabled);
   const errorLensEnabled = useSettingsStore((s) => s.errorLensEnabled);
   const setErrorLensEnabled = useSettingsStore((s) => s.setErrorLensEnabled);
+  const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
+  const setShowEditorTabs = useSettingsStore((s) => s.setShowEditorTabs);
+  const previewEditorTabs = useSettingsStore((s) => s.previewEditorTabs);
+  const setPreviewEditorTabs = useSettingsStore((s) => s.setPreviewEditorTabs);
   const keybinding = useSettingsStore((s) => s.keybinding);
   const setKeybinding = useSettingsStore((s) => s.setKeybinding);
   const fontSize = useSettingsStore((s) => s.fontSize);
@@ -335,6 +339,30 @@ export function ProjectCompilerSection({
           checked={errorLensEnabled}
           onCheckedChange={setErrorLensEnabled}
           aria-label="Error lens toggle"
+        />
+      </SettingRow>
+
+      {/* Editor Tabs */}
+      <SettingRow
+        title="Editor tabs"
+        description="Show open document tabs bar above the editor"
+      >
+        <SettingsSwitch
+          checked={showEditorTabs}
+          onCheckedChange={setShowEditorTabs}
+          aria-label="Editor tabs toggle"
+        />
+      </SettingRow>
+
+      {/* Preview Editor Tabs */}
+      <SettingRow
+        title="Preview editor tabs"
+        description="Single-clicking a file in the file tree opens it in a reusable preview tab"
+      >
+        <SettingsSwitch
+          checked={previewEditorTabs}
+          onCheckedChange={setPreviewEditorTabs}
+          aria-label="Preview editor tabs toggle"
         />
       </SettingRow>
 

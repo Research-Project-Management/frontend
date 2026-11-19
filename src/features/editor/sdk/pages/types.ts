@@ -284,6 +284,8 @@ export interface StructureNodeDto {
   fileId?: string | null;
   sortOrder?: number;
   sizeBytes?: number;
+  hash?: string | null;
+  rev?: number | null;
   isRootDoc?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -719,12 +721,14 @@ export interface EditorBootstrapActiveDocDto {
     rootPageId: string;
     version: number;
     rev: number;
+    hash?: string | null;
     createdAt: string;
     updatedAt: string;
   };
   lines: string[];
   version: number;
   rev: number;
+  hash?: string | null;
   ranges: Record<string, unknown>;
   fallbackToRoot: boolean;
 }

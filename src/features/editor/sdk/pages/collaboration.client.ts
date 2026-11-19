@@ -262,16 +262,18 @@ export const notifications = {
   flushBundle: async (
     scopeId?: string,
     spaceId?: string,
+    pageId?: string,
   ): Promise<NotificationDigest | null> => {
-    try {
-      const data = await api.apiPost<{ digest: NotificationDigest }>(
-        `${MANUSCRIPTS_API_BASE}/notifications/bundles/flush`,
-        { scopeId, spaceId },
-      );
-      return data.digest || null;
-    } catch {
-      return null;
-    }
+    const payload: { scopeId?: string; spaceId?: string; pageId?: string } = {};
+    if (scopeId) payload.scopeId = scopeId;
+    if (spaceId) payload.spaceId = spaceId;
+    if (pageId) payload.pageId = pageId;
+
+    const data = await api.apiPost<{ digest?: NotificationDigest | null }>(
+      `${MANUSCRIPTS_API_BASE}/notifications/bundles/flush`,
+      payload,
+    );
+    return data?.digest || null;
   },
 
   getDigestHistory: async (limit = 20): Promise<NotificationDigest[]> => {

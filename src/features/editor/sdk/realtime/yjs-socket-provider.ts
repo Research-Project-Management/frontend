@@ -14,6 +14,10 @@ import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.p
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 import type { CollaborationPresence } from '../pages/types';
 import {
+  YjsCrossTabBridge,
+  type CrossTabProviderRole,
+} from './yjs-cross-tab-bridge';
+import {
   buildLineStartsIndex,
   getOffsetFromRowCol,
   getRowColFromOffset,
@@ -86,6 +90,12 @@ export class YjsSocketIOProvider {
   private cachedText: string | null = null;
   private cachedLineStarts: number[] | null = null;
   private isEvicted = false;
+  private crossTabBridge: YjsCrossTabBridge | null = null;
+  private _role: CrossTabProviderRole = 'standalone';
+
+  public get role(): CrossTabProviderRole {
+    return this._role;
+  }
 
   private isChatOnlyRoom(): boolean {
     return this.pageId.startsWith('chat:');
@@ -112,8 +122,139 @@ export class YjsSocketIOProvider {
     this.setupLocalAwarenessListener();
     this.setupLocalDocListener();
 
+    const hasCustomTestSocket = Boolean(
+      options.socketFactory ||
+        (globalThis as { __fluxFakeSocket?: unknown }).__fluxFakeSocket,
+    );
+    const canBroadcast =
+      !this.isChatOnlyRoom() &&
+      options.enableCrossTabSync !== false &&
+      (Boolean(options.broadcastChannelFactory) ||
+        (typeof window !== 'undefined' &&
+          typeof BroadcastChannel !== 'undefined' &&
+          !hasCustomTestSocket));
+    const resolvedLocks =
+      options.locksApi ??
+      (typeof navigator !== 'undefined' && navigator.locks
+        ? navigator.locks
+        : undefined);
+    const useMultiplexing =
+      !this.isChatOnlyRoom() &&
+      Boolean(resolvedLocks?.request) &&
+      canBroadcast &&
+      (options.enableCrossTabMultiplexing === true ||
+        (options.enableCrossTabMultiplexing !== false && !hasCustomTestSocket));
+
     if (typeof window !== 'undefined' && spaceId && pageId) {
-      this.connect();
+      if (canBroadcast) {
+        if (useMultiplexing) {
+          this._role = 'follower';
+        }
+        this.crossTabBridge = new YjsCrossTabBridge({
+          spaceId,
+          pageId,
+          userId: options.user?.id,
+          getDoc: () => this.doc,
+          broadcastChannelFactory: options.broadcastChannelFactory,
+          locksApi: resolvedLocks,
+          enableMultiplexing: useMultiplexing,
+          onPeerDocUpdate: (update, fromServer) => {
+            if (this.destroyed) return;
+            Y.applyUpdate(this.doc, update, 'broadcast-channel');
+            if (!fromServer && this._role === 'leader') {
+              this.pendingUpdates.push(update);
+              if (this.pendingUpdates.length > 256) {
+                this.pendingUpdates = [Y.mergeUpdates(this.pendingUpdates)];
+              }
+              if (this.socket?.connected && !this.updateBatchTimer) {
+                this.updateBatchTimer = setTimeout(() => {
+                  this.updateBatchTimer = null;
+                  this.flushPendingUpdates();
+                }, 20);
+              }
+            }
+          },
+          onBecameLeader: () => {
+            if (this.destroyed) return;
+            this._role = useMultiplexing ? 'leader' : 'standalone';
+            if (!this.socket) {
+              this.connect();
+            } else {
+              this.flushPendingUpdates();
+            }
+            if (this._role === 'leader') {
+              this.crossTabBridge?.broadcastLeaderStatus(
+                this.status,
+                this.isSynced,
+                Array.from(this.collaboratorsMap.values()),
+              );
+            }
+          },
+          onBecameFollower: () => {
+            if (this.destroyed) return;
+            this._role = 'follower';
+            if (this.status === 'connecting') {
+              this.status = 'disconnected';
+            }
+          },
+          onFollowerHello: (followerId) => {
+            if (this.destroyed || this._role !== 'leader') return;
+            this.crossTabBridge?.broadcastLeaderStatus(
+              this.status,
+              this.isSynced,
+              Array.from(this.collaboratorsMap.values()),
+            );
+            this.crossTabBridge?.sendFullSyncToFollower(followerId);
+          },
+          onLeaderStatus: (nextStatus, nextIsSynced, collaborators) => {
+            if (this.destroyed || this._role !== 'follower') return;
+            const statusChanged = this.status !== nextStatus;
+            const becameSynced = !this.isSynced && nextIsSynced;
+            this.status = nextStatus;
+            this.isSynced = nextIsSynced;
+            if (collaborators.length > 0 || this.collaboratorsMap.size > 0) {
+              this.collaboratorsMap.clear();
+              for (const c of collaborators) {
+                const collabKey = c.socketId || c.userId || c.id;
+                if (collabKey) {
+                  this.collaboratorsMap.set(collabKey, c);
+                }
+              }
+              this.options.onCollaboratorsChange?.(
+                Array.from(this.collaboratorsMap.values()),
+              );
+            }
+            if (statusChanged) {
+              this.emitStatus(nextStatus);
+            }
+            if (becameSynced) {
+              this.emitSynced();
+            }
+          },
+          onLeaderAck: (ackDocId) => {
+            if (this.destroyed || this._role !== 'follower') return;
+            if (ackDocId !== this.pageId) return;
+            this.pendingUpdates = [];
+            this.options.onUpdatesAcked?.(this.pageId);
+          },
+          onRemoteEvent: (eventName, payload) => {
+            if (this.destroyed || this._role !== 'follower') return;
+            this.dispatchInboundServerEvent(eventName, payload);
+          },
+          onFollowerCursor: (cursor) => {
+            if (this.destroyed || this._role !== 'leader') return;
+            if (this.socket?.connected) {
+              this.socket.emit('doc:cursor', {
+                spaceId: this.spaceId,
+                docId: this.pageId,
+                cursor,
+              });
+            }
+          },
+        });
+      } else {
+        this.connect();
+      }
     } else {
       this.status = 'connected';
       this.isSynced = true;
@@ -161,6 +302,13 @@ export class YjsSocketIOProvider {
       } catch (err) {
         console.warn('[YjsSocketIOProvider] synced listener error:', err);
       }
+    }
+    if (this._role === 'leader') {
+      this.crossTabBridge?.broadcastLeaderStatus(
+        this.status,
+        this.isSynced,
+        Array.from(this.collaboratorsMap.values()),
+      );
     }
   }
 
@@ -219,6 +367,13 @@ export class YjsSocketIOProvider {
       } catch (err) {
         console.warn('[YjsSocketIOProvider] status listener error:', err);
       }
+    }
+    if (this._role === 'leader') {
+      this.crossTabBridge?.broadcastLeaderStatus(
+        this.status,
+        this.isSynced,
+        Array.from(this.collaboratorsMap.values()),
+      );
     }
   }
 
@@ -327,7 +482,6 @@ export class YjsSocketIOProvider {
     this.socket.on('disconnect', () => {
       if (this.destroyed) return;
       this.status = 'disconnected';
-      this.emitStatus('disconnected');
 
       const remoteClientIds = Array.from(this.socketToClientIdMap.values());
       if (remoteClientIds.length > 0) {
@@ -336,6 +490,7 @@ export class YjsSocketIOProvider {
       }
       this.collaboratorsMap.clear();
       this.options.onCollaboratorsChange?.([]);
+      this.emitStatus('disconnected');
     });
 
     this.socket.on('connect_error', () => {
@@ -383,17 +538,6 @@ export class YjsSocketIOProvider {
       }
     });
 
-    this.socket.on('compile:progress', (data: CompileProgressPayload | string) => {
-      if (this.destroyed) return;
-      const status = typeof data === 'object' && data?.status ? data.status : 'compiling';
-      const logs = typeof data === 'object' && data?.logs ? data.logs : typeof data === 'string' ? data : '';
-      this.commandBus?.dispatch({
-        type: 'compiler:progress',
-        status,
-        logs: Array.isArray(logs) ? logs : logs ? [logs] : [],
-      });
-    });
-
     this.socket.on('doc:cursor', (data: RemoteCursorPayload) => {
       if (this.destroyed) return;
       this.handleRemoteCursor(data);
@@ -419,8 +563,69 @@ export class YjsSocketIOProvider {
       this.handleUserLeft(data);
     });
 
-    this.socket.on('doc:evicted', (data: { spaceId?: string; docId?: string }) => {
-      if (this.destroyed) return;
+    const relayableEvents = [
+      'compile:progress',
+      'doc:evicted',
+      'fileTree:update',
+      'doc:content-updated',
+      'project:chat:new',
+    ] as const;
+
+    for (const eventName of relayableEvents) {
+      this.socket.on(eventName, (data: unknown) => {
+        if (this.destroyed) return;
+        this.dispatchInboundServerEvent(eventName, data);
+        if (this._role === 'leader') {
+          this.crossTabBridge?.broadcastRemoteEvent(eventName, data);
+        }
+      });
+    }
+
+    const reviewSocketEvents = [
+      'review:status-changed',
+      'track-changes:recorded',
+      'track-changes:created',
+      'track-changes:resolved',
+      'comment:created',
+      'comment:replied',
+      'comment:reply-added',
+      'comment:reply-updated',
+      'comment:reply-deleted',
+      'comment:updated',
+      'comment:deleted',
+      'comment:resolved',
+      'comment:mention',
+      'notification:digest',
+    ] as const;
+
+    for (const socketEvent of reviewSocketEvents) {
+      this.socket.on(socketEvent, (data: unknown) => {
+        if (this.destroyed) return;
+        this.dispatchInboundServerEvent(socketEvent, data);
+        if (this._role === 'leader') {
+          this.crossTabBridge?.broadcastRemoteEvent(socketEvent, data);
+        }
+      });
+    }
+  }
+
+  private dispatchInboundServerEvent(eventName: string, rawData: unknown): void {
+    if (this.destroyed) return;
+
+    if (eventName === 'compile:progress') {
+      const data = rawData as CompileProgressPayload | string;
+      const status = typeof data === 'object' && data?.status ? data.status : 'compiling';
+      const logs = typeof data === 'object' && data?.logs ? data.logs : typeof data === 'string' ? data : '';
+      this.commandBus?.dispatch({
+        type: 'compiler:progress',
+        status,
+        logs: Array.isArray(logs) ? logs : logs ? [logs] : [],
+      });
+      return;
+    }
+
+    if (eventName === 'doc:evicted') {
+      const data = rawData as { spaceId?: string; docId?: string } | undefined;
       if (data?.docId && data.docId !== this.pageId) return;
       this.isEvicted = true;
       this.pendingUpdates = [];
@@ -432,15 +637,19 @@ export class YjsSocketIOProvider {
       this.status = 'disconnected';
       this.emitStatus('disconnected');
       this.options.onEvicted?.(this.pageId);
-    });
+      return;
+    }
 
-    this.socket.on('fileTree:update', (data: Record<string, unknown>) => {
-      if (this.destroyed) return;
-      this.commandBus?.dispatch({ type: 'filetree:updated', payload: data });
-    });
+    if (eventName === 'fileTree:update') {
+      this.commandBus?.dispatch({
+        type: 'filetree:updated',
+        payload: rawData as Record<string, unknown>,
+      });
+      return;
+    }
 
-    this.socket.on('doc:content-updated', (data: DocContentUpdatedPayload) => {
-      if (this.destroyed) return;
+    if (eventName === 'doc:content-updated') {
+      const data = rawData as DocContentUpdatedPayload | undefined;
       if (data?.docId && typeof data?.content === 'string') {
         this.commandBus?.dispatch({
           type: 'document:content-updated',
@@ -448,38 +657,12 @@ export class YjsSocketIOProvider {
           content: data.content,
         });
       }
-    });
-
-    const reviewEvents: Array<[string, string]> = [
-      ['review:status-changed', 'review:status-changed'],
-      ['track-changes:recorded', 'suggestion:recorded'],
-      ['track-changes:created', 'suggestion:recorded'],
-      ['track-changes:resolved', 'suggestion:resolved'],
-      ['comment:created', 'comment:created'],
-      ['comment:replied', 'comment:replied'],
-      ['comment:reply-added', 'comment:replied'],
-      ['comment:reply-updated', 'comment:replied'],
-      ['comment:reply-deleted', 'comment:replied'],
-      ['comment:updated', 'comment:created'],
-      ['comment:deleted', 'comment:resolved'],
-      ['comment:resolved', 'comment:resolved'],
-      ['comment:mention', 'comment:mention'],
-      ['notification:digest', 'notification:digest'],
-    ];
-    for (const [socketEvent, reviewEvent] of reviewEvents) {
-      this.socket.on(socketEvent, (data: Record<string, unknown> & { docId?: string }) => {
-        if (this.destroyed) return;
-        this.commandBus?.dispatch({
-          type: 'editor:review-event',
-          pageId: data?.docId || this.pageId,
-          event: reviewEvent,
-          payload: data,
-        });
-      });
+      return;
     }
 
-    this.socket.on('project:chat:new', (msg: ProjectChatMessage) => {
-      if (this.destroyed || !msg) return;
+    if (eventName === 'project:chat:new') {
+      const msg = rawData as ProjectChatMessage | undefined;
+      if (!msg) return;
       this.options.onChatMessage?.(msg);
       for (const listener of this.chatListeners) {
         try {
@@ -488,7 +671,35 @@ export class YjsSocketIOProvider {
           console.warn('[YjsSocketIOProvider] chat listener error:', err);
         }
       }
-    });
+      return;
+    }
+
+    const reviewEventMap: Record<string, string> = {
+      'review:status-changed': 'review:status-changed',
+      'track-changes:recorded': 'suggestion:recorded',
+      'track-changes:created': 'suggestion:recorded',
+      'track-changes:resolved': 'suggestion:resolved',
+      'comment:created': 'comment:created',
+      'comment:replied': 'comment:replied',
+      'comment:reply-added': 'comment:replied',
+      'comment:reply-updated': 'comment:replied',
+      'comment:reply-deleted': 'comment:replied',
+      'comment:updated': 'comment:created',
+      'comment:deleted': 'comment:resolved',
+      'comment:resolved': 'comment:resolved',
+      'comment:mention': 'comment:mention',
+      'notification:digest': 'notification:digest',
+    };
+    const mappedReviewEvent = reviewEventMap[eventName];
+    if (mappedReviewEvent) {
+      const data = (rawData ?? {}) as Record<string, unknown> & { docId?: string };
+      this.commandBus?.dispatch({
+        type: 'editor:review-event',
+        pageId: data.docId || this.pageId,
+        event: mappedReviewEvent,
+        payload: data,
+      });
+    }
   }
 
   private getIndexedText(): { text: string; lineStarts: number[] } {
@@ -510,12 +721,18 @@ export class YjsSocketIOProvider {
       if (doc !== this.doc) return;
       this.cachedText = null;
       this.cachedLineStarts = null;
-      if (origin === 'socket.io' || origin === 'local-init' || this.destroyed) return;
+      if (origin === 'local-init' || origin === 'broadcast-channel' || this.destroyed) return;
+      if (origin === 'socket.io') {
+        this.crossTabBridge?.broadcastDocUpdate(update, true);
+        return;
+      }
 
+      this.crossTabBridge?.broadcastDocUpdate(update, false);
       this.pendingUpdates.push(update);
       if (this.pendingUpdates.length > 256) {
         this.pendingUpdates = [Y.mergeUpdates(this.pendingUpdates)];
       }
+      if (this._role === 'follower') return;
       if (!this.socket || !this.socket.connected) return;
       if (this.updateBatchTimer) return;
 
@@ -623,6 +840,9 @@ export class YjsSocketIOProvider {
           }
         }
         this.emitSynced();
+        if (this._role === 'leader') {
+          this.crossTabBridge?.sendFullSync();
+        }
         setTimeout(() => {
           oldAwareness.destroy();
           oldDoc.destroy();
@@ -641,6 +861,7 @@ export class YjsSocketIOProvider {
     }
     if (
       this.destroyed ||
+      this._role === 'follower' ||
       this.httpSavedWhileDisconnected ||
       this.resyncInFlight ||
       !this.socket ||
@@ -671,6 +892,9 @@ export class YjsSocketIOProvider {
         }
         if (res?.success && !this.destroyed && this.pendingUpdates.length === 0) {
           this.options.onUpdatesAcked?.(this.pageId);
+          if (this._role === 'leader') {
+            this.crossTabBridge?.broadcastLeaderAck(this.pageId);
+          }
         }
       },
     );
@@ -730,6 +954,13 @@ export class YjsSocketIOProvider {
     }
 
     this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
+    if (this._role === 'leader') {
+      this.crossTabBridge?.broadcastLeaderStatus(
+        this.status,
+        this.isSynced,
+        Array.from(this.collaboratorsMap.values()),
+      );
+    }
   }
 
   private handleRemoteCursor(data: RemoteCursorPayload): void {
@@ -765,6 +996,13 @@ export class YjsSocketIOProvider {
     }
 
     this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
+    if (this._role === 'leader') {
+      this.crossTabBridge?.broadcastLeaderStatus(
+        this.status,
+        this.isSynced,
+        Array.from(this.collaboratorsMap.values()),
+      );
+    }
   }
 
   private handleUserLeft(data: { userId?: string; socketId?: string }): void {
@@ -775,6 +1013,13 @@ export class YjsSocketIOProvider {
       collaboratorsMap: this.collaboratorsMap,
       onCollaboratorsChange: this.options.onCollaboratorsChange,
     });
+    if (this._role === 'leader') {
+      this.crossTabBridge?.broadcastLeaderStatus(
+        this.status,
+        this.isSynced,
+        Array.from(this.collaboratorsMap.values()),
+      );
+    }
   }
 
   private setupLocalAwarenessListener(): void {
@@ -820,11 +1065,29 @@ export class YjsSocketIOProvider {
       head: { row: number; column: number };
     } | null,
   ): void {
-    if (!this.socket || !this.socket.connected || this.destroyed) return;
+    const canSend =
+      this._role === 'follower'
+        ? Boolean(this.crossTabBridge)
+        : Boolean(this.socket && this.socket.connected);
+    if (!canSend || this.destroyed) return;
 
     const now = Date.now();
     const elapsed = now - this.lastCursorEmitTime;
     const payload = { row, column, selection: selection ?? null };
+
+    const emitCursor = (cursorPayload: RemoteCursorData) => {
+      if (this._role === 'follower') {
+        this.crossTabBridge?.sendFollowerCursor(cursorPayload);
+        return;
+      }
+      if (this.socket && this.socket.connected) {
+        this.socket.emit('doc:cursor', {
+          spaceId: this.spaceId,
+          docId: this.pageId,
+          cursor: cursorPayload,
+        });
+      }
+    };
 
     if (elapsed >= 50) {
       if (this.cursorThrottleTimer) {
@@ -833,25 +1096,22 @@ export class YjsSocketIOProvider {
       }
       this.lastCursorEmitTime = now;
       this.pendingCursorData = null;
-      this.socket.emit('doc:cursor', {
-        spaceId: this.spaceId,
-        docId: this.pageId,
-        cursor: payload,
-      });
+      emitCursor(payload);
     } else {
       this.pendingCursorData = payload;
       if (!this.cursorThrottleTimer) {
         this.cursorThrottleTimer = setTimeout(() => {
           this.cursorThrottleTimer = null;
-          if (this.destroyed || !this.socket || !this.socket.connected || !this.pendingCursorData) return;
+          if (this.destroyed || !this.pendingCursorData) return;
+          const stillCanSend =
+            this._role === 'follower'
+              ? Boolean(this.crossTabBridge)
+              : Boolean(this.socket && this.socket.connected);
+          if (!stillCanSend) return;
           this.lastCursorEmitTime = Date.now();
           const toEmit = this.pendingCursorData;
           this.pendingCursorData = null;
-          this.socket.emit('doc:cursor', {
-            spaceId: this.spaceId,
-            docId: this.pageId,
-            cursor: toEmit,
-          });
+          emitCursor(toEmit);
         }, 50 - elapsed);
       }
     }
@@ -919,6 +1179,11 @@ export class YjsSocketIOProvider {
         // Socket cleanup error ignored on unmount
       }
       this.socket = null;
+    }
+
+    if (this.crossTabBridge) {
+      this.crossTabBridge.dispose();
+      this.crossTabBridge = null;
     }
 
     if (this.localDocUpdateHandler) {

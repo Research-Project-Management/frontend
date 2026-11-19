@@ -39,9 +39,34 @@ export interface AiContextPayload {
 
 export class AiCoordinator {
   private initialized = false;
+  private readonly pendingDiffsByFile = new Map<string, DiffProposal>();
 
   constructor() {
     this.initCommandSubscriptions();
+  }
+
+  public setPendingDiffForFile(fileId: string, proposal: DiffProposal): void {
+    if (!fileId) return;
+    this.pendingDiffsByFile.set(fileId, proposal);
+  }
+
+  public getPendingDiffForFile(fileId: string): DiffProposal | null {
+    if (!fileId) return null;
+    return this.pendingDiffsByFile.get(fileId) ?? null;
+  }
+
+  public consumePendingDiffForFile(fileId: string): DiffProposal | null {
+    if (!fileId) return null;
+    const proposal = this.pendingDiffsByFile.get(fileId) ?? null;
+    if (proposal) {
+      this.pendingDiffsByFile.delete(fileId);
+    }
+    return proposal;
+  }
+
+  public clearPendingDiffForFile(fileId: string): void {
+    if (!fileId) return;
+    this.pendingDiffsByFile.delete(fileId);
   }
 
   public initCommandSubscriptions(force = false): void {
@@ -221,8 +246,8 @@ export class AiCoordinator {
         detail: diagnostic.context,
         surroundingCode,
         fullCode: content.length < 50000 ? content : undefined,
-        pageId: activeDoc?.id,
-        projectId: pageStore.spaceId || pageStore.projectId,
+        pageId: pageStore.rootPageId || pageStore.parentPageId || activeDoc?.id,
+        spaceId: pageStore.spaceId || pageStore.projectId || undefined,
       });
 
       if (toastId && typeof toast.dismiss === 'function') {
@@ -305,12 +330,64 @@ export class AiCoordinator {
     options?: { line?: number; endLine?: number; title?: string }
   ): boolean {
     if (!replacement) return false;
-    const engine = (fileId ? getEditorEngineForFile(fileId) : null) || getActiveEditorEngine();
-    if (!engine || !engine.proposeDiff) {
-      return this.applyDirect(fileId, options?.line, replacement);
+
+    const pageStore = usePageStore.getState();
+    const activeFileId =
+      pageStore.activeFilePage?.id ||
+      pageStore.activeDocId ||
+      pageStore.currentPage?.id ||
+      '';
+    const exactEngine = fileId ? getEditorEngineForFile(fileId) : null;
+    const isTargetingActive = !fileId || fileId === activeFileId;
+    const engine = exactEngine || (isTargetingActive ? getActiveEditorEngine() : null);
+
+    if (engine?.isReadOnly?.()) {
+      toast.info('Editor is in read-only mode', { id: 'ai-diff-readonly' });
+      return false;
     }
 
-    const content = engine.getContent();
+    const content =
+      engine?.getContent() ??
+      (fileId ? lruDocumentCache.getModel(fileId)?.content ?? documentFacade.getDocumentContent(fileId) : '') ??
+      '';
+
+    const buildAndDispatchProposal = (proposal: DiffProposal): boolean => {
+      if (engine?.proposeDiff) {
+        this.clearPendingDiffForFile(fileId);
+        engine.proposeDiff(proposal);
+        return true;
+      }
+      if (fileId && !isTargetingActive) {
+        this.setPendingDiffForFile(fileId, proposal);
+        return true;
+      }
+      return false;
+    };
+
+    // 0. Preamble \usepackage{...} fix: insert cleanly before \begin{document}
+    const cleanPreambleMatch = replacement
+      .trim()
+      .match(/^(?:%[^\n]*\n\s*)*(\\usepackage(?:\[[^\]]*\])?\{([^}]+)\})\s*$/);
+    if (cleanPreambleMatch && content.includes('\\begin{document}')) {
+      const pkgStatement = cleanPreambleMatch[1].trim();
+      const beginDocIdx = content.indexOf('\\begin{document}');
+      const lineStart = content.lastIndexOf('\n', beginDocIdx) + 1;
+      const proposal: DiffProposal = {
+        id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        from: lineStart,
+        to: lineStart,
+        originalText: '',
+        replacementText: `${pkgStatement}\n`,
+        title: options?.title || `Add ${pkgStatement} to preamble`,
+        createdAt: Date.now(),
+      };
+      if (buildAndDispatchProposal(proposal)) {
+        toast.info('Review preamble package diff in editor (Tab to Accept, Esc to Reject)', {
+          id: 'ai-diff-proposal',
+        });
+        return true;
+      }
+    }
 
     // 1. Line-targeted diff (single-line or multi-line range)
     if (options?.line !== undefined && options.line > 0) {
@@ -343,10 +420,32 @@ export class AiCoordinator {
           createdAt: Date.now(),
         };
 
-        engine.proposeDiff(proposal);
-        toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`, { id: 'ai-diff-proposal' });
+        if (buildAndDispatchProposal(proposal)) {
+          toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`, {
+            id: 'ai-diff-proposal',
+          });
+          return true;
+        }
+      }
+    }
+
+    // Defer end-of-doc proposal if switching to an unmounted file without a valid line range
+    if (!engine || !engine.proposeDiff) {
+      if (fileId && !isTargetingActive) {
+        const docEnd = content.length;
+        const proposal: DiffProposal = {
+          id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          from: docEnd,
+          to: docEnd,
+          originalText: '',
+          replacementText: replacement,
+          title: options?.title || 'AI Fix',
+          createdAt: Date.now(),
+        };
+        this.setPendingDiffForFile(fileId, proposal);
         return true;
       }
+      return this.applyDirect(fileId, options?.line, replacement);
     }
 
     // 2. Selection-targeted diff
@@ -363,9 +462,10 @@ export class AiCoordinator {
         createdAt: Date.now(),
       };
 
-      engine.proposeDiff(proposal);
-      toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
-      return true;
+      if (buildAndDispatchProposal(proposal)) {
+        toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
+        return true;
+      }
     }
 
     // 3. Cursor-position diff
@@ -380,9 +480,12 @@ export class AiCoordinator {
         createdAt: Date.now(),
       };
 
-      engine.proposeDiff(proposal);
-      toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
-      return true;
+      if (buildAndDispatchProposal(proposal)) {
+        toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)', {
+          id: 'ai-diff-proposal',
+        });
+        return true;
+      }
     }
 
     return this.applyDirect(fileId, options?.line, replacement);

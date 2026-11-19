@@ -13,11 +13,14 @@ import {
   Decoration,
   type DecorationSet,
   EditorView,
-  ViewPlugin,
-  type ViewUpdate,
   WidgetType,
 } from '@codemirror/view';
-import { RangeSetBuilder, type Extension } from '@codemirror/state';
+import {
+  EditorState,
+  RangeSetBuilder,
+  StateField,
+  type Extension,
+} from '@codemirror/state';
 import katex from 'katex';
 
 // ── KaTeX Render Cache (LRU) ──────────────────────────────────────────────────
@@ -66,7 +69,9 @@ class KaTeXWidget extends WidgetType {
   override eq(other: KaTeXWidget): boolean {
     return (
       this.formula === other.formula &&
-      this.displayMode === other.displayMode
+      this.displayMode === other.displayMode &&
+      this.from === other.from &&
+      this.to === other.to
     );
   }
 
@@ -93,7 +98,11 @@ class KaTeXWidget extends WidgetType {
       e.preventDefault();
       e.stopPropagation();
       const currentPos = view.posAtDOM(container);
-      const targetPos = Math.max(0, currentPos + (this.displayMode ? 2 : 1));
+      const docLen = view.state.doc.length;
+      const targetPos = Math.max(
+        0,
+        Math.min(this.to, docLen, Math.max(this.from, currentPos + (this.displayMode ? 2 : 1))),
+      );
       view.dispatch({
         selection: { anchor: targetPos, head: targetPos },
         scrollIntoView: true,
@@ -158,8 +167,16 @@ function findMathSpans(text: string, offset: number): MathSpan[] {
     if (text.indexOf('\\begin{') !== -1) {
       ENV_MATH_REGEX.lastIndex = 0;
       while ((match = ENV_MATH_REGEX.exec(text)) !== null) {
+        const envName = match[1];
+        const innerRaw = match[2].replace(/\\label\{[^}]*\}/g, '').trim();
+        let katexFormula = innerRaw;
+        if (envName.startsWith('align')) {
+          katexFormula = `\\begin{aligned}\n${innerRaw}\n\\end{aligned}`;
+        } else if (envName.startsWith('gather')) {
+          katexFormula = `\\begin{gathered}\n${innerRaw}\n\\end{gathered}`;
+        }
         spans.push({
-          formula: match[0],
+          formula: katexFormula,
           displayMode: true,
           from: offset + match.index,
           to: offset + match.index + match[0].length,
@@ -225,80 +242,63 @@ const visualMathTheme = EditorView.baseTheme({
   },
 });
 
-// ── ViewPlugin ───────────────────────────────────────────────────────────────
+// ── StateField (Required by CM6 for multi-line block replace decorations) ──
 
-class VisualMathPlugin {
-  decorations: DecorationSet;
+function computeMathDecorations(state: EditorState): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const doc = state.doc;
+  const selection = state.selection.main;
 
-  constructor(view: EditorView) {
-    this.decorations = this.computeDecorations(view);
-  }
-
-  update(update: ViewUpdate): void {
-    if (
-      update.docChanged ||
-      update.viewportChanged ||
-      update.selectionSet
-    ) {
-      this.decorations = this.computeDecorations(update.view);
-    }
-  }
-
-  private computeDecorations(view: EditorView): DecorationSet {
-    const builder = new RangeSetBuilder<Decoration>();
-    const state = view.state;
-    const doc = state.doc;
-    const selection = state.selection.main;
-
-    if (doc.length === 0) {
-      return builder.finish();
-    }
-
-    const allSpans: MathSpan[] = [];
-
-    for (const { from, to } of view.visibleRanges) {
-      const lineFrom = doc.lineAt(from).from;
-      const lineTo = doc.lineAt(to).to;
-      const expandedFrom = Math.max(0, lineFrom - 500);
-      const expandedTo = Math.min(doc.length, lineTo + 500);
-      const text = doc.sliceString(expandedFrom, expandedTo);
-      const spans = findMathSpans(text, expandedFrom);
-      allSpans.push(...spans);
-    }
-
-    // Sort spans strictly by start position
-    allSpans.sort((a, b) => a.from - b.from);
-
-    // Filter overlapping spans and spans containing cursor
-    let lastTo = -1;
-    for (const span of allSpans) {
-      if (span.from < lastTo) {
-        continue; // Skip overlapping
-      }
-      lastTo = span.to;
-
-      // If the cursor or selection touches or intersects this math span, reveal the raw LaTeX!
-      const cursorInside = selection.from <= span.to && selection.to >= span.from;
-      if (cursorInside) {
-        continue;
-      }
-
-      builder.add(
-        span.from,
-        span.to,
-        Decoration.replace({
-          widget: new KaTeXWidget(span.formula, span.displayMode, span.from, span.to),
-        })
-      );
-    }
-
+  if (doc.length === 0) {
     return builder.finish();
   }
+
+  const allSpans = findMathSpans(doc.toString(), 0);
+  allSpans.sort((a, b) => a.from - b.from);
+
+  let lastTo = -1;
+  for (const span of allSpans) {
+    if (span.from < lastTo) {
+      continue;
+    }
+    lastTo = span.to;
+
+    // If the cursor or selection touches or intersects this math span, reveal raw LaTeX
+    const cursorInside = selection.from <= span.to && selection.to >= span.from;
+    if (cursorInside) {
+      continue;
+    }
+
+    const spansMultipleLines =
+      doc.lineAt(span.from).number !== doc.lineAt(span.to).number;
+
+    builder.add(
+      span.from,
+      span.to,
+      Decoration.replace({
+        widget: new KaTeXWidget(span.formula, span.displayMode, span.from, span.to),
+        ...(spansMultipleLines ? { block: true } : {}),
+      }),
+    );
+  }
+
+  return builder.finish();
 }
 
+const visualMathField = StateField.define<DecorationSet>({
+  create(state) {
+    return computeMathDecorations(state);
+  },
+  update(decorations, tr) {
+    if (tr.docChanged || tr.selection) {
+      return computeMathDecorations(tr.state);
+    }
+    return decorations;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 export const latexVisualMath = (): Extension => [
-  ViewPlugin.fromClass(VisualMathPlugin, {
-    decorations: (v) => v.decorations,
-  }),
+  visualMathField,
   visualMathTheme,
 ];

@@ -158,6 +158,8 @@ export interface Page {
   spaceId?: string;
   rev?: number;
   version?: number;
+  hash?: string | null;
+  sizeBytes?: number;
   author: PageAuthor;
   views: number;
   lastAccessedAt: string;
@@ -181,6 +183,8 @@ export interface PageFile {
   spaceId?: string;
   rev?: number;
   version?: number;
+  hash?: string | null;
+  sizeBytes?: number;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -204,6 +208,7 @@ export interface ManuscriptNode {
   isRootDoc?: boolean;
   sizeBytes?: number;
   hash?: string | null;
+  rev?: number | null;
   sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;

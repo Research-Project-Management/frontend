@@ -10,7 +10,7 @@ import {
   useWorkspaceStore,
   editorCommandBus,
   getActiveEditorEngine,
-  SYNCTEX_BROADCAST_CHANNEL,
+  getSyncTexChannelName,
 } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { compilerCoordinator, useCompileStore } from '@/features/editor/subsystems/compiler';
@@ -27,6 +27,9 @@ export interface DetachedPreviewNavigationCallbacks {
 
 export class DetachedPreviewBridge {
   private broadcastChannel: BroadcastChannel | null = null;
+  private isCustomChannel = false;
+  private currentChannelName: string | null = null;
+  private pageStoreUnsub: (() => void) | null = null;
   private readonly busUnsubscribers: Array<() => void> = [];
 
   constructor(private readonly callbacks: DetachedPreviewNavigationCallbacks) {}
@@ -37,26 +40,68 @@ export class DetachedPreviewBridge {
 
   public setChannel(channel: BroadcastChannel | null): void {
     this.broadcastChannel = channel;
+    this.isCustomChannel = channel !== null;
+    this.currentChannelName = channel?.name ?? null;
     if (this.broadcastChannel) {
       this.attachChannelListeners();
     }
   }
 
-  public initChannelIfSupported(): void {
+  public resolveActiveScopeId(): string | null {
+    const pageStore = usePageStore.getState();
+    return (
+      pageStore.parentPageId ||
+      pageStore.rootPageId ||
+      pageStore.projectId ||
+      pageStore.spaceId ||
+      extractProjectId(pageStore.currentPage) ||
+      pageStore.currentPage?.id ||
+      null
+    );
+  }
+
+  public syncScopedChannel(): void {
     if (
-      !this.broadcastChannel &&
-      typeof window !== 'undefined' &&
-      'BroadcastChannel' in window
+      this.isCustomChannel ||
+      typeof window === 'undefined' ||
+      !('BroadcastChannel' in window)
     ) {
+      return;
+    }
+
+    const targetName = getSyncTexChannelName(this.resolveActiveScopeId());
+    if (this.broadcastChannel && this.currentChannelName === targetName) {
+      return;
+    }
+
+    if (this.broadcastChannel) {
       try {
-        this.broadcastChannel = new BroadcastChannel(SYNCTEX_BROADCAST_CHANNEL);
-        this.attachChannelListeners();
-      } catch (err) {
-        console.warn(
-          '[DetachedPreviewBridge] BroadcastChannel initialization failed:',
-          err,
-        );
+        this.broadcastChannel.close();
+      } catch {
+        // Ignore close error
       }
+      this.broadcastChannel = null;
+    }
+
+    try {
+      this.broadcastChannel = new BroadcastChannel(targetName);
+      this.currentChannelName = targetName;
+      this.attachChannelListeners();
+    } catch (err) {
+      this.currentChannelName = null;
+      console.warn(
+        '[DetachedPreviewBridge] BroadcastChannel initialization failed:',
+        err,
+      );
+    }
+  }
+
+  public initChannelIfSupported(): void {
+    this.syncScopedChannel();
+    if (!this.pageStoreUnsub && typeof window !== 'undefined') {
+      this.pageStoreUnsub = usePageStore.subscribe(() => {
+        this.syncScopedChannel();
+      });
     }
   }
 
@@ -68,13 +113,24 @@ export class DetachedPreviewBridge {
     );
   }
 
-  public postMessage(message: { type: string; payload?: unknown }): void {
+  public postMessage(message: { type: string; payload?: unknown; scopeId?: string }): void {
+    if (!this.isCustomChannel) {
+      this.syncScopedChannel();
+    }
     this.broadcastChannel?.postMessage(message);
   }
 
   public attachChannelListeners(): void {
     if (!this.broadcastChannel) return;
     this.broadcastChannel.onmessage = (event) => {
+      const msgScope = (event.data as { scopeId?: unknown } | undefined)?.scopeId;
+      if (typeof msgScope === 'string' && msgScope.length > 0) {
+        const activeScope = this.resolveActiveScopeId();
+        if (activeScope && msgScope !== activeScope) {
+          return;
+        }
+      }
+
       const { type, payload } = event.data || {};
       if (type === 'synctex:jump-to-code' && payload?.line) {
         this.callbacks.onJumpToCode(payload);
@@ -204,12 +260,23 @@ export class DetachedPreviewBridge {
         const projectId =
           cmd.projectId ||
           pageStore.projectId ||
+          pageStore.spaceId ||
           extractProjectId(pageStore.currentPage) ||
+          pageStore.parentPageId ||
+          pageStore.currentPage?.id ||
           (typeof window !== 'undefined'
             ? window.location.pathname.match(/\/projects\/([^/]+)/)?.[1]
             : null);
+        const pageId = pageStore.parentPageId || pageStore.rootPageId || null;
+        if (!this.isCustomChannel) {
+          this.syncScopedChannel();
+        }
         if (projectId && typeof window !== 'undefined') {
-          window.open(`/projects/${projectId}/preview`, '_blank');
+          const url =
+            pageId && pageId !== projectId
+              ? `/projects/${encodeURIComponent(projectId)}/preview?pageId=${encodeURIComponent(pageId)}`
+              : `/projects/${projectId}/preview`;
+          window.open(url, '_blank');
         }
       }),
       editorCommandBus.subscribe('preview:attach', () => {
@@ -221,6 +288,8 @@ export class DetachedPreviewBridge {
   }
 
   public dispose(): void {
+    this.pageStoreUnsub?.();
+    this.pageStoreUnsub = null;
     for (const unsub of this.busUnsubscribers.splice(0)) {
       try {
         unsub();
@@ -236,5 +305,7 @@ export class DetachedPreviewBridge {
       }
       this.broadcastChannel = null;
     }
+    this.isCustomChannel = false;
+    this.currentChannelName = null;
   }
 }

@@ -12,11 +12,12 @@
 
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useParams, useSearchParams } from 'next/navigation';
 import {
   editorCommandBus,
   useCompileStore,
   useWorkspaceStore,
-  SYNCTEX_BROADCAST_CHANNEL,
+  getSyncTexChannelName,
 } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
 
@@ -26,16 +27,26 @@ const PdfViewer = dynamic(
 );
 
 export function DetachedPdfViewer() {
+  const params = useParams<{ projectId?: string; pageId?: string }>();
+  const searchParams = useSearchParams();
+  const scopeId =
+    searchParams?.get('pageId') || params?.pageId || params?.projectId || null;
+
   useEffect(() => {
     useWorkspaceStore.getState().setPdfDetached(true);
     useCompileStore.getState().setIsViewerPoppedOut(true);
 
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
 
+    const channelName = getSyncTexChannelName(scopeId);
     let channel: BroadcastChannel | null = null;
     try {
-      channel = new BroadcastChannel(SYNCTEX_BROADCAST_CHANNEL);
+      channel = new BroadcastChannel(channelName);
       channel.onmessage = (event) => {
+        const msgScope = (event.data as { scopeId?: unknown } | undefined)?.scopeId;
+        if (typeof msgScope === 'string' && msgScope.length > 0 && scopeId && msgScope !== scopeId) {
+          return;
+        }
         const { type, payload } = event.data || {};
         if (type === 'preview:attached') {
           window.close();
@@ -88,7 +99,7 @@ export function DetachedPdfViewer() {
       };
 
       // Query main window for initial PDF and compiler state
-      channel.postMessage({ type: 'preview:ready' });
+      channel.postMessage({ type: 'preview:ready', ...(scopeId ? { scopeId } : {}) });
     } catch (err) {
       console.warn('[DetachedPreview] BroadcastChannel failed to initialize:', err);
     }
@@ -97,13 +108,14 @@ export function DetachedPdfViewer() {
     const unsubScroll = editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
       channel?.postMessage({
         type: 'editor:scroll-to-line',
+        ...(scopeId ? { scopeId } : {}),
         payload: { line: cmd.line, smooth: cmd.smooth },
       });
     });
 
     const handleBeforeUnload = () => {
       try {
-        channel?.postMessage({ type: 'preview:window-closed' });
+        channel?.postMessage({ type: 'preview:window-closed', ...(scopeId ? { scopeId } : {}) });
       } catch {}
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -112,11 +124,11 @@ export function DetachedPdfViewer() {
       unsubScroll();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       try {
-        channel?.postMessage({ type: 'preview:window-closed' });
+        channel?.postMessage({ type: 'preview:window-closed', ...(scopeId ? { scopeId } : {}) });
         channel?.close();
       } catch {}
     };
-  }, []);
+  }, [scopeId]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">

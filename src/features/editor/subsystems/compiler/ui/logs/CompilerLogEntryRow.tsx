@@ -21,6 +21,7 @@ export interface CompilerLogEntryRowProps {
   onSuggestFix?: (entry: LogEntry) => void;
   isFixLoading?: boolean;
   fixResult?: AiErrorFixResult | null;
+  isFixProposed?: boolean;
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
   onApplyQuickFix?: (entry: LogEntry, fix: { description: string; replacementText: string }) => void;
@@ -38,6 +39,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   onSuggestFix,
   isFixLoading,
   fixResult,
+  isFixProposed,
   isFixApplied,
   onApplyFix,
   onApplyQuickFix,
@@ -235,6 +237,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
           entry={entry}
           isFixLoading={isFixLoading}
           fixResult={fixResult}
+          isFixProposed={isFixProposed}
           isFixApplied={isFixApplied}
           onApplyFix={onApplyFix}
         />

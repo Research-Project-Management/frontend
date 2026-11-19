@@ -53,14 +53,31 @@ interface AiTabProps {
 export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
   const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const rootPageId = usePageStore((s) => s.rootPageId);
+  const parentPageId = usePageStore((s) => s.parentPageId);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
   const storeProjectId = usePageStore((s) => s.projectId);
   const currentPageProjectId = usePageStore((s) => {
     const p = s.currentPage?.projectId;
     return typeof p === 'string' ? p : p?.id || null;
   });
   const { engine, getContent } = useEditorInstance();
+
+  const currentProjectId =
+    storeSpaceId || storeProjectId || params?.projectId || currentPageProjectId || null;
+
+  const activePageId =
+    rootPageId || parentPageId || params?.pageId || params?.draftId || currentPageId || null;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputPrompt, setInputPrompt] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState<string>('');
+  const [selectionContext, setSelectionContext] = useState<string | null>(null);
+  const [selectionFileId, setSelectionFileId] = useState<string | null>(null);
+
   const {
     insertAtCursor,
     replaceSelection,
@@ -71,17 +88,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     notifyFileError,
     notifyChatError,
     notifyChatCleared,
-  } = useAiChatActions({ engine });
-
-  const currentProjectId = params?.projectId || storeProjectId || currentPageProjectId || null;
-
-  const activePageId = params?.pageId || params?.draftId || currentPageId || null;
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [inputPrompt, setInputPrompt] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingMessage, setStreamingMessage] = useState<string>('');
-  const [selectionContext, setSelectionContext] = useState<string | null>(null);
+  } = useAiChatActions({ engine, selectionFileId });
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
@@ -94,6 +101,7 @@ export default function AiTab({ onClose }: AiTabProps) {
   const [isUploadedDocsModalOpen, setIsUploadedDocsModalOpen] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const chatIdRef = useRef<string | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -161,21 +169,35 @@ export default function AiTab({ onClose }: AiTabProps) {
     scrollToBottom();
   }, [messages, streamingMessage, scrollToBottom]);
 
-  // Load chat history for current page if available
+  // Load chat history for current page and clean up previous page state on page switch
   useEffect(() => {
-    if (!activePageId) return;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    chatIdRef.current = null;
+    setIsStreaming(false);
+    setStreamingMessage('');
+    setSelectionContext(null);
+    setSelectionFileId(null);
+    setAttachedFiles([]);
+
+    if (!activePageId) {
+      setMessages([]);
+      return;
+    }
 
     let isMounted = true;
     setIsLoadingHistory(true);
 
     getPageChat(activePageId)
       .then((history: ChatMessage[]) => {
-        if (isMounted && Array.isArray(history) && history.length > 0) {
-          setMessages(history);
+        if (isMounted) {
+          setMessages(Array.isArray(history) ? history : []);
         }
       })
       .catch(() => {
-        // Silently continue if no prior page history
+        if (isMounted) {
+          setMessages([]);
+        }
       })
       .finally(() => {
         if (isMounted) setIsLoadingHistory(false);
@@ -189,12 +211,18 @@ export default function AiTab({ onClose }: AiTabProps) {
   // Listen for external open-ai-panel events from toolbar / floating menu
   useEffect(() => {
     return editorCommandBus.subscribe('sidebar:open-ai-panel', (cmd) => {
+      const currentFileId =
+        usePageStore.getState().activeFilePage?.id ||
+        usePageStore.getState().currentPage?.id ||
+        null;
       if (cmd?.selectedText) {
         setSelectionContext(cmd.selectedText);
+        setSelectionFileId(currentFileId);
       } else if (engine) {
         const text = engine.getSelectedText();
         if (text.trim()) {
           setSelectionContext(text);
+          setSelectionFileId(currentFileId);
         }
       }
 
@@ -209,6 +237,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
       if (cmd.action === 'accept') {
         setSelectionContext(null);
+        setSelectionFileId(null);
       }
     });
   }, []);
@@ -253,20 +282,24 @@ export default function AiTab({ onClose }: AiTabProps) {
     try {
       const activeFilename = activeFilePage?.title || currentPageTitle || 'document.tex';
       const fileContent = getContent();
-      const finalDocIds = [
-        ...attachedFiles.map((f) => f.id),
-        ...(activePageId ? [activePageId] : []),
-      ];
+      const finalDocIds = attachedFiles.map((f) => f.id);
       const finalWebSearch = webSearchEnabled ? ['*'] : undefined;
 
       const stream = streamEditorChat(newMessages, {
-        projectId: currentProjectId || undefined,
+        chatId: chatIdRef.current || undefined,
+        pageId: activePageId || undefined,
+        spaceId: currentProjectId || undefined,
         documentIds: finalDocIds.length > 0 ? finalDocIds : undefined,
         webSearchSites: finalWebSearch,
         filename: activeFilename,
         fileContent,
         selection: selectionContext || undefined,
         signal: abortController.signal,
+        onMeta: (meta) => {
+          if (meta?.chatId) {
+            chatIdRef.current = meta.chatId;
+          }
+        },
       });
 
       let accumulated = '';
@@ -278,6 +311,7 @@ export default function AiTab({ onClose }: AiTabProps) {
       setMessages((prev) => [...prev, { role: 'assistant', content: accumulated }]);
       setStreamingMessage('');
       setSelectionContext(null);
+      setSelectionFileId(null);
     } catch (err: unknown) {
       const error = err as Error;
       if (error?.name !== 'AbortError') {
@@ -306,9 +340,11 @@ export default function AiTab({ onClose }: AiTabProps) {
         // Fallback silently
       }
     }
+    chatIdRef.current = null;
     setMessages([]);
     setStreamingMessage('');
     setSelectionContext(null);
+    setSelectionFileId(null);
     setInputPrompt('');
     notifyChatCleared();
   };

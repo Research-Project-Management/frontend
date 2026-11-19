@@ -585,6 +585,7 @@ export function reconfigureVisualMode(
   view: EditorView,
   enabled: boolean,
   compartments: EditorCompartmentMap = getViewCompartments(view),
+  showLineNumbers = true,
 ): void {
   view.dispatch({
     effects: [
@@ -592,7 +593,9 @@ export function reconfigureVisualMode(
         enabled ? createVisualModeExtensions() : []
       ),
       compartments.lineNumbers.reconfigure(
-        enabled ? [] : [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
+        !enabled && showLineNumbers
+          ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
+          : []
       ),
     ],
   });
@@ -641,7 +644,9 @@ export interface EditorRuntimeConfig {
   keybinding: 'standard' | 'vim' | 'emacs';
   spellCheck: boolean;
   spellCheckLanguage?: string;
+  spaceId?: string;
   projectId?: string;
+  smartPaste?: boolean;
   editorTheme: string;
   fontSize: number;
   fontFamily?: string;
@@ -781,6 +786,26 @@ export function computeCompartmentReconfigEffects(
     effects.push(
       compartments.linter.reconfigure(
         next.enableLinter ?? true ? createLatexLinterExtension() : []
+      )
+    );
+  }
+
+  const prevSmartPaste = prev.smartPaste ?? true;
+  const nextSmartPaste = next.smartPaste ?? true;
+  if (
+    prevSmartPaste !== nextSmartPaste ||
+    prev.spaceId !== next.spaceId ||
+    (next.smartPaste !== undefined && prev.projectId !== next.projectId)
+  ) {
+    effects.push(
+      compartments.smartPaste.reconfigure(
+        nextSmartPaste
+          ? createLatexSmartPasteExtension({
+              spaceId: next.spaceId,
+              projectId: next.projectId,
+              enableSmartPaste: true,
+            })
+          : []
       )
     );
   }

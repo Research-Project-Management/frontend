@@ -68,7 +68,7 @@ export type EditorCommand =
   | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
   | { type: 'editor:suggest-fix'; error: { message: string; line?: number; file?: string; context?: string } }
   | { type: 'editor:error-stepped'; errorIndex?: number; file?: string; line?: number; message?: string }
-  | { type: 'editor:visual-command'; command: string; level?: 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
+  | { type: 'editor:visual-command'; command: string; level?: 0 | 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
   | { type: 'editor:review-event'; pageId: string; event: string; payload?: unknown }
   | { type: 'collab:presence-update'; collaborators: import('@/features/editor/core/store/collaboration.store').CollaboratorPresenceInfo[] }
   | { type: 'collab:user-joined'; collaborator: Partial<import('@/features/editor/core/store/collaboration.store').CollaboratorPresenceInfo> & { id: string } }
@@ -141,8 +141,12 @@ export type EditorCommand =
   | { type: 'workspace:restore-file'; fileId: string; projectId?: string }
   | { type: 'workspace:set-main-file'; fileId: string; projectId?: string }
   | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
-  | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string }
+  | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string; preview?: boolean }
+  | { type: 'navigation:pin-tab'; fileId: string }
   | { type: 'navigation:close-tab'; fileId: string }
+  | { type: 'navigation:close-other-tabs'; keepFileId: string }
+  | { type: 'navigation:close-tabs-to-right'; fromFileId: string }
+  | { type: 'navigation:close-saved-tabs' }
   | { type: 'navigation:jump-to-line'; fileId?: string; filePath?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
   | { type: 'navigation:next-error' }
   | { type: 'navigation:prev-error' }

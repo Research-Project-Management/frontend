@@ -114,10 +114,17 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
 /**
  * Generate a clean LaTeX tabular or TSV table from an AI prompt via backend CLSI AI endpoint.
  */
-export async function generateLatexTable(prompt: string): Promise<string> {
+export async function generateLatexTable(
+  prompt: string,
+  options?: { spaceId?: string; pageId?: string },
+): Promise<string> {
   const res = await apiPost<{ table?: string; content?: string } | null>(
     `${MANUSCRIPTS_API_BASE}/clsi/ai/generate-table`,
-    { prompt },
+    {
+      prompt,
+      ...(options?.spaceId ? { spaceId: options.spaceId } : {}),
+      ...(options?.pageId ? { pageId: options.pageId } : {}),
+    },
   );
   const rawText = res?.table || res?.content || '';
   return rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();

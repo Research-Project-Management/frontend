@@ -248,9 +248,12 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
   },
   update(value, tr: Transaction) {
     let next = value;
+    let suggestionsReplacedByEffect = false;
+
     for (const effect of tr.effects) {
       if (effect.is(setTrackChangesSuggestionsEffect)) {
         next = { ...next, suggestions: effect.value };
+        suggestionsReplacedByEffect = true;
       } else if (effect.is(setTrackChangesViewModeEffect)) {
         next = { ...next, viewMode: effect.value };
       } else if (effect.is(setTrackChangesReviewModeEffect)) {
@@ -258,6 +261,9 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
       } else if (effect.is(setTrackChangesCommentsEffect)) {
         next = { ...next, comments: effect.value };
       } else if (effect.is(setTrackChangesDataEffect)) {
+        if (effect.value.suggestions || effect.value.changes) {
+          suggestionsReplacedByEffect = true;
+        }
         let newSuggestions = next.suggestions;
         if (effect.value.suggestions) {
           newSuggestions = effect.value.suggestions;
@@ -325,6 +331,28 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
         };
       }
     }
+
+    if (tr.docChanged && !suggestionsReplacedByEffect && next.suggestions.length > 0) {
+      const docLen = tr.newDoc.length;
+      next = {
+        ...next,
+        suggestions: next.suggestions.map((s) => {
+          if (typeof s.fromIndex !== 'number' || typeof s.toIndex !== 'number') {
+            return s;
+          }
+          const rawFrom = tr.changes.mapPos(Math.max(0, Math.min(s.fromIndex, tr.startState.doc.length)), 1);
+          const rawTo = tr.changes.mapPos(Math.max(0, Math.min(s.toIndex, tr.startState.doc.length)), -1);
+          const mappedFrom = Math.max(0, Math.min(rawFrom, docLen));
+          const mappedTo = Math.max(mappedFrom, Math.min(rawTo, docLen));
+          return {
+            ...s,
+            fromIndex: mappedFrom,
+            toIndex: mappedTo,
+          };
+        }),
+      };
+    }
+
     return next;
   },
 });
@@ -677,7 +705,12 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
   const currentScopePageId = config.pageId || '';
 
   const userEvt = tr.annotation(Transaction.userEvent);
-  if (!userEvt || (!userEvt.startsWith('input') && !userEvt.startsWith('delete'))) {
+  if (
+    !userEvt ||
+    (!userEvt.startsWith('input') &&
+      !userEvt.startsWith('delete') &&
+      userEvt !== 'ai.accept-diff')
+  ) {
     return tr;
   }
 
@@ -790,7 +823,12 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
       });
     });
 
-    return [tr, { effects: setTrackChangesSuggestionsEffect.of(nextSuggestions) }];
+    return [
+      tr,
+      {
+        effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
+      },
+    ];
   }
 
   // Case 2: Deletion in Suggesting Mode -> keep text in buffer and mark as pending delete
@@ -864,7 +902,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
 
     return {
       selection: { anchor: fromA },
-      effects: setTrackChangesSuggestionsEffect.of(nextSuggestions),
+      effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
     };
   }
 
@@ -950,7 +988,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     return {
       changes: { from: toA, to: toA, insert: insertedText },
       selection: { anchor: toA + insertedText.length },
-      effects: setTrackChangesSuggestionsEffect.of(nextSuggestions),
+      effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
     };
   }
 

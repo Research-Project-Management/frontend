@@ -42,6 +42,7 @@ export type { IEditorEngine, EditorEngine } from '@/features/editor/domain/types
 // 2. Workbench Stores
 export {
   useWorkspaceStore,
+  rehydrateEditorPageFromStorage,
 } from './store/workspace.store';
 export type {
   ActivityBarTab,
@@ -50,7 +51,29 @@ export type {
   LayoutState,
   EditorTab,
   WorkspaceTab,
+  HydratePageTabsOptions,
 } from './store/workspace.store';
+export {
+  setEditorTabsStorageProvider,
+  setEditorWindowStorageProvider,
+  mergeEditorTabsWithStorage,
+  saveEditorTabsForPage,
+  saveEditorWindowSplitState,
+  scheduleSaveActiveEditorTab,
+  flushPendingEditorTabSaves,
+  loadEditorTabsForPage,
+  removeEditorTabsForPage,
+} from './store/editor-tabs-storage.adapter';
+export type {
+  PersistedSplitMode,
+  StorageLike,
+  SerializedEditorTab,
+  PersistedPageTabsEntry,
+  EditorTabsEnvelope,
+  PersistedWindowPageState,
+  EditorWindowStateMap,
+  SaveEditorTabsOptions,
+} from './store/editor-tabs-storage.adapter';
 
 export {
   usePageStore,
@@ -58,6 +81,7 @@ export {
 
 export {
   useSettingsStore,
+  rehydrateEditorSettingsFromStorage,
 } from './store/settings.store';
 export type {
   TrackChangesViewMode,

@@ -18,6 +18,8 @@
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { Annotation, EditorState, type Extension, type StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { historyField } from '@codemirror/commands';
+import { foldedRanges, foldEffect } from '@codemirror/language';
 import { programmaticSyncAnnotation } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { forceLinting } from '@codemirror/lint';
 import { ySyncAnnotation } from 'y-codemirror.next';
@@ -32,7 +34,12 @@ import {
   YjsCodeMirrorAdapter,
   type YjsCollabOptions,
 } from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';
-import { clearDiffEffect } from '@/features/editor/core/engine/extensions/inline-diff';
+import {
+  clearDiffEffect,
+  diffProposalField,
+  proposeDiffEffect,
+} from '@/features/editor/core/engine/extensions/inline-diff';
+import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import {
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
@@ -61,7 +68,13 @@ import {
   useSettingsStore,
   useConnectivityStore,
   usePageStore,
+  useWorkspaceStore,
 } from '@/features/editor/core';
+import {
+  warmEditorStatePool,
+  type WarmEditorStateSnapshot,
+  type WarmFoldRange,
+} from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { cn } from '@/shared/lib/utils';
 
 export interface CodeMirrorViewProps {
@@ -108,6 +121,7 @@ export interface BuildEditorStateOptions {
   yText?: Y.Text | null;
   awareness?: YjsCollabOptions['awareness'];
   viewUpdateListener: Extension;
+  warmSnapshot?: WarmEditorStateSnapshot;
 }
 
 /**
@@ -160,16 +174,42 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     initialReviewMode: Boolean(options.reviewMode),
   });
 
+  const extensions: Extension[] = [
+    ...presetExtensions,
+    linterExtension,
+    diagnosticsExtension,
+    collabExtension,
+    trackChangesExtension,
+    options.viewUpdateListener,
+  ];
+
+  if (
+    options.warmSnapshot?.stateJson &&
+    options.warmSnapshot.content === options.initialText
+  ) {
+    try {
+      const jsonObj =
+        typeof options.warmSnapshot.stateJson === 'object' &&
+        options.warmSnapshot.stateJson !== null
+          ? {
+              ...(options.warmSnapshot.stateJson as Record<string, unknown>),
+              doc: options.initialText,
+            }
+          : options.warmSnapshot.stateJson;
+
+      return EditorState.fromJSON(
+        jsonObj,
+        { extensions },
+        { history: historyField },
+      );
+    } catch {
+      // Fallback to fresh EditorState if serialized JSON or history schema is incompatible
+    }
+  }
+
   return EditorState.create({
     doc: options.initialText,
-    extensions: [
-      ...presetExtensions,
-      linterExtension,
-      diagnosticsExtension,
-      collabExtension,
-      trackChangesExtension,
-      options.viewUpdateListener,
-    ],
+    extensions,
   });
 }
 
@@ -201,6 +241,13 @@ function findDiffRange(
 }
 
 function flushViewState(view: EditorView, targetFileId: string): void {
+  const activeProposal = view.state.field(diffProposalField, false)?.proposal;
+  if (activeProposal && targetFileId) {
+    aiCoordinator.setPendingDiffForFile(targetFileId, activeProposal);
+  } else if (targetFileId) {
+    aiCoordinator.clearPendingDiffForFile(targetFileId);
+  }
+
   const latestDoc = view.state.doc.toString();
   const existingModel = lruDocumentCache.getModel(targetFileId);
   if (!existingModel) {
@@ -215,9 +262,57 @@ function flushViewState(view: EditorView, targetFileId: string): void {
     { anchor: mainSel.anchor, head: mainSel.head },
     { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
   );
+
+  if (targetFileId) {
+    const foldRanges: WarmFoldRange[] = [];
+    try {
+      const folds = foldedRanges(view.state);
+      folds.between(0, view.state.doc.length, (from, to) => {
+        foldRanges.push({ from, to });
+      });
+    } catch {
+      // Ignore if folding state field is not active in this editor state
+    }
+
+    let stateJson: unknown;
+    try {
+      const hasHistory = Boolean(view.state.field(historyField, false));
+      stateJson = view.state.toJSON(hasHistory ? { history: historyField } : undefined);
+    } catch {
+      stateJson = undefined;
+    }
+
+    if (stateJson) {
+      warmEditorStatePool.put(targetFileId, {
+        fileId: targetFileId,
+        content: latestDoc,
+        stateJson,
+        foldedRanges: foldRanges,
+        savedAt: Date.now(),
+      });
+    }
+  }
 }
 
 function restoreViewState(view: EditorView, targetFileId: string, docLength: number): void {
+  const warmSnapshot = warmEditorStatePool.peek(targetFileId);
+  if (
+    warmSnapshot?.foldedRanges &&
+    warmSnapshot.foldedRanges.length > 0 &&
+    warmSnapshot.content === view.state.doc.toString()
+  ) {
+    try {
+      const validFolds = warmSnapshot.foldedRanges
+        .filter((r) => r.from >= 0 && r.to <= docLength && r.from < r.to)
+        .map((r) => foldEffect.of({ from: r.from, to: r.to }));
+      if (validFolds.length > 0) {
+        view.dispatch({ effects: validFolds });
+      }
+    } catch {
+      // Ignore fold restore errors if folding extension is unavailable
+    }
+  }
+
   const cachedModel = lruDocumentCache.get(targetFileId);
   if (cachedModel?.selection) {
     const anchor = Math.min(cachedModel.selection.anchor, docLength);
@@ -356,6 +451,9 @@ export function CodeMirrorView({
 
         const nextContent = update.state.doc.toString();
         const activeId = currentFileIdRef.current;
+        if (origin === 'local' && activeId) {
+          useWorkspaceStore.getState().pinTabForFile(activeId);
+        }
         const isOnline = useConnectivityStore.getState().isOnline;
         sessionCoordinator.notifyContentChange(activeId, nextContent, {
           isRealtimeActive: shouldUseRealtimePersistence({
@@ -436,6 +534,7 @@ export function CodeMirrorView({
         yText: yText ?? null,
         awareness,
         viewUpdateListener,
+        warmSnapshot: warmEditorStatePool.get(docFileId),
       });
     },
     [
@@ -552,6 +651,15 @@ export function CodeMirrorView({
     view.dom.addEventListener('mousedown', handleFocus, true);
 
     restoreViewState(view, fileId, state.doc.length);
+    const initialPendingDiff = aiCoordinator.consumePendingDiffForFile(fileId);
+    if (initialPendingDiff) {
+      const docLen = state.doc.length;
+      const from = Math.max(0, Math.min(initialPendingDiff.from, docLen));
+      const to = Math.max(from, Math.min(initialPendingDiff.to, docLen));
+      view.dispatch({
+        effects: [proposeDiffEffect.of({ ...initialPendingDiff, from, to })],
+      });
+    }
     syncErrorLens(view, filePath);
     if (isActiveRef.current) {
       navigationCoordinator.registerEditorView(fileId, filePath);
@@ -784,7 +892,17 @@ export function CodeMirrorView({
 
     // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
     view.setState(nextState);
-    view.dispatch({ effects: clearDiffEffect.of() });
+    const nextPendingDiff = aiCoordinator.consumePendingDiffForFile(fileId);
+    if (nextPendingDiff) {
+      const docLen = nextState.doc.length;
+      const from = Math.max(0, Math.min(nextPendingDiff.from, docLen));
+      const to = Math.max(from, Math.min(nextPendingDiff.to, docLen));
+      view.dispatch({
+        effects: [proposeDiffEffect.of({ ...nextPendingDiff, from, to })],
+      });
+    } else {
+      view.dispatch({ effects: clearDiffEffect.of() });
+    }
     boundYTextRef.current = yText ?? null;
     prevConfigRef.current = {
       runtime: currentRuntimeConfig,

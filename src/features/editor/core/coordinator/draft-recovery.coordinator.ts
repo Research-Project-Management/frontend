@@ -10,6 +10,8 @@ import {
   draftStorageService,
   type DraftSnapshot,
 } from '@/features/editor/domain/document/draft-storage';
+import { multiTabBus } from '@/shared/lib/multi-tab';
+import { useConnectivityStore } from '../store/connectivity.store';
 
 export interface DocumentConflict {
   fileId: string;
@@ -66,8 +68,22 @@ export class DraftRecoveryCoordinator {
       this.draftTimers.delete(fileId);
     }
     this.pendingDrafts.delete(fileId);
-    draftStorageService.saveMemoryDraft(fileId, content, projectId);
-    draftStorageService.saveDraft(fileId, content, this.resolveEffectiveProjectId(projectId)).catch(() => {});
+    const resolvedProjectId = this.resolveEffectiveProjectId(projectId);
+    const expectedRev = lruDocumentCache.getModel(fileId)?.serverRev;
+    if (expectedRev !== undefined) {
+      draftStorageService.saveMemoryDraft(fileId, content, projectId, undefined, expectedRev);
+      draftStorageService.saveDraft(fileId, content, resolvedProjectId, undefined, expectedRev).catch(() => {});
+    } else {
+      draftStorageService.saveMemoryDraft(fileId, content, projectId);
+      draftStorageService.saveDraft(fileId, content, resolvedProjectId).catch(() => {});
+    }
+    multiTabBus.publish({
+      type: 'EDITOR_OFFLINE_DRAFT_UPDATED',
+      fileId,
+      projectId: resolvedProjectId,
+      content,
+      updatedAt: Date.now(),
+    });
   }
 
   public flushPendingDrafts(): void {
@@ -77,11 +93,13 @@ export class DraftRecoveryCoordinator {
         clearTimeout(timer);
         this.draftTimers.delete(fileId);
       }
-      draftStorageService.saveDraft(
-        fileId,
-        pending.content,
-        this.resolveEffectiveProjectId(pending.projectId)
-      ).catch(() => {});
+      const expectedRev = lruDocumentCache.getModel(fileId)?.serverRev;
+      const resolvedProj = this.resolveEffectiveProjectId(pending.projectId);
+      const savePromise =
+        expectedRev !== undefined
+          ? draftStorageService.saveDraft(fileId, pending.content, resolvedProj, undefined, expectedRev)
+          : draftStorageService.saveDraft(fileId, pending.content, resolvedProj);
+      savePromise.catch(() => {});
     }
     this.pendingDrafts.clear();
   }
@@ -89,7 +107,12 @@ export class DraftRecoveryCoordinator {
   public saveDraftSnapshot(fileId: string, content: string, projectId?: string): void {
     if (this.draftDecisionPending.has(fileId)) return;
 
-    draftStorageService.saveMemoryDraft(fileId, content, projectId);
+    const expectedRev = lruDocumentCache.getModel(fileId)?.serverRev;
+    if (expectedRev !== undefined) {
+      draftStorageService.saveMemoryDraft(fileId, content, projectId, undefined, expectedRev);
+    } else {
+      draftStorageService.saveMemoryDraft(fileId, content, projectId);
+    }
 
     const existingTimer = this.draftTimers.get(fileId);
     if (existingTimer) {
@@ -103,11 +126,26 @@ export class DraftRecoveryCoordinator {
       const pending = this.pendingDrafts.get(fileId);
       if (pending) {
         this.pendingDrafts.delete(fileId);
-        draftStorageService.saveDraft(
+        const resolvedProjectId = this.resolveEffectiveProjectId(pending.projectId);
+        const latestRev = lruDocumentCache.getModel(fileId)?.serverRev;
+        const savePromise =
+          latestRev !== undefined
+            ? draftStorageService.saveDraft(
+                fileId,
+                pending.content,
+                resolvedProjectId,
+                undefined,
+                latestRev,
+              )
+            : draftStorageService.saveDraft(fileId, pending.content, resolvedProjectId);
+        savePromise.catch(() => {});
+        multiTabBus.publish({
+          type: 'EDITOR_OFFLINE_DRAFT_UPDATED',
           fileId,
-          pending.content,
-          this.resolveEffectiveProjectId(pending.projectId)
-        ).catch(() => {});
+          projectId: resolvedProjectId,
+          content: pending.content,
+          updatedAt: Date.now(),
+        });
       }
     }, 600);
     this.draftTimers.set(fileId, timer);
@@ -145,18 +183,29 @@ export class DraftRecoveryCoordinator {
       filePath,
       updatedAt: Date.now(),
     });
-    void draftStorageService.enqueueMutation({
-      fileId,
-      projectId: effectiveProjectId,
-      spaceId: cachedModel?.spaceId,
-      pageId: cachedModel?.pageId,
-      type: 'update_content',
-      payload: {
-        content,
-        filePath,
-        ...(expectedRev !== undefined ? { expectedRev } : {}),
-      },
-    });
+    void draftStorageService
+      .enqueueMutation({
+        fileId,
+        projectId: effectiveProjectId,
+        spaceId: cachedModel?.spaceId,
+        pageId: cachedModel?.pageId,
+        type: 'update_content',
+        payload: {
+          content,
+          filePath,
+          ...(expectedRev !== undefined ? { expectedRev } : {}),
+        },
+      })
+      .then(async () => {
+        const list = await draftStorageService.getPendingMutations().catch(() => []);
+        useConnectivityStore.getState().setPendingMutationsCount(list.length);
+        multiTabBus.publish({
+          type: 'OFFLINE_OUTBOX_MUTATED',
+          action: 'ENQUEUED',
+          count: list.length,
+        });
+      })
+      .catch(() => {});
   }
 
   public checkDraftRecovery(

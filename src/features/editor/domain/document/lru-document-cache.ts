@@ -61,13 +61,23 @@ export interface DocumentModelState {
   scrollViewport?: DocumentScrollViewport;
   yText?: unknown | null;
   isDirty: boolean;
+  /** False when pre-populated as an empty tab shell awaiting async IDB/Server hydration. */
+  isAuthoritative?: boolean;
   /** Monotonic counter bumped on every content mutation; used for race-free markClean. */
   contentVersion?: number;
   serverRev?: number;
+  hash?: string | null;
   serverUpdatedAt?: string;
   lastSavedAt?: number;
   lastActiveAt: number;
   metadata?: Record<string, unknown>;
+}
+
+export interface DocumentManifestEntry {
+  rev?: number;
+  hash?: string | null;
+  sizeBytes?: number;
+  sessionValidated?: boolean;
 }
 
 export interface LRUNode {
@@ -104,6 +114,9 @@ export class LRUDocumentCache {
   private activeFileId: string | null = null;
   private version = 0;
   private readonly listeners = new Set<ModelChangeListener | CacheSubscriber>();
+  private readonly fileListeners = new Map<string, Set<CacheSubscriber>>();
+  private readonly dirtyFileIds = new Set<string>();
+  private readonly manifestByDocId = new Map<string, DocumentManifestEntry>();
   private readonly evictionListeners = new Set<ModelEvictionListener>();
   private persistenceSink: IDraftStorageSink | null = draftStorageService;
 
@@ -163,19 +176,120 @@ export class LRUDocumentCache {
    * Returns current memory governor metrics.
    */
   public getStats(): DocumentModelStats {
-    let dirtyCount = 0;
-    for (const m of this.models.values()) {
-      if (m.isDirty) dirtyCount++;
-    }
     return {
       size: this.models.size,
       capacity: this.capacity,
       totalBytes: this.totalBytes,
       maxBytes: this.maxBytes,
-      dirtyCount,
+      dirtyCount: this.dirtyFileIds.size,
       mruFileId: this.head?.fileId ?? null,
       lruFileId: this.tail?.fileId ?? null,
     };
+  }
+
+  public setManifestEntry(fileId: string, entry: DocumentManifestEntry): void {
+    if (!fileId) return;
+    const prev = this.manifestByDocId.get(fileId) ?? {};
+    this.manifestByDocId.set(fileId, {
+      ...prev,
+      ...(entry.rev !== undefined ? { rev: entry.rev } : {}),
+      ...(entry.hash !== undefined ? { hash: entry.hash } : {}),
+      ...(entry.sizeBytes !== undefined ? { sizeBytes: entry.sizeBytes } : {}),
+      ...(entry.sessionValidated !== undefined
+        ? { sessionValidated: entry.sessionValidated }
+        : prev.sessionValidated !== undefined
+          ? { sessionValidated: prev.sessionValidated }
+          : {}),
+    });
+  }
+
+  public getManifestEntry(fileId: string): DocumentManifestEntry | undefined {
+    return this.manifestByDocId.get(fileId);
+  }
+
+  public hydrateManifestFromTree(
+    nodes: ReadonlyArray<{
+      type?: string;
+      id?: string;
+      docId?: string | null;
+      hash?: string | null;
+      rev?: number | null;
+      sizeBytes?: number;
+      isRootDoc?: boolean;
+      children?: unknown[];
+    }>,
+    options?: { rootDocId?: string; pageId?: string },
+  ): void {
+    if (!Array.isArray(nodes)) return;
+    const visit = (
+      list: ReadonlyArray<{
+        type?: string;
+        id?: string;
+        docId?: string | null;
+        hash?: string | null;
+        rev?: number | null;
+        sizeBytes?: number;
+        isRootDoc?: boolean;
+        children?: unknown[];
+      }>,
+    ) => {
+      for (const node of list) {
+        if (!node) continue;
+        const upperType = node.type?.toUpperCase();
+        if (!upperType || upperType === 'DOC') {
+          const docId = node.docId || node.id;
+          if (docId) {
+            const entry: DocumentManifestEntry = {
+              ...(node.hash !== undefined ? { hash: node.hash } : {}),
+              ...(typeof node.rev === 'number' ? { rev: node.rev } : {}),
+              ...(typeof node.sizeBytes === 'number' ? { sizeBytes: node.sizeBytes } : {}),
+              sessionValidated: true,
+            };
+            this.setManifestEntry(docId, entry);
+            if (
+              (node.isRootDoc || docId === options?.rootDocId) &&
+              options?.pageId &&
+              options.pageId !== docId
+            ) {
+              this.setManifestEntry(options.pageId, entry);
+            }
+          }
+        }
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          visit(
+            node.children as ReadonlyArray<{
+              type?: string;
+              id?: string;
+              docId?: string | null;
+              hash?: string | null;
+              rev?: number | null;
+              sizeBytes?: number;
+              isRootDoc?: boolean;
+              children?: unknown[];
+            }>,
+          );
+        }
+      }
+    };
+    visit(nodes);
+  }
+
+  public isSnapshotFreshAgainstManifest(
+    fileId: string,
+    snapshot: { rev?: number; hash?: string | null },
+  ): boolean {
+    const manifest = this.manifestByDocId.get(fileId);
+    if (!manifest) return false;
+    if (manifest.hash && snapshot.hash) {
+      return manifest.hash === snapshot.hash;
+    }
+    if (manifest.rev !== undefined && snapshot.rev !== undefined) {
+      return manifest.rev === snapshot.rev;
+    }
+    if (manifest.sessionValidated && manifest.hash === undefined && manifest.rev === undefined) {
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -195,11 +309,14 @@ export class LRUDocumentCache {
       selection?: DocumentCursorSelection;
       scrollViewport?: DocumentScrollViewport;
       serverRev?: number;
+      hash?: string | null;
       serverUpdatedAt?: string;
+      isAuthoritative?: boolean;
     }
   ): DocumentModelState {
     const existing = this.models.get(fileId);
     const now = Date.now();
+    const incomingAuthoritative = initialData.isAuthoritative !== false;
 
     if (existing) {
       existing.lastActiveAt = now;
@@ -214,13 +331,24 @@ export class LRUDocumentCache {
       ) {
         existing.serverRev = initialData.serverRev;
       }
+      if (initialData.hash !== undefined) existing.hash = initialData.hash;
       if (initialData.serverUpdatedAt !== undefined) existing.serverUpdatedAt = initialData.serverUpdatedAt;
-      if (!existing.isDirty && initialData.content !== existing.content) {
+      if (incomingAuthoritative) {
+        existing.isAuthoritative = true;
+      }
+      if (!existing.isDirty && incomingAuthoritative && initialData.content !== existing.content) {
         this.totalBytes = Math.max(
           0,
           this.totalBytes + measureUtf8Bytes(initialData.content) - measureUtf8Bytes(existing.content),
         );
         existing.content = initialData.content;
+      }
+      if (existing.isAuthoritative !== false) {
+        this.setManifestEntry(fileId, {
+          ...(existing.serverRev !== undefined ? { rev: existing.serverRev } : {}),
+          ...(existing.hash !== undefined ? { hash: existing.hash } : {}),
+          sessionValidated: true,
+        });
       }
       this.touch(fileId);
       if (this.totalBytes > this.maxBytes && this.models.size > 1) {
@@ -241,10 +369,20 @@ export class LRUDocumentCache {
       scrollViewport: initialData.scrollViewport,
       yText: initialData.yText,
       serverRev: initialData.serverRev,
+      hash: initialData.hash,
       serverUpdatedAt: initialData.serverUpdatedAt,
-      isDirty: false,
+      isDirty: this.dirtyFileIds.has(fileId),
+      isAuthoritative: incomingAuthoritative,
       lastActiveAt: now,
     };
+
+    if (incomingAuthoritative) {
+      this.setManifestEntry(fileId, {
+        ...(newModel.serverRev !== undefined ? { rev: newModel.serverRev } : {}),
+        ...(newModel.hash !== undefined ? { hash: newModel.hash } : {}),
+        sessionValidated: true,
+      });
+    }
 
     this.models.set(fileId, newModel);
     this.totalBytes += measureUtf8Bytes(newModel.content);
@@ -288,7 +426,9 @@ export class LRUDocumentCache {
     projectId?: string
   ): Promise<DocumentModelState> {
     const existing = this.getModel(fileId);
-    if (existing) return existing;
+    if (existing && existing.isAuthoritative !== false) return existing;
+
+    const manifest = this.manifestByDocId.get(fileId);
 
     if (this.persistenceSink) {
       try {
@@ -308,6 +448,9 @@ export class LRUDocumentCache {
             content: draft.content,
             filePath: filePath || draft.title || snapshot?.filePath || snapshot?.title || fileId,
             projectId: projectId || draft.projectId || snapshot?.projectId,
+            serverRev: draft.expectedRev ?? snapshot?.rev ?? manifest?.rev,
+            hash: snapshot?.hash ?? manifest?.hash,
+            isAuthoritative: true,
           });
           this.markDirty(fileId);
           return model;
@@ -318,6 +461,9 @@ export class LRUDocumentCache {
             content: snapshot.content,
             filePath: filePath || snapshot.filePath || snapshot.title || fileId,
             projectId: projectId || snapshot.projectId,
+            serverRev: snapshot.rev ?? manifest?.rev,
+            hash: snapshot.hash ?? manifest?.hash,
+            isAuthoritative: true,
           });
         }
       } catch {
@@ -329,6 +475,9 @@ export class LRUDocumentCache {
       content: fallbackContent,
       filePath: filePath || fileId,
       projectId,
+      serverRev: manifest?.rev,
+      hash: manifest?.hash,
+      isAuthoritative: true,
     });
   }
 
@@ -382,9 +531,16 @@ export class LRUDocumentCache {
   public updateContent(fileId: string, content: string, isDirty = true): void {
     let model = this.models.get(fileId);
     if (!model) {
-      model = this.registerModel(fileId, { content });
-      model.isDirty = isDirty;
+      model = this.registerModel(fileId, { content, isAuthoritative: true });
       model.contentVersion = 1;
+      if (isDirty) {
+        model.isDirty = true;
+        this.dirtyFileIds.add(fileId);
+        this.notify(fileId, model);
+      } else {
+        model.isDirty = false;
+        this.dirtyFileIds.delete(fileId);
+      }
       return;
     }
 
@@ -397,6 +553,12 @@ export class LRUDocumentCache {
     }
     model.content = content;
     model.isDirty = isDirty;
+    model.isAuthoritative = true;
+    if (isDirty) {
+      this.dirtyFileIds.add(fileId);
+    } else {
+      this.dirtyFileIds.delete(fileId);
+    }
     model.lastActiveAt = Date.now();
     this.touch(fileId);
     if (this.totalBytes > this.maxBytes && this.models.size > 1) {
@@ -474,7 +636,13 @@ export class LRUDocumentCache {
    */
   public markClean(fileId: string): void {
     const model = this.models.get(fileId);
-    if (!model) return;
+    const hadDirtyFlag = this.dirtyFileIds.delete(fileId);
+    if (!model) {
+      if (hadDirtyFlag) {
+        this.notify(fileId, undefined);
+      }
+      return;
+    }
 
     model.isDirty = false;
     model.lastSavedAt = Date.now();
@@ -537,10 +705,19 @@ export class LRUDocumentCache {
   /**
    * Encapsulated domain command to update server optimistic concurrency metadata.
    */
-  public updateServerVersion(fileId: string, meta: { rev?: number; updatedAt?: string }): void {
+  public updateServerVersion(
+    fileId: string,
+    meta: { rev?: number; hash?: string | null; updatedAt?: string },
+  ): void {
+    this.setManifestEntry(fileId, {
+      ...(meta.rev !== undefined ? { rev: meta.rev } : {}),
+      ...(meta.hash !== undefined ? { hash: meta.hash } : {}),
+      sessionValidated: true,
+    });
     const model = this.models.get(fileId);
     if (!model) return;
     if (meta.rev !== undefined) model.serverRev = meta.rev;
+    if (meta.hash !== undefined) model.hash = meta.hash;
     if (meta.updatedAt !== undefined) model.serverUpdatedAt = meta.updatedAt;
     this.notify(fileId, model);
   }
@@ -569,22 +746,19 @@ export class LRUDocumentCache {
   }
 
   /**
-   * Returns file IDs for all currently dirty models.
+   * Returns file IDs for all currently dirty models (including spilled IDB drafts).
    * Single source of truth for unsaved state.
    */
   public getDirtyFileIds(): string[] {
-    const dirtyIds: string[] = [];
-    for (const model of this.models.values()) {
-      if (model.isDirty) dirtyIds.push(model.fileId);
-    }
-    return dirtyIds;
+    return Array.from(this.dirtyFileIds);
   }
 
   /**
    * Marks all models clean.
    */
   public clearAllDirty(): void {
-    let changed = false;
+    let changed = this.dirtyFileIds.size > 0;
+    this.dirtyFileIds.clear();
     for (const model of this.models.values()) {
       if (model.isDirty) {
         model.isDirty = false;
@@ -623,6 +797,8 @@ export class LRUDocumentCache {
     }
     this.models.clear();
     this.lruNodes.clear();
+    this.dirtyFileIds.clear();
+    this.manifestByDocId.clear();
     this.head = null;
     this.tail = null;
     this.totalBytes = 0;
@@ -640,6 +816,8 @@ export class LRUDocumentCache {
     }
     this.models.clear();
     this.lruNodes.clear();
+    this.dirtyFileIds.clear();
+    this.manifestByDocId.clear();
     this.head = null;
     this.tail = null;
     this.totalBytes = 0;
@@ -660,17 +838,45 @@ export class LRUDocumentCache {
   }
 
   public isDirty(fileId: string): boolean {
-    return this.models.get(fileId)?.isDirty ?? false;
+    return this.models.get(fileId)?.isDirty ?? this.dirtyFileIds.has(fileId);
   }
 
   public markDirty(fileId: string): void {
     const model = this.models.get(fileId);
-    if (!model) return;
-    if (!model.isDirty) {
+    const newlyDirty = !this.dirtyFileIds.has(fileId);
+    this.dirtyFileIds.add(fileId);
+    if (!model) {
+      if (newlyDirty) {
+        this.notify(fileId, undefined);
+      }
+      return;
+    }
+    if (!model.isDirty || newlyDirty) {
       model.isDirty = true;
       this.notify(fileId, model);
     }
   }
+
+  /**
+   * O(1) per-file subscription for UI elements (e.g., individual EditorTab dirty dots)
+   * so keystrokes in one file never wake N sibling tabs.
+   */
+  public subscribeFile = (fileId: string, listener: CacheSubscriber): (() => void) => {
+    let listenersForFile = this.fileListeners.get(fileId);
+    if (!listenersForFile) {
+      listenersForFile = new Set();
+      this.fileListeners.set(fileId, listenersForFile);
+    }
+    listenersForFile.add(listener);
+    return () => {
+      const set = this.fileListeners.get(fileId);
+      if (!set) return;
+      set.delete(listener);
+      if (set.size === 0) {
+        this.fileListeners.delete(fileId);
+      }
+    };
+  };
 
   /**
    * Subscribes to document cache changes.
@@ -750,27 +956,49 @@ export class LRUDocumentCache {
     const { fileId } = node;
     const model = this.models.get(fileId);
 
+    if (options?.skipPersistence) {
+      this.dirtyFileIds.delete(fileId);
+    }
+
     if (!options?.skipPersistence && model && this.persistenceSink) {
       if (model.isDirty) {
-        this.persistenceSink
-          .saveDraft(
-            fileId,
-            model.content,
-            model.projectId || 'workspace-local',
-            model.filePath,
-          )
-          .catch(() => {});
-      } else if (model.content.length > 0 && this.persistenceSink.saveProjectFileSnapshot) {
-        this.persistenceSink
-          .saveProjectFileSnapshot({
-            id: fileId,
-            projectId: model.projectId || 'workspace-local',
-            title: model.filePath,
-            content: model.content,
-            filePath: model.filePath,
-            updatedAt: Date.now(),
-          })
-          .catch(() => {});
+        this.dirtyFileIds.add(fileId);
+        const savePromise =
+          model.serverRev !== undefined
+            ? this.persistenceSink.saveDraft(
+                fileId,
+                model.content,
+                model.projectId || 'workspace-local',
+                model.filePath,
+                model.serverRev,
+              )
+            : this.persistenceSink.saveDraft(
+                fileId,
+                model.content,
+                model.projectId || 'workspace-local',
+                model.filePath,
+              );
+        savePromise.catch(() => {});
+      } else {
+        this.dirtyFileIds.delete(fileId);
+        if (
+          model.isAuthoritative !== false &&
+          (model.content.length > 0 || model.serverRev !== undefined || model.hash !== undefined) &&
+          this.persistenceSink.saveProjectFileSnapshot
+        ) {
+          this.persistenceSink
+            .saveProjectFileSnapshot({
+              id: fileId,
+              projectId: model.projectId || 'workspace-local',
+              title: model.filePath,
+              content: model.content,
+              filePath: model.filePath,
+              rev: model.serverRev,
+              hash: model.hash,
+              updatedAt: Date.now(),
+            })
+            .catch(() => {});
+        }
       }
     }
 
@@ -796,6 +1024,24 @@ export class LRUDocumentCache {
       try {
         listener(fileId, model);
       } catch {}
+    }
+    if (fileId !== undefined) {
+      const targetListeners = this.fileListeners.get(fileId);
+      if (targetListeners) {
+        for (const listener of targetListeners) {
+          try {
+            listener();
+          } catch {}
+        }
+      }
+    } else {
+      for (const set of this.fileListeners.values()) {
+        for (const listener of set) {
+          try {
+            listener();
+          } catch {}
+        }
+      }
     }
   }
 }

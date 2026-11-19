@@ -68,12 +68,12 @@ interface StyleOption {
   latexPrefix: string;
   latexSuffix: string;
   visualCommand: string;
-  visualLevel?: 1 | 2 | 3;
+  visualLevel?: 0 | 1 | 2 | 3;
 }
 
 const STYLE_OPTIONS: StyleOption[] = [
-  { id: 'normal', label: 'Normal', latexPrefix: '', latexSuffix: '', visualCommand: 'paragraph' },
-  { id: 'title', label: 'Title', latexPrefix: '\\title{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 1 },
+  { id: 'normal', label: 'Normal', latexPrefix: '', latexSuffix: '', visualCommand: 'normal' },
+  { id: 'title', label: 'Title', latexPrefix: '\\title{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 0 },
   { id: 'section', label: 'Section', latexPrefix: '\\section{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 1 },
   { id: 'subsection', label: 'Subsection', latexPrefix: '\\subsection{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 2 },
   { id: 'subsubsection', label: 'Subsubsection', latexPrefix: '\\subsubsection{', latexSuffix: '}', visualCommand: 'heading', visualLevel: 3 },
@@ -138,6 +138,14 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         type: 'editor:visual-command',
         command: option.visualCommand,
         level: option.visualLevel,
+      });
+      return;
+    }
+
+    if (option.id === 'normal') {
+      editorCommandBus.dispatch({
+        type: 'editor:format',
+        format: 'normal',
       });
       return;
     }
@@ -241,7 +249,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         itemize: 'bulletList',
         enumerate: 'orderedList',
         quote: 'quote',
-        code: 'code',
+        code: 'codeBlock',
       };
       const cmd = visualMap[env];
       if (cmd) {

@@ -14,6 +14,7 @@
  */
 
 import {
+  Prec,
   StateField,
   StateEffect,
   type Extension,
@@ -48,7 +49,10 @@ class InlineDiffWidget extends WidgetType {
   override eq(other: InlineDiffWidget): boolean {
     return (
       this.proposal.id === other.proposal.id &&
-      this.proposal.replacementText === other.proposal.replacementText
+      this.proposal.replacementText === other.proposal.replacementText &&
+      this.proposal.from === other.proposal.from &&
+      this.proposal.to === other.proposal.to &&
+      this.proposal.title === other.proposal.title
     );
   }
 
@@ -67,31 +71,58 @@ class InlineDiffWidget extends WidgetType {
 
     const titleBox = document.createElement('div');
     titleBox.className = 'cm-inline-diff-title';
-    titleBox.innerHTML = `
-      <svg class="cm-inline-diff-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 8V4H8"/>
-        <rect width="16" height="12" x="4" y="8" rx="2"/>
-        <path d="M2 14h2"/>
-        <path d="M20 14h2"/>
-        <path d="M15 13v2"/>
-        <path d="M9 13v2"/>
-      </svg>
-      <span>${this.proposal.title || 'AI Suggested Edit'}</span>
-    `;
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const iconSvg = document.createElementNS(svgNs, 'svg');
+    iconSvg.setAttribute('class', 'cm-inline-diff-icon');
+    iconSvg.setAttribute('width', '14');
+    iconSvg.setAttribute('height', '14');
+    iconSvg.setAttribute('viewBox', '0 0 24 24');
+    iconSvg.setAttribute('fill', 'none');
+    iconSvg.setAttribute('stroke', 'currentColor');
+    iconSvg.setAttribute('stroke-width', '2');
+    iconSvg.setAttribute('stroke-linecap', 'round');
+    iconSvg.setAttribute('stroke-linejoin', 'round');
+    const pathAttrs = [
+      { tag: 'path', d: 'M12 8V4H8' },
+      { tag: 'rect', width: '16', height: '12', x: '4', y: '8', rx: '2' },
+      { tag: 'path', d: 'M2 14h2' },
+      { tag: 'path', d: 'M20 14h2' },
+      { tag: 'path', d: 'M15 13v2' },
+      { tag: 'path', d: 'M9 13v2' },
+    ];
+    for (const attrs of pathAttrs) {
+      const node = document.createElementNS(svgNs, attrs.tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k !== 'tag') node.setAttribute(k, v);
+      }
+      iconSvg.appendChild(node);
+    }
+
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = this.proposal.title || 'AI Suggested Edit';
+    titleBox.appendChild(iconSvg);
+    titleBox.appendChild(titleSpan);
 
     const actions = document.createElement('div');
     actions.className = 'cm-inline-diff-actions';
 
-    // Accept Button
+    // Accept Button (reads live diffProposalField state on click to avoid stale offsets)
     const acceptBtn = document.createElement('button');
     acceptBtn.type = 'button';
     acceptBtn.className = 'cm-diff-btn cm-diff-btn-accept';
     acceptBtn.title = 'Accept suggestion (Tab or ⌘⏎)';
-    acceptBtn.innerHTML = `<span>Accept</span> <kbd>Tab</kbd>`;
+    const acceptLabel = document.createElement('span');
+    acceptLabel.textContent = 'Accept';
+    const acceptKbd = document.createElement('kbd');
+    acceptKbd.textContent = 'Tab';
+    acceptBtn.appendChild(acceptLabel);
+    acceptBtn.appendChild(document.createTextNode(' '));
+    acceptBtn.appendChild(acceptKbd);
     acceptBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      executeAcceptDiff(view, this.proposal);
+      executeAcceptDiff(view, this.proposal.id);
     };
 
     // Reject Button
@@ -99,7 +130,13 @@ class InlineDiffWidget extends WidgetType {
     rejectBtn.type = 'button';
     rejectBtn.className = 'cm-diff-btn cm-diff-btn-reject';
     rejectBtn.title = 'Reject suggestion (Esc)';
-    rejectBtn.innerHTML = `<span>Reject</span> <kbd>Esc</kbd>`;
+    const rejectLabel = document.createElement('span');
+    rejectLabel.textContent = 'Reject';
+    const rejectKbd = document.createElement('kbd');
+    rejectKbd.textContent = 'Esc';
+    rejectBtn.appendChild(rejectLabel);
+    rejectBtn.appendChild(document.createTextNode(' '));
+    rejectBtn.appendChild(rejectKbd);
     rejectBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -130,26 +167,47 @@ class InlineDiffWidget extends WidgetType {
 
 // ─── EXECUTION HELPERS ────────────────────────────────────────────────────────
 
-function executeAcceptDiff(view: EditorView, proposal: DiffProposal) {
+function executeAcceptDiff(view: EditorView, proposalOrId?: DiffProposal | string): boolean {
+  if (view.state.readOnly) {
+    return false;
+  }
+
+  const liveProposal = view.state.field(diffProposalField, false)?.proposal;
+  const expectedId =
+    typeof proposalOrId === 'string' ? proposalOrId : proposalOrId?.id;
+  if (!liveProposal || (expectedId && liveProposal.id !== expectedId)) {
+    return false;
+  }
+
+  const docLen = view.state.doc.length;
+  const from = Math.max(0, Math.min(liveProposal.from, docLen));
+  const to = Math.max(from, Math.min(liveProposal.to, docLen));
+  const resolvedProposal: DiffProposal = {
+    ...liveProposal,
+    from,
+    to,
+  };
+
   // Apply changes to document and clear diff zone atomically
   view.dispatch({
     changes: {
-      from: proposal.from,
-      to: proposal.to,
-      insert: proposal.replacementText,
+      from,
+      to,
+      insert: resolvedProposal.replacementText,
     },
-    effects: [acceptDiffEffect.of(proposal.id)],
+    effects: [acceptDiffEffect.of(resolvedProposal.id)],
     userEvent: 'ai.accept-diff',
   });
 
   editorCommandBus.dispatch({
     type: 'ai:diff-resolved',
     action: 'accept',
-    proposalId: proposal.id,
-    proposal,
+    proposalId: resolvedProposal.id,
+    proposal: resolvedProposal,
   });
 
   view.focus();
+  return true;
 }
 
 function executeRejectDiff(view: EditorView, proposalId: string) {
@@ -194,8 +252,8 @@ export const diffProposalField = StateField.define<{
 
     // Map positions if document was modified while proposal was pending
     const docLen = tr.newDoc.length;
-    const rawFrom = tr.changes.mapPos(currentProposal.from);
-    const rawTo = tr.changes.mapPos(currentProposal.to);
+    const rawFrom = tr.changes.mapPos(currentProposal.from, 1);
+    const rawTo = tr.changes.mapPos(currentProposal.to, -1);
     const from = Math.max(0, Math.min(rawFrom, docLen));
     const to = Math.max(from, Math.min(rawTo, docLen));
 
@@ -389,5 +447,5 @@ const inlineDiffTheme = EditorView.baseTheme({
  * Creates the CodeMirror 6 Inline Diff Extension
  */
 export function createInlineDiffExtension(): Extension[] {
-  return [diffProposalField, inlineDiffKeymap, inlineDiffTheme];
+  return [diffProposalField, Prec.highest(inlineDiffKeymap), inlineDiffTheme];
 }

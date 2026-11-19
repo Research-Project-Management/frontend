@@ -33,6 +33,8 @@ export interface ProjectFileSnapshot {
   content: string;
   filePath?: string;
   type?: string;
+  rev?: number;
+  hash?: string | null;
   updatedAt: number;
   sizeBytes?: number;
 }
@@ -59,7 +61,13 @@ export interface OfflineMutation {
 }
 
 export interface IDraftStorageSink {
-  saveDraft(fileId: string, content: string, projectId?: string, title?: string): Promise<void>;
+  saveDraft(
+    fileId: string,
+    content: string,
+    projectId?: string,
+    title?: string,
+    expectedRev?: number,
+  ): Promise<void>;
   getDraft(fileId: string): Promise<DraftSnapshot | null>;
   clearDraft(fileId: string): Promise<void>;
   saveProjectFileSnapshot?(file: ProjectFileSnapshot): Promise<void>;
@@ -310,7 +318,8 @@ export class DraftStorageService implements IDraftStorageSink {
     fileId: string,
     content: string,
     projectId?: string,
-    title?: string
+    title?: string,
+    expectedRev?: number,
   ): DraftSnapshot {
     const snapshot: DraftSnapshot = {
       fileId,
@@ -318,6 +327,7 @@ export class DraftStorageService implements IDraftStorageSink {
       savedAt: Date.now(),
       projectId,
       title,
+      ...(expectedRev !== undefined ? { expectedRev } : {}),
       sizeBytes: content.length,
     };
     this.setMemoryDraftBounded(fileId, snapshot);
@@ -332,7 +342,8 @@ export class DraftStorageService implements IDraftStorageSink {
     fileId: string,
     content: string,
     projectId?: string,
-    title?: string
+    title?: string,
+    expectedRev?: number,
   ): boolean {
     if (
       typeof window === 'undefined' ||
@@ -348,6 +359,7 @@ export class DraftStorageService implements IDraftStorageSink {
       savedAt: Date.now(),
       projectId,
       title,
+      ...(expectedRev !== undefined ? { expectedRev } : {}),
       sizeBytes: content.length,
     };
 
@@ -367,7 +379,8 @@ export class DraftStorageService implements IDraftStorageSink {
     fileId: string,
     content: string,
     projectId?: string,
-    title?: string
+    title?: string,
+    expectedRev?: number,
   ): Promise<void> {
     if (!fileId || typeof window === 'undefined') return;
 
@@ -377,6 +390,7 @@ export class DraftStorageService implements IDraftStorageSink {
       savedAt: Date.now(),
       projectId,
       title,
+      ...(expectedRev !== undefined ? { expectedRev } : {}),
       sizeBytes: content.length,
     };
 

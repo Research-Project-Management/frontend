@@ -102,7 +102,40 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
       );
       expect(api.apiPost).toHaveBeenCalledWith(
         '/api/v1/pages/notifications/bundles/flush',
-        { scopeId: 'proj-1', projectId: 'proj-1' },
+        { scopeId: 'proj-1', spaceId: 'proj-1' },
+      );
+      expect(res).toEqual(mockDigest);
+    });
+
+    it('calls flushBundle with explicit pageId and spaceId for multi-page/personal spaces', async () => {
+      const mockDigest: NotificationDigest = {
+        id: 'digest-2',
+        recipientId: 'user-1',
+        scopeId: 'space-1:page-1',
+        spaceId: 'space-1',
+        pageId: 'page-1',
+        summary: '1 reply from 1 collaborator',
+        itemCount: 1,
+        mentionCount: 0,
+        commentCount: 0,
+        replyCount: 1,
+        suggestionCount: 0,
+        authorSummaries: [],
+        items: [],
+        createdAt: '2026-09-21T09:10:00.000Z',
+        windowMinutes: 10,
+      };
+
+      vi.mocked(api.apiPost).mockResolvedValueOnce({ digest: mockDigest });
+
+      const res = await notificationBundlerService.flushBundle(
+        'space-1:page-1',
+        'space-1',
+        'page-1',
+      );
+      expect(api.apiPost).toHaveBeenCalledWith(
+        '/api/v1/pages/notifications/bundles/flush',
+        { scopeId: 'space-1:page-1', spaceId: 'space-1', pageId: 'page-1' },
       );
       expect(res).toEqual(mockDigest);
     });

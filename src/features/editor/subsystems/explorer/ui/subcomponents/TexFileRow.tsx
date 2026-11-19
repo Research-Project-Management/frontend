@@ -84,6 +84,7 @@ export interface TexFileRowProps {
   depth?: number;
   displayLabel?: string;
   onFileClick: (id: string, title: string) => void;
+  onFileDoubleClick?: (id: string, title: string) => void;
   onStartRename: (file: { id: string; title: string }) => void;
   onRenameChange: (val: string) => void;
   onCommitRename: (id: string) => void;
@@ -104,6 +105,7 @@ export const TexFileRow = React.memo(function TexFileRow({
   depth = 0,
   displayLabel,
   onFileClick,
+  onFileDoubleClick,
   onStartRename,
   onRenameChange,
   onCommitRename,
@@ -178,6 +180,7 @@ export const TexFileRow = React.memo(function TexFileRow({
       tabIndex={0}
       aria-label={`File ${label}${isMain ? ', main document' : ''}`}
       onClick={() => onFileClick(file.id, file.title)}
+      onDoubleClick={() => onFileDoubleClick?.(file.id, file.title)}
       draggable={!isRenaming}
       onDragStart={(e) => {
         e.dataTransfer.setData('application/flux-file-id', file.id);

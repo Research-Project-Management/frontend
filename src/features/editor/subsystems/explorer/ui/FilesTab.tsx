@@ -299,13 +299,15 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         size: item.size,
       };
       setSelectedAsset(asset);
+      const isPreviewMode = useSettingsStore.getState().previewEditorTabs;
       if (parentPageId)
         openTab(parentPageId, {
           id: assetTabId,
           title: item.filename,
           path: fullAssetPath,
           isDirty: false,
-          isPinned: false,
+          isPreview: isPreviewMode,
+          isPinned: !isPreviewMode,
         });
       setSearchParams({ file: assetTabId });
     },
@@ -316,6 +318,10 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     (fileId: string, title: string) => {
       const layoutStore = useWorkspaceStore.getState();
       if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
+        if (parentPageId) {
+          layoutStore.setSecondaryActiveTab(parentPageId, fileId);
+        }
+        layoutStore.pinTabForFile(fileId);
         layoutStore.setSecondaryFileId(fileId);
         return;
       }
@@ -325,16 +331,45 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         fileId === parentPageId ||
         fileId === mainFileId ||
         (configuredMainFile && (title.toLowerCase() === configuredMainFile.toLowerCase() || displayName(title).toLowerCase() === configuredMainFile.toLowerCase()));
-      const currentParam = fileParam;
-      if (isTargetMain && !currentParam) return;
-      if (!isTargetMain && fileId === currentParam) return;
+      const activeScopeId = parentPageId || pageId;
+      const currentActive =
+        (activeScopeId ? layoutStore.activeByProject[activeScopeId] : null) ?? fileParam;
+      if (isTargetMain && !currentActive) return;
+      if (fileId === currentActive) return;
 
       navigationCoordinator.openDocument({
         fileId,
         title,
+        path: title,
+        preview: useSettingsStore.getState().previewEditorTabs,
       });
     },
     [fileParam, pageId, parentPageId, mainFileId, configuredMainFile],
+  );
+
+  const handleFileDoubleClick = useCallback(
+    (fileId: string, title: string) => {
+      const layoutStore = useWorkspaceStore.getState();
+      if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
+        if (parentPageId) {
+          layoutStore.setSecondaryActiveTab(parentPageId, fileId);
+        }
+        layoutStore.pinTabForFile(fileId);
+        layoutStore.setSecondaryFileId(fileId);
+        return;
+      }
+
+      navigationCoordinator.openDocument({
+        fileId,
+        title,
+        path: title,
+        preview: false,
+      });
+      if (parentPageId) {
+        layoutStore.pinTab(parentPageId, fileId);
+      }
+    },
+    [parentPageId],
   );
 
   const handleStartCreateFolder = useCallback((initialPrefix = '') => {
@@ -619,6 +654,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           renameValue={renameValue}
           isRenamePending={isRenamePending}
           onFileClick={handleFileClick}
+          onFileDoubleClick={handleFileDoubleClick}
           onStartRename={handleStartRename}
           onRenameChange={setRenameValue}
           onCommitRename={handleCommitRename}
@@ -648,6 +684,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       renameValue,
       isRenamePending,
       handleFileClick,
+      handleFileDoubleClick,
       handleStartRename,
       handleCommitRename,
       handleDelete,

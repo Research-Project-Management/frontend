@@ -15,7 +15,7 @@ export interface AiErrorFixParams {
   surroundingCode?: string;
   fullCode?: string;
   pageId?: string;
-  projectId?: string;
+  spaceId?: string;
 }
 
 export interface AiErrorFixResult {

@@ -15,6 +15,7 @@ import {
   type EditorTab,
   usePageStore,
   useWorkspaceStore,
+  useConnectivityStore,
   editorCommandBus,
   sessionCoordinator,
   workspaceCoordinator,
@@ -24,9 +25,13 @@ import {
   syncShallowFileUrlParam,
 } from '@/features/editor/core';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { isProtectedRootTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
+import { resolveDocumentLocalFirst } from '@/features/editor/ui/hooks/document.queries';
 import { DetachedPreviewBridge } from './detached-preview.bridge';
 import { toast } from 'sonner';
 
@@ -72,6 +77,7 @@ export class NavigationCoordinator {
   private lastDiagnosticFile: string | null = null;
   private notifier: NavigationNotificationPort;
   private pendingLineJump: PendingLineJump | null = null;
+  private inFlightPrefetches = new Map<string, Promise<void>>();
   private readonly detachedPreviewBridge: DetachedPreviewBridge;
 
   constructor(options: { notifier?: NavigationNotificationPort } = {}) {
@@ -190,6 +196,17 @@ export class NavigationCoordinator {
     return this.detachedPreviewBridge.isDetachedPreviewWindow();
   }
 
+  private resolveCanonicalTabScope(pageStore = usePageStore.getState()): string {
+    return (
+      pageStore.parentPageId ||
+      pageStore.rootPageId ||
+      pageStore.projectId ||
+      pageStore.spaceId ||
+      pageStore.currentPage?.id ||
+      'default'
+    );
+  }
+
   public initCommandSubscriptions(force = false): void {
     if (typeof window === 'undefined') return;
     if (this.initialized && !force) return;
@@ -209,10 +226,31 @@ export class NavigationCoordinator {
           fileId: cmd.fileId,
           title: cmd.title,
           path: cmd.path,
+          preview: cmd.preview,
         });
+      }),
+      editorCommandBus.subscribe('workspace:open-file', (cmd) => {
+        this.openDocument({
+          fileId: cmd.fileId,
+          title: cmd.filePath || cmd.fileId,
+          path: cmd.filePath,
+          preview: cmd.preview,
+        });
+      }),
+      editorCommandBus.subscribe('navigation:pin-tab', (cmd) => {
+        useWorkspaceStore.getState().pinTab(this.resolveCanonicalTabScope(), cmd.fileId);
       }),
       editorCommandBus.subscribe('navigation:close-tab', (cmd) => {
         this.closeDocument(cmd.fileId);
+      }),
+      editorCommandBus.subscribe('navigation:close-other-tabs', (cmd) => {
+        this.closeOtherDocuments(cmd.keepFileId);
+      }),
+      editorCommandBus.subscribe('navigation:close-tabs-to-right', (cmd) => {
+        this.closeDocumentsToRight(cmd.fromFileId);
+      }),
+      editorCommandBus.subscribe('navigation:close-saved-tabs', () => {
+        this.closeSavedDocuments();
       }),
       editorCommandBus.subscribe('navigation:jump-to-line', (cmd) => {
         this.jumpToLine({
@@ -234,18 +272,23 @@ export class NavigationCoordinator {
         const layoutStore = useWorkspaceStore.getState();
         layoutStore.setEditorSplitMode(cmd.direction);
         if (cmd.fileId) {
+          layoutStore.pinTabForFile(cmd.fileId);
+          layoutStore.setSecondaryActiveTab(this.resolveCanonicalTabScope(), cmd.fileId);
           layoutStore.setSecondaryFileId(cmd.fileId);
         }
       }),
       editorCommandBus.subscribe('editor:open-to-side', (cmd) => {
         const layoutStore = useWorkspaceStore.getState();
+        layoutStore.pinTabForFile(cmd.fileId);
         layoutStore.setEditorSplitMode('vertical');
+        layoutStore.setSecondaryActiveTab(this.resolveCanonicalTabScope(), cmd.fileId);
         layoutStore.setSecondaryFileId(cmd.fileId);
         layoutStore.setActiveEditorPane('secondary');
       }),
       editorCommandBus.subscribe('editor:close-split', () => {
         const layoutStore = useWorkspaceStore.getState();
         layoutStore.setEditorSplitMode('none');
+        layoutStore.setSecondaryActiveTab(this.resolveCanonicalTabScope(), null);
         layoutStore.setSecondaryFileId(null);
         layoutStore.setActiveEditorPane('primary');
       }),
@@ -255,10 +298,12 @@ export class NavigationCoordinator {
       editorCommandBus.subscribe('editor:swap-panes', () => {
         const layoutStore = useWorkspaceStore.getState();
         const pageStore = usePageStore.getState();
+        const scopeId = this.resolveCanonicalTabScope(pageStore);
         const primaryId = pageStore.getActiveDocumentId();
-        const secondaryId = layoutStore.secondaryFileId;
+        const secondaryId = layoutStore.secondaryActiveByProject[scopeId] ?? layoutStore.secondaryFileId;
         if (primaryId && secondaryId) {
           this.openDocument({ fileId: secondaryId, title: '' });
+          layoutStore.setSecondaryActiveTab(scopeId, primaryId);
           layoutStore.setSecondaryFileId(primaryId);
         }
       }),
@@ -299,68 +344,168 @@ export class NavigationCoordinator {
       sessionCoordinator.switchTab(currentActiveId || null, fileId);
     }
 
-    // 2. Open or activate tab in tabs store
-    const effectiveProjectId =
-      pageStore.projectId || pageStore.spaceId || pageStore.currentPage?.id || 'default';
+    // 2. Open or activate tab in tabs store (Canonical scope: single pageId key)
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const prevTabIds = (tabsStore.tabsByProject[scopeId] ?? []).map((t) => t.id);
+    const isPreview = Boolean(options.preview);
     const tabItem = {
       id: fileId,
       title,
       path: optPath || title,
-      isPinned: false,
+      isPinned: !isPreview,
+      isPreview,
       isDirty: false,
     };
-    tabsStore.openTab(effectiveProjectId, tabItem);
-    tabsStore.setActiveTab(effectiveProjectId, fileId);
-    const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
-    if (parentId && parentId !== effectiveProjectId) {
-      tabsStore.openTab(parentId, tabItem);
-      tabsStore.setActiveTab(parentId, fileId);
+    tabsStore.openTab(scopeId, tabItem);
+    tabsStore.setActiveTab(scopeId, fileId);
+
+    const afterTabIds = new Set(
+      (useWorkspaceStore.getState().tabsByProject[scopeId] ?? []).map((t) => t.id),
+    );
+    for (const prevId of prevTabIds) {
+      if (prevId !== fileId && !afterTabIds.has(prevId)) {
+        sessionCoordinator.closeTab(prevId);
+      }
     }
 
     // 3. Ensure in-memory model exists in LRU cache (resolving initial content from project files/hierarchy)
     let existingModel = lruDocumentCache.getModel(fileId);
+    const hasExplicitOptContent = typeof optContent === 'string';
+    const authorityContent = documentFacade.getDocumentContent(fileId);
+    const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+    const targetPathLower = (optPath || title || '').replace(/\\/g, '/').toLowerCase();
+    const wsMatch = wsFiles.find((f) => {
+      if (f.id === fileId) return true;
+      const fPath = (f.path || f.title || '').replace(/\\/g, '/').toLowerCase();
+      return Boolean(
+        targetPathLower &&
+          fPath &&
+          (fPath === targetPathLower ||
+            fPath.endsWith(`/${targetPathLower}`) ||
+            targetPathLower.endsWith(`/${fPath}`)),
+      );
+    });
+    const hasPageStoreMatch =
+      pageStore.currentPage?.id === fileId && pageStore.currentPage?.content !== undefined;
+    const hasAuthoritativeFallback =
+      hasExplicitOptContent ||
+      Boolean(authorityContent) ||
+      Boolean(wsMatch?.content !== undefined && String(wsMatch.content).length > 0) ||
+      hasPageStoreMatch;
+
     const resolveFallbackContent = (): string => {
-      if (typeof optContent === 'string' && optContent.length > 0) {
-        return optContent;
+      if (hasExplicitOptContent) {
+        return optContent!;
       }
-      const authorityContent = documentFacade.getDocumentContent(fileId);
       if (authorityContent) {
         return authorityContent;
       }
-      const wsFiles = workspaceCoordinator.getProjectFiles() || [];
-      const targetPathLower = (optPath || title || '').replace(/\\/g, '/').toLowerCase();
-      const wsMatch = wsFiles.find((f) => {
-        if (f.id === fileId) return true;
-        const fPath = (f.path || f.title || '').replace(/\\/g, '/').toLowerCase();
-        return Boolean(targetPathLower && fPath && (fPath === targetPathLower || fPath.endsWith(`/${targetPathLower}`) || targetPathLower.endsWith(`/${fPath}`)));
-      });
       if (wsMatch?.content !== undefined) {
         return extractDocumentContentString(wsMatch.content);
       }
-      if (pageStore.currentPage?.id === fileId && pageStore.currentPage?.content !== undefined) {
-        return extractDocumentContentString(pageStore.currentPage.content);
+      if (hasPageStoreMatch) {
+        return extractDocumentContentString(pageStore.currentPage!.content);
       }
       return '';
     };
+
+    const wasAlreadyAuthoritative = Boolean(
+      existingModel && existingModel.isAuthoritative !== false,
+    );
 
     if (!existingModel) {
       const resolvedContent = resolveFallbackContent();
       lruDocumentCache.registerModel(fileId, {
         content: resolvedContent,
         filePath: optPath || title,
-        projectId: effectiveProjectId,
+        projectId: scopeId,
+        isAuthoritative: hasAuthoritativeFallback,
       });
       existingModel = lruDocumentCache.getModel(fileId);
-    } else if (!existingModel.content) {
+    } else if (!existingModel.content && hasAuthoritativeFallback) {
       const resolvedContent = resolveFallbackContent();
-      if (resolvedContent) {
+      if (resolvedContent || hasExplicitOptContent) {
         lruDocumentCache.updateContent(fileId, resolvedContent, false);
         existingModel = lruDocumentCache.getModel(fileId);
       }
     }
 
+    if (!wasAlreadyAuthoritative && !hasAuthoritativeFallback) {
+      void Promise.all([
+        draftStorageService.getDraft(fileId).catch(() => null),
+        draftStorageService.getProjectFileSnapshot(fileId).catch(() => null),
+      ]).then(([draft, snapshot]) => {
+        const latestModel = lruDocumentCache.getModel(fileId);
+        if (latestModel && latestModel.isAuthoritative !== false) return;
+
+        const manifest = lruDocumentCache.getManifestEntry(fileId);
+        const isOnline = useConnectivityStore.getState().checkIsOnline();
+        if (
+          draft &&
+          typeof draft.content === 'string' &&
+          (!snapshot || draft.savedAt >= snapshot.updatedAt) &&
+          !(
+            isOnline &&
+            manifest?.rev !== undefined &&
+            draft.expectedRev !== undefined &&
+            manifest.rev > draft.expectedRev
+          )
+        ) {
+          lruDocumentCache.registerModel(fileId, {
+            content: draft.content,
+            filePath: optPath || title || draft.title || snapshot?.filePath || fileId,
+            projectId: draft.projectId || snapshot?.projectId || scopeId,
+            serverRev: draft.expectedRev ?? snapshot?.rev ?? manifest?.rev,
+            hash: snapshot?.hash ?? manifest?.hash ?? null,
+            isAuthoritative: true,
+          });
+          lruDocumentCache.markDirty(fileId);
+          if (usePageStore.getState().getActiveDocumentId() === fileId) {
+            const ps = usePageStore.getState();
+            ps.setActiveFilePage({
+              id: fileId,
+              title,
+              path: optPath || title,
+              content: draft.content,
+              pageId: ps.currentPage?.id || scopeId || fileId,
+              spaceId: ps.spaceId,
+              projectId: ps.projectId,
+            });
+          }
+          return;
+        }
+
+        if (
+          snapshot &&
+          typeof snapshot.content === 'string' &&
+          (!isOnline || lruDocumentCache.isSnapshotFreshAgainstManifest(fileId, snapshot))
+        ) {
+          lruDocumentCache.registerModel(fileId, {
+            content: snapshot.content,
+            filePath: optPath || title || snapshot.filePath || fileId,
+            projectId: snapshot.projectId || scopeId,
+            serverRev: snapshot.rev ?? manifest?.rev,
+            hash: snapshot.hash ?? manifest?.hash ?? null,
+            isAuthoritative: true,
+          });
+          if (usePageStore.getState().getActiveDocumentId() === fileId) {
+            const ps = usePageStore.getState();
+            ps.setActiveFilePage({
+              id: fileId,
+              title,
+              path: optPath || title,
+              content: snapshot.content,
+              pageId: ps.currentPage?.id || scopeId || fileId,
+              spaceId: ps.spaceId,
+              projectId: ps.projectId,
+            });
+          }
+        }
+      });
+    }
+
     // 4. Set active in pageStore
-    const rootPageId = pageStore.currentPage?.id || pageStore.projectId || pageStore.spaceId || fileId;
+    const rootPageId = pageStore.currentPage?.id || scopeId || fileId;
     pageStore.setActiveFilePage({
       id: fileId,
       title,
@@ -372,7 +517,7 @@ export class NavigationCoordinator {
     });
 
     // 3b. Synchronize shallow URL history (0ms latency, zero page refresh)
-    const rootId = pageStore.currentPage?.id || pageStore.projectId || pageStore.spaceId;
+    const rootId = pageStore.currentPage?.id || scopeId;
     const isRoot = fileId === rootId || fileId === `${rootId}-main`;
     this.syncFileUrlParam(isRoot ? undefined : fileId);
 
@@ -415,42 +560,31 @@ export class NavigationCoordinator {
   public closeDocument(fileId: string): void {
     const tabsStore = useWorkspaceStore.getState();
     const pageStore = usePageStore.getState();
-    const projectId = pageStore.projectId || pageStore.spaceId || pageStore.parentPageId || pageStore.currentPage?.id || 'default';
-    const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
 
     // 1. Save and evict from session coordinator
     sessionCoordinator.closeTab(fileId);
 
-    // 2. Close in parentId scope if distinct from projectId
-    if (parentId && parentId !== projectId) {
-      tabsStore.closeTab(parentId, fileId);
-    }
-
-    // 3. Close in primary projectId scope and gracefully route to adjacent tab
-    tabsStore.closeTab(projectId, fileId, (nextId) => {
-      const rootPageId = parentId || pageStore.currentPage?.id || projectId;
+    // 2. Close in canonical pageId scope and gracefully route to adjacent tab
+    tabsStore.closeTab(scopeId, fileId, (nextId) => {
+      const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
       const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
       if (!isNextRoot && nextId) {
-        tabsStore.setActiveTab(projectId, nextId);
-        if (parentId && parentId !== projectId) {
-          tabsStore.setActiveTab(parentId, nextId);
-        }
-        const tabs = tabsStore.tabsByProject[projectId] || (parentId ? tabsStore.tabsByProject[parentId] : []) || [];
+        tabsStore.setActiveTab(scopeId, nextId);
+        const tabs = useWorkspaceStore.getState().tabsByProject[scopeId] || [];
         const nextActiveTab = tabs.find((t) => t.id === nextId);
         if (nextActiveTab) {
           this.openDocument({
             fileId: nextActiveTab.id,
             title: nextActiveTab.title,
             path: nextActiveTab.path,
+            preview: Boolean(nextActiveTab.isPreview && !nextActiveTab.isPinned),
           });
         }
       } else {
         // Revert to root document
-        tabsStore.setActiveTab(projectId, rootPageId);
-        if (parentId && parentId !== projectId) {
-          tabsStore.setActiveTab(parentId, rootPageId);
-        }
+        tabsStore.setActiveTab(scopeId, rootPageId);
         const rootPage = pageStore.currentPage;
         if (rootPage) {
           pageStore.setActiveFilePage(rootPage);
@@ -458,6 +592,185 @@ export class NavigationCoordinator {
         }
       }
     });
+  }
+
+  /**
+   * Closes all non-root, clean tabs except `keepFileId` in the canonical page scope.
+   */
+  public closeOtherDocuments(keepFileId: string): void {
+    const tabsStore = useWorkspaceStore.getState();
+    const pageStore = usePageStore.getState();
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const evicted = tabsStore.closeOtherTabs(scopeId, keepFileId);
+    for (const id of evicted) {
+      sessionCoordinator.closeTab(id);
+    }
+
+    const nextState = useWorkspaceStore.getState();
+    const nextActiveId = nextState.activeByProject[scopeId];
+    const currentActiveId = pageStore.getActiveDocumentId();
+    if (nextActiveId && nextActiveId !== currentActiveId) {
+      const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+      const isNextRoot = nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`;
+      if (isNextRoot && pageStore.currentPage) {
+        pageStore.setActiveFilePage(pageStore.currentPage);
+        this.syncFileUrlParam(undefined);
+      } else {
+        const match = (nextState.tabsByProject[scopeId] ?? []).find((t) => t.id === nextActiveId);
+        if (match) {
+          this.openDocument({
+            fileId: match.id,
+            title: match.title,
+            path: match.path,
+            preview: Boolean(match.isPreview && !match.isPinned),
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Closes clean non-root tabs strictly to the right of `fromFileId` in the canonical page scope.
+   */
+  public closeDocumentsToRight(fromFileId: string): void {
+    const tabsStore = useWorkspaceStore.getState();
+    const pageStore = usePageStore.getState();
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const closed = tabsStore.closeTabsToRight(scopeId, fromFileId);
+    for (const id of closed) {
+      sessionCoordinator.closeTab(id);
+    }
+
+    const nextState = useWorkspaceStore.getState();
+    const nextActiveId = nextState.activeByProject[scopeId];
+    const currentActiveId = pageStore.getActiveDocumentId();
+    if (nextActiveId && nextActiveId !== currentActiveId) {
+      const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+      const isNextRoot = nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`;
+      if (isNextRoot && pageStore.currentPage) {
+        pageStore.setActiveFilePage(pageStore.currentPage);
+        this.syncFileUrlParam(undefined);
+      } else {
+        const match = (nextState.tabsByProject[scopeId] ?? []).find((t) => t.id === nextActiveId);
+        if (match) {
+          this.openDocument({
+            fileId: match.id,
+            title: match.title,
+            path: match.path,
+            preview: Boolean(match.isPreview && !match.isPinned),
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * Closes all saved (clean), non-root tabs in the canonical page scope.
+   */
+  public closeSavedDocuments(): void {
+    const tabsStore = useWorkspaceStore.getState();
+    const pageStore = usePageStore.getState();
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const closed = tabsStore.closeSavedTabs(scopeId);
+    for (const id of closed) {
+      sessionCoordinator.closeTab(id);
+    }
+
+    const nextState = useWorkspaceStore.getState();
+    const nextActiveId = nextState.activeByProject[scopeId];
+    const currentActiveId = pageStore.getActiveDocumentId();
+    const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+    if (!nextActiveId || nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`) {
+      if (pageStore.currentPage && currentActiveId !== pageStore.currentPage.id) {
+        pageStore.setActiveFilePage(pageStore.currentPage);
+        this.syncFileUrlParam(undefined);
+      }
+    } else if (nextActiveId !== currentActiveId) {
+      const match = (nextState.tabsByProject[scopeId] ?? []).find((t) => t.id === nextActiveId);
+      if (match) {
+        this.openDocument({
+          fileId: match.id,
+          title: match.title,
+          path: match.path,
+          preview: Boolean(match.isPreview && !match.isPinned),
+        });
+      }
+    }
+  }
+
+  /**
+   * Activates the next (`delta: 1`) or previous (`delta: -1`) tab in cyclic order.
+   */
+  public activateAdjacentTab(delta: 1 | -1): void {
+    const tabsStore = useWorkspaceStore.getState();
+    const pageStore = usePageStore.getState();
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const tabs = tabsStore.tabsByProject[scopeId] ?? [];
+    if (tabs.length <= 1) return;
+
+    const currentActive = tabsStore.activeByProject[scopeId] || pageStore.getActiveDocumentId();
+    const currentIdx = Math.max(0, tabs.findIndex((t) => t.id === currentActive));
+    const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIdx];
+    if (!nextTab || nextTab.id === currentActive) return;
+
+    this.openDocument({
+      fileId: nextTab.id,
+      title: nextTab.title,
+      path: nextTab.path,
+      preview: Boolean(nextTab.isPreview && !nextTab.isPinned),
+    });
+  }
+
+  /**
+   * Closes the currently active tab unless it is the protected root document.
+   */
+  public closeActiveDocument(): void {
+    const tabsStore = useWorkspaceStore.getState();
+    const pageStore = usePageStore.getState();
+    const scopeId = this.resolveCanonicalTabScope(pageStore);
+    const tabs = tabsStore.tabsByProject[scopeId] ?? [];
+    if (tabs.length <= 1) return;
+
+    const activeId = tabsStore.activeByProject[scopeId] || pageStore.getActiveDocumentId();
+    if (!activeId) return;
+
+    const activeTab = tabs.find((t) => t.id === activeId);
+    if (!activeTab || isProtectedRootTab(activeTab, scopeId)) return;
+
+    this.closeDocument(activeTab.id);
+  }
+
+  /**
+   * Best-effort local-first background prefetch on tab hover with in-flight request deduplication.
+   */
+  public async prefetchDocument(fileId: string, fallbackPath?: string): Promise<void> {
+    const existingModel = lruDocumentCache.getModel(fileId);
+    if (
+      !fileId ||
+      fileId.startsWith('asset:') ||
+      (existingModel && existingModel.isAuthoritative !== false)
+    ) {
+      return;
+    }
+
+    const existing = this.inFlightPrefetches.get(fileId);
+    if (existing) {
+      return existing;
+    }
+
+    const promise = (async () => {
+      try {
+        await resolveDocumentLocalFirst(fileId, { fallbackPath });
+      } catch {
+        // Ignore background prefetch errors
+      } finally {
+        this.inFlightPrefetches.delete(fileId);
+      }
+    })();
+
+    this.inFlightPrefetches.set(fileId, promise);
+    return promise;
   }
 
   /**

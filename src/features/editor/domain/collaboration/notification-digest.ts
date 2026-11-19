@@ -18,7 +18,9 @@ export interface BundledNotificationItem {
   authorName: string;
   authorAvatar?: string;
   pageId: string;
+  docId?: string | null;
   pageTitle?: string;
+  spaceId?: string | null;
   projectId?: string;
   targetId?: string;
   contentSnippet: string;
@@ -27,9 +29,11 @@ export interface BundledNotificationItem {
 }
 
 export interface NotificationBundle {
+  scopeId?: string;
   recipientId: string;
+  spaceId?: string | null;
   projectId?: string;
-  pageId?: string;
+  pageId?: string | null;
   items: BundledNotificationItem[];
   createdAt: string;
   flushAt: string;
@@ -53,7 +57,10 @@ export interface NotificationDigestAuthorSummary {
 export interface NotificationDigest {
   id: string;
   recipientId: string;
+  scopeId?: string;
+  spaceId?: string | null;
   projectId?: string;
+  pageId?: string | null;
   summary: string;
   itemCount: number;
   mentionCount: number;

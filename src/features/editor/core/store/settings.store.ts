@@ -307,3 +307,15 @@ export const useSettingsStore = create<DocumentSettingsState>()(
   ),
 );
 
+export function rehydrateEditorSettingsFromStorage(): Promise<void> | void {
+  return useSettingsStore.persist.rehydrate();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === EDITOR_STORAGE_KEYS.SETTINGS && e.newValue !== null) {
+      void rehydrateEditorSettingsFromStorage();
+    }
+  });
+}
+

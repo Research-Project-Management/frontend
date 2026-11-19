@@ -52,6 +52,11 @@ export interface InitiateMultipartResult {
   uploadId: string;
   partSize: number;
   totalParts: number;
+  deduplicated?: boolean;
+  fileId?: string;
+  url?: string;
+  filename?: string;
+  size?: number;
 }
 
 export interface PartUrlResult {
@@ -99,7 +104,7 @@ async function computeClientSha256Hex(blob: Blob): Promise<string | undefined> {
 export const presignUpload = (dto: PresignUploadDto) => {
   const { projectId, spaceId, ...rest } = dto;
   const effectiveSpaceId = spaceId ?? projectId;
-  return apiPost<PresignUploadResult>('/api/v1/storage/files/presign', {
+  return apiPost<PresignUploadResult>('/api/v1/experiments/files/presign', {
     ...rest,
     ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
   });
@@ -116,7 +121,7 @@ export const completePresigned = (params: CompletePresignedParams) => {
     filename: string;
     size: number;
     mimeType: string;
-  }>('/api/v1/storage/files/presign/complete', {
+  }>('/api/v1/experiments/files/presign/complete', {
     ...rest,
     ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
   });
@@ -192,8 +197,8 @@ export const uploadDirectWithProgress = (
 
     const targetUploadUrl =
       typeof window !== 'undefined'
-        ? '/api/v1/storage/files/upload'
-        : `${API_BASE_URL}/api/v1/storage/files/upload`;
+        ? '/api/v1/experiments/files/upload'
+        : `${API_BASE_URL}/api/v1/experiments/files/upload`;
     xhr.open('POST', targetUploadUrl, true);
     const token = getAuthToken();
     if (token) {
@@ -319,7 +324,7 @@ export const initiateMultipart = (
   expectedHash?: string,
   pageId?: string | null,
 ) => {
-  return apiPost<InitiateMultipartResult>('/api/v1/storage/files/multipart/initiate', {
+  return apiPost<InitiateMultipartResult>('/api/v1/experiments/files/multipart/initiate', {
     filename,
     mimeType,
     totalSize,
@@ -336,7 +341,7 @@ export const getMultipartPartUrl = (
   partNumber: number,
 ) => {
   return apiGet<PartUrlResult>(
-    `/api/v1/storage/files/multipart/${encodeURIComponent(sessionId)}/part-url?partNumber=${partNumber}`,
+    `/api/v1/experiments/files/multipart/${encodeURIComponent(sessionId)}/part-url?partNumber=${partNumber}`,
   );
 };
 
@@ -386,7 +391,7 @@ export const completeMultipart = (
   parts: MultipartPartDto[],
 ) => {
   return apiPost<{ fileId: string; blobId?: string; url: string; filename: string; size: number }>(
-    '/api/v1/storage/files/multipart/complete',
+    '/api/v1/experiments/files/multipart/complete',
     {
       sessionId,
       parts,
@@ -396,7 +401,7 @@ export const completeMultipart = (
 
 export const abortMultipart = (sessionId: string) => {
   return apiDelete<{ success: boolean }>(
-    `/api/v1/storage/files/multipart/${encodeURIComponent(sessionId)}`,
+    `/api/v1/experiments/files/multipart/${encodeURIComponent(sessionId)}`,
   );
 };
 
@@ -423,6 +428,12 @@ export const uploadLargeFileResumable = async (
     expectedHash,
     options.pageId,
   );
+
+  // Zero-byte Instant CAS Deduplication Hit for Multipart
+  if (session?.deduplicated && session.fileId && session.url) {
+    options.onProgress?.(100);
+    return { fileId: session.fileId, url: session.url };
+  }
 
   const partSize = session.partSize;
   const totalParts = session.totalParts;
@@ -532,10 +543,4 @@ export const uploadFile = async (
   return { fileId: fileId || '', url: uploadUrl };
 };
 
-export const uploadGenericFile = async (file: File, scopePrefix: string = 'flux'): Promise<string> => {
-  const dotIdx = file.name.lastIndexOf('.');
-  const ext = dotIdx !== -1 ? file.name.slice(dotIdx) : '';
-  const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}${ext}`;
-  const { url: uploadPath } = await uploadBlobWithPresigned(file, fileName);
-  return resolveFileUrl(uploadPath) || uploadPath;
-};
+export { uploadGenericFile } from '@/shared/lib/file-client';

@@ -366,8 +366,8 @@ export function getItemFileUrl(
     const trimmed = url.trim();
     if (!trimmed) return '';
     if (
-      trimmed.startsWith('/api/v1/storage/files/') &&
-      !trimmed.includes('/r2/') &&
+      trimmed.startsWith('/api/v1/files/') &&
+      !trimmed.includes('/objects/') &&
       !trimmed.endsWith('/content')
     ) {
       return `${trimmed}/content`;

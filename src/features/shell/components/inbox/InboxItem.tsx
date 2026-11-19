@@ -162,14 +162,23 @@ export default function InboxItem({
   // Determine deep-link target
   const getTargetUrl = () => {
     if (opts.actionUrl) return opts.actionUrl;
-    if (item.projectId && item.docId) {
-      return `/projects/${item.projectId}/pages/${item.docId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
+    const rawPageId = typeof opts.pageId === 'string' && opts.pageId ? opts.pageId : item.docId;
+    const isPersonalSpace = opts.isPersonalSpace === true;
+    const realProjectId =
+      !isPersonalSpace &&
+      item.projectId &&
+      item.projectId !== item.userId
+        ? item.projectId
+        : null;
+
+    if (realProjectId && rawPageId) {
+      return `/projects/${realProjectId}/pages/${rawPageId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
     }
-    if (!item.projectId && item.docId) {
-      return `/pages/${item.docId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
+    if (!realProjectId && rawPageId) {
+      return `/pages/${rawPageId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
     }
-    if (item.projectId) {
-      return `/projects/${item.projectId}/overview`;
+    if (realProjectId) {
+      return `/projects/${realProjectId}/overview`;
     }
     return null;
   };

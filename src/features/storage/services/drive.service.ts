@@ -1,6 +1,6 @@
 /**
  * @file drive.service.ts
- * @description Frontend service mirroring backend DriveController.
+ * @description Frontend service for /api/v1/experiments/files endpoints.
  * Handles directory listing, folder creation, moving, renaming, starring, and breadcrumb path resolution.
  */
 
@@ -96,7 +96,7 @@ export const getAllFiles = (
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/storage/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
   );
 };
 
@@ -105,7 +105,7 @@ export const getStarredFiles = (
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/storage/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
   );
 };
 
@@ -114,7 +114,7 @@ export const getSharedFiles = (
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/storage/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
   );
 };
 
@@ -124,7 +124,7 @@ export interface FolderPathResponse {
 
 export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => {
   return apiGet<FolderPathResponse>(
-    `/api/v1/storage/files/folder-path?folderId=${encodeURIComponent(folderId)}`,
+    `/api/v1/experiments/files/folder-path?folderId=${encodeURIComponent(folderId)}`,
   ).then((res) => (res?.path ? res : { path: [] }));
 };
 
@@ -132,7 +132,7 @@ export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => 
 
 export const createFolder = (name: string, params: CreateFolderParams = {}) => {
   const spaceId = params.spaceId || params.projectId;
-  return apiPost('/api/v1/storage/files/folder', {
+  return apiPost('/api/v1/experiments/files/folder', {
     name,
     parentId: params.parentId ?? null,
     ...(params.pageId ? { pageId: params.pageId } : {}),
@@ -141,35 +141,35 @@ export const createFolder = (name: string, params: CreateFolderParams = {}) => {
 };
 
 export const moveItem = (itemId: string, parentId: string | null) => {
-  return apiPut(`/api/v1/storage/files/${itemId}/move`, { parentId });
+  return apiPut(`/api/v1/experiments/files/${itemId}/move`, { parentId });
 };
 
 export const batchMoveItems = (ids: string[], parentId: string | null) => {
-  return apiPost('/api/v1/storage/files/batch/move', { ids, parentId });
+  return apiPost('/api/v1/experiments/files/batch/move', { ids, parentId });
 };
 
 export const renameItem = (itemId: string, name: string) => {
-  return apiPut(`/api/v1/storage/files/${itemId}/rename`, { name });
+  return apiPut(`/api/v1/experiments/files/${itemId}/rename`, { name });
 };
 
 export const toggleStarItem = (itemId: string) => {
-  return apiPut(`/api/v1/storage/files/${itemId}/star`);
+  return apiPut(`/api/v1/experiments/files/${itemId}/star`);
 };
 
 export const deleteItem = (itemId: string) => {
-  return apiDelete(`/api/v1/storage/files/${itemId}`);
+  return apiDelete(`/api/v1/experiments/files/${itemId}`);
 };
 
 export const batchDeleteItems = (ids: string[]) => {
-  return apiPost('/api/v1/storage/files/batch/delete', { ids });
+  return apiPost('/api/v1/experiments/files/batch/delete', { ids });
 };
 
 export const batchStarItems = (ids: string[], starred: boolean) => {
-  return apiPost('/api/v1/storage/files/batch/star', { ids, starred });
+  return apiPost('/api/v1/experiments/files/batch/star', { ids, starred });
 };
 
 export const updateFileMetadata = (itemId: string, metaData: Record<string, unknown>) => {
-  return apiPut(`/api/v1/storage/files/${itemId}`, { metaData });
+  return apiPut(`/api/v1/experiments/files/${itemId}`, { metaData });
 };
 
 // ── Trash Operations ─────────────────────────────────────────────────────────
@@ -179,24 +179,24 @@ export const getTrashedFiles = (
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/storage/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
   );
 };
 
 export const restoreItem = (itemId: string) => {
-  return apiPut(`/api/v1/storage/files/${itemId}/restore`);
+  return apiPut(`/api/v1/experiments/files/${itemId}/restore`);
 };
 
 export const permanentlyDeleteItem = (itemId: string) => {
-  return apiDelete(`/api/v1/storage/files/${itemId}/permanent`);
+  return apiDelete(`/api/v1/experiments/files/${itemId}/permanent`);
 };
 
 export const batchRestoreItems = (ids: string[]) => {
-  return apiPost('/api/v1/storage/files/batch/restore', { ids });
+  return apiPost('/api/v1/experiments/files/batch/restore', { ids });
 };
 
 export const batchPermanentlyDeleteItems = (ids: string[]) => {
-  return apiPost('/api/v1/storage/files/batch/permanent', { ids });
+  return apiPost('/api/v1/experiments/files/batch/permanent', { ids });
 };
 
 // ── Version Operations ───────────────────────────────────────────────────────
@@ -224,7 +224,7 @@ export interface FileVersionsResponse {
 }
 
 export const getFileVersions = (fileId: string): Promise<FileVersionsResponse> => {
-  return apiGet<FileVersionsResponse>(`/api/v1/storage/files/${encodeURIComponent(fileId)}/versions`);
+  return apiGet<FileVersionsResponse>(`/api/v1/experiments/files/${encodeURIComponent(fileId)}/versions`);
 };
 
 export const uploadNewFileVersion = (
@@ -273,7 +273,7 @@ export const uploadNewFileVersion = (
 
     xhr.onerror = () => reject(new Error('Connection error while uploading new version'));
 
-    xhr.open('POST', `${API_BASE_URL}/api/v1/storage/files/${encodeURIComponent(fileId)}/versions`);
+    xhr.open('POST', `${API_BASE_URL}/api/v1/experiments/files/${encodeURIComponent(fileId)}/versions`);
     const token = getAuthToken();
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -283,11 +283,11 @@ export const uploadNewFileVersion = (
 };
 
 export const revertFileVersion = (fileId: string, versionNumber: number): Promise<unknown> => {
-  return apiPost(`/api/v1/storage/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/revert`, {});
+  return apiPost(`/api/v1/experiments/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/revert`, {});
 };
 
 export const getVersionDownloadUrl = (fileId: string, versionNumber: number): string => {
-  return `${API_BASE_URL}/api/v1/storage/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/download`;
+  return `${API_BASE_URL}/api/v1/experiments/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/download`;
 };
 
 // ── Stream & Preview Operations ──────────────────────────────────────────────

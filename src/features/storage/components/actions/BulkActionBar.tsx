@@ -95,7 +95,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
     toast.info(`Packaging ${selectedCount} item(s) into ZIP archive...`);
 
     try {
-      const zipUrl = `/api/v1/storage/files/bulk-download?ids=${encodeURIComponent(selectedIds.join(','))}`;
+      const zipUrl = `/api/v1/experiments/files/bulk-download?ids=${encodeURIComponent(selectedIds.join(','))}`;
       await downloadFileAuthorized(zipUrl, `flux_research_export_${Date.now()}.zip`);
       toast.success('Downloaded ZIP archive');
     } catch (err) {

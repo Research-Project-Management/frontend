@@ -354,8 +354,8 @@ export function uploadFileWithDetails(
 
     const targetUploadUrl =
       typeof window !== 'undefined'
-        ? '/api/v1/storage/files/upload'
-        : `${API_BASE_URL}/api/v1/storage/files/upload`;
+        ? '/api/v1/files/upload'
+        : `${API_BASE_URL}/api/v1/files/upload`;
     xhr.open('POST', targetUploadUrl, true);
 
     const token = getAuthToken();
@@ -369,4 +369,82 @@ export function uploadFileWithDetails(
 
     xhr.send(formData);
   });
+}
+
+/**
+ * Uploads a shared/public image or asset (avatar, cover, project icon) directly to FilesModule.
+ */
+export async function uploadGenericFile(
+  file: File,
+  scopePrefix: string = 'flux',
+): Promise<string> {
+  const dotIdx = file.name.lastIndexOf('.');
+  const ext = dotIdx !== -1 ? file.name.slice(dotIdx) : '';
+  const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}${ext}`;
+
+  try {
+    const presignRes = await fetchAuthorized('/api/v1/files/presign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: fileName,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+      }),
+    });
+    if (!presignRes.ok) {
+      throw new Error(`Presign failed (${presignRes.status})`);
+    }
+
+    const presignJson = (await presignRes.json()) as {
+      data?: Record<string, unknown>;
+    } & Record<string, unknown>;
+    const presigned = presignJson.data ?? presignJson;
+
+    if (presigned.deduplicated && typeof presigned.url === 'string') {
+      return resolveFileUrl(presigned.url) || presigned.url;
+    }
+
+    if (typeof presigned.uploadUrl === 'string' && typeof presigned.storageKey === 'string') {
+      const putUrl = presigned.uploadUrl.startsWith('/')
+        ? presigned.uploadUrl
+        : presigned.uploadUrl;
+      const isLocalPut = presigned.uploadUrl.startsWith('/');
+      const putRes = await fetch(putUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+        ...(isLocalPut ? { credentials: 'include' as const } : {}),
+      });
+      if (!putRes.ok) {
+        throw new Error(`Direct upload failed (${putRes.status})`);
+      }
+
+      const completeRes = await fetchAuthorized('/api/v1/files/presign/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storageKey: presigned.storageKey,
+          filename: fileName,
+          mimeType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+        }),
+      });
+      if (!completeRes.ok) {
+        throw new Error(`Presign complete failed (${completeRes.status})`);
+      }
+      const completeJson = (await completeRes.json()) as {
+        data?: { url?: string };
+        url?: string;
+      };
+      const finalPath = completeJson.data?.url || completeJson.url || '';
+      if (finalPath) {
+        return resolveFileUrl(finalPath) || finalPath;
+      }
+    }
+  } catch {
+    // Fall back to direct multipart upload onto /api/v1/files/upload
+  }
+
+  return uploadFileXhr({ file, prefix: scopePrefix });
 }

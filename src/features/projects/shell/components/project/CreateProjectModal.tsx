@@ -36,7 +36,7 @@ import { cn } from "@/shared/lib/utils";
 import { useCreateProject, useUpdateProject, useDefaultStatesTemplate } from '../../hooks/use-project';
 import { ProjectService } from '../../services/project.service';
 import { CoverModal } from '@/shared/components/ui/cover-modal';
-import { uploadGenericFile } from '@/features/storage/services/upload.service';
+import { uploadGenericFile } from '@/shared/lib/file-client';
 import { createProjectFormSchema, type CreateProjectFormValues } from '../../schemas/project.schema';
 import type { Project, ProjectPriority } from '../../types/project.types';
 

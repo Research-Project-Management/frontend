@@ -65,14 +65,14 @@ interface SseCallbacks {
   onMeta?: (meta: {
     chatId?: string;
     title?: string;
-    agent: string;
-    intent: string;
+    agent?: string;
+    intent?: string;
     sources?: SourceItem[];
   }) => void;
   onAction?: (action: AgentAction) => void;
 }
 
-function parseSseDataChunk(
+export function parseSseDataChunk(
   data: string,
   callbacks?: SseCallbacks,
 ): { done?: boolean; content?: string } {
@@ -120,6 +120,20 @@ function parseSseDataChunk(
         if (typeof p.delta === 'string') {
           return { content: p.delta.includes('\\n') ? p.delta.replace(/\\r\\n|\\n/g, '\n') : p.delta };
         }
+        const output =
+          p.output && typeof p.output === 'object' ? (p.output as Record<string, unknown>) : null;
+        if (output && typeof output.content === 'string') {
+          return {
+            content: output.content.includes('\\n')
+              ? output.content.replace(/\\r\\n|\\n/g, '\n')
+              : output.content,
+          };
+        }
+        if (p.chat_id && callbacks?.onMeta && typeof p.chat_id === 'string') {
+          callbacks.onMeta({ chatId: p.chat_id });
+        }
+        // Suppress structured metadata frames (e.g. trace_id, status) instead of leaking JSON into text
+        return {};
       }
     } catch {
       // Non-JSON or malformed payload, fallback to raw
@@ -207,6 +221,7 @@ export async function* streamChatResponse(
 
 export interface StreamEditorChatOptions {
   chatId?: string | null;
+  pageId?: string | null;
   spaceId?: string | null;
   projectId?: string | null;
   scopeId?: string | null;
@@ -224,9 +239,16 @@ export interface StreamEditorChatOptions {
   currentSection?: string | null;
   currentEnvironment?: string | null;
   documentStructureSummary?: string | null;
+  documentStructure?: string | unknown[] | null;
   compileErrors?: unknown;
   userSelection?: unknown;
-  onMeta?: (meta: { agent: string; intent: string; sources?: SourceItem[] }) => void;
+  onMeta?: (meta: {
+    chatId?: string;
+    title?: string;
+    agent?: string;
+    intent?: string;
+    sources?: SourceItem[];
+  }) => void;
   onAction?: (action: AgentAction) => void;
   signal?: AbortSignal;
   [key: string]: unknown;
@@ -240,7 +262,11 @@ export async function* streamEditorChat(
   options?: StreamEditorChatOptions,
 ): AsyncGenerator<string, void, unknown> {
   const { signal, ...cleanOptions } = options ?? {};
-  const aiMessages = messages.map(({ role, content }) => ({ role, content }));
+  const aiMessages = messages.map(({ role, content, attachments }) => ({
+    role,
+    content,
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
+  }));
   const effectiveSpaceId =
     normalizeAiScopeId(cleanOptions.spaceId) ||
     normalizeAiScopeId(cleanOptions.projectId) ||
@@ -249,6 +275,7 @@ export async function* streamEditorChat(
   const response = await apiRawFetch('/api/ai/editor-chat', 'POST', {
     messages: aiMessages,
     chat_id: cleanOptions.chatId ?? null,
+    page_id: cleanOptions.pageId ?? null,
     space_id: effectiveSpaceId,
     document_ids: cleanOptions.documentIds ?? null,
     filename: cleanOptions.filename ?? null,
@@ -264,6 +291,7 @@ export async function* streamEditorChat(
     current_section: cleanOptions.currentSection ?? null,
     current_environment: cleanOptions.currentEnvironment ?? null,
     document_structure_summary: cleanOptions.documentStructureSummary ?? null,
+    document_structure: cleanOptions.documentStructure ?? null,
     compile_errors: cleanOptions.compileErrors ?? null,
     user_selection: cleanOptions.userSelection ?? null,
     web_search_sites: cleanOptions.webSearchSites ?? null,
@@ -403,10 +431,12 @@ export async function clearAiMemory(scopeId?: string): Promise<void> {
 
 export async function getPageChat(pageId: string, _options?: unknown): Promise<ChatMessage[]> {
   try {
-    const data = await apiGet<ChatMessage[] | { messages?: ChatMessage[] }>(
-      `/api/ai/chats/page/${pageId}`,
-    );
-    return Array.isArray(data) ? data : (data.messages ?? []);
+    const data = await apiGet<
+      ChatMessage[] | { chat?: { messages?: ChatMessage[] } | null; messages?: ChatMessage[] }
+    >(`/api/ai/chats/page/${pageId}`);
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.chat?.messages)) return data.chat.messages;
+    return data?.messages ?? [];
   } catch (err) {
     logger.error('[chatService] Failed to get page chat', err);
     return [];

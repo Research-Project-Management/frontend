@@ -196,7 +196,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => globalNavigation.params,
 }));
 
-vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
+vi.mock('@/features/editor/core/queries/useActiveDocument', () => ({
   useActiveDocument: () => (globalThis as any).__mockActiveDocument,
 }));
 

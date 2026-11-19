@@ -6,7 +6,7 @@ import {
   type NotificationDigest,
   type NotificationBundle,
 } from '@/features/editor/domain/collaboration/notification-digest';
-import { notificationBundlerService } from '@/features/editor/sdk/manuscript.service';
+import { notifications } from '@/features/editor/sdk/pages.service';
 import { notificationBundlerKeys } from '@/features/editor/subsystems/review';
 import * as api from '@/shared/lib/api';
 
@@ -62,7 +62,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
 
       vi.mocked(api.apiGet).mockResolvedValueOnce({ bundles: mockBundles });
 
-      const res = await notificationBundlerService.getPendingBundles();
+      const res = await notifications.getPendingBundles();
       expect(api.apiGet).toHaveBeenCalledWith(
         '/api/v1/pages/notifications/bundles',
       );
@@ -96,7 +96,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
 
       vi.mocked(api.apiPost).mockResolvedValueOnce({ digest: mockDigest });
 
-      const res = await notificationBundlerService.flushBundle(
+      const res = await notifications.flushBundle(
         'proj-1',
         'proj-1',
       );
@@ -128,7 +128,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
 
       vi.mocked(api.apiPost).mockResolvedValueOnce({ digest: mockDigest });
 
-      const res = await notificationBundlerService.flushBundle(
+      const res = await notifications.flushBundle(
         'space-1:page-1',
         'space-1',
         'page-1',
@@ -144,7 +144,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
       const updated = { enabled: true, windowMinutes: 15 };
       vi.mocked(api.apiPut).mockResolvedValueOnce({ settings: updated });
 
-      const res = await notificationBundlerService.updateSettings({
+      const res = await notifications.updateSettings({
         windowMinutes: 15,
       });
       expect(api.apiPut).toHaveBeenCalledWith(

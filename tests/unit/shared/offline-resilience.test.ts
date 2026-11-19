@@ -6,8 +6,8 @@ import { sessionCoordinator } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
 import { editorCommandBus } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { clearAllOfflineMemory } from '@/features/editor/domain/offline-storage';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 
 describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Parity)', () => {
@@ -28,7 +28,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
       pdfUrl: null,
     });
     lruDocumentCache.clear();
-    draftStorageService.clearMemory();
+    clearAllOfflineMemory();
     try {
       localStorage.clear();
     } catch {}
@@ -89,9 +89,9 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
   });
 
   describe('2. Session Coordinator Offline Flush Protection', () => {
-    it('aborts remote HTTP calls when offline and safely persists local draft snapshot', async () => {
-      const updateContentSpy = vi.spyOn(manuscriptService.docs, 'updateContent');
-      const saveDraftSpy = vi.spyOn(sessionCoordinator, 'saveDraftSnapshot');
+    it('aborts remote HTTP calls when offline and safely persists local unsynced edit', async () => {
+      const updateContentSpy = vi.spyOn(pagesService.docs, 'updateContent');
+      const saveUnsyncedSpy = vi.spyOn(sessionCoordinator, 'saveUnsyncedEdit');
 
       lruDocumentCache.registerModel('doc-offline-1', {
         content: '\\section{Offline Work}',
@@ -107,15 +107,15 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
 
       expect(flushOk).toBe(false);
       expect(updateContentSpy).not.toHaveBeenCalled();
-      expect(saveDraftSpy).toHaveBeenCalledWith('doc-offline-1', '\\section{Offline Work}', 'proj-offline');
+      expect(saveUnsyncedSpy).toHaveBeenCalledWith('doc-offline-1', '\\section{Offline Work}', 'proj-offline');
       expect(lruDocumentCache.isDirty('doc-offline-1')).toBe(true);
     });
 
     it('catches network fetch failure during flush and auto-transitions to offline state', async () => {
-      vi.spyOn(manuscriptService.docs, 'updateContent').mockRejectedValue(
+      vi.spyOn(pagesService.docs, 'updateContent').mockRejectedValue(
         new TypeError('Failed to fetch')
       );
-      const saveDraftSpy = vi.spyOn(sessionCoordinator, 'saveDraftSnapshot');
+      const saveUnsyncedSpy = vi.spyOn(sessionCoordinator, 'saveUnsyncedEdit');
 
       lruDocumentCache.registerModel('doc-drop', {
         content: 'Content before network dropped',
@@ -129,7 +129,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
       expect(flushOk).toBe(false);
       expect(useConnectivityStore.getState().isOnline).toBe(false);
       expect(useConnectivityStore.getState().syncStatus).toBe('offline');
-      expect(saveDraftSpy).toHaveBeenCalledWith('doc-drop', 'Content before network dropped', 'proj-drop');
+      expect(saveUnsyncedSpy).toHaveBeenCalledWith('doc-drop', 'Content before network dropped', 'proj-drop');
     });
   });
 
@@ -176,7 +176,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
 
   describe('4. Reconnection & Auto-Recovery Workflow', () => {
     it('executes queued offline compilation automatically when connectivity is restored', async () => {
-      const updateContentSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({} as any);
+      const updateContentSpy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({} as any);
       vi.spyOn(CompilePipeline, 'compile').mockResolvedValue({
         success: true,
         pdfUrl: 'blob:mock-pdf',

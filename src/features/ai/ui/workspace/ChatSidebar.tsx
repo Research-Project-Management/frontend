@@ -1,24 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ChevronDown,
-  MoreVertical,
-  PanelLeft,
-  Pencil,
-  Search,
-  SquarePen,
-  Trash2,
-  X,
-} from 'lucide-react';
+import React, { useId, useMemo, useRef, useState } from 'react';
+import { ChevronDown, PanelLeft, Search, SquarePen, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -33,13 +18,14 @@ import {
   useRenameAiSession,
 } from '../../engine/queries';
 import { useAiUIStore } from '../../engine/shell';
-import type { ChatSession } from '../../types/session';
+import { SessionHistoryList } from '../shared/SessionHistoryList';
 
 export function ChatSidebar() {
   const { chatId } = useParams<{ chatId?: string }>();
   const pathname = usePathname();
   const router = useRouter();
   const activeChatId = chatId ?? null;
+  const recentsId = useId();
 
   const { spaceId: activeSpaceId } = useActiveAiSpace();
   const { data: chats = [], isLoading: loading } = useAiSessions(activeSpaceId);
@@ -53,53 +39,38 @@ export function ChatSidebar() {
   const setSearchVisible = useAiUIStore((s) => s.setSearchVisible);
 
   const [isRecentsCollapsed, setIsRecentsCollapsed] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-
-  const editInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (editingId && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [editingId]);
-
-  useEffect(() => {
-    if (isSearchVisible && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [isSearchVisible]);
+  const handleOpenSearch = () => {
+    setSearchVisible(true);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  };
 
   const handleNewChat = () => {
     threadPool.get('draft:workspace')?.reset();
-    if (pathname === '/ai') return;
-    router.push('/ai');
-  };
-
-  const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
-    e.stopPropagation();
-    setEditingId(chat.id);
-    setEditTitle(chat.title);
-  };
-
-  const handleSaveRename = async (chatIdToRename: string) => {
-    const trimmed = editTitle.trim();
-    if (!trimmed) {
-      setEditingId(null);
-      return;
+    if (pathname !== '/ai') {
+      router.push('/ai');
     }
-    try {
-      await renameMutation.mutateAsync({ chatId: chatIdToRename, title: trimmed });
-      toast.success('Chat renamed');
-    } finally {
-      setEditingId(null);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      toggleSidebar();
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, targetChatId: string) => {
-    e.stopPropagation();
+  const handleSelectChat = (targetChatId: string) => {
+    router.push(`/ai/${targetChatId}`);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      toggleSidebar();
+    }
+  };
+
+  const handleRenameChat = async (targetChatId: string, title: string) => {
+    await renameMutation.mutateAsync({ chatId: targetChatId, title });
+    toast.success('Chat renamed');
+  };
+
+  const handleDeleteChat = async (targetChatId: string) => {
     await deleteMutation.mutateAsync(targetChatId);
     threadPool.delete(targetChatId);
     toast.success('Chat deleted');
@@ -119,7 +90,10 @@ export function ChatSidebar() {
   }, [chats, searchQuery]);
 
   return (
-    <aside className="w-60 shrink-0 h-full border-r border-border bg-background flex flex-col overflow-hidden select-none">
+    <aside
+      aria-label="AI conversations"
+      className="fixed inset-y-0 left-0 z-50 md:relative md:inset-auto md:z-auto w-60 max-w-[85vw] shrink-0 h-full border-r border-border bg-background shadow-lg md:shadow-none flex flex-col overflow-hidden select-none"
+    >
       {/* Header */}
       <div className="h-11 px-3.5 flex items-center justify-between">
         <span className="text-13 font-semibold tracking-tight text-foreground">
@@ -131,13 +105,13 @@ export function ChatSidebar() {
             <button
               type="button"
               onClick={toggleSidebar}
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
               aria-label="Collapse sidebar"
             >
-              <PanelLeft className="size-4 shrink-0" />
+              <PanelLeft className="size-4 shrink-0" aria-hidden="true" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right" className="text-xs">
+          <TooltipContent side="right" className="text-12">
             Collapse sidebar
           </TooltipContent>
         </Tooltip>
@@ -150,9 +124,9 @@ export function ChatSidebar() {
             <button
               type="button"
               onClick={handleNewChat}
-              className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
             >
-              <SquarePen className="size-4 text-foreground/85 shrink-0" />
+              <SquarePen className="size-4 text-foreground/85 shrink-0" aria-hidden="true" />
               <span>New chat</span>
             </button>
 
@@ -160,14 +134,14 @@ export function ChatSidebar() {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => setSearchVisible(true)}
-                  className="size-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
+                  onClick={handleOpenSearch}
+                  className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai shrink-0"
                   aria-label="Search conversations"
                 >
-                  <Search className="size-4 shrink-0" />
+                  <Search className="size-4 shrink-0" aria-hidden="true" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
+              <TooltipContent side="bottom" className="text-12">
                 Search
               </TooltipContent>
             </Tooltip>
@@ -179,22 +153,26 @@ export function ChatSidebar() {
                 <button
                   type="button"
                   onClick={handleNewChat}
-                  className="size-8 flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
+                  className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai shrink-0"
                   aria-label="New chat"
                 >
-                  <SquarePen className="size-4 text-foreground/85 shrink-0" />
+                  <SquarePen className="size-4 text-foreground/85 shrink-0" aria-hidden="true" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
+              <TooltipContent side="bottom" className="text-12">
                 New chat
               </TooltipContent>
             </Tooltip>
 
-            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background transition-colors">
-              <Search className="size-4 text-muted-foreground shrink-0 pointer-events-none" />
+            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background focus-within:border-ai focus-within:ring-1 focus-within:ring-ai/30 transition-colors">
+              <Search
+                className="size-4 text-muted-foreground shrink-0 pointer-events-none"
+                aria-hidden="true"
+              />
               <input
                 ref={searchInputRef}
                 type="text"
+                aria-label="Search conversations"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -212,10 +190,10 @@ export function ChatSidebar() {
                   setSearchQuery('');
                   setSearchVisible(false);
                 }}
-                className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors"
+                className="size-4 relative before:absolute before:-inset-2.5 md:before:hidden flex items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
                 aria-label="Close search"
               >
-                <X className="size-3.5" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </div>
           </>
@@ -226,110 +204,32 @@ export function ChatSidebar() {
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pt-2">
         <button
           type="button"
+          aria-expanded={!isRecentsCollapsed}
+          aria-controls={!isRecentsCollapsed ? recentsId : undefined}
           onClick={() => setIsRecentsCollapsed((prev) => !prev)}
-          className="flex items-center justify-between w-full py-1 px-1 text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none"
+          className="flex items-center justify-between w-full py-1 px-1 rounded-sm text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ai"
         >
           <span>Recents</span>
           <ChevronDown
             className={cn(
-              'size-3.5 text-muted-foreground transition-transform duration-150',
+              'size-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none',
               isRecentsCollapsed && '-rotate-90',
             )}
+            aria-hidden="true"
           />
         </button>
 
         {!isRecentsCollapsed && (
-          <div className="flex-1 overflow-y-auto space-y-0.5 mt-1.5 pb-3">
-            {loading ? (
-              <div className="space-y-1 py-1">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="h-8 w-full rounded-md bg-muted animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="py-6 px-2 text-center text-xs text-muted-foreground">
-                {searchQuery ? 'No matching chats' : 'No recent chats'}
-              </div>
-            ) : (
-              filteredChats.map((chat) => {
-                const isActive = activeChatId === chat.id;
-                const isEditing = editingId === chat.id;
-
-                return (
-                  <div
-                    key={chat.id}
-                    onClick={() => {
-                      if (!isEditing) router.push(`/ai/${chat.id}`);
-                    }}
-                    className={cn(
-                      'group relative flex h-8 items-center justify-between gap-2 px-2.5 rounded-md text-13 leading-5 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      isActive
-                        ? 'bg-muted text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
-                    )}
-                  >
-                    <div className="flex items-center min-w-0 flex-1">
-                      {isEditing ? (
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void handleSaveRename(chat.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          onBlur={() => void handleSaveRename(chat.id)}
-                          className="w-full bg-background px-1.5 py-0.5 text-xs rounded border border-primary focus:outline-none text-foreground"
-                        />
-                      ) : (
-                        <span className="truncate tracking-tight" title={chat.title}>
-                          {chat.title || 'New Chat'}
-                        </span>
-                      )}
-                    </div>
-
-                    {!isEditing && (
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-150 shrink-0">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={(e) => e.stopPropagation()}
-                              className="size-6 rounded-md hover:bg-background/80 hover:text-foreground text-muted-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                              title="More actions"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="size-3.5 shrink-0" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36 p-1">
-                            <DropdownMenuItem
-                              onClick={(e) => handleStartRename(e, chat)}
-                              className="flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm cursor-pointer"
-                            >
-                              <Pencil className="size-3.5 text-muted-foreground" />
-                              <span>Rename</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => void handleDelete(e, chat.id)}
-                              className="flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                            >
-                              <Trash2 className="size-3.5" />
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+          <div id={recentsId} className="flex-1 overflow-y-auto mt-1.5 pb-3">
+            <SessionHistoryList
+              chats={filteredChats}
+              activeChatId={activeChatId}
+              loading={loading}
+              searchQuery={searchQuery}
+              onSelect={handleSelectChat}
+              onRename={handleRenameChat}
+              onDelete={handleDeleteChat}
+            />
           </div>
         )}
       </div>

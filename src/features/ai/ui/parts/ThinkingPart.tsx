@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useId, useState } from 'react';
 import { Brain, ChevronDown } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -47,6 +47,7 @@ export function ThinkingPart({
 }: ThinkingPartProps) {
   const active = Boolean(isStreaming ?? isOpen);
   const [collapsed, setCollapsed] = useState(!active);
+  const contentId = useId();
 
   return (
     <div
@@ -59,6 +60,7 @@ export function ThinkingPart({
         type="button"
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
+        aria-controls={!collapsed ? contentId : undefined}
         aria-label={active ? 'AI is thinking' : 'Toggle thought process'}
         className={cn(
           'w-full flex items-center text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai select-none',
@@ -72,6 +74,7 @@ export function ThinkingPart({
             compact ? 'size-3' : 'size-3.5',
             active && 'animate-pulse motion-reduce:animate-none',
           )}
+          aria-hidden="true"
         />
         <span
           className={cn(
@@ -83,14 +86,16 @@ export function ThinkingPart({
         </span>
         <ChevronDown
           className={cn(
-            'text-muted-foreground/60 transition-transform shrink-0',
+            'text-muted-foreground/60 transition-transform motion-reduce:transition-none shrink-0',
             compact ? 'size-3' : 'size-3.5',
             collapsed && '-rotate-90',
           )}
+          aria-hidden="true"
         />
       </button>
       {!collapsed && (
         <div
+          id={contentId}
           className={cn(
             compact ? 'px-3 pb-2 pt-1.5' : 'px-3.5 pb-2.5 pt-2',
           )}

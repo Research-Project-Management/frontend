@@ -54,7 +54,7 @@ function AttachmentChips({
                 meta.badgeClassName,
               )}
             >
-              <Icon className="size-3" />
+              <Icon className="size-3" aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <p
@@ -63,11 +63,11 @@ function AttachmentChips({
               >
                 {att.name}
               </p>
-              <div className="flex items-center gap-1 text-10 text-muted-foreground">
+              <div className="flex items-center gap-1 text-11 text-muted-foreground">
                 <span>{meta.typeLabel}</span>
                 {meta.sizeText && (
                   <>
-                    <span>•</span>
+                    <span aria-hidden="true">•</span>
                     <span>{meta.sizeText}</span>
                   </>
                 )}
@@ -84,7 +84,9 @@ type RenderSegment =
   | { kind: 'trace'; items: TracePartData[] }
   | { kind: 'part'; part: MessagePart };
 
-function groupPartsChronologically(parts: readonly MessagePart[]): RenderSegment[] {
+function groupPartsChronologically(
+  parts: readonly MessagePart[],
+): RenderSegment[] {
   const segments: RenderSegment[] = [];
   let traceBuffer: TracePartData[] = [];
 
@@ -123,8 +125,12 @@ export const MessageParts = memo(function MessageParts({
   const isUser = message.role === 'user';
 
   if (isUser) {
-    const hasAttachments = Boolean(message.attachments && message.attachments.length > 0);
-    const hasContent = Boolean(message.content && message.content.trim().length > 0);
+    const hasAttachments = Boolean(
+      message.attachments && message.attachments.length > 0,
+    );
+    const hasContent = Boolean(
+      message.content && message.content.trim().length > 0,
+    );
 
     return (
       <div
@@ -183,7 +189,6 @@ export const MessageParts = memo(function MessageParts({
           return fallback;
         })();
 
-  const hasWidgets = effectiveParts.some((p) => p.type === 'widgets');
   const segments = groupPartsChronologically(effectiveParts);
 
   return (
@@ -242,9 +247,6 @@ export const MessageParts = memo(function MessageParts({
               );
 
             case 'text':
-              if (hasWidgets && !compact && !isStreaming) {
-                return null;
-              }
               return (
                 <div
                   key={`text-${idx}`}
@@ -256,7 +258,10 @@ export const MessageParts = memo(function MessageParts({
                 >
                   {renderMarkdown(part.text)}
                   {part.streaming && isStreaming && (
-                    <span className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse align-text-bottom" />
+                    <span
+                      className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse motion-reduce:animate-none align-text-bottom"
+                      aria-hidden="true"
+                    />
                   )}
                 </div>
               );

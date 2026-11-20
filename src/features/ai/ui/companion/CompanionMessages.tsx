@@ -23,9 +23,9 @@ const SUGGESTIONS = [
   },
   {
     id: '2',
-    text: 'Create a Sticky with details of all Urgent workitems across this workspace',
+    text: 'Create a Sticky with details of all Urgent work items across this workspace',
     prompt:
-      'Create a Sticky with details of all Urgent workitems across this workspace',
+      'Create a Sticky with details of all Urgent work items across this workspace',
   },
   {
     id: '3',
@@ -97,8 +97,15 @@ export const CompanionMessages = React.memo(function CompanionMessages({
 }: CompanionMessagesProps) {
   if (isLoadingHistory) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-        <Loader2 className="size-5 animate-spin text-foreground" />
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2"
+      >
+        <Loader2
+          className="size-5 animate-spin motion-reduce:animate-none text-foreground"
+          aria-hidden="true"
+        />
         <span className="text-12 font-medium">Loading conversation...</span>
       </div>
     );
@@ -144,7 +151,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                   type="button"
                   onClick={() => onSelectPrompt(item.prompt)}
                   className={cn(
-                    'w-full flex items-start gap-2 px-2.5 text-left text-foreground hover:bg-muted/60 rounded-md transition-colors cursor-pointer group',
+                    'w-full flex items-start gap-2 px-2.5 text-left text-foreground hover:bg-muted/60 rounded-md transition-colors cursor-pointer group outline-none focus-visible:ring-1 focus-visible:ring-ai',
                     isReaderContext
                       ? 'py-1.5 text-12'
                       : 'py-2 text-13 rounded-lg gap-2.5',
@@ -155,6 +162,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                       'text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors',
                       isReaderContext ? 'size-3' : 'size-3.5',
                     )}
+                    aria-hidden="true"
                   />
                   <span
                     className={cn(
@@ -185,10 +193,17 @@ export const CompanionMessages = React.memo(function CompanionMessages({
           })}
 
           {isWaitingFirstChunk && (
-            <div className="flex flex-col gap-1 w-full items-start text-13">
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex flex-col gap-1 w-full items-start text-13"
+            >
               <div className="relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-muted/50 border border-border/80 text-foreground">
                 <div className="text-11 text-muted-foreground flex items-center gap-1.5">
-                  <Loader2 className="size-3 animate-spin text-ai shrink-0" />
+                  <Loader2
+                    className="size-3 animate-spin motion-reduce:animate-none text-ai shrink-0"
+                    aria-hidden="true"
+                  />
                   <span>
                     {activeAgent && shouldShowAgentBadge(activeAgent)
                       ? `${getAgentMeta(activeAgent).label} thinking...`
@@ -200,9 +215,12 @@ export const CompanionMessages = React.memo(function CompanionMessages({
           )}
 
           {error && (
-            <div className="flex items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-11 text-destructive">
+            <div
+              role="alert"
+              className="flex items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-11 text-destructive"
+            >
               <div className="flex items-center gap-1.5 min-w-0">
-                <AlertCircle className="size-3.5 shrink-0" />
+                <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
                 <span className="truncate">
                   {error.message || 'Failed to get AI response.'}
                 </span>
@@ -212,9 +230,9 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                 size="sm"
                 variant="outline"
                 onClick={onRetry}
-                className="h-6 px-2 text-11 gap-1 border-destructive/30 text-destructive hover:bg-destructive/15 shrink-0"
+                className="relative before:absolute before:-inset-2 md:before:hidden h-6 px-2 text-11 gap-1 border-destructive/30 text-destructive hover:bg-destructive/15 shrink-0"
               >
-                <RotateCcw className="size-3" />
+                <RotateCcw className="size-3" aria-hidden="true" />
                 <span>Retry</span>
               </Button>
             </div>

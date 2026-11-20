@@ -1,26 +1,8 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import {
-  Check,
-  ChevronRight,
-  FolderKanban,
-  Globe,
-  Loader2,
-  MoreVertical,
-  Pencil,
-  Search,
-  SquarePen,
-  Trash2,
-  X,
-} from 'lucide-react';
+import React, { useId, useMemo, useRef, useState } from 'react';
+import { ChevronRight, FolderKanban, Globe, Search, SquarePen, X } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import { threadPool } from '../../engine/pool';
 import {
@@ -29,7 +11,7 @@ import {
   useRenameAiSession,
 } from '../../engine/queries';
 import { useAiCompanionStore } from '../../engine/shell';
-import type { ChatSession } from '../../types/session';
+import { SessionHistoryList } from '../shared/SessionHistoryList';
 
 export interface CompanionHistoryProps {
   currentSpaceId?: string | null;
@@ -43,6 +25,7 @@ export function CompanionHistory({
   const activeChatId = useAiCompanionStore((s) => s.activeChatId);
   const setActiveChatId = useAiCompanionStore((s) => s.setActiveChatId);
   const setHistoryView = useAiCompanionStore((s) => s.setHistoryView);
+  const recentsId = useId();
 
   const [scopeFilter, setScopeFilter] = useState<'project' | 'all'>(
     currentSpaceId ? 'project' : 'all',
@@ -57,8 +40,7 @@ export function CompanionHistory({
   const [search, setSearch] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isRecentsOpen, setIsRecentsOpen] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const filteredChats = useMemo(() => {
     if (!search.trim()) return chats;
@@ -66,8 +48,19 @@ export function CompanionHistory({
     return chats.filter((c) => (c.title || '').toLowerCase().includes(q));
   }, [chats, search]);
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const handleOpenSearch = () => {
+    setIsSearchOpen(true);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  };
+
+  const handleSelectChat = (id: string) => {
+    setActiveChatId(id);
+    setHistoryView(false);
+  };
+
+  const handleDelete = async (id: string) => {
     await deleteMutation.mutateAsync(id);
     threadPool.delete(id);
     if (activeChatId === id) {
@@ -76,21 +69,8 @@ export function CompanionHistory({
     toast.success('Chat deleted');
   };
 
-  const handleStartRename = (e: React.MouseEvent, chat: ChatSession) => {
-    e.stopPropagation();
-    setEditingId(chat.id);
-    setEditTitle(chat.title || '');
-  };
-
-  const handleSaveRename = async (e: React.SyntheticEvent, id: string) => {
-    e.stopPropagation();
-    const trimmed = editTitle.trim();
-    if (!trimmed) {
-      setEditingId(null);
-      return;
-    }
-    await renameMutation.mutateAsync({ chatId: id, title: trimmed });
-    setEditingId(null);
+  const handleRename = async (id: string, title: string) => {
+    await renameMutation.mutateAsync({ chatId: id, title });
     toast.success('Chat renamed');
   };
 
@@ -103,22 +83,26 @@ export function CompanionHistory({
             <button
               type="button"
               onClick={onNewChat}
-              className="size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
               aria-label="New chat"
               title="New chat"
             >
-              <SquarePen className="size-3.5 text-foreground/80" />
+              <SquarePen className="size-3.5 text-foreground/80" aria-hidden="true" />
             </button>
 
-            <div className="flex-1 relative flex items-center h-7.5 rounded-md border border-border bg-background px-2 transition-colors">
-              <Search className="size-3.5 text-foreground/70 shrink-0 mr-1.5" />
+            <div className="flex-1 relative flex items-center h-8 rounded-md border border-border bg-background focus-within:border-ai focus-within:ring-1 focus-within:ring-ai/30 px-2 transition-colors">
+              <Search
+                className="size-3.5 text-foreground/70 shrink-0 mr-1.5"
+                aria-hidden="true"
+              />
               <input
+                ref={searchInputRef}
                 type="text"
+                aria-label="Search chats"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
                 className="flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-normal"
-                autoFocus
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setIsSearchOpen(false);
@@ -132,10 +116,10 @@ export function CompanionHistory({
                   setIsSearchOpen(false);
                   setSearch('');
                 }}
-                className="size-4 flex items-center justify-center text-foreground/70 hover:text-foreground cursor-pointer rounded transition-colors ml-1"
+                className="size-4 relative before:absolute before:-inset-2.5 md:before:hidden flex items-center justify-center text-foreground/70 hover:text-foreground cursor-pointer rounded transition-colors ml-1 outline-none focus-visible:ring-1 focus-visible:ring-ai"
                 aria-label="Close search"
               >
-                <X className="size-3" />
+                <X className="size-3" aria-hidden="true" />
               </button>
             </div>
           </>
@@ -144,21 +128,21 @@ export function CompanionHistory({
             <button
               type="button"
               onClick={onNewChat}
-              className="flex-1 h-7.5 px-2.5 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-normal flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              className="flex-1 h-8 px-2.5 relative before:absolute before:-inset-1.5 md:before:hidden rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
               aria-label="New chat"
             >
-              <SquarePen className="size-3.5 text-foreground/80" />
+              <SquarePen className="size-3.5 text-foreground/80" aria-hidden="true" />
               <span>New chat</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setIsSearchOpen(true)}
-              className="size-7.5 shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              onClick={handleOpenSearch}
+              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
               title="Search chats"
               aria-label="Search chats"
             >
-              <Search className="size-3.5" />
+              <Search className="size-3.5" aria-hidden="true" />
             </button>
           </>
         )}
@@ -167,31 +151,39 @@ export function CompanionHistory({
       {/* Scope Filter Tabs */}
       {currentSpaceId && (
         <div className="px-3 pb-2 shrink-0">
-          <div className="flex items-center gap-1 p-0.5 rounded-md bg-muted text-11 font-medium text-muted-foreground">
+          <div
+            role="tablist"
+            aria-label="Conversation scope"
+            className="flex items-center gap-1 p-0.5 rounded-md bg-muted text-11 font-medium text-muted-foreground"
+          >
             <button
               type="button"
+              role="tab"
+              aria-selected={scopeFilter === 'project'}
               onClick={() => setScopeFilter('project')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer',
+                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
                 scopeFilter === 'project'
                   ? 'bg-background text-foreground font-medium'
                   : 'hover:text-foreground',
               )}
             >
-              <FolderKanban className="size-3" />
+              <FolderKanban className="size-3" aria-hidden="true" />
               <span>Current Project</span>
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={scopeFilter === 'all'}
               onClick={() => setScopeFilter('all')}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer',
+                'flex-1 flex items-center justify-center gap-1.5 py-1 rounded transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
                 scopeFilter === 'all'
                   ? 'bg-background text-foreground font-medium'
                   : 'hover:text-foreground',
               )}
             >
-              <Globe className="size-3" />
+              <Globe className="size-3" aria-hidden="true" />
               <span>All Projects</span>
             </button>
           </div>
@@ -202,135 +194,34 @@ export function CompanionHistory({
       <div className="flex-1 overflow-y-auto min-h-0 px-2 py-1 select-none">
         <button
           type="button"
+          aria-expanded={isRecentsOpen}
+          aria-controls={isRecentsOpen ? recentsId : undefined}
           onClick={() => setIsRecentsOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-muted/40 transition-colors text-left cursor-pointer group"
+          className="w-full flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-muted/40 transition-colors text-left cursor-pointer group outline-none focus-visible:ring-1 focus-visible:ring-ai"
         >
           <span className="text-13 font-semibold text-foreground/90 tracking-tight">
             Recents
           </span>
           <ChevronRight
             className={cn(
-              'size-4 text-muted-foreground transition-transform duration-200',
+              'size-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
               isRecentsOpen && 'rotate-90',
             )}
+            aria-hidden="true"
           />
         </button>
 
         {isRecentsOpen && (
-          <div className="mt-1 space-y-0.5">
-            {loading ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin mr-2" />
-                <span className="text-12">Loading history...</span>
-              </div>
-            ) : filteredChats.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-                <p className="text-12 font-normal text-muted-foreground">
-                  {search ? 'No matching chats' : 'No recent chats'}
-                </p>
-              </div>
-            ) : (
-              filteredChats.map((chat) => {
-                const isActive = chat.id === activeChatId;
-                const isEditing = editingId === chat.id;
-
-                return (
-                  <div
-                    key={chat.id}
-                    onClick={() => {
-                      if (isEditing) return;
-                      setActiveChatId(chat.id);
-                      setHistoryView(false);
-                    }}
-                    className={cn(
-                      'group flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-13 transition-colors cursor-pointer',
-                      isActive
-                        ? 'bg-muted font-medium text-foreground'
-                        : 'text-foreground/80 hover:bg-muted/50 hover:text-foreground',
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void handleSaveRename(e, chat.id);
-                            if (e.key === 'Escape') setEditingId(null);
-                          }}
-                          className="h-6 flex-1 px-1.5 text-12 rounded border border-ai bg-background text-foreground outline-none"
-                          autoFocus
-                        />
-                      ) : (
-                        <span className="truncate text-13">
-                          {chat.title || 'Untitled chat'}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0">
-                      {isEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(e) => void handleSaveRename(e, chat.id)}
-                            className="size-6 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
-                            title="Save rename"
-                            aria-label="Save new title"
-                          >
-                            <Check className="size-3.5 text-success" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingId(null);
-                            }}
-                            className="size-6 flex items-center justify-center rounded-md hover:bg-background/80 text-muted-foreground hover:text-foreground cursor-pointer"
-                            title="Cancel"
-                            aria-label="Cancel rename"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={(e) => e.stopPropagation()}
-                              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
-                              title="More actions"
-                              aria-label="More actions"
-                            >
-                              <MoreVertical className="size-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36 p-1">
-                            <DropdownMenuItem
-                              onClick={(e) => handleStartRename(e, chat)}
-                              className="flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm cursor-pointer"
-                            >
-                              <Pencil className="size-3.5 text-muted-foreground" />
-                              <span>Rename</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => void handleDelete(e, chat.id)}
-                              className="flex items-center gap-2 px-2.5 py-1.5 text-xs rounded-sm text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-                            >
-                              <Trash2 className="size-3.5" />
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+          <div id={recentsId} className="mt-1">
+            <SessionHistoryList
+              chats={filteredChats}
+              activeChatId={activeChatId}
+              loading={loading}
+              searchQuery={search}
+              onSelect={handleSelectChat}
+              onRename={handleRename}
+              onDelete={handleDelete}
+            />
           </div>
         )}
       </div>

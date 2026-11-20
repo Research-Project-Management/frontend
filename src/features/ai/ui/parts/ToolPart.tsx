@@ -132,6 +132,20 @@ export function AgentHandoffPart({
   );
 }
 
+function getActivityLabel(target: string): string {
+  const first = target.split(',')[0]?.trim().toLowerCase() ?? '';
+  if (first === 'library_agent' || first === 'library') {
+    return 'Searching library…';
+  }
+  if (first === 'rag_agent' || first === 'rag') {
+    return 'Reading documents…';
+  }
+  if (first === 'web_search_agent' || first === 'web_search') {
+    return 'Searching web…';
+  }
+  return 'Working…';
+}
+
 export function ToolTraceGroup({
   items,
   isStreaming = false,
@@ -139,7 +153,10 @@ export function ToolTraceGroup({
   items: TracePartData[];
   isStreaming?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(!isStreaming);
+  const [toggleState, setToggleState] = useState<{
+    forStreaming: boolean;
+    collapsed: boolean;
+  }>({ forStreaming: isStreaming, collapsed: !isStreaming });
 
   if (items.length === 0) return null;
 
@@ -150,38 +167,52 @@ export function ToolTraceGroup({
   const runningHandoff = items.find(
     (item) => item.type === 'agent-handoff' && item.status === 'calling',
   );
-  const hasErrors = items.some((item) => item.status === 'error');
+
+  if (toolItems.length === 0) {
+    if (!isStreaming || !runningHandoff || runningHandoff.type !== 'agent-handoff') {
+      return null;
+    }
+    return (
+      <div className="my-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <Loader2 className="size-3.5 text-ai animate-spin shrink-0" />
+        <span>{getActivityLabel(runningHandoff.to)}</span>
+      </div>
+    );
+  }
+
+  const collapsed =
+    toggleState.forStreaming === isStreaming
+      ? toggleState.collapsed
+      : !isStreaming;
+  const hasErrors = toolItems.some((item) => item.status === 'error');
   const doneTools = toolItems.filter((t) => t.status === 'done').length;
 
   let summaryPrefix = 'Executed ';
-  let summaryCount = `${items.length}`;
-  let summarySuffix = ` step${items.length === 1 ? '' : 's'}`;
+  let summaryCount = `${doneTools}/${toolItems.length}`;
+  let summarySuffix = ` action${toolItems.length === 1 ? '' : 's'}`;
   if (runningTool) {
     summaryPrefix = `Running: ${getToolMeta(runningTool.toolName).label}`;
     summaryCount = '';
     summarySuffix = '';
-  } else if (runningHandoff && runningHandoff.type === 'agent-handoff') {
-    summaryPrefix = `Delegating to ${getAgentMeta(runningHandoff.to).label}…`;
-    summaryCount = '';
-    summarySuffix = '';
-  } else if (toolItems.length > 0) {
-    summaryPrefix = 'Executed ';
-    summaryCount = `${doneTools}/${toolItems.length}`;
-    summarySuffix = ` action${toolItems.length === 1 ? '' : 's'}`;
   }
 
   return (
     <div className="my-2 rounded-md border border-border bg-panel/35 overflow-hidden">
       <button
         type="button"
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={() =>
+          setToggleState({
+            forStreaming: isStreaming,
+            collapsed: !collapsed,
+          })
+        }
         className={cn(
           'w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
           !collapsed && 'border-b border-border/60',
         )}
       >
         <div className="flex items-center gap-2 min-w-0">
-          {runningTool || runningHandoff ? (
+          {runningTool ? (
             <Loader2 className="size-3.5 text-ai animate-spin shrink-0" />
           ) : hasErrors ? (
             <AlertCircle className="size-3.5 text-destructive shrink-0" />
@@ -207,13 +238,9 @@ export function ToolTraceGroup({
 
       {!collapsed && (
         <div className="divide-y divide-border/30 px-3 py-1.5">
-          {items.map((item, idx) =>
-            item.type === 'agent-handoff' ? (
-              <AgentHandoffPart key={`handoff-${idx}`} part={item} />
-            ) : (
-              <ToolPart key={item.toolCallId || idx} part={item} />
-            ),
-          )}
+          {toolItems.map((item, idx) => (
+            <ToolPart key={item.toolCallId || idx} part={item} />
+          ))}
         </div>
       )}
     </div>

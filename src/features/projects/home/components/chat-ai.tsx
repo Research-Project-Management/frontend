@@ -23,11 +23,8 @@ export default function ChatAi({ onSend }: ChatAiProps) {
   const setOpen = useAiCompanionStore((s) => s.setOpen);
 
   const { spaceId: defaultSpaceId } = useActiveAiSpace();
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(
-    defaultSpaceId,
-  );
   const [pickerTab, setPickerTab] = useState<ContextTab | null>(null);
-  const turnCtx = useTurnContext({ spaceId: selectedSpaceId });
+  const turnCtx = useTurnContext({ spaceId: defaultSpaceId });
 
   const handleSend = (text: string) => {
     const webSites = turnCtx.webSearchEnabled
@@ -38,8 +35,8 @@ export default function ChatAi({ onSend }: ChatAiProps) {
 
     setPendingPrompt({
       text,
-      spaceId: selectedSpaceId,
-      projectId: selectedSpaceId,
+      spaceId: defaultSpaceId,
+      projectId: defaultSpaceId,
       documentIds:
         turnCtx.enabledDocumentIds.length > 0
           ? turnCtx.enabledDocumentIds
@@ -57,7 +54,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
     });
     setOpen(true);
 
-    onSend?.(text, selectedSpaceId || undefined, webSites);
+    onSend?.(text, defaultSpaceId || undefined, webSites);
     turnCtx.clearSources();
   };
 
@@ -68,8 +65,6 @@ export default function ChatAi({ onSend }: ChatAiProps) {
         placeholder="Ask anything about your project..."
         className="p-0 bg-transparent"
         showDisclaimer={false}
-        spaceId={selectedSpaceId}
-        onSpaceChange={setSelectedSpaceId}
         sources={turnCtx.sources}
         uploadingFiles={turnCtx.uploadingFiles}
         isUploading={turnCtx.isUploading}
@@ -85,7 +80,7 @@ export default function ChatAi({ onSend }: ChatAiProps) {
         open={Boolean(pickerTab)}
         onOpenChange={(open) => !open && setPickerTab(null)}
         initialTab={pickerTab ?? 'library'}
-        spaceId={selectedSpaceId}
+        spaceId={defaultSpaceId}
         onSelect={(entries) => turnCtx.addSources(entries)}
       />
     </div>

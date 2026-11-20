@@ -24,7 +24,12 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useActiveAiSpace } from '../../context/space';
-import { type ContextTab, type SourceEntry } from '../../context/source.port';
+import {
+  getRagDocumentId,
+  sourceEntryToAttachedPayload,
+  type ContextTab,
+  type SourceEntry,
+} from '../../context/source.port';
 import { useTurnContext } from '../../context/use-context';
 import { threadPool } from '../../engine/pool';
 import { useAiCompanionStore } from '../../engine/shell';
@@ -70,17 +75,10 @@ function CompanionDrawerInner() {
   } = useAiCompanionStore();
 
   const { spaceId: activeSpaceId } = useActiveAiSpace();
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(
-    activeSpaceId,
-  );
   const [readerDocScope, setReaderDocScope] =
     useState<ReaderDocScope>('current');
   const [pickerTab, setPickerTab] = useState<ContextTab | null>(null);
   const [promptToFill, setPromptToFill] = useState('');
-
-  useEffect(() => {
-    setSelectedSpaceId(activeSpaceId);
-  }, [activeSpaceId]);
 
   useEffect(() => {
     setReaderDocScope('current');
@@ -90,7 +88,7 @@ function CompanionDrawerInner() {
   const thread = useAiThread({
     threadKey,
     chatId: activeChatId,
-    spaceId: selectedSpaceId,
+    spaceId: activeSpaceId,
     mode: 'chat',
     onChatIdAssigned: (newChatId) => {
       setActiveChatId(newChatId);
@@ -100,7 +98,7 @@ function CompanionDrawerInner() {
     },
   });
 
-  const turnCtx = useTurnContext({ spaceId: selectedSpaceId });
+  const turnCtx = useTurnContext({ spaceId: activeSpaceId });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +121,7 @@ function CompanionDrawerInner() {
       if (thread.isStreaming) return;
 
       const effectiveSpaceId =
-        overrides?.spaceId !== undefined ? overrides.spaceId : selectedSpaceId;
+        overrides?.spaceId !== undefined ? overrides.spaceId : activeSpaceId;
 
       const extraSources: SourceEntry[] = [];
       if (overrides?.attachedFiles?.length) {
@@ -187,9 +185,13 @@ function CompanionDrawerInner() {
       const combinedDocIds = Array.from(
         new Set([
           ...(overrides?.documentIds ?? []),
-          ...extraSources.map((s) => s.id),
+          ...extraSources
+            .map(getRagDocumentId)
+            .filter((id): id is string => Boolean(id)),
         ]),
       ).filter(Boolean);
+
+      const attachedSources = extraSources.map(sourceEntryToAttachedPayload);
 
       let finalMessageText = rawText.trim();
       if (quotedPassage?.text && !overrides) {
@@ -226,11 +228,17 @@ function CompanionDrawerInner() {
         spaceId: effectiveSpaceId,
         chatId: activeChatId,
         documentIds: combinedDocIds.length > 0 ? combinedDocIds : undefined,
+        attachedSources:
+          attachedSources.length > 0 ? attachedSources : undefined,
         attachments: extraSources.map((s) => ({
           id: s.id,
           name: s.name,
           size: s.size,
           sourceType: s.sourceType,
+          ...(s.itemId ? { itemId: s.itemId } : {}),
+          ...(s.fileId ? { fileId: s.fileId } : {}),
+          ...(s.hasPdf !== undefined ? { hasPdf: s.hasPdf } : {}),
+          ...(s.indexed !== undefined ? { indexed: s.indexed } : {}),
         })),
         webSearchSites: webSites ?? undefined,
         paper:
@@ -257,7 +265,7 @@ function CompanionDrawerInner() {
     },
     [
       thread,
-      selectedSpaceId,
+      activeSpaceId,
       turnCtx,
       isPaperReader,
       readerDocScope,
@@ -591,7 +599,7 @@ function CompanionDrawerInner() {
 
           {isHistoryView ? (
             <CompanionHistory
-              currentSpaceId={selectedSpaceId}
+              currentSpaceId={activeSpaceId}
               onNewChat={startNewChat}
             />
           ) : (
@@ -606,7 +614,7 @@ function CompanionDrawerInner() {
                 scrollContainerRef={scrollContainerRef}
                 onSelectPrompt={setPromptToFill}
                 onResumeHitl={(decisions) =>
-                  void thread.resume(decisions, selectedSpaceId)
+                  void thread.resume(decisions, activeSpaceId)
                 }
                 onRetry={() => void thread.retry()}
                 isReaderContext={isPaperReader}
@@ -626,8 +634,6 @@ function CompanionDrawerInner() {
                 }
                 showDisclaimer
                 initialValue={promptToFill}
-                spaceId={selectedSpaceId}
-                onSpaceChange={setSelectedSpaceId}
                 sources={turnCtx.sources}
                 uploadingFiles={turnCtx.uploadingFiles}
                 isUploading={turnCtx.isUploading}
@@ -656,7 +662,7 @@ function CompanionDrawerInner() {
         open={Boolean(pickerTab)}
         onOpenChange={(open) => !open && setPickerTab(null)}
         initialTab={pickerTab ?? 'library'}
-        spaceId={selectedSpaceId}
+        spaceId={activeSpaceId}
         selectedIds={selectedIdSet}
         onSelect={(entries) => turnCtx.addSources(entries)}
       />

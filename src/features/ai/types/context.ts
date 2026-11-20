@@ -1,5 +1,16 @@
 import type { MessageAttachment } from './message';
 
+export interface AttachedSourcePayload {
+  kind: 'library' | 'upload' | 'paper';
+  title: string;
+  source_id?: string | null;
+  source_type?: 'upload' | 'file' | null;
+  item_id?: string | null;
+  file_id?: string | null;
+  has_pdf?: boolean;
+  indexed?: boolean;
+}
+
 export type TurnMode = 'chat' | 'editor' | 'paper';
 
 export interface EditorTurnContext {
@@ -36,6 +47,7 @@ export interface TurnContext {
   spaceId?: string | null;
   chatId?: string | null;
   documentIds?: string[];
+  attachedSources?: AttachedSourcePayload[];
   attachments?: MessageAttachment[];
   webSearchSites?: string[] | null;
   intentHint?: string | null;

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Check, Database, HardDrive } from 'lucide-react';
+import { BookOpen, Check, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -13,7 +13,6 @@ import {
 import { cn } from '@/shared/lib/utils';
 import type { ContextTab, SourceEntry } from '../../context/source.port';
 import { LibraryTab } from './LibraryTab';
-import { StorageTab } from './StorageTab';
 import { UploadedTab } from './UploadedTab';
 
 export interface ContextPickerProps {
@@ -31,7 +30,6 @@ const TABS: ReadonlyArray<{
   icon: typeof BookOpen;
 }> = [
   { id: 'library', label: 'Paper Library', icon: BookOpen },
-  { id: 'storage', label: 'Storage', icon: HardDrive },
   { id: 'uploaded', label: 'Uploaded Docs', icon: Database },
 ];
 
@@ -133,16 +131,7 @@ export function ContextPicker({
               selectedIds={selectedIds}
               onToggle={toggleEntry}
               onQuickAttach={handleQuickAttach}
-            />
-          )}
-
-          {open && activeTab === 'storage' && (
-            <StorageTab
-              spaceId={spaceId}
-              pending={pending}
-              selectedIds={selectedIds}
-              onToggle={toggleEntry}
-              onQuickAttach={handleQuickAttach}
+              onAttachMany={handleUploadedEntries}
             />
           )}
 

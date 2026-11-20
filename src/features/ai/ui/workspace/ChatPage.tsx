@@ -82,16 +82,13 @@ export function ChatPage() {
   }, [pathname]);
 
   const { spaceId: workspaceSpaceId } = useActiveAiSpace(initialProject);
-  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(
-    workspaceSpaceId,
-  );
   const [pickerTab, setPickerTab] = useState<ContextTab | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   const thread = useAiThread({
     threadKey: effectiveChatId || 'draft:workspace',
     chatId: effectiveChatId,
-    spaceId: selectedSpaceId,
+    spaceId: workspaceSpaceId,
     mode: 'chat',
     onChatIdAssigned: (newId) => {
       setAssignedChatId(newId);
@@ -101,31 +98,9 @@ export function ChatPage() {
     },
   });
 
-  // Sync space selector when switching threads or workspace space changes
-  useEffect(() => {
-    if (thread.spaceId) {
-      setSelectedSpaceId(thread.spaceId);
-    } else if (!effectiveChatId) {
-      setSelectedSpaceId(workspaceSpaceId);
-    }
-  }, [thread.spaceId, effectiveChatId, workspaceSpaceId]);
+  const effectiveSpaceId = thread.spaceId ?? workspaceSpaceId;
 
-  const turnCtx = useTurnContext({ spaceId: selectedSpaceId });
-  const hydratedDocIdsRef = useRef<string>('');
-
-  useEffect(() => {
-    const docKey = thread.documentIds.join(',');
-    if (!effectiveChatId || !docKey || hydratedDocIdsRef.current === docKey) {
-      if (!effectiveChatId) {
-        hydratedDocIdsRef.current = '';
-      }
-      return;
-    }
-    if (turnCtx.sources.length > 0) return;
-
-    hydratedDocIdsRef.current = docKey;
-    void turnCtx.hydrateIds([...thread.documentIds]);
-  }, [effectiveChatId, thread.documentIds, turnCtx]);
+  const turnCtx = useTurnContext({ spaceId: effectiveSpaceId });
 
   // Preload collection papers when ?collectionId= is passed
   const preloadedCollectionRef = useRef<string | null>(null);
@@ -134,7 +109,7 @@ export function ChatPage() {
       return;
     }
     preloadedCollectionRef.current = collectionId;
-    loadCollectionSources(collectionId, selectedSpaceId)
+    loadCollectionSources(collectionId, effectiveSpaceId)
       .then((entries) => {
         if (entries.length > 0) {
           turnCtx.addSources(entries);
@@ -144,7 +119,7 @@ export function ChatPage() {
       .catch(() => {
         toast.error('Failed to load collection for AI chat');
       });
-  }, [collectionId, selectedSpaceId, turnCtx]);
+  }, [collectionId, effectiveSpaceId, turnCtx]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -154,11 +129,15 @@ export function ChatPage() {
 
       await thread.send(trimmed, {
         mode: 'chat',
-        spaceId: selectedSpaceId,
+        spaceId: effectiveSpaceId,
         chatId: effectiveChatId,
         documentIds:
           turnCtx.enabledDocumentIds.length > 0
             ? turnCtx.enabledDocumentIds
+            : undefined,
+        attachedSources:
+          turnCtx.attachedSources.length > 0
+            ? turnCtx.attachedSources
             : undefined,
         attachments:
           turnCtx.attachments.length > 0 ? turnCtx.attachments : undefined,
@@ -169,11 +148,9 @@ export function ChatPage() {
           : undefined,
       });
 
-      if (!effectiveChatId) {
-        turnCtx.clearSources();
-      }
+      turnCtx.clearSources();
     },
-    [thread, turnCtx, selectedSpaceId, effectiveChatId],
+    [thread, turnCtx, effectiveSpaceId, effectiveChatId],
   );
 
   // Auto-send ?q= on initial entry
@@ -239,8 +216,6 @@ export function ChatPage() {
               variant="workspace"
               placeholder="How can I help you today?"
               initialValue={initialQ}
-              spaceId={selectedSpaceId}
-              onSpaceChange={setSelectedSpaceId}
               sources={turnCtx.sources}
               uploadingFiles={turnCtx.uploadingFiles}
               isUploading={turnCtx.isUploading}
@@ -291,7 +266,7 @@ export function ChatPage() {
           open={Boolean(pickerTab)}
           onOpenChange={(open) => !open && setPickerTab(null)}
           initialTab={pickerTab ?? 'library'}
-          spaceId={selectedSpaceId}
+          spaceId={effectiveSpaceId}
           selectedIds={selectedIdSet}
           onSelect={(entries) => turnCtx.addSources(entries)}
         />
@@ -330,7 +305,7 @@ export function ChatPage() {
                   message={msg}
                   isStreaming={isLast && thread.isStreaming && msg.role === 'assistant'}
                   onResumeHitl={(decisions) =>
-                    void thread.resume(decisions, selectedSpaceId)
+                    void thread.resume(decisions, effectiveSpaceId)
                   }
                 />
               );
@@ -395,8 +370,6 @@ export function ChatPage() {
         <Composer
           variant="workspace"
           placeholder="How can I help you today?"
-          spaceId={selectedSpaceId}
-          onSpaceChange={setSelectedSpaceId}
           sources={turnCtx.sources}
           uploadingFiles={turnCtx.uploadingFiles}
           isUploading={turnCtx.isUploading}
@@ -418,7 +391,7 @@ export function ChatPage() {
         open={Boolean(pickerTab)}
         onOpenChange={(open) => !open && setPickerTab(null)}
         initialTab={pickerTab ?? 'library'}
-        spaceId={selectedSpaceId}
+        spaceId={effectiveSpaceId}
         selectedIds={selectedIdSet}
         onSelect={(entries) => turnCtx.addSources(entries)}
       />

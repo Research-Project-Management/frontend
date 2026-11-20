@@ -126,6 +126,10 @@ export class FluxHttpTransport implements AiTransportPort {
           ? context.webSearchSites
           : undefined,
       intentHint: context.intentHint ?? undefined,
+      context:
+        context.attachedSources && context.attachedSources.length > 0
+          ? { attached_sources: context.attachedSources }
+          : undefined,
     };
 
     if (context.paper?.quotedPassage) {

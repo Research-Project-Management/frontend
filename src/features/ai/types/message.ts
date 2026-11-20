@@ -5,7 +5,11 @@ export interface MessageAttachment {
   name: string;
   size?: number;
   type?: string;
-  sourceType?: 'library' | 'storage' | 'upload' | 'paper';
+  sourceType?: 'library' | 'upload' | 'paper';
+  itemId?: string;
+  fileId?: string;
+  hasPdf?: boolean;
+  indexed?: boolean;
 }
 
 export interface SourceItem {

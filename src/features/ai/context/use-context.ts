@@ -2,8 +2,13 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { hydrateSourceNames } from './hydrate';
-import type { SourceEntry, SourceType } from './source.port';
-import { sourcesToAttachments } from './source.port';
+import {
+  getRagDocumentId,
+  sourceEntryToAttachedPayload,
+  sourcesToAttachments,
+  type SourceEntry,
+  type SourceType,
+} from './source.port';
 import { useFileUpload } from './upload';
 
 const STORAGE_KEY_WEB_SITES = 'flux_web_search_sites';
@@ -50,7 +55,17 @@ export function useTurnContext({
   const { uploadingFiles, isUploading, uploadFiles } = useFileUpload(spaceId);
 
   const enabledDocumentIds = useMemo(
-    () => sources.filter((s) => s.enabled).map((s) => s.id),
+    () =>
+      sources
+        .filter((s) => s.enabled)
+        .map(getRagDocumentId)
+        .filter((id): id is string => Boolean(id)),
+    [sources],
+  );
+
+  const attachedSources = useMemo(
+    () =>
+      sources.filter((s) => s.enabled).map(sourceEntryToAttachedPayload),
     [sources],
   );
 
@@ -63,6 +78,11 @@ export function useTurnContext({
           size?: number;
           sourceType?: SourceType;
           enabled?: boolean;
+          itemId?: string;
+          fileId?: string;
+          ragDocId?: string;
+          hasPdf?: boolean;
+          indexed?: boolean;
         }
       >,
     ) => {
@@ -79,9 +99,27 @@ export function useTurnContext({
               size: item.size,
               sourceType: item.sourceType ?? 'upload',
               enabled: item.enabled ?? true,
+              ...(item.itemId ? { itemId: item.itemId } : {}),
+              ...(item.fileId ? { fileId: item.fileId } : {}),
+              ...(item.ragDocId ? { ragDocId: item.ragDocId } : {}),
+              ...(item.hasPdf !== undefined ? { hasPdf: item.hasPdf } : {}),
+              ...(item.indexed !== undefined ? { indexed: item.indexed } : {}),
             });
-          } else if (next[idx].name === next[idx].id && item.name) {
-            next[idx] = { ...next[idx], name: item.name, size: item.size ?? next[idx].size };
+          } else {
+            next[idx] = {
+              ...next[idx],
+              name:
+                next[idx].name === next[idx].id && item.name
+                  ? item.name
+                  : next[idx].name,
+              size: item.size ?? next[idx].size,
+              sourceType: item.sourceType ?? next[idx].sourceType,
+              itemId: item.itemId ?? next[idx].itemId,
+              fileId: item.fileId ?? next[idx].fileId,
+              ragDocId: item.ragDocId ?? next[idx].ragDocId,
+              hasPdf: item.hasPdf ?? next[idx].hasPdf,
+              indexed: item.indexed ?? next[idx].indexed,
+            };
           }
         }
         return next;
@@ -141,6 +179,7 @@ export function useTurnContext({
   return {
     sources,
     enabledDocumentIds,
+    attachedSources,
     attachments,
     uploadingFiles,
     isUploading,

@@ -18,7 +18,14 @@ export const messageAttachmentSchema = z.object({
   name: z.string(),
   size: z.number().optional(),
   type: z.string().optional(),
-  sourceType: z.enum(['library', 'storage', 'upload', 'paper']).optional(),
+  sourceType: z
+    .enum(['library', 'upload', 'paper', 'storage'])
+    .transform((v) => (v === 'storage' ? 'upload' : v))
+    .optional(),
+  itemId: z.string().optional(),
+  fileId: z.string().optional(),
+  hasPdf: z.boolean().optional(),
+  indexed: z.boolean().optional(),
 });
 
 export const workItemItemSchema = z.object({
@@ -147,7 +154,11 @@ export interface DocumentItem {
   chat_id?: string;
 }
 
-export type KnownAgentId = 'rag_agent' | 'web_search_agent' | 'direct';
+export type KnownAgentId =
+  | 'rag_agent'
+  | 'web_search_agent'
+  | 'library_agent'
+  | 'direct';
 
 export type ThreadStatus =
   | 'idle'

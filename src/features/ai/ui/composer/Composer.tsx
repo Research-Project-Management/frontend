@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowUp,
   BookOpen,
@@ -9,25 +9,19 @@ import {
   Database,
   FileText,
   FileUp,
-  Folder,
   Globe,
-  HardDrive,
   Loader2,
   Mic,
-  Paperclip,
   Plus,
-  Search,
   Square,
   Upload,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ProjectAvatar } from '@/shared/components/icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
@@ -41,7 +35,6 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
   ACCEPTED_FILE_TYPES,
   type ContextTab,
@@ -59,10 +52,6 @@ export interface ComposerProps {
   className?: string;
   showDisclaimer?: boolean;
   initialValue?: string;
-
-  spaceId?: string | null;
-  onSpaceChange?: (spaceId: string | null) => void;
-  showSpaceSelector?: boolean;
 
   sources?: readonly SourceEntry[];
   uploadingFiles?: readonly UploadingFile[];
@@ -99,10 +88,6 @@ export function Composer({
   showDisclaimer = false,
   initialValue = '',
 
-  spaceId = null,
-  onSpaceChange,
-  showSpaceSelector = true,
-
   sources = [],
   uploadingFiles = [],
   isUploading = false,
@@ -132,26 +117,13 @@ export function Composer({
 }: ComposerProps) {
   const compact = variant !== 'workspace';
   const [text, setText] = useState(initialValue);
-  const [scopeOpen, setScopeOpen] = useState(false);
   const [readerScopeOpen, setReaderScopeOpen] = useState(false);
-  const [projectSearch, setProjectSearch] = useState('');
   const [newSiteInput, setNewSiteInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-
-  const { projects = [], isLoading: isLoadingProjects } = useProjects();
-  const activeProjects = useMemo(
-    () => (projects || []).filter((p) => !p.isArchived),
-    [projects],
-  );
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     if (initialValue) {
@@ -173,22 +145,6 @@ export function Composer({
     el.style.height = `${Math.min(el.scrollHeight, compact ? 140 : 220)}px`;
   }, [text, compact]);
 
-  const currentProjectObj = useMemo(() => {
-    if (!spaceId) return null;
-    return (
-      activeProjects.find((p) => p.id === spaceId || p.identifier === spaceId) ??
-      null
-    );
-  }, [activeProjects, spaceId]);
-
-  const filteredProjects = useMemo(() => {
-    const q = projectSearch.trim().toLowerCase();
-    if (!q) return activeProjects;
-    return activeProjects.filter((p) =>
-      (p.name || '').toLowerCase().includes(q),
-    );
-  }, [activeProjects, projectSearch]);
-
   const uploadingActive = isUploading || uploadingFiles.length > 0;
   const canSend =
     Boolean(text.trim() || quotedPassage || sources.length > 0) &&
@@ -197,10 +153,10 @@ export function Composer({
     !uploadingActive;
 
   const notifyIfUploading = () => {
-    const isIndexing = uploadingFiles.some((f) => f.stage === 'processing');
+    const isProcessing = uploadingFiles.some((f) => f.stage === 'processing');
     toast.info(
-      isIndexing
-        ? 'Documents are being indexed into the vector store. Please wait a moment...'
+      isProcessing
+        ? 'Documents are being processed. Please wait a moment...'
         : 'Documents are currently uploading. Please wait for completion...',
     );
   };
@@ -283,15 +239,35 @@ export function Composer({
     setNewSiteInput('');
   };
 
-  const displaySpaceLabel = currentProjectObj?.name
-    ? currentProjectObj.name
-    : activeProjects.length === 0
-      ? compact
-        ? 'Personal'
-        : 'All Projects'
-      : compact
-        ? 'Personal'
-        : 'All Projects';
+  const toolButtonClass = cn(
+    'relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
+    compact
+      ? 'size-7 before:absolute before:-inset-2 md:before:hidden'
+      : 'size-8 before:absolute before:-inset-1.5 md:before:hidden',
+    (isStreaming || disabled) && 'opacity-40 cursor-not-allowed',
+  );
+
+  const webSearchButton = (
+    <button
+      type="button"
+      disabled={isStreaming || disabled}
+      aria-label="Web search"
+      aria-pressed={!onWebSearchSitesChange ? webSearchEnabled : undefined}
+      onClick={
+        !onWebSearchSitesChange
+          ? () => onWebSearchChange?.(!webSearchEnabled)
+          : undefined
+      }
+      className={cn(
+        toolButtonClass,
+        webSearchEnabled
+          ? 'border border-border/80 bg-ai/10 text-ai hover:bg-ai/15'
+          : 'text-foreground hover:bg-muted',
+      )}
+    >
+      <Globe className="size-4 shrink-0" aria-hidden="true" />
+    </button>
+  );
 
   return (
     <div
@@ -331,144 +307,9 @@ export function Composer({
           onChange={handleFileInput}
         />
 
-        {/* Top bar: Project space selector + Reader scope + Attachment chips */}
-        {(showSpaceSelector ||
-          isReaderContext ||
-          (compact && (sources.length > 0 || uploadingFiles.length > 0))) && (
+        {/* Top bar: Reader scope + Attachment chips */}
+        {(isReaderContext || sources.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-            {showSpaceSelector && onSpaceChange && (
-              <Popover open={scopeOpen} onOpenChange={setScopeOpen}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        suppressHydrationWarning
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-foreground transition-colors cursor-pointer outline-none shrink-0',
-                          compact ? 'h-6 max-w-[200px] text-11' : 'h-7 max-w-[220px] text-12',
-                        )}
-                        aria-label="Project context scope"
-                      >
-                        {isMounted && currentProjectObj ? (
-                          <ProjectAvatar
-                            avatar={currentProjectObj.avatar}
-                            name={currentProjectObj.name}
-                            id={currentProjectObj.id}
-                            size="custom"
-                            className="size-3.5 flex items-center justify-center text-11 leading-none shrink-0"
-                          />
-                        ) : (
-                          <Folder className="size-3 text-muted-foreground shrink-0" />
-                        )}
-                        <span className="truncate font-medium">
-                          {isMounted ? displaySpaceLabel : compact ? 'Personal' : 'All Projects'}
-                        </span>
-                        <ChevronDown className="size-2.5 text-muted-foreground shrink-0 opacity-70" />
-                      </button>
-                    </PopoverTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={4}>
-                    Project context scope
-                  </TooltipContent>
-                </Tooltip>
-
-                <PopoverContent
-                  align="start"
-                  side={compact ? 'top' : 'bottom'}
-                  sideOffset={6}
-                  className="w-60 p-1.5 rounded-md shadow-md z-50 border border-border bg-popover max-h-64 flex flex-col"
-                >
-                  {activeProjects.length > 3 && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background mb-1">
-                      <Search className="size-3 text-muted-foreground shrink-0" />
-                      <input
-                        value={projectSearch}
-                        onChange={(e) => setProjectSearch(e.target.value)}
-                        placeholder="Search projects..."
-                        className="w-full bg-transparent text-11 outline-none placeholder:text-muted-foreground text-foreground"
-                        autoFocus
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-0.5 overflow-y-auto max-h-52">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSpaceChange(null);
-                        setScopeOpen(false);
-                        setProjectSearch('');
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
-                        !spaceId
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'hover:bg-muted text-foreground/80 font-normal',
-                      )}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Folder className="size-3 text-muted-foreground shrink-0" />
-                        <span className="truncate">Personal (No project)</span>
-                      </div>
-                      {!spaceId && <Check className="size-3 text-foreground shrink-0 ml-1.5" />}
-                    </button>
-
-                    <div className="my-1 border-t border-border/50" />
-
-                    {isLoadingProjects && (
-                      <div className="flex items-center gap-2 px-2.5 py-1.5 text-11 text-muted-foreground">
-                        <Loader2 className="size-3 animate-spin shrink-0" />
-                        <span>Loading projects...</span>
-                      </div>
-                    )}
-
-                    {!isLoadingProjects && filteredProjects.length === 0 && (
-                      <div className="px-2.5 py-2 text-center text-11 text-muted-foreground italic">
-                        {projectSearch ? 'No matching projects' : 'No projects'}
-                      </div>
-                    )}
-
-                    {!isLoadingProjects &&
-                      filteredProjects.map((p) => {
-                        const selected = spaceId === p.id || spaceId === p.identifier;
-                        return (
-                          <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => {
-                              onSpaceChange(p.id);
-                              setScopeOpen(false);
-                              setProjectSearch('');
-                            }}
-                            className={cn(
-                              'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
-                              selected
-                                ? 'bg-muted text-foreground font-medium'
-                                : 'hover:bg-muted text-foreground/80 font-normal',
-                            )}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <ProjectAvatar
-                                avatar={p.avatar}
-                                name={p.name}
-                                id={p.id}
-                                size="custom"
-                                className="size-3.5 flex items-center justify-center text-11 leading-none shrink-0"
-                              />
-                              <span className="truncate">{p.name}</span>
-                            </div>
-                            {selected && (
-                              <Check className="size-3 text-foreground shrink-0 ml-1.5" />
-                            )}
-                          </button>
-                        );
-                      })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-
             {/* Reader Document Scope Selector */}
             {isReaderContext && onReaderDocScopeChange && (
               <Popover open={readerScopeOpen} onOpenChange={setReaderScopeOpen}>
@@ -584,24 +425,16 @@ export function Composer({
               </Popover>
             )}
 
-            {compact && onRemoveSource && (
+            {onRemoveSource && (
               <AttachmentBar
                 sources={sources}
                 uploadingFiles={uploadingFiles}
                 onRemoveSource={onRemoveSource}
-                compact
+                onToggleSource={onToggleSource}
+                compact={compact}
               />
             )}
           </div>
-        )}
-
-        {!compact && onRemoveSource && (
-          <AttachmentBar
-            sources={sources}
-            uploadingFiles={uploadingFiles}
-            onRemoveSource={onRemoveSource}
-            onToggleSource={onToggleSource}
-          />
         )}
 
         {/* Quoted Passage Chip */}
@@ -647,179 +480,180 @@ export function Composer({
         {/* Bottom Action Toolbar */}
         <div className="flex items-center justify-between gap-2 pt-1.5">
           <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isStreaming || disabled}
-                      className={cn(
-                        'relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
-                        compact ? 'size-7' : 'size-8',
-                        sources.length > 0 && 'bg-muted',
-                        (isStreaming || disabled) && 'opacity-40 cursor-not-allowed',
-                      )}
-                      aria-label="Add attachment or toggle features"
-                    >
-                      <Paperclip className="size-4 shrink-0 text-foreground" />
-                      {sources.length > 0 && (
-                        <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-ai text-white text-9 font-medium flex items-center justify-center">
-                          {sources.length}
-                        </span>
-                      )}
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={4}>
-                  Attachments & sources
-                </TooltipContent>
-              </Tooltip>
+            {(onUploadFiles || onOpenPicker) && (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isStreaming || disabled}
+                        className={cn(
+                          toolButtonClass,
+                          'text-foreground hover:bg-muted',
+                          sources.length > 0 && 'bg-muted',
+                        )}
+                        aria-label="Add sources or files"
+                      >
+                        <Plus className="size-4 shrink-0 text-foreground" aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    Add sources
+                  </TooltipContent>
+                </Tooltip>
 
-              <DropdownMenuContent
-                align="start"
-                side="top"
-                sideOffset={8}
-                className="w-56 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
-              >
-                {onUploadFiles && (
-                  <DropdownMenuItem
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                <DropdownMenuContent
+                  align="start"
+                  side="top"
+                  sideOffset={8}
+                  className="w-56 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
+                >
+                  {onUploadFiles && (
+                    <DropdownMenuItem
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                    >
+                      <Upload className="size-4 text-foreground shrink-0" aria-hidden="true" />
+                      <span>Upload from device</span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {onOpenPicker && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => onOpenPicker('library')}
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                      >
+                        <BookOpen className="size-4 text-foreground shrink-0" aria-hidden="true" />
+                        <span>Import from Library</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => onOpenPicker('uploaded')}
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+                      >
+                        <Database className="size-4 text-foreground shrink-0" aria-hidden="true" />
+                        <span>Uploaded documents</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {onWebSearchChange &&
+              (onWebSearchSitesChange ? (
+                <Popover>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>{webSearchButton}</PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={4}>
+                      {webSearchEnabled ? 'Web search (on)' : 'Web search'}
+                    </TooltipContent>
+                  </Tooltip>
+                  <PopoverContent
+                    align="start"
+                    side="top"
+                    sideOffset={8}
+                    className="w-64 p-2.5 space-y-2.5"
                   >
-                    <Upload className="size-4 text-foreground shrink-0" />
-                    <span>Upload from device</span>
-                  </DropdownMenuItem>
-                )}
-
-                {onOpenPicker && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => onOpenPicker('storage')}
-                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
-                    >
-                      <HardDrive className="size-4 text-foreground shrink-0" />
-                      <span>Import from Storage</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => onOpenPicker('library')}
-                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
-                    >
-                      <BookOpen className="size-4 text-foreground shrink-0" />
-                      <span>Import from Library</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={() => onOpenPicker('uploaded')}
-                      className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
-                    >
-                      <Database className="size-4 text-foreground shrink-0" />
-                      <span>Uploaded documents</span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {onWebSearchChange && (
-                  <>
-                    <DropdownMenuSeparator className="my-1 border-border/50" />
                     <button
                       type="button"
                       role="switch"
                       aria-checked={webSearchEnabled}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onWebSearchChange(!webSearchEnabled);
-                      }}
-                      className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted focus:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal outline-none"
+                      onClick={() => onWebSearchChange(!webSearchEnabled)}
+                      className="w-full flex items-center justify-between px-1.5 py-1 rounded-md hover:bg-muted focus:bg-muted transition-colors cursor-pointer select-none text-foreground text-13 font-normal outline-none focus-visible:ring-1 focus-visible:ring-ai"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <Globe className="size-4 text-foreground shrink-0" />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Globe className="size-4 text-foreground shrink-0" aria-hidden="true" />
                         <span>Web search</span>
                       </div>
                       <div
                         className={cn(
-                          'relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200',
+                          'relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 motion-reduce:transition-none',
                           webSearchEnabled ? 'bg-ai' : 'bg-muted-foreground/30',
                         )}
                       >
                         <span
                           className={cn(
-                            'pointer-events-none inline-block size-3 rounded-full bg-white transform transition duration-200',
-                            webSearchEnabled ? 'translate-x-3' : 'translate-x-0',
+                            'pointer-events-none inline-block size-3 rounded-full transform transition duration-200 motion-reduce:transition-none',
+                            webSearchEnabled
+                              ? 'translate-x-3 bg-ai-foreground'
+                              : 'translate-x-0 bg-card',
                           )}
                         />
                       </div>
                     </button>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
-            {webSearchEnabled && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-border/80 bg-ai/10 text-ai text-11 font-medium cursor-pointer hover:bg-ai/15 transition-colors"
-                    title="Configure web search domains"
-                  >
-                    <Globe className="size-3 shrink-0" />
-                    <span>Web</span>
-                  </button>
-                </PopoverTrigger>
-                {onWebSearchSitesChange && (
-                  <PopoverContent align="start" side="top" className="w-64 p-2.5 space-y-2">
-                    <p className="text-11 font-medium text-foreground">
-                      Allowed academic domains
-                    </p>
-                    <div className="flex gap-1">
-                      <input
-                        value={newSiteInput}
-                        onChange={(e) => setNewSiteInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddWebSite();
-                          }
-                        }}
-                        placeholder="e.g. arxiv.org"
-                        className="flex-1 h-7 px-2 text-11 rounded border border-border bg-background outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddWebSite}
-                        className="h-7 px-2 rounded bg-ai text-white text-11 cursor-pointer"
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {webSearchSites.map((site) => (
-                        <span
-                          key={site}
-                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-10 text-foreground"
-                        >
-                          {site}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              onWebSearchSitesChange(
-                                webSearchSites.filter((s) => s !== site),
-                              )
+                    <div
+                      className={cn(
+                        'pt-2 border-t border-border/60 space-y-2 transition-opacity',
+                        !webSearchEnabled && 'opacity-60',
+                      )}
+                    >
+                      <p className="text-11 font-medium text-foreground">
+                        Allowed academic domains
+                      </p>
+                      <div className="flex gap-1">
+                        <input
+                          aria-label="Academic domain to allow"
+                          value={newSiteInput}
+                          onChange={(e) => setNewSiteInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddWebSite();
                             }
-                            className="hover:text-destructive cursor-pointer"
-                            aria-label={`Remove ${site}`}
-                          >
-                            <X className="size-2.5" />
-                          </button>
-                        </span>
-                      ))}
+                          }}
+                          placeholder="e.g. arxiv.org"
+                          className="flex-1 h-7 px-2 text-11 rounded border border-border bg-background outline-none focus-visible:border-ai focus-visible:ring-1 focus-visible:ring-ai/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddWebSite}
+                          className="relative before:absolute before:-inset-2 md:before:hidden h-7 px-2 rounded bg-ai text-ai-foreground hover:bg-ai-hover text-11 font-medium cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {webSearchSites.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {webSearchSites.map((site) => (
+                            <span
+                              key={site}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-11 text-foreground"
+                            >
+                              {site}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onWebSearchSitesChange(
+                                    webSearchSites.filter((s) => s !== site),
+                                  )
+                                }
+                                className="relative before:absolute before:-inset-2.5 md:before:hidden hover:text-destructive cursor-pointer rounded outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                                aria-label={`Remove ${site}`}
+                              >
+                                <X className="size-2.5" aria-hidden="true" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </PopoverContent>
-                )}
-              </Popover>
-            )}
+                </Popover>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>{webSearchButton}</TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={4}>
+                    {webSearchEnabled ? 'Web search (on)' : 'Web search'}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
           </div>
 
           {/* Right tools: Voice + Send/Stop */}

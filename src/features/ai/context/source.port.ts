@@ -6,10 +6,14 @@ import {
   FileText,
   type LucideIcon,
 } from 'lucide-react';
+import type { AttachedSourcePayload } from '../types/context';
 import type { MessageAttachment } from '../types/message';
 
-export type SourceType = 'upload' | 'library' | 'storage' | 'paper';
-export type ContextTab = 'library' | 'storage' | 'uploaded';
+export type { AttachedSourcePayload };
+
+export type SourceType = 'upload' | 'library' | 'paper';
+export type ContextTab = 'library' | 'uploaded';
+export type LibraryReadiness = 'indexed' | 'pdf' | 'metadata';
 
 export interface SourceEntry {
   id: string;
@@ -17,6 +21,11 @@ export interface SourceEntry {
   enabled: boolean;
   size?: number;
   sourceType: SourceType;
+  itemId?: string;
+  fileId?: string;
+  ragDocId?: string;
+  hasPdf?: boolean;
+  indexed?: boolean;
 }
 
 export interface UploadingFile {
@@ -133,6 +142,53 @@ export function getFileCategoryMeta(
   };
 }
 
+export function getRagDocumentId(src: SourceEntry): string | null {
+  if (src.sourceType === 'upload') {
+    return src.id?.trim() || null;
+  }
+  const ragId = src.ragDocId?.trim();
+  if (ragId) return ragId;
+  const fileId = src.fileId?.trim();
+  if (src.hasPdf && fileId) return fileId;
+  return null;
+}
+
+export function getLibraryReadiness(src: SourceEntry): LibraryReadiness | null {
+  if (src.sourceType === 'upload') return null;
+  if (src.indexed || Boolean(src.ragDocId?.trim())) return 'indexed';
+  if (src.hasPdf || Boolean(src.fileId?.trim())) return 'pdf';
+  return 'metadata';
+}
+
+export function sourceEntryToAttachedPayload(
+  src: SourceEntry,
+): AttachedSourcePayload {
+  if (src.sourceType === 'upload') {
+    return {
+      kind: 'upload',
+      title: src.name,
+      source_id: src.id || null,
+      source_type: 'upload',
+      indexed: true,
+    };
+  }
+  const itemId = (src.itemId || src.id || '').trim() || null;
+  const fileId = src.fileId?.trim() || null;
+  const hasPdf = Boolean(src.hasPdf || fileId);
+  const indexed = Boolean(src.indexed || src.ragDocId?.trim());
+  const sourceId = getRagDocumentId(src);
+  return {
+    kind: src.sourceType === 'paper' ? 'paper' : 'library',
+    title: src.name,
+    source_id: sourceId,
+    source_type: sourceId ? 'file' : null,
+    item_id: itemId,
+    file_id: fileId,
+    has_pdf: hasPdf,
+    indexed,
+  };
+}
+
 export function sourcesToAttachments(
   sources: readonly SourceEntry[],
 ): MessageAttachment[] {
@@ -144,5 +200,9 @@ export function sourcesToAttachments(
       size: s.size,
       type: s.name.split('.').pop() || '',
       sourceType: s.sourceType,
+      ...(s.itemId ? { itemId: s.itemId } : {}),
+      ...(s.fileId ? { fileId: s.fileId } : {}),
+      ...(s.hasPdf !== undefined ? { hasPdf: s.hasPdf } : {}),
+      ...(s.indexed !== undefined ? { indexed: s.indexed } : {}),
     }));
 }

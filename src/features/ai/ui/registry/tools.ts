@@ -48,6 +48,19 @@ export const TOOL_META: Record<string, ToolMeta> = {
   search_arxiv: { label: 'Searching arXiv', icon: BookOpen, category: 'read' },
   fetch_web_page: { label: 'Reading Web Source', icon: Globe, category: 'read' },
 
+  // Library Agent
+  search_items: { label: 'Searching Library', icon: Search, category: 'read' },
+  library_stats: { label: 'Library Overview', icon: BarChart3, category: 'analyze' },
+  get_item: { label: 'Inspecting Paper', icon: BookOpen, category: 'read' },
+  audit_library: { label: 'Auditing Library', icon: AlertTriangle, category: 'analyze' },
+  cite_items: { label: 'Formatting Citations', icon: FileText, category: 'read' },
+  add_paper: { label: 'Adding Paper', icon: FilePlus, category: 'create' },
+  manage_collection: { label: 'Managing Collection', icon: FolderKanban, category: 'update' },
+  organize_item: { label: 'Organizing Item', icon: Tag, category: 'update' },
+  save_note: { label: 'Saving Note', icon: Pencil, category: 'create' },
+  trash_items: { label: 'Moving to Trash', icon: Trash2, category: 'delete' },
+  merge_duplicates: { label: 'Merging Duplicates', icon: FolderKanban, category: 'delete' },
+
   // Work items
   list_work_items: { label: 'Listing Work Items', icon: ListTodo, category: 'read' },
   get_my_work_items: { label: 'Getting My Work Items', icon: ListTodo, category: 'read' },

@@ -115,7 +115,7 @@ export function UploadedTab({
           <span>
             {isUploading
               ? uploadingFiles[0]?.stage === 'processing'
-                ? 'Indexing...'
+                ? 'Uploading...'
                 : `${uploadingFiles[0]?.progress ?? 0}%`
               : 'Upload'}
           </span>

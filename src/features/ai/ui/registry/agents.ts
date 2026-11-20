@@ -18,6 +18,18 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
     badgeClass: 'bg-ai/15 text-ai',
     description: 'Search academic and general web sources',
   },
+  library_agent: {
+    id: 'library_agent',
+    label: 'Library',
+    badgeClass: 'bg-ai/10 text-ai',
+    description: 'Search, organize, cite, and manage library items',
+  },
+  library: {
+    id: 'library',
+    label: 'Library',
+    badgeClass: 'bg-ai/10 text-ai',
+    description: 'Search, organize, cite, and manage library items',
+  },
   direct: {
     id: 'direct',
     label: 'Direct',
@@ -87,11 +99,9 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
   },
 };
 
-const HIDDEN_BADGE_AGENTS = new Set(['direct', 'chat', 'assistant']);
-
 export function shouldShowAgentBadge(agentId?: string | null): boolean {
-  const key = (agentId || '').trim().toLowerCase();
-  return Boolean(key) && !HIDDEN_BADGE_AGENTS.has(key);
+  void agentId;
+  return false;
 }
 
 export function getAgentMeta(agentId: string): AgentMeta {

@@ -255,9 +255,7 @@ export function mapStoredMessagesToFlux(
               id: s.id || `legacy-att-${idx}-${sIdx}`,
               name: s.title || s.source || 'Attachment',
               sourceType:
-                s.sourceType === 'library' ||
-                s.sourceType === 'storage' ||
-                s.sourceType === 'paper'
+                s.sourceType === 'library' || s.sourceType === 'paper'
                   ? s.sourceType
                   : 'upload',
             }))

@@ -88,8 +88,10 @@ export {
 export { useAiThread, type UseAiThreadOptions } from './engine/use-thread';
 
 export type {
+  AttachedSourcePayload,
   ContextTab,
   FileCategoryMeta,
+  LibraryReadiness,
   SourceAdapter,
   SourceEntry,
   SourceType,
@@ -99,6 +101,9 @@ export {
   ACCEPTED_FILE_TYPES,
   formatBytes,
   getFileCategoryMeta,
+  getLibraryReadiness,
+  getRagDocumentId,
+  sourceEntryToAttachedPayload,
   sourcesToAttachments,
 } from './context/source.port';
 export { useActiveAiSpace, type ActiveAiSpace } from './context/space';

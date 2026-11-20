@@ -27,7 +27,6 @@ import { docs, updater, bootstrap } from './pages/docs.client';
 import { compiler, synctex } from './pages/compiler.client';
 import { diagnostics } from './pages/diagnostics.client';
 import { review, comments, suggestions } from './pages/review.client';
-import { notifications } from './pages/notifications.client';
 import { history } from './pages/history.client';
 import { exportDocs } from './pages/export.client';
 import { search } from './pages/search.client';
@@ -46,7 +45,6 @@ export * from './pages/docs.client';
 export * from './pages/compiler.client';
 export * from './pages/diagnostics.client';
 export * from './pages/review.client';
-export * from './pages/notifications.client';
 export * from './pages/history.client';
 export * from './pages/export.client';
 export * from './pages/search.client';
@@ -79,7 +77,6 @@ export const pagesService = {
   filestore,
   updater,
   spelling,
-  notifications,
   ai,
   AiClient,
   suggestLatexFix,

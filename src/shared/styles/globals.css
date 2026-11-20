@@ -304,10 +304,10 @@
   --surface: #FAFAF9;
   --panel: #F3F2F0;
   --editor-bg: var(--canvas);
-  --editor-gutter: transparent;
-  --editor-gutter-border: transparent;
+  --editor-gutter: #EEF6FF;
+  --editor-gutter-border: #CFE3FA;
   --editor-active-line: #e2f2ff;
-  --editor-active-line-gutter: var(--editor-active-line);
+  --editor-active-line-gutter: #D6EAFF;
   --border: #E4E4E4;
   --border-subtle: #EBEBEB;
   --divide-subtle: #EBEBEB;
@@ -452,10 +452,10 @@
   --surface: #111118;
   --panel: #0D0D14;
   --editor-bg: var(--canvas);
-  --editor-gutter: transparent;
-  --editor-gutter-border: transparent;
+  --editor-gutter: #131B2E;
+  --editor-gutter-border: #1E2D4A;
   --editor-active-line: rgba(56, 189, 248, 0.12);
-  --editor-active-line-gutter: var(--editor-active-line);
+  --editor-active-line-gutter: rgba(56, 189, 248, 0.2);
   --border: #2D2D31;
   --border-subtle: #222226;
   --divide-subtle: #222226;
@@ -1399,13 +1399,18 @@
    into Stickies, AI Companion, inline diffs, or modal code editors.
    -------------------------------------------------------------------------- */
 .manuscript-editor-view .cm-editor {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
   padding-top: 0 !important;
 }
 
 .manuscript-editor-view .cm-editor .cm-scroller {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
   overflow-x: auto !important;
   overflow-y: auto !important;
-  overflow-y: overlay !important;
   scrollbar-gutter: auto !important;
 }
 
@@ -1455,18 +1460,20 @@
 
 .manuscript-editor-view .cm-editor .cm-content {
   flex-grow: 1 !important;
-  flex-shrink: 0 !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
   padding-top: 0 !important;
   padding-bottom: 32px !important;
 }
 
+.manuscript-editor-view .cm-editor .cm-content.cm-lineWrapping {
+  flex-shrink: 1 !important;
+}
+
 .manuscript-editor-view .cm-editor .cm-gutters {
   padding-top: 0 !important;
-  min-height: 100% !important;
-  background-color: var(--editor-gutter, transparent) !important;
-  border-right: none !important;
+  align-self: stretch !important;
+  height: auto !important;
 }
 
 .manuscript-editor-view .cm-editor .cm-line {
@@ -1481,7 +1488,7 @@
 }
 
 .manuscript-editor-view .cm-editor .cm-activeLineGutter {
-  background-color: var(--editor-active-line, #e2f2ff) !important;
+  background-color: var(--editor-active-line-gutter, #D6EAFF) !important;
   font-weight: 600 !important;
 }
 

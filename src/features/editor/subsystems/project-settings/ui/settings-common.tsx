@@ -29,8 +29,7 @@ export type SettingsTab =
   | 'compiler'
   | 'references'
   | 'github'
-  | 'appearance'
-  | 'notifications';
+  | 'appearance';
 
 // ── Overleaf 1:1 Code Icon (<>) ────────────────────────────────────────────────
 export function CodeIconBrackets({ className = 'size-4 shrink-0' }: { className?: string }) {

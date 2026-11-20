@@ -26,9 +26,7 @@ export interface SidebarPanelHeaderProps {
 export function SidebarPanelHeader({
   title,
   children,
-  onClose,
   className,
-  closeAriaLabel = 'Close panel',
 }: SidebarPanelHeaderProps) {
   return (
     <div
@@ -49,24 +47,6 @@ export function SidebarPanelHeader({
 
       <div className="flex items-center gap-0.5 shrink-0">
         {children}
-
-        {onClose && (
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label={closeAriaLabel}
-                className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <span>{closeAriaLabel}</span>
-            </TooltipContent>
-          </Tooltip>
-        )}
       </div>
     </div>
   );

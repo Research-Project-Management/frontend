@@ -216,7 +216,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
           : [],
     ),
     compartments.lineNumbers.of(
-      showLineNumbers ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : [],
+      showLineNumbers ? [createConfiguredLineNumbers(), createFoldGutter(), highlightActiveLineGutter()] : [],
     ),
     compartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
     compartments.bracketMatching.of(
@@ -281,7 +281,7 @@ export function reconfigureVisualMode(
       ),
       compartments.lineNumbers.reconfigure(
         !enabled && showLineNumbers
-          ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
+          ? [createConfiguredLineNumbers(), createFoldGutter(), highlightActiveLineGutter()]
           : [],
       ),
     ],
@@ -374,7 +374,7 @@ export function computeCompartmentReconfigEffects(
     effects.push(
       compartments.lineNumbers.reconfigure(
         nextEffectiveLineNumbers
-          ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
+          ? [createConfiguredLineNumbers(), createFoldGutter(), highlightActiveLineGutter()]
           : [],
       ),
     );

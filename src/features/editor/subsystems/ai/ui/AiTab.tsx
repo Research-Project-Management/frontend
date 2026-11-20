@@ -299,7 +299,7 @@ export default function AiTab({ onClose }: AiTabProps) {
   };
 
   const handleSourcesAttached = useCallback(
-    (items: AttachedFile[], source: 'library' | 'storage' | 'documents') => {
+    (items: AttachedFile[], source: 'library' | 'documents') => {
       setAttachedFiles((prev) => {
         const existingIds = new Set(prev.map((f) => f.id));
         const newOnes = items

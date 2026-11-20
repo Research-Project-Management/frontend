@@ -16,7 +16,6 @@ const PROTECTED_PREFIXES = [
   '/stickies',
   '/pages',
   '/chat',
-  '/inbox',
 ];
 
 export function proxy(request: NextRequest) {

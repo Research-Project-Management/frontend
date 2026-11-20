@@ -150,7 +150,7 @@ export function EditorPane({
     <div
       onMouseDown={handleSyncFocus}
       onClick={handleSyncFocus}
-      className="h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
+      className="flex-1 h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
     >
       {/* ── Pane Header ────────────────────────────────────────────────────── */}
       {isSplitActive ? (
@@ -276,7 +276,7 @@ export function EditorPane({
         ) : fileId ? (
           <div onMouseDown={handleSyncFocus} className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
             <EditorToolbar readOnly={isLocked} onSplitRight={onSplitRight} />
-            <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
+            <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col overflow-hidden">
               <EditorContextMenu>
                 <CodeMirrorView
                   key={paneId || 'primary'}

@@ -46,8 +46,6 @@ export const REVIEW_SOCKET_EVENTS = [
   'comment:updated',
   'comment:deleted',
   'comment:resolved',
-  'comment:mention',
-  'notification:digest',
 ] as const;
 
 const REVIEW_EVENT_MAP: Record<string, string> = {
@@ -63,8 +61,6 @@ const REVIEW_EVENT_MAP: Record<string, string> = {
   'comment:updated': 'comment:created',
   'comment:deleted': 'comment:resolved',
   'comment:resolved': 'comment:resolved',
-  'comment:mention': 'comment:mention',
-  'notification:digest': 'notification:digest',
 };
 
 export interface InboundEventContext {

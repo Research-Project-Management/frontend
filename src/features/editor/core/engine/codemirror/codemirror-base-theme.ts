@@ -14,10 +14,15 @@ import { latexVisualCitations } from '@/features/editor/core/engine/extensions/l
 
 export const editorBaseTheme = EditorView.theme({
   '&': {
+    flex: '1 1 0%',
+    minHeight: '0',
     height: '100%',
     backgroundColor: 'var(--editor-bg, var(--canvas, #FCFCFB))',
   },
   '.cm-scroller': {
+    flex: '1 1 0%',
+    minHeight: '0',
+    height: '100%',
     overflowX: 'auto',
     overflowY: 'auto',
     fontFamily: 'inherit',
@@ -25,7 +30,6 @@ export const editorBaseTheme = EditorView.theme({
   '.cm-content': {
     padding: '0 0 32px 0',
     flexGrow: '1',
-    flexShrink: '0',
     minWidth: '0',
     boxSizing: 'border-box',
   },
@@ -38,17 +42,17 @@ export const editorBaseTheme = EditorView.theme({
     boxSizing: 'border-box',
   },
   '.cm-gutters': {
-    borderRight: 'none',
-    backgroundColor: 'var(--editor-gutter, transparent)',
+    borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
+    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily:
       'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     userSelect: 'none',
-    padding: '0 0 32px 0',
+    padding: '0',
   },
   '.cm-gutterElement': {
     display: 'flex !important',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
@@ -59,18 +63,18 @@ export const editorBaseTheme = EditorView.theme({
   },
   '.cm-gutter.cm-foldGutter .cm-gutterElement': {
     justifyContent: 'center',
-    padding: '0',
+    padding: '0 2px 0 0',
     width: '14px',
     minWidth: '14px',
     cursor: 'pointer',
   },
   '.cm-gutter.cm-lineNumbers': {
-    minWidth: '32px',
+    minWidth: '30px',
   },
   '.cm-lineNumbers .cm-gutterElement': {
     justifyContent: 'flex-end',
-    padding: '0 4px 0 0',
-    minWidth: '32px',
+    padding: '0 4px 0 8px',
+    minWidth: '30px',
     fontVariantNumeric: 'tabular-nums',
     cursor: 'pointer',
   },
@@ -88,6 +92,7 @@ export const editorBaseTheme = EditorView.theme({
     justifyContent: 'center',
     width: '14px',
     height: '14px',
+    marginTop: 'calc((var(--cm-line-height, 1.54) * 1em - 14px) / 2)',
     borderRadius: '3px',
     color: 'var(--muted-foreground, #57606a)',
   },
@@ -214,20 +219,23 @@ export function createTypographyExtension(
       ? `${customFont.includes(',') ? customFont : `"${customFont}"`}, ${fallbackStack}`
       : fallbackStack;
 
+  const effectiveLineHeight = lineHeight ? `${lineHeight}` : '1.54';
+
   return EditorView.theme({
     '&': {
       fontSize: `${fontSize}px`,
+      '--cm-line-height': effectiveLineHeight,
     },
     '.cm-scroller': {
       fontFamily: fontStack,
     },
     '.cm-content, .cm-gutters, .cm-gutter, .cm-gutterElement': {
       fontSize: `${fontSize}px`,
-      lineHeight: lineHeight ? `${lineHeight}` : '1.54',
+      lineHeight: effectiveLineHeight,
       fontFamily: fontStack,
     },
     '.cm-line': {
-      lineHeight: lineHeight ? `${lineHeight}` : '1.54',
+      lineHeight: effectiveLineHeight,
       fontFamily: fontStack,
     },
   });

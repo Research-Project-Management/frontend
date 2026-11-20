@@ -8,7 +8,6 @@ import {
   X,
   Plus,
   Upload,
-  HardDrive,
   BookOpen,
   Database,
   Globe,
@@ -58,7 +57,7 @@ export interface AiInputAreaProps {
   currentProjectId: string | null;
   pickerTab: ContextTab | null;
   setPickerTab: (tab: ContextTab | null) => void;
-  onSourcesAttached: (items: AttachedFile[], source: 'library' | 'storage' | 'documents') => void;
+  onSourcesAttached: (items: AttachedFile[], source: 'library' | 'documents') => void;
 }
 
 export function AiInputArea({
@@ -95,12 +94,7 @@ export function AiInputArea({
       name: e.name,
       size: e.size,
     }));
-    const sourceKind =
-      pickerTab === 'library'
-        ? 'library'
-        : pickerTab === 'storage'
-          ? 'storage'
-          : 'documents';
+    const sourceKind = pickerTab === 'library' ? 'library' : 'documents';
     onSourcesAttached(items, sourceKind);
   };
 
@@ -258,14 +252,6 @@ export function AiInputArea({
                 >
                   <Upload className="size-4 text-foreground shrink-0" />
                   <span>Upload from device</span>
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  onClick={() => setPickerTab('storage')}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
-                >
-                  <HardDrive className="size-4 text-foreground shrink-0" />
-                  <span>Import from Storage</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem

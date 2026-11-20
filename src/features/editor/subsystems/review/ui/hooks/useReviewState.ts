@@ -22,7 +22,7 @@ import { editorCommandBus } from '@/features/editor/core';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { useReviewRealtimeNotifications } from './useReviewRealtimeNotifications';
+import { useReviewRealtimeSync } from './useReviewRealtimeSync';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { pagesService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/pages.service';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -205,8 +205,8 @@ export function useReviewState() {
     return map;
   }, [mentionMembers]);
 
-  // Real-time notifications
-  useReviewRealtimeNotifications({ pageId, userId: user?.id });
+  // Real-time review query synchronization
+  useReviewRealtimeSync({ pageId });
 
   const scrollRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navLineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

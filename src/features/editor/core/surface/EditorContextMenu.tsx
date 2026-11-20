@@ -179,12 +179,12 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   return (
     <div
       onContextMenuCapture={handleContextMenuCapture}
-      className="h-full w-full overflow-hidden"
+      className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden"
     >
       <ContextMenu onOpenChange={handleOpenChange}>
         <ContextMenuTrigger
           disabled={disabled || shiftBypass}
-          className="h-full w-full block overflow-hidden select-text"
+          className="flex-1 min-h-0 h-full w-full flex flex-col overflow-hidden select-text"
         >
           {children}
         </ContextMenuTrigger>

@@ -9,7 +9,7 @@
  * - Propose interactive inline diff in CodeMirror
  * - Copy snippet to clipboard with feedback
  * - File upload and chat notifications
- * - Attachment notifications for Library, Storage, and Uploaded Documents
+ * - Attachment notifications for Library and Uploaded Documents
  *
  * Adheres strictly to the architectural constraint:
  * All toasts are strictly managed within hooks; presentation components do not hold toast.
@@ -22,7 +22,7 @@ import { editorCommandBus, getEditorEngineForFile, usePageStore } from '@/featur
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { aiCoordinator } from '../coordinator/ai.coordinator';
 
-export type AttachmentSource = 'library' | 'storage' | 'documents';
+export type AttachmentSource = 'library' | 'documents';
 
 export interface UseAiChatActionsOptions {
   engine?: IEditorEngine | null;
@@ -106,7 +106,6 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
   const notifyItemsAttached = useCallback((count: number, source: AttachmentSource) => {
     const messages: Record<AttachmentSource, { text: string; id: string }> = {
       library: { text: `Attached ${count} item(s) from Library`, id: 'attach-library' },
-      storage: { text: `Attached ${count} file(s) from Storage`, id: 'attach-storage' },
       documents: { text: `Selected ${count} uploaded document(s)`, id: 'attach-docs' },
     };
     const { text, id } = messages[source];

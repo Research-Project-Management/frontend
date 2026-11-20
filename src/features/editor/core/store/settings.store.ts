@@ -33,8 +33,7 @@ export type SettingsTab =
   | 'compiler'
   | 'references'
   | 'github'
-  | 'appearance'
-  | 'notifications';
+  | 'appearance';
 
 export interface DocumentSettingsState {
   engine: CompilerEngine;
@@ -72,8 +71,6 @@ export interface DocumentSettingsState {
   nonBlinkingCursor: boolean;
   previewEditorTabs: boolean;
   pdfViewer: 'overleaf' | 'browser';
-  notifyComments: boolean;
-  notifyUpdates: boolean;
   showEditorTabs: boolean;
   showEquationPreview: boolean;
   pdfSpreadView: boolean;
@@ -91,8 +88,6 @@ export interface DocumentSettingsState {
   setNonBlinkingCursor: (nonBlinkingCursor: boolean) => void;
   setPreviewEditorTabs: (previewEditorTabs: boolean) => void;
   setPdfViewer: (pdfViewer: 'overleaf' | 'browser') => void;
-  setNotifyComments: (notifyComments: boolean) => void;
-  setNotifyUpdates: (notifyUpdates: boolean) => void;
   setEngine: (engine: CompilerEngine) => void;
   setCompileMode: (compileMode: CompileMode) => void;
   setAutoCompile: (autoCompile: boolean) => void;
@@ -191,8 +186,6 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       nonBlinkingCursor: false,
       previewEditorTabs: false,
       pdfViewer: 'overleaf',
-      notifyComments: true,
-      notifyUpdates: false,
       showEditorTabs: true,
       showEquationPreview: true,
       stopOnFirstError: false,
@@ -290,20 +283,26 @@ export const useSettingsStore = create<DocumentSettingsState>()(
         set((s) => ({
           customSuppressedWarnings: s.customSuppressedWarnings.filter((p) => p !== pattern),
         })),
-      setNotifyComments: (notifyComments) => set({ notifyComments }),
-      setNotifyUpdates: (notifyUpdates) => set({ notifyUpdates }),
     }),
     {
       name: EDITOR_STORAGE_KEYS.SETTINGS,
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown, version: number) => {
-        if (version < 3) {
-          return {
-            ...(persistedState && typeof persistedState === 'object' ? persistedState : {}),
-            wordWrap: true,
-          };
+        if (!persistedState || typeof persistedState !== 'object') {
+          return version < 3 ? { wordWrap: true } : persistedState;
         }
-        return persistedState;
+        const next = { ...(persistedState as Record<string, unknown>) };
+        if (version < 3) {
+          next.wordWrap = true;
+        }
+        if (version < 4) {
+          delete next.notifyComments;
+          delete next.notifyUpdates;
+          if (next.settingsActiveTab === 'notifications') {
+            next.settingsActiveTab = 'editor';
+          }
+        }
+        return next;
       },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)

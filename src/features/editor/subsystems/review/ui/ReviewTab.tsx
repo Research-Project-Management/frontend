@@ -10,9 +10,6 @@ import {
   EmptyReviewState,
 } from './subcomponents/ReviewNav';
 import {
-  NotificationDigestBadge,
-} from './subcomponents/ReviewBadges';
-import {
   CommentCard,
   NewCommentForm,
 } from './subcomponents/ReviewComments';
@@ -95,13 +92,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         </div>
       ) : scope === 'current' ? (
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          {/* 10-Minute Notification Digest Banner */}
-          {totalAllItems > 0 && (
-            <div className="px-3 pt-2 shrink-0">
-              <NotificationDigestBadge projectId={projectId} pageId={pageId} />
-            </div>
-          )}
-
           {/* Bulk Actions for Pending Suggestions */}
           <SuggestionBulkActions
             count={pendingSuggestions.length}

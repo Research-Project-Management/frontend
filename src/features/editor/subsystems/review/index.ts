@@ -5,7 +5,7 @@
  *
  * Responsibilities:
  * - CodeMirror 6 Review Mode & Track Changes Extensions (Visual decorations & Inline popover widgets).
- * - Realtime Comments, Thread Resolutions & Mention Notification Bundler.
+ * - Realtime Comments & Thread Resolutions.
  * - Single-Click Suggestion Accept / Reject with Optimistic Buffer Updating.
  * - Review Sidebar Tab (Overview, Comments list, Suggestions list).
  */
@@ -91,7 +91,6 @@ export {
   ResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,
-  NotificationDigestBadge,
 } from './ui/subcomponents/ReviewBadges';
 export {
   suggestionKeys,
@@ -112,11 +111,6 @@ export {
   useResolveComment,
   useDeleteReply,
 } from './ui/hooks/useComment';
-export {
-  useNotificationSettings,
-  useUpdateNotificationSettings,
-  notificationBundlerKeys,
-} from './ui/hooks/useNotificationBundler';
 export {
   useReviewPendingCount,
   type ReviewPendingCountResult,

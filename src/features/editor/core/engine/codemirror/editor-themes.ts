@@ -46,15 +46,15 @@ const autoThemeStyle = EditorView.theme({
     backgroundColor: 'var(--editor-selection, #bfdbfe) !important',
   },
   '.cm-gutters': {
-    backgroundColor: 'var(--editor-gutter, transparent)',
+    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
     color: 'var(--muted-foreground, #64748b)',
-    borderRight: 'none',
+    borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: 'var(--editor-active-line, #e2f2ff)',
   },
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
-    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
+    backgroundColor: 'var(--editor-active-line-gutter, #D6EAFF)',
     color: 'var(--foreground, #0f172a)',
     fontWeight: '600',
   },
@@ -88,15 +88,15 @@ const latexLightStyle = EditorView.theme({
     backgroundColor: '#c8e1ff !important',
   },
   '.cm-gutters': {
-    backgroundColor: 'var(--editor-gutter, transparent)',
+    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
     color: '#57606a',
-    borderRight: 'none',
+    borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: 'var(--editor-active-line, #e2f2ff)',
   },
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
-    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
+    backgroundColor: 'var(--editor-active-line-gutter, #D6EAFF)',
     color: '#0366d6',
     fontWeight: '600',
   },
@@ -131,7 +131,7 @@ const latexDarkStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#252526',
     color: '#858585',
-    borderRight: 'none',
+    borderRight: '1px solid #2e2e30',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#2a2d2e',
@@ -170,9 +170,9 @@ const draculaStyle = EditorView.theme({
     backgroundColor: '#44475a !important',
   },
   '.cm-gutters': {
-    backgroundColor: '#282a36',
+    backgroundColor: '#21222c',
     color: '#6272a4',
-    borderRight: 'none',
+    borderRight: '1px solid #343746',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#44475a66',
@@ -210,9 +210,9 @@ const monokaiStyle = EditorView.theme({
     backgroundColor: '#49483e !important',
   },
   '.cm-gutters': {
-    backgroundColor: '#272822',
+    backgroundColor: '#22231e',
     color: '#75715e',
-    borderRight: 'none',
+    borderRight: '1px solid #3b3a32',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#3e3d32',
@@ -252,7 +252,7 @@ const solarizedLightStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#eee8d5',
     color: '#586e75',
-    borderRight: 'none',
+    borderRight: '1px solid #ddd6c1',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#07364210',
@@ -292,7 +292,7 @@ const solarizedDarkStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#073642',
     color: '#586e75',
-    borderRight: 'none',
+    borderRight: '1px solid #0d4554',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#07364288',
@@ -327,9 +327,9 @@ const githubDarkStyle = EditorView.theme({
     backgroundColor: '#3b5070 !important',
   },
   '.cm-gutters': {
-    backgroundColor: '#0d1117',
+    backgroundColor: '#161b22',
     color: '#6e7681',
-    borderRight: 'none',
+    borderRight: '1px solid #21262d',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#161b22',
@@ -369,7 +369,7 @@ const cobaltStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#001b33',
     color: '#38566f',
-    borderRight: 'none',
+    borderRight: '1px solid #0a3052',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#003366',
@@ -409,7 +409,7 @@ const eclipseStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#f0f0f0',
     color: '#57606a',
-    borderRight: 'none',
+    borderRight: '1px solid #dcdcdc',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#e8f2fe',

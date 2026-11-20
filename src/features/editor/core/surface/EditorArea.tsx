@@ -310,7 +310,7 @@ export function EditorArea() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col bg-canvas min-h-0">
+    <div className="flex-1 h-full w-full flex flex-col bg-canvas min-h-0">
       {/* ── Unsynced Edit Recovery Dialog (explicit decision required) ── */}
       {recoverableEdit && displayPage && (
         <UnsyncedEditRecoveryDialog
@@ -361,7 +361,7 @@ export function EditorArea() {
               defaultSize={Math.round((editorSplitRatio || 0.5) * 100)}
               minSize={20}
               maxSize={80}
-              className="min-h-0 min-w-0"
+              className="h-full flex flex-col min-h-0 min-w-0"
             >
               <EditorPane
                 paneId="primary"
@@ -388,7 +388,7 @@ export function EditorArea() {
               defaultSize={Math.round((1 - (editorSplitRatio || 0.5)) * 100)}
               minSize={20}
               maxSize={80}
-              className="min-h-0 min-w-0"
+              className="h-full flex flex-col min-h-0 min-w-0"
             >
               <EditorPane
                 paneId="secondary"

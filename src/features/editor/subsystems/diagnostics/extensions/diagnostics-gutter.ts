@@ -381,7 +381,10 @@ const compilerDiagnosticsTheme = EditorView.baseTheme({
     opacity: '0.65',
   },
   '.cm-compiler-diag-gutter': {
-    width: '14px',
+    minWidth: '0',
+  },
+  '.cm-compiler-diag-gutter .cm-gutterElement': {
+    padding: '0 3px 0 1px',
   },
   '.cm-compiler-gutter-marker': {
     display: 'inline-flex',
@@ -389,6 +392,7 @@ const compilerDiagnosticsTheme = EditorView.baseTheme({
     justifyContent: 'center',
     width: '9px',
     height: '9px',
+    marginTop: 'calc((var(--cm-line-height, 1.54) * 1em - 9px) / 2)',
     borderRadius: '9999px',
     fontSize: '8px',
     lineHeight: '1',

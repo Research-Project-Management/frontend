@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { User, SlidersHorizontal, Bell, Lock, Tag, Blocks, ArrowLeft } from 'lucide-react';
+import { User, SlidersHorizontal, Lock, Tag, Blocks, ArrowLeft } from 'lucide-react';
 import React from 'react';
 import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
@@ -36,7 +36,6 @@ export function SideBar() {
   const navItems: NavItem[] = [
     { label: 'Profile', icon: User, to: '/settings' },
     { label: 'Preferences', icon: SlidersHorizontal, to: '/settings/preferences' },
-    { label: 'Notifications', icon: Bell, to: '/settings/notifications' },
     { label: 'Security', icon: Lock, to: '/settings/security' },
     { label: 'Labels', icon: Tag, to: '/settings/labels' },
     { label: 'Integrations', icon: Blocks, to: '/settings/integrations' },

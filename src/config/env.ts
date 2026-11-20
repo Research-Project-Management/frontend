@@ -16,6 +16,16 @@ const envSchema = z.object({
       },
     )
     .default('http://127.0.0.1:3000'),
+  NEXT_PUBLIC_REALTIME_URL: z
+    .string()
+    .trim()
+    .refine(
+      (v) => !v || v === '' || v.startsWith('/') || /^https?:\/\//i.test(v),
+      {
+        message: 'NEXT_PUBLIC_REALTIME_URL must be a valid URL, relative path, or empty',
+      },
+    )
+    .default('http://127.0.0.1:3014'),
   NEXT_PUBLIC_APP_NAME: z.string().default('Flux'),
   NEXT_PUBLIC_ENABLE_ANALYTICS: z
     .preprocess((val) => String(val ?? 'false').toLowerCase().trim(), z.string())
@@ -23,6 +33,11 @@ const envSchema = z.object({
 
   // Server Environment (Node.js runtime only)
   INTERNAL_API_URL: z
+    .string()
+    .trim()
+    .optional()
+    .transform((v) => (v && v.length > 0 ? v : undefined)),
+  INTERNAL_REALTIME_URL: z
     .string()
     .trim()
     .optional()
@@ -66,13 +81,58 @@ const resolveRawApiUrl = (): string => {
   return configured;
 };
 
+const resolveRawRealtimeUrl = (): string => {
+  const rawConfigured = process.env.NEXT_PUBLIC_REALTIME_URL;
+  const configured = (rawConfigured ?? '').trim().replace(/\/$/, '');
+
+  // On the server (Node.js SSR / Route Handlers), prefer INTERNAL_REALTIME_URL, then NEXT_PUBLIC_REALTIME_URL
+  if (typeof window === 'undefined') {
+    const internal = (process.env.INTERNAL_REALTIME_URL ?? '').trim().replace(/\/$/, '');
+    return internal || configured || 'http://127.0.0.1:3014';
+  }
+
+  const isLocalBrowser =
+    window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  // If NEXT_PUBLIC_REALTIME_URL was not explicitly set:
+  // default to standalone local Realtime service (:3014) on localhost, or same-origin ('') in prod.
+  if (rawConfigured === undefined) {
+    return isLocalBrowser && window.location.protocol === 'http:'
+      ? 'http://127.0.0.1:3014'
+      : '';
+  }
+
+  // 1. If NEXT_PUBLIC_REALTIME_URL is empty or relative, route through same-origin /socket.io rewrite
+  if (!configured || configured === '/') {
+    return '';
+  }
+
+  // 2. Prevent Mixed Content errors & dynamic DNS blocks on HTTPS / sslip.io
+  if (
+    (window.location.protocol === 'https:' && /^http:\/\//i.test(configured)) ||
+    /\.sslip\.io(\b|:|\/|$)/i.test(configured)
+  ) {
+    return '';
+  }
+
+  // 3. In production browser (not localhost), avoid connecting to localhost/127.0.0.1
+  if (!isLocalBrowser && /^https?:\/\/(localhost|127\.0\.0\.1)(\b|:|\/|$)/i.test(configured)) {
+    return '';
+  }
+
+  return configured;
+};
+
 const parseEnv = () => {
   const resolvedApiUrl = resolveRawApiUrl();
+  const resolvedRealtimeUrl = resolveRawRealtimeUrl();
   const rawEnv = {
     NEXT_PUBLIC_API_URL: resolvedApiUrl,
+    NEXT_PUBLIC_REALTIME_URL: resolvedRealtimeUrl,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
     NEXT_PUBLIC_ENABLE_ANALYTICS: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || 'false',
     INTERNAL_API_URL: process.env.INTERNAL_API_URL,
+    INTERNAL_REALTIME_URL: process.env.INTERNAL_REALTIME_URL,
     NODE_ENV: process.env.NODE_ENV || 'development',
   };
 
@@ -85,9 +145,11 @@ const parseEnv = () => {
     );
     return {
       NEXT_PUBLIC_API_URL: resolvedApiUrl,
+      NEXT_PUBLIC_REALTIME_URL: resolvedRealtimeUrl,
       NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'Flux',
       NEXT_PUBLIC_ENABLE_ANALYTICS: false,
       INTERNAL_API_URL: undefined,
+      INTERNAL_REALTIME_URL: undefined,
       NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
     };
   }
@@ -97,5 +159,6 @@ const parseEnv = () => {
 
 export const env = parseEnv();
 export const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
+export const REALTIME_BASE_URL = env.NEXT_PUBLIC_REALTIME_URL;
 export type Env = z.infer<typeof envSchema>;
 

@@ -257,13 +257,24 @@ export function formatInline(text: string): React.ReactNode {
   return parts;
 }
 
-export function renderMarkdown(text: string): React.ReactNode[] {
+export interface RenderMarkdownOptions {
+  components?: Partial<Components>;
+}
+
+export function renderMarkdown(
+  text: string,
+  options?: RenderMarkdownOptions,
+): React.ReactNode[] {
+  const mergedComponents = options?.components
+    ? { ...markdownComponents, ...options.components }
+    : markdownComponents;
+
   return [
     <ReactMarkdown
       key="markdown"
       remarkPlugins={[remarkGfm, remarkMath]}
       rehypePlugins={[rehypeKatex]}
-      components={markdownComponents}
+      components={mergedComponents}
     >
       {normalizeMarkdown(text)}
     </ReactMarkdown>,

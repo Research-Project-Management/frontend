@@ -1,65 +1,119 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { useQueryClient } from '@tanstack/react-query';
-import { getAuthToken, getEffectiveBaseUrl } from '@/shared/lib/api';
+import type { Socket } from 'socket.io-client';
+import { type InfiniteData, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChatStore } from '../store/chat.store';
 import { CHAT_QUERY_KEYS } from './use-chat-queries';
-import { ChatMessage, MessagesPageResponse, MessageType } from '../types/chat.types';
+import type { ChatMessage, MessagesPageResponse, MessageType } from '../types/chat.types';
+import {
+  CHAT_SOCKET_EVENTS,
+  acquireChatSocket,
+  joinConversationRoom,
+  leaveConversationRoom,
+  releaseChatSocket,
+} from '../services/chat-socket.manager';
+
+interface TypingStatusPayload {
+  conversationId: string;
+  userId: string;
+  userName?: string;
+  isTyping: boolean;
+}
+
+interface ReactionUpdatedPayload {
+  conversationId?: string;
+  messageId: string;
+  userId: string;
+  emoji: string;
+  action: 'add' | 'remove';
+}
+
+interface PeerTypingEntry {
+  timer: ReturnType<typeof setTimeout>;
+  userName: string;
+}
+
+interface UserDisplayLike {
+  name?: string | null;
+  email?: string | null;
+  profile?: { name?: string | null } | null;
+}
+
+function resolveDisplayName(user: UserDisplayLike | null | undefined): string {
+  return user?.name || user?.profile?.name || user?.email?.split('@')[0] || 'User';
+}
+
+type MessagesInfiniteData = InfiniteData<MessagesPageResponse, unknown>;
 
 export function useChatSocket(activeConversationId: string | null) {
   const socketRef = useRef<Socket | null>(null);
+  const activeConversationIdRef = useRef<string | null>(activeConversationId);
+
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const setTypingUser = useChatStore((s) => s.setTypingUser);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const peerTypingTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const displayName = resolveDisplayName(user as UserDisplayLike | null | undefined);
+  const displayNameRef = useRef<string>(displayName);
 
   useEffect(() => {
-    if (!user?.id) return;
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
-    const token = getAuthToken();
-    const baseUrl = getEffectiveBaseUrl();
+  useEffect(() => {
+    displayNameRef.current = displayName;
+  }, [displayName]);
 
-    const socket = io(`${baseUrl || ''}/chat`, {
-      path: '/socket.io',
-      auth: { token },
-      transports: ['polling', 'websocket'],
-      reconnection: true,
-      reconnectionDelay: 2000,
-      reconnectionAttempts: 5,
-    });
+  const setTypingUser = useChatStore((s) => s.setTypingUser);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const peerTypingMapRef = useRef<Map<string, PeerTypingEntry>>(new Map());
 
+  // 1. Acquire one persistent /chat connection per userId (never reconnect on conversation switch)
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) return;
+
+    const peerTypingMap = peerTypingMapRef.current;
+    const socket = acquireChatSocket(userId);
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      // Join active conversation room if set
-      if (activeConversationId) {
-        socket.emit('conversation:join', { conversationId: activeConversationId });
+    const clearPeerTyping = (conversationId: string, senderId?: string, fallbackName?: string) => {
+      if (senderId) {
+        const key = `${conversationId}:${senderId}`;
+        const existing = peerTypingMap.get(key);
+        if (existing) {
+          clearTimeout(existing.timer);
+          peerTypingMap.delete(key);
+          setTypingUser(conversationId, existing.userName, false);
+          return;
+        }
       }
-    });
+      if (fallbackName) {
+        setTypingUser(conversationId, fallbackName, false);
+      }
+    };
 
-    // Handle new incoming messages
-    socket.on('message:new', (message: ChatMessage) => {
-      // 1. If message belongs to active conversation, append to query cache
-      if (message.conversationId === activeConversationId) {
-        queryClient.setQueryData(
-          CHAT_QUERY_KEYS.messages(activeConversationId),
-          (oldData: { pages: MessagesPageResponse[]; pageParams: unknown[] } | undefined) => {
-            if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+    const handleNewMessage = (message: ChatMessage) => {
+      const targetConvId = message.conversationId;
+      const isActive = targetConvId === activeConversationIdRef.current;
+      const hasCache = Boolean(queryClient.getQueryData(CHAT_QUERY_KEYS.messages(targetConvId)));
+
+      if (isActive || hasCache) {
+        queryClient.setQueryData<MessagesInfiniteData>(
+          CHAT_QUERY_KEYS.messages(targetConvId),
+          (oldData) => {
+            if (!oldData?.pages?.length) {
               return {
                 pages: [{ messages: [message], nextCursor: null }],
                 pageParams: [undefined],
               };
             }
-            const firstPage = oldData.pages[0];
-            // 1. Check if message already exists by real ID
-            const exists = firstPage.messages.some((m) => m.id === message.id);
-            if (exists) return oldData;
 
-            // 2. Check if this matches a pending optimistic temp message from same sender
+            const firstPage = oldData.pages[0];
+            if (firstPage.messages.some((m) => m.id === message.id)) {
+              return oldData;
+            }
+
             const tempIndex = firstPage.messages.findIndex(
               (m) =>
                 m.id.startsWith('temp-') &&
@@ -72,154 +126,153 @@ export function useChatSocket(activeConversationId: string | null) {
               updated[tempIndex] = message;
               return {
                 ...oldData,
-                pages: [
-                  {
-                    ...firstPage,
-                    messages: updated,
-                  },
-                  ...oldData.pages.slice(1),
-                ],
+                pages: [{ ...firstPage, messages: updated }, ...oldData.pages.slice(1)],
               };
             }
 
-            const updatedFirstPage = {
-              ...firstPage,
-              messages: [message, ...firstPage.messages],
-            };
             return {
               ...oldData,
-              pages: [updatedFirstPage, ...oldData.pages.slice(1)],
+              pages: [
+                { ...firstPage, messages: [message, ...firstPage.messages] },
+                ...oldData.pages.slice(1),
+              ],
             };
           },
         );
-
-        // Auto mark as read if message is from someone else
-        if (message.senderId !== user.id) {
-          socket.emit('message:read', { conversationId: activeConversationId });
-        }
-
-        // Clear sender's typing indicator as they just sent their message
-        const senderName = message.sender?.name;
-        if (senderName) {
-          const key = `${message.conversationId}:${senderName}`;
-          if (peerTypingTimeoutsRef.current[key]) {
-            clearTimeout(peerTypingTimeoutsRef.current[key]);
-            delete peerTypingTimeoutsRef.current[key];
-          }
-          setTypingUser(message.conversationId, senderName, false);
-        }
       }
 
-      // 2. Always refresh conversation list to update lastMessageSnippet and unread badge
+      if (isActive && message.senderId !== userId) {
+        socket.emit(CHAT_SOCKET_EVENTS.MESSAGE_READ, { conversationId: targetConvId });
+      }
+
+      clearPeerTyping(targetConvId, message.senderId, message.sender?.name);
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
-    });
+    };
 
-    // Handle typing status from peers with automatic TTL expiration
-    socket.on(
-      'typing:status',
-      (payload: {
-        conversationId: string;
-        userId: string;
-        userName: string;
-        isTyping: boolean;
-      }) => {
-        if (payload.userId === user.id) return;
-        const key = `${payload.conversationId}:${payload.userName}`;
+    const handleConversationUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+    };
 
-        // Clear existing timer if any
-        if (peerTypingTimeoutsRef.current[key]) {
-          clearTimeout(peerTypingTimeoutsRef.current[key]);
-          delete peerTypingTimeoutsRef.current[key];
-        }
+    const handleTypingStatus = (payload: TypingStatusPayload) => {
+      if (payload.userId === userId) return;
 
-        if (payload.isTyping) {
-          setTypingUser(payload.conversationId, payload.userName, true);
+      const key = `${payload.conversationId}:${payload.userId}`;
+      const existing = peerTypingMap.get(key);
+      if (existing) {
+        clearTimeout(existing.timer);
+        peerTypingMap.delete(key);
+      }
 
-          // Auto-expire typing indicator after 2.5s if no new heartbeat received
-          peerTypingTimeoutsRef.current[key] = setTimeout(() => {
-            setTypingUser(payload.conversationId, payload.userName, false);
-            delete peerTypingTimeoutsRef.current[key];
-          }, 2500);
-        } else {
-          setTypingUser(payload.conversationId, payload.userName, false);
-        }
-      },
-    );
+      const resolvedName = payload.userName || existing?.userName || 'Someone';
+      if (payload.isTyping) {
+        setTypingUser(payload.conversationId, resolvedName, true);
+        const timer = setTimeout(() => {
+          setTypingUser(payload.conversationId, resolvedName, false);
+          peerTypingMap.delete(key);
+        }, 2500);
+        peerTypingMap.set(key, { timer, userName: resolvedName });
+      } else {
+        setTypingUser(payload.conversationId, resolvedName, false);
+      }
+    };
 
-    // Handle reaction updates from peers
-    socket.on(
-      'reaction_updated',
-      (payload: {
-        messageId: string;
-        userId: string;
-        emoji: string;
-        action: 'add' | 'remove';
-      }) => {
-        if (!activeConversationId) return;
-        queryClient.setQueryData(
-          CHAT_QUERY_KEYS.messages(activeConversationId),
-          (oldData: { pages: MessagesPageResponse[]; pageParams: unknown[] } | undefined) => {
-            if (!oldData?.pages) return oldData;
-            return {
-              ...oldData,
-              pages: oldData.pages.map((page) => ({
-                ...page,
-                messages: page.messages.map((msg) => {
-                  if (msg.id !== payload.messageId) return msg;
-                  const existing = msg.reactions || [];
-                  let updatedReactions = [...existing];
-                  if (payload.action === 'remove') {
-                    updatedReactions = updatedReactions.filter(
-                      (r) => !(r.userId === payload.userId && r.emoji === payload.emoji),
-                    );
-                  } else {
-                    const alreadyHas = updatedReactions.some(
-                      (r) => r.userId === payload.userId && r.emoji === payload.emoji,
-                    );
-                    if (!alreadyHas) {
-                      updatedReactions.push({
-                        id: `temp-${Date.now()}`,
-                        emoji: payload.emoji,
-                        userId: payload.userId,
-                      });
-                    }
+    const handleReactionUpdated = (payload: ReactionUpdatedPayload) => {
+      const targetConvId = payload.conversationId || activeConversationIdRef.current;
+      if (!targetConvId) return;
+
+      queryClient.setQueryData<MessagesInfiniteData>(
+        CHAT_QUERY_KEYS.messages(targetConvId),
+        (oldData) => {
+          if (!oldData?.pages) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((msg) => {
+                if (msg.id !== payload.messageId) return msg;
+                const existing = msg.reactions || [];
+                let updatedReactions = [...existing];
+                if (payload.action === 'remove') {
+                  updatedReactions = updatedReactions.filter(
+                    (r) => !(r.userId === payload.userId && r.emoji === payload.emoji),
+                  );
+                } else {
+                  const alreadyHas = updatedReactions.some(
+                    (r) => r.userId === payload.userId && r.emoji === payload.emoji,
+                  );
+                  if (!alreadyHas) {
+                    updatedReactions.push({
+                      id: `temp-${Date.now()}`,
+                      emoji: payload.emoji,
+                      userId: payload.userId,
+                    });
                   }
-                  return {
-                    ...msg,
-                    reactions: updatedReactions,
-                  };
-                }),
-              })),
-            };
-          },
-        );
-      },
-    );
+                }
+                return {
+                  ...msg,
+                  reactions: updatedReactions,
+                };
+              }),
+            })),
+          };
+        },
+      );
+    };
+
+    socket.on(CHAT_SOCKET_EVENTS.MESSAGE_NEW, handleNewMessage);
+    socket.on(CHAT_SOCKET_EVENTS.CONVERSATION_UPDATED, handleConversationUpdated);
+    socket.on(CHAT_SOCKET_EVENTS.TYPING_STATUS, handleTypingStatus);
+    socket.on(CHAT_SOCKET_EVENTS.REACTION_UPDATED, handleReactionUpdated);
 
     return () => {
-      Object.values(peerTypingTimeoutsRef.current).forEach(clearTimeout);
-      peerTypingTimeoutsRef.current = {};
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [user?.id, activeConversationId, queryClient, setTypingUser]);
+      socket.off(CHAT_SOCKET_EVENTS.MESSAGE_NEW, handleNewMessage);
+      socket.off(CHAT_SOCKET_EVENTS.CONVERSATION_UPDATED, handleConversationUpdated);
+      socket.off(CHAT_SOCKET_EVENTS.TYPING_STATUS, handleTypingStatus);
+      socket.off(CHAT_SOCKET_EVENTS.REACTION_UPDATED, handleReactionUpdated);
 
-  // Handle active conversation room transitions
+      for (const entry of peerTypingMap.values()) {
+        clearTimeout(entry.timer);
+      }
+      peerTypingMap.clear();
+
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+
+      socketRef.current = null;
+      releaseChatSocket(userId);
+    };
+  }, [user?.id, queryClient, setTypingUser]);
+
+  // 2. Join/leave conversation rooms cleanly on activeConversationId transitions
   useEffect(() => {
     const socket = socketRef.current;
-    if (!socket || !socket.connected || !activeConversationId) return;
+    if (!user?.id || !activeConversationId || !socket) return;
 
-    socket.emit('conversation:join', { conversationId: activeConversationId });
-    socket.emit('message:read', { conversationId: activeConversationId });
+    joinConversationRoom(socket, activeConversationId);
+
+    const markConversationReadOnConnect = () => {
+      socket.emit(CHAT_SOCKET_EVENTS.MESSAGE_READ, { conversationId: activeConversationId });
+    };
+
+    if (socket.connected) {
+      markConversationReadOnConnect();
+    }
+    socket.on('connect', markConversationReadOnConnect);
 
     return () => {
-      socket.emit('typing:stop', { conversationId: activeConversationId });
-      socket.emit('conversation:leave', { conversationId: activeConversationId });
+      socket.off('connect', markConversationReadOnConnect);
+      if (socket.connected) {
+        socket.emit(CHAT_SOCKET_EVENTS.TYPING_STOP, {
+          conversationId: activeConversationId,
+          userName: displayNameRef.current,
+        });
+      }
+      leaveConversationRoom(socket, activeConversationId);
     };
-  }, [activeConversationId]);
+  }, [user?.id, activeConversationId]);
 
-  // Realtime message send via socket
   const sendSocketMessage = useCallback(
     (
       content: string,
@@ -230,7 +283,7 @@ export function useChatSocket(activeConversationId: string | null) {
       const socket = socketRef.current;
       if (!socket || !socket.connected || !activeConversationId) return;
 
-      socket.emit('message:send', {
+      socket.emit(CHAT_SOCKET_EVENTS.MESSAGE_SEND, {
         conversationId: activeConversationId,
         dto: {
           content,
@@ -243,13 +296,12 @@ export function useChatSocket(activeConversationId: string | null) {
     [activeConversationId],
   );
 
-  // Reaction event emitter
   const emitReaction = useCallback(
     (messageId: string, emoji: string, action: 'add' | 'remove' = 'add') => {
       const socket = socketRef.current;
       if (!socket || !socket.connected) return;
 
-      socket.emit('message_reaction', {
+      socket.emit(CHAT_SOCKET_EVENTS.MESSAGE_REACTION, {
         messageId,
         emoji,
         action,
@@ -258,42 +310,41 @@ export function useChatSocket(activeConversationId: string | null) {
     [],
   );
 
-  // Typing event emitters
   const emitTyping = useCallback(
     (isTyping: boolean) => {
       const socket = socketRef.current;
       if (!socket || !socket.connected || !activeConversationId) return;
 
-      const userName =
-        (user as any)?.name ||
-        (user as any)?.profile?.name ||
-        user?.email?.split('@')[0] ||
-        'User';
+      const userName = displayNameRef.current;
 
       if (isTyping) {
-        socket.emit('typing:start', {
+        socket.emit(CHAT_SOCKET_EVENTS.TYPING_START, {
           conversationId: activeConversationId,
           userName,
         });
 
-        // Auto-clear typing after 3 seconds of inactivity
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
-          socket.emit('typing:stop', { conversationId: activeConversationId });
+          socket.emit(CHAT_SOCKET_EVENTS.TYPING_STOP, {
+            conversationId: activeConversationId,
+            userName: displayNameRef.current,
+          });
         }, 3000);
       } else {
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        socket.emit('typing:stop', { conversationId: activeConversationId });
+        socket.emit(CHAT_SOCKET_EVENTS.TYPING_STOP, {
+          conversationId: activeConversationId,
+          userName,
+        });
       }
     },
-    [activeConversationId, user],
+    [activeConversationId],
   );
 
-  // Mark as read
   const markAsRead = useCallback((conversationId: string) => {
     const socket = socketRef.current;
     if (!socket || !socket.connected) return;
-    socket.emit('message:read', { conversationId });
+    socket.emit(CHAT_SOCKET_EVENTS.MESSAGE_READ, { conversationId });
   }, []);
 
   return {

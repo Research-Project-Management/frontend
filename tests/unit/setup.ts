@@ -200,7 +200,7 @@ vi.mock('@/features/editor/core/queries/useActiveDocument', () => ({
   useActiveDocument: () => (globalThis as any).__mockActiveDocument,
 }));
 
-vi.mock('@/features/editor/subsystems/review/ui/hooks/useComment', () => {
+vi.mock('@/features/editor/subsystems/review/ui/hooks/useComments', () => {
   return {
     usePageComments: () => ({ data: globalReviewMocks.mockComments, isLoading: false, isError: false }),
     useResolveComment: () => ({ mutate: globalReviewMocks.mockMutateResolve, isPending: false }),
@@ -210,11 +210,10 @@ vi.mock('@/features/editor/subsystems/review/ui/hooks/useComment', () => {
     useCreateComment: () => ({ mutate: globalReviewMocks.mockMutateCreate, isPending: false }),
     useUpdateComment: () => ({ mutate: globalReviewMocks.mockMutateUpdate, isPending: false }),
     commentKeys: { all: ['page-comments'], byPage: () => ['page-comments'] },
-    useSafeQueryClient: vi.fn(),
   };
 });
 
-vi.mock('@/features/editor/subsystems/review/ui/hooks/useSuggestion', () => {
+vi.mock('@/features/editor/subsystems/review/ui/hooks/useSuggestions', () => {
   return {
     usePageSuggestions: () => ({ data: globalReviewMocks.mockSuggestions, isLoading: false, isError: false }),
     useAcceptSuggestion: () => ({ mutate: globalReviewMocks.mockMutateAcceptSuggestion, isPending: false }),

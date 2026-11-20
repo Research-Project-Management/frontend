@@ -6,28 +6,9 @@ import '@/shared/styles/globals.css';
 import Providers from './providers';
 
 const inter = localFont({
-  src: [
-    {
-      path: './fonts/Inter-400.woff2',
-      weight: '400',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Inter-500.woff2',
-      weight: '500',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Inter-600.woff2',
-      weight: '600',
-      style: 'normal',
-    },
-    {
-      path: './fonts/Inter-700.woff2',
-      weight: '700',
-      style: 'normal',
-    },
-  ],
+  src: './fonts/InterVariable.woff2',
+  weight: '100 900',
+  style: 'normal',
   variable: '--font-inter',
   display: 'swap',
 });

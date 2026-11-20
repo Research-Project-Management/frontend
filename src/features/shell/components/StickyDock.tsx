@@ -181,6 +181,7 @@ export interface StickyDockProps {
   onAiClick?: () => void;
   isAiActive?: boolean;
   aiTooltip?: string;
+  hideAi?: boolean;
 }
 
 export default function StickyDock({
@@ -190,6 +191,7 @@ export default function StickyDock({
   onAiClick,
   isAiActive,
   aiTooltip,
+  hideAi = false,
 }: StickyDockProps = {}) {
   const [isPillOpen, setIsPillOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,9 +203,10 @@ export default function StickyDock({
   const aiWidth = useAiCompanionStore((s) => s.width);
   const toggleAiOpen = useAiCompanionStore((s) => s.toggleOpen);
 
+  const showAi = !hideAi;
   const hasCustomAiHandler = Boolean(onAiClick);
-  const drawerOpen = hasCustomAiHandler ? false : isAiOpen;
-  const aiButtonActive = hasCustomAiHandler ? Boolean(isAiActive) : isAiOpen;
+  const drawerOpen = !showAi || hasCustomAiHandler ? false : isAiOpen;
+  const aiButtonActive = !showAi ? false : hasCustomAiHandler ? Boolean(isAiActive) : isAiOpen;
 
   const pathname = usePathname();
   const { totalBadgeCount } = useChatBadgeCounts();
@@ -293,7 +296,13 @@ export default function StickyDock({
             <button
               type="button"
               onClick={() => setIsPillOpen(true)}
-              aria-label={isFloating ? 'Quick Tools (AI & Stickies)' : 'Stickies'}
+              aria-label={
+                isFloating
+                  ? hideAi
+                    ? 'Quick Tools (Chat & Stickies)'
+                    : 'Quick Tools (AI & Stickies)'
+                  : 'Stickies'
+              }
               className={cn(
                 isFloating
                   ? 'relative flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md transition-colors duration-200 outline-none select-none cursor-pointer hover:bg-muted'
@@ -319,7 +328,11 @@ export default function StickyDock({
           </TooltipTrigger>
           {!isPillOpen && (
             <TooltipContent side={tooltipSide} sideOffset={10}>
-              {isFloating ? 'Quick Tools (AI & Stickies)' : 'Stickies'}
+              {isFloating
+                ? hideAi
+                  ? 'Quick Tools (Chat & Stickies)'
+                  : 'Quick Tools (AI & Stickies)'
+                : 'Stickies'}
             </TooltipContent>
           )}
         </Tooltip>
@@ -338,35 +351,37 @@ export default function StickyDock({
               )}
             >
               {/* 1. AI Assistant Toggle Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (onAiClick) {
-                        onAiClick();
-                      } else {
-                        toggleAiOpen();
-                      }
-                      setIsPillOpen(false);
-                    }}
-                    aria-label="AI Assistant"
-                    className={cn(
-                      'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
-                      aiButtonActive && 'bg-muted'
-                    )}
-                  >
-                    <img
-                      src="/Chat.svg"
-                      alt="AI Assistant"
-                      className="size-4.5 rounded-full object-cover block shrink-0"
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side={tooltipSide} sideOffset={12}>
-                  {aiTooltip ?? 'AI Assistant (Ctrl+J)'}
-                </TooltipContent>
-              </Tooltip>
+              {showAi && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onAiClick) {
+                          onAiClick();
+                        } else {
+                          toggleAiOpen();
+                        }
+                        setIsPillOpen(false);
+                      }}
+                      aria-label="AI Assistant"
+                      className={cn(
+                        'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
+                        aiButtonActive && 'bg-muted'
+                      )}
+                    >
+                      <img
+                        src="/Chat.svg"
+                        alt="AI Assistant"
+                        className="size-4.5 rounded-full object-cover block shrink-0"
+                      />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side={tooltipSide} sideOffset={12}>
+                    {aiTooltip ?? 'AI Assistant (Ctrl+J)'}
+                  </TooltipContent>
+                </Tooltip>
+              )}
 
               {/* 2. Floating Chat Toggle */}
               <Tooltip>

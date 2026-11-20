@@ -57,7 +57,7 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
   } = useInfiniteMessages(conversationId);
 
   // Realtime Socket
-  const { sendSocketMessage, emitTyping, emitReaction } = useChatSocket(conversationId);
+  const { emitTyping } = useChatSocket(conversationId);
 
   // Mutations
   const sendMessageMutation = useSendMessage(conversationId);
@@ -191,7 +191,6 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
   };
 
   const handleReaction = (messageId: string, emoji: string) => {
-    emitReaction(messageId, emoji, 'add');
     addReactionMutation.mutate({ messageId, emoji });
   };
 

@@ -14,7 +14,7 @@
  * - Safe fetch via Result<T, ApiError>
  */
 
-import { API_BASE_URL } from '@/config/env';
+import { API_BASE_URL, REALTIME_BASE_URL } from '@/config/env';
 import { ApiError, isApiError, type RequestOptions } from '@/shared/types/api.types';
 import { tryCatch, type Result } from '@/shared/utils/error.util';
 import { logger } from '@/shared/lib/logger';
@@ -60,6 +60,27 @@ export function getEffectiveBaseUrl(): string {
     }
   }
   return API_BASE_URL;
+}
+
+export function getRealtimeBaseUrl(): string {
+  if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+    try {
+      const override = window.localStorage.getItem('FLUX_REALTIME_BASE_URL');
+      if (override && override.trim()) return override.trim().replace(/\/$/, '');
+    } catch {
+      // Ignore security errors in restricted browser contexts
+    }
+  }
+  if (typeof window !== 'undefined') {
+    if (
+      !REALTIME_BASE_URL ||
+      (window.location.protocol === 'https:' && /^http:\/\//i.test(REALTIME_BASE_URL)) ||
+      /\.sslip\.io(\b|:|\/|$)/i.test(REALTIME_BASE_URL)
+    ) {
+      return '';
+    }
+  }
+  return REALTIME_BASE_URL;
 }
 
 // ─── 2. Auth Session Management & Decoupled Event Emitter ─────────────────────

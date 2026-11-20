@@ -8,10 +8,6 @@ import {
   UserStar,
   Compass,
   PanelLeft,
-  MessageSquare,
-  BarChart3,
-  Archive,
-  Microscope,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -20,7 +16,6 @@ import {
   WorkItemsIcon,
   StickiesIcon,
   StorageIcon,
-  WikiIcon,
 } from '@/shared/components/icons';
 import { useProjectsQuery } from '../hooks/use-project';
 import { useQueryClient } from '@tanstack/react-query';
@@ -68,11 +63,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     (projects && projects.length > 0 ? projects[0]?.id : '') ||
     '';
 
-  const currentProject = useMemo(() => {
-    if (!resolvedProjectId) return null;
-    return projects.find((p) => p.id === resolvedProjectId) || null;
-  }, [projects, resolvedProjectId]);
-
   // ── 1. Personal Space (Private) Navigation ─────────────────────────────────
   const personalNavItems: NavItem[] = useMemo(
     () => [
@@ -89,7 +79,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const projectModuleItems: NavItem[] = useMemo(() => {
     if (!resolvedProjectId) return [];
 
-    const items: NavItem[] = [
+    return [
       {
         label: 'Overview',
         icon: Compass,
@@ -102,64 +92,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         to: `/projects/${resolvedProjectId}/work-items`,
         moduleKey: 'work-items',
       },
-      {
-        label: 'Pages',
-        icon: WikiIcon,
-        to: `/projects/${resolvedProjectId}/pages`,
-        moduleKey: 'pages',
-      },
-      {
-        label: 'Messages',
-        icon: MessageSquare,
-        to: `/projects/${resolvedProjectId}/messages`,
-        moduleKey: 'chat',
-      },
-      {
-        label: 'Experiments',
-        icon: Microscope,
-        to: `/projects/${resolvedProjectId}/experiments`,
-        moduleKey: 'experiments',
-      },
-      {
-        label: 'Analytics',
-        icon: BarChart3,
-        to: `/projects/${resolvedProjectId}/analytics`,
-        moduleKey: 'analytics',
-      },
-      {
-        label: 'Archives',
-        icon: Archive,
-        to: `/projects/${resolvedProjectId}/archives`,
-        moduleKey: 'archives',
-      },
     ];
-
-    if (!currentProject?.modules || currentProject.modules.length === 0) {
-      return items;
-    }
-
-    const activeSet = new Set(
-      currentProject.modules.map((m: string) =>
-        String(m).toLowerCase().replace(/_/g, '-')
-      )
-    );
-
-    return items.filter((item) => {
-      // Overview and Work items are permanent core anchors
-      if (!item.moduleKey || item.moduleKey === 'overview' || item.moduleKey === 'work-items') {
-        return true;
-      }
-      // For chat, match either 'chat' or 'messages'
-      if (item.moduleKey === 'chat') {
-        return activeSet.has('chat') || activeSet.has('messages');
-      }
-      // For experiments, match 'experiments', legacy 'storage', or default to true for scientific projects
-      if (item.moduleKey === 'experiments') {
-        return activeSet.has('experiments') || activeSet.has('storage') || true;
-      }
-      return activeSet.has(item.moduleKey);
-    });
-  }, [resolvedProjectId, currentProject?.modules]);
+  }, [resolvedProjectId]);
 
   // ── Navigation Helpers ─────────────────────────────────────────────────────
   const isItemActive = (item: NavItem) => {
@@ -183,9 +117,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <div className="h-11 px-2.5 flex items-center shrink-0">
         <div className="flex items-center justify-between h-8 px-1 font-semibold text-sm tracking-tight text-foreground select-none w-full">
           <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground truncate max-w-[180px]">
-            {isProjectMode
-              ? currentProject?.name || activeSpace.projectName || 'Project'
-              : 'Projects'}
+            Projects
           </span>
           <Tooltip>
             <TooltipTrigger asChild>

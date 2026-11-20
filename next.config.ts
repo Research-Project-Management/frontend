@@ -307,6 +307,10 @@ const nextConfig: NextConfig = {
       process.env.INTERNAL_API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       'http://127.0.0.1:3000';
+    const realtimeUrl =
+      process.env.INTERNAL_REALTIME_URL ||
+      process.env.NEXT_PUBLIC_REALTIME_URL ||
+      'http://127.0.0.1:3014';
     return [
       {
         source: '/api/:path*',
@@ -318,7 +322,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/socket.io/:path*',
-        destination: `${backendUrl}/socket.io/:path*`,
+        destination: `${realtimeUrl}/socket.io/:path*`,
       },
       {
         source: '/notifications',

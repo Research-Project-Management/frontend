@@ -7,6 +7,7 @@ import {
   FriendRequestsData,
   SearchedUser,
   MessageType,
+  ChatAttachment,
 } from '../types/chat.types';
 
 export const chatService = {
@@ -64,6 +65,141 @@ export const chatService = {
 
   async removeReaction(messageId: string, emoji: string): Promise<unknown> {
     return apiDelete(`/api/chat/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`);
+  },
+
+  // ─── Attachments & Media (Cloudflare R2 Direct Upload & Scale) ───────────
+  async presignAttachment(
+    conversationId: string,
+    dto: { filename: string; sizeBytes: number; mimeType?: string },
+  ): Promise<{
+    uploadUrl: string;
+    storageKey: string;
+    filename: string;
+    sizeBytes: number;
+    mimeType: string;
+    maxSizeBytes: number;
+    expiresIn: number;
+    type: 'image' | 'file';
+  }> {
+    return apiPost(
+      `/api/chat/conversations/${conversationId}/attachments/presign`,
+      dto,
+    );
+  },
+
+  async uploadToPresignedUrl(
+    uploadUrl: string,
+    file: File | Blob,
+    mimeType: string,
+    onProgress?: (pct: number) => void,
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', mimeType || 'application/octet-stream');
+
+      if (onProgress && xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            onProgress(pct);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`R2 direct upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during direct R2 upload'));
+      xhr.ontimeout = () => reject(new Error('Timeout during direct R2 upload'));
+
+      xhr.send(file);
+    });
+  },
+
+  async completeAttachment(
+    conversationId: string,
+    dto: {
+      storageKey: string;
+      filename: string;
+      sizeBytes: number;
+      mimeType?: string;
+    },
+  ): Promise<ChatAttachment> {
+    return apiPost<ChatAttachment>(
+      `/api/chat/conversations/${conversationId}/attachments/complete`,
+      dto,
+    );
+  },
+
+  async uploadAttachmentDirect(
+    conversationId: string,
+    formData: FormData,
+  ): Promise<ChatAttachment> {
+    return apiPost<ChatAttachment>(
+      `/api/chat/conversations/${conversationId}/attachments/upload`,
+      formData,
+    );
+  },
+
+  /**
+   * Upload chat file orchestrator:
+   * 1. Validates file size limits (20MB for images, 50MB for files).
+   * 2. Issues presigned upload URL to Cloudflare R2.
+   * 3. Streams binary data directly to R2 for scalable performance.
+   * 4. Finalizes attachment and returns typed ChatAttachment.
+   */
+  async uploadChatFile(
+    conversationId: string,
+    file: File,
+    onProgress?: (pct: number) => void,
+  ): Promise<ChatAttachment> {
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(file.name);
+    const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB
+    const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+    if (isImage && file.size > MAX_IMAGE_BYTES) {
+      throw new Error(`Ảnh "${file.name}" vượt quá dung lượng tối đa 20MB.`);
+    }
+    if (!isImage && file.size > MAX_FILE_BYTES) {
+      throw new Error(`Tệp "${file.name}" vượt quá dung lượng tối đa 50MB.`);
+    }
+
+    try {
+      const presign = await this.presignAttachment(conversationId, {
+        filename: file.name,
+        sizeBytes: file.size,
+        mimeType: file.type || 'application/octet-stream',
+      });
+
+      await this.uploadToPresignedUrl(
+        presign.uploadUrl,
+        file,
+        presign.mimeType,
+        onProgress,
+      );
+
+      const completed = await this.completeAttachment(conversationId, {
+        storageKey: presign.storageKey,
+        filename: presign.filename,
+        sizeBytes: presign.sizeBytes,
+        mimeType: presign.mimeType,
+      });
+
+      return completed;
+    } catch {
+      // Fallback: direct multipart upload via backend
+      const formData = new FormData();
+      formData.append('file', file);
+      return this.uploadAttachmentDirect(conversationId, formData);
+    }
   },
 
   // ─── Project Chat Channels ──────────────────────────────────────────────────

@@ -99,51 +99,83 @@ export const MessageItem = memo(function MessageItem({
         )}
 
         {/* Message Content Bubble (Tactile Flat Precision per DESIGN.md Section 1 & 4.3) */}
-        <div
-          className={cn(
-            'px-3 py-2 rounded-md text-13 leading-relaxed whitespace-pre-wrap break-words',
-            isSelf
-              ? 'bg-background border border-border text-foreground shadow-2xs'
-              : 'bg-muted border border-border/50 text-foreground',
-          )}
-        >
-          {message.content}
-        </div>
+        {message.content && message.content.trim().length > 0 && (
+          <div
+            className={cn(
+              'px-3 py-2 rounded-md text-13 leading-relaxed whitespace-pre-wrap break-words',
+              isSelf
+                ? 'bg-background border border-border text-foreground shadow-2xs'
+                : 'bg-muted border border-border/50 text-foreground',
+            )}
+          >
+            {message.content}
+          </div>
+        )}
 
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {attachments.map((att, idx) => {
-              const isImg = att.type?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/i.test(att.url);
+              const isImg =
+                att.type === 'image' ||
+                att.type?.startsWith('image/') ||
+                att.mimeType?.startsWith('image/') ||
+                /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(att.url || att.name);
+
+              const formattedSize = att.size
+                ? att.size > 1024 * 1024
+                  ? `${(att.size / (1024 * 1024)).toFixed(1)} MB`
+                  : `${Math.round(att.size / 1024)} KB`
+                : null;
+
               if (isImg) {
                 return (
-                  <a
-                    key={idx}
-                    href={att.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block overflow-hidden rounded-md border border-border max-w-xs hover:opacity-90 transition-opacity"
-                  >
-                    <img
-                      src={att.url}
-                      alt={att.name || 'Attachment'}
-                      className="max-h-48 object-cover rounded-md"
-                    />
-                  </a>
+                  <div key={att.id || idx} className="group/img relative block max-w-sm rounded-lg overflow-hidden border border-border shadow-2xs bg-muted/20">
+                    <a
+                      href={att.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block overflow-hidden hover:opacity-95 transition-opacity"
+                    >
+                      <img
+                        src={att.url}
+                        alt={att.name || 'Image attachment'}
+                        className="max-h-64 max-w-full object-contain rounded-md"
+                        loading="lazy"
+                      />
+                    </a>
+                    {formattedSize && (
+                      <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-background/80 backdrop-blur-xs text-10 font-mono text-muted-foreground border border-border/60">
+                        {formattedSize}
+                      </div>
+                    )}
+                  </div>
                 );
               }
+
               return (
                 <a
-                  key={idx}
+                  key={att.id || idx}
                   href={att.url}
                   target="_blank"
                   rel="noreferrer"
                   download={att.name}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border border-border bg-background hover:bg-muted text-12 transition-colors shadow-2xs"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-md border border-border bg-background hover:bg-muted text-12 transition-colors shadow-2xs max-w-xs group/file"
                 >
-                  <FileText className="size-4 text-foreground shrink-0" />
-                  <span className="truncate max-w-36 font-medium text-foreground">{att.name}</span>
-                  <Download className="size-3 text-muted-foreground" />
+                  <div className="size-8 rounded bg-muted/80 flex items-center justify-center shrink-0 border border-border/60">
+                    <FileText className="size-4 text-primary" />
+                  </div>
+                  <div className="flex flex-col min-w-0 pr-1">
+                    <span className="truncate font-medium text-foreground text-12">
+                      {att.name}
+                    </span>
+                    {formattedSize && (
+                      <span className="text-11 text-muted-foreground font-mono">
+                        {formattedSize}
+                      </span>
+                    )}
+                  </div>
+                  <Download className="size-3.5 text-muted-foreground group-hover/file:text-foreground shrink-0 ml-auto transition-colors" />
                 </a>
               );
             })}

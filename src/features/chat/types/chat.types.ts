@@ -4,11 +4,14 @@ export type FilterTab = 'all' | 'direct' | 'group' | 'project';
 export type FriendshipStatus = 'pending' | 'accepted' | 'declined' | 'blocked';
 
 export interface ChatAttachment {
+  id?: string;
   name: string;
   url: string;
   size?: number;
-  type?: string;
+  type?: 'image' | 'file' | string;
   mimeType?: string;
+  storageKey?: string;
+  thumbnailUrl?: string;
 }
 
 export interface ChatUser {

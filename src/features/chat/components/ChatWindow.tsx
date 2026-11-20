@@ -16,7 +16,7 @@ import { useInfiniteMessages, useSendMessage, useAddReaction } from '../hooks/us
 import { useChatSocket } from '../hooks/use-chat-socket';
 import { MessageItem } from './MessageItem';
 import { ChatInput } from './ChatInput';
-import { ChatMessage, ConversationItem } from '../types/chat.types';
+import { ChatMessage, ConversationItem, ChatAttachment } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -147,10 +147,25 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const handleSendMessage = (content: string, replyTo?: ChatMessage | null) => {
+  const handleSendMessage = (
+    content: string,
+    replyTo?: ChatMessage | null,
+    attachments?: ChatAttachment[],
+  ) => {
+    const isImage = attachments?.length
+      ? attachments.every(
+          (a) =>
+            a.type === 'image' ||
+            a.mimeType?.startsWith('image/') ||
+            /\.(png|jpe?g|gif|webp|svg)$/i.test(a.url || a.name),
+        )
+      : false;
+
     // 1. Single channel mutation: creates instant 0ms optimistic message with reply quote in UI & persists to DB
     sendMessageMutation.mutate({
       content,
+      attachments,
+      type: attachments?.length ? (isImage ? 'image' : 'file') : 'text',
       replyToId: replyTo?.id,
       replyTo: replyTo
         ? {
@@ -382,6 +397,7 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
 
       {/* Input */}
       <ChatInput
+        conversationId={conversationId}
         onSendMessage={handleSendMessage}
         onTyping={emitTyping}
         isSending={sendMessageMutation.isPending}

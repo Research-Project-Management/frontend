@@ -34,7 +34,7 @@ import {
 } from '@/features/storage/store/storage-ui.store';
 
 interface MoveModalProps {
-  projectId?: string;
+  spaceId?: string;
 }
 
 interface BreadcrumbStep {
@@ -42,7 +42,7 @@ interface BreadcrumbStep {
   name: string;
 }
 
-export default function MoveModal({ projectId: propProjectId }: MoveModalProps) {
+export default function MoveModal({ spaceId: propSpaceId }: MoveModalProps) {
   const params = useParams() as { projectId?: string; id?: string };
   const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
 
@@ -50,7 +50,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
   const closeMoveModal = useStorageUIStore((s) => s.closeMoveModal);
   const open = itemsToMove.length > 0;
 
-  const targetSpaceId = propProjectId || params.projectId || params.id || undefined;
+  const targetSpaceId = propSpaceId || params.projectId || params.id || undefined;
 
   // Navigation state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -137,7 +137,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
     try {
       await createFolderMutation({
         name: newFolderName.trim(),
-        projectId: targetSpaceId,
+        spaceId: targetSpaceId,
         parentId: currentFolderId,
       });
       toast.success(`Created folder "${newFolderName.trim()}"`);

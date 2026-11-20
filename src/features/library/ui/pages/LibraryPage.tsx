@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
@@ -31,6 +31,8 @@ import {
 } from '@/features/library/domain/diff.domain';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
+import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
 import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
@@ -112,7 +114,10 @@ export function ModernLibraryPage({
   const { queryClient, invalidateScopeItemsAndCounts, resolveCachedItem } =
     useLibraryCacheSynchronizer(propSpaceId);
   const params = useParams() as { collectionId?: string; projectId?: string; feedId?: string };
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const openModal = useLibraryUIStore((s) => s.openModal);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
@@ -146,7 +151,29 @@ export function ModernLibraryPage({
     return feeds.find((f) => f.id === effectiveFeedId) || feeds[0];
   }, [feeds, effectiveFeedId]);
 
-  const { spaceId: activeSpaceId } = useActiveLibrarySpace();
+  const { spaceId: activeSpaceId, isProject, name: spaceName } = useActiveLibrarySpace();
+  const { projects = [], isLoading: isLoadingProjects, isError: isProjectsError } = useProjects();
+  const validateOrHealSpace = useWorkspaceContextStore((s) => s.validateOrHealSpace);
+
+  // Proactive auto-heal workspace space and library scope if active project is inaccessible / deleted
+  React.useEffect(() => {
+    if (
+      isProject &&
+      !params?.projectId &&
+      !isLoadingProjects &&
+      !isProjectsError &&
+      Array.isArray(projects)
+    ) {
+      validateOrHealSpace(projects);
+    }
+  }, [
+    isProject,
+    params?.projectId,
+    isLoadingProjects,
+    isProjectsError,
+    projects,
+    validateOrHealSpace,
+  ]);
 
   const effectiveSpaceId =
     propSpaceId ||
@@ -279,7 +306,7 @@ export function ModernLibraryPage({
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
-    const rootName = activeScope.type === 'user' ? 'My Library' : (activeScope.name || 'Project Library');
+    const rootName = isMounted && isProject ? (spaceName || 'Project Library') : 'My Library';
     if (isSavedSearchView && currentSavedSearch) {
       const { label: cleanName } = parseEmojiPrefix(currentSavedSearch.name);
       return [
@@ -340,7 +367,7 @@ export function ModernLibraryPage({
       });
     }
     return crumbs;
-  }, [isSavedSearchView, currentSavedSearch, currentCollection, collections, activeScope.name, activeScope.type, resolvedTitle, effectiveView, currentFeed, feeds, router, nav]);
+  }, [isSavedSearchView, currentSavedSearch, currentCollection, collections, isMounted, isProject, spaceName, resolvedTitle, effectiveView, currentFeed, feeds, router, nav]);
 
   const handleNavigateCrumb = (crumbId?: string) => {
     if (!crumbId || crumbId === '__root__') {
@@ -577,8 +604,7 @@ export function ModernLibraryPage({
     resolvedTitle ||
     (isSavedSearchView && savedSearchTitle ? savedSearchTitle : undefined) ||
     (currentCollection ? currentCollection.name : undefined) ||
-    (activeScope.type === 'user' ? 'My Library' : activeScope.name) ||
-    'My Library';
+    (isMounted && isProject ? (spaceName || 'Project Library') : 'My Library');
 
   return (
     <div className="flex h-full w-full min-h-0 relative">
@@ -630,7 +656,7 @@ export function ModernLibraryPage({
               : undefined
           }
           onImportFromUser={
-            canEdit && activeScope.type === 'project'
+            canEdit && isMounted && isProject
               ? () => openModal('IMPORT_FROM_USER')
               : undefined
           }

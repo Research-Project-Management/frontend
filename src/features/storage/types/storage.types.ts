@@ -51,18 +51,14 @@ export type StorageResponse = {
 
 export type UploadFileParams = {
   spaceId?: string | null;
-  projectId?: string;
   parentId?: string | null;
-  pageId?: string | null;
   metaData?: Record<string, unknown>;
   onProgress?: (progress: number) => void;
 };
 
 export type CreateFolderParams = {
   spaceId?: string | null;
-  projectId?: string;
   parentId?: string | null;
-  pageId?: string | null;
 };
 
 // ── Navigation & Breadcrumb Types ───────────────────────────────────────────

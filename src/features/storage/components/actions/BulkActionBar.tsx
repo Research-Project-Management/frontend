@@ -28,7 +28,7 @@ import {
   useBatchPermanentDeleteItems,
   useBatchStarItems,
 } from '../../hooks/use-storage';
-import { downloadFileAuthorized } from '../../services/drive.service';
+import { downloadFileAuthorized } from '@/shared/lib/file-client';
 import type { StorageItem } from '../../types/storage.types';
 import {
   useStorageUIStore,

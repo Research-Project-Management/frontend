@@ -64,7 +64,6 @@ export interface UploadFingerprintInput {
   lastModified?: number;
   spaceId?: string;
   parentId?: string | null;
-  pageId?: string | null;
 }
 
 export interface SmartUploadOptions {
@@ -73,8 +72,6 @@ export interface SmartUploadOptions {
   filename?: string;
   mimeType?: string;
   spaceId?: string;
-  projectId?: string;
-  pageId?: string;
   parentId?: string | null;
   metaData?: Record<string, unknown> | null;
   contentHash?: string;
@@ -151,7 +148,6 @@ export function buildUploadFingerprint(input: UploadFingerprintInput): string {
     String(input.lastModified ?? 0),
     input.spaceId ?? '',
     input.parentId ?? '',
-    input.pageId ?? '',
   ].join('|');
 }
 
@@ -539,7 +535,7 @@ function uploadDirectMultipartForm(
   options: SmartUploadOptions,
 ): Promise<SmartUploadResult> {
   const baseEndpoint = (options.baseEndpoint || '/api/v1/files').replace(/\/+$/, '');
-  const effectiveSpaceId = options.spaceId ?? options.projectId;
+  const effectiveSpaceId = options.spaceId;
 
   return new Promise((resolve, reject) => {
     if (options.signal?.aborted) {
@@ -552,7 +548,6 @@ function uploadDirectMultipartForm(
     if (effectiveSpaceId) {
       formData.append('spaceId', effectiveSpaceId);
     }
-    if (options.pageId) formData.append('pageId', options.pageId);
     if (options.parentId) formData.append('parentId', options.parentId);
     if (options.extraFormFields) {
       for (const [k, v] of Object.entries(options.extraFormFields)) {
@@ -649,7 +644,7 @@ async function executePresignedSingleUpload(
   options: SmartUploadOptions,
 ): Promise<SmartUploadResult> {
   const baseEndpoint = (options.baseEndpoint || '/api/v1/files').replace(/\/+$/, '');
-  const effectiveSpaceId = options.spaceId ?? options.projectId;
+  const effectiveSpaceId = options.spaceId;
 
   if (options.signal?.aborted) {
     throw new Error(USER_ABORT_ERROR_MESSAGE);
@@ -666,7 +661,6 @@ async function executePresignedSingleUpload(
         size: blob.size,
         sizeBytes: blob.size,
         ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
-        ...(options.pageId ? { pageId: options.pageId } : {}),
         ...(options.parentId ? { parentId: options.parentId } : {}),
         ...(contentHash ? { contentHash } : {}),
         ...(options.metaData ? { metaData: options.metaData } : {}),
@@ -707,7 +701,6 @@ async function executePresignedSingleUpload(
           sizeBytes: blob.size,
           mimeType,
           ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
-          ...(options.pageId ? { pageId: options.pageId } : {}),
           ...(options.parentId ? { parentId: options.parentId } : {}),
           ...(contentHash ? { contentHash } : {}),
           ...(options.metaData ? { metaData: options.metaData } : {}),
@@ -758,7 +751,7 @@ async function runResumableMultipartAttempt(
   allowStaleRecovery: boolean,
 ): Promise<SmartUploadResult> {
   const baseEndpoint = (options.baseEndpoint || '/api/v1/files').replace(/\/+$/, '');
-  const effectiveSpaceId = options.spaceId ?? options.projectId;
+  const effectiveSpaceId = options.spaceId;
   const concurrency = Math.max(1, options.concurrency ?? DEFAULT_PART_CONCURRENCY);
   const maxPartRetries = Math.max(1, options.maxPartRetries ?? DEFAULT_PART_MAX_RETRIES);
 
@@ -780,7 +773,6 @@ async function runResumableMultipartAttempt(
         totalSize: blob.size,
         sizeBytes: blob.size,
         ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
-        ...(options.pageId ? { pageId: options.pageId } : {}),
         ...(options.parentId ? { parentId: options.parentId } : {}),
         ...(expectedHash ? { expectedHash } : {}),
       },
@@ -843,6 +835,41 @@ async function runResumableMultipartAttempt(
     reportProgress();
   }
 
+  const partUrlCache = new Map<number, string>();
+  const BATCH_PART_URL_SIZE = 15;
+
+  const prefetchPartUrlBatches = async () => {
+    if (pendingPartNumbers.length <= 1) return;
+    for (let i = 0; i < pendingPartNumbers.length; i += BATCH_PART_URL_SIZE) {
+      if (options.signal?.aborted) break;
+      const batch = pendingPartNumbers.slice(i, i + BATCH_PART_URL_SIZE);
+      try {
+        const batchRaw = await apiPost<{ parts?: PartUrlPayload[] }>(
+          `${baseEndpoint}/multipart/${encodeURIComponent(sessionId)}/part-urls`,
+          { partNumbers: batch },
+          { ...apiHeadersOpt, signal: options.signal, silent: true },
+        );
+        const batchPayload = unwrapPayload<{ parts?: PartUrlPayload[] }>(batchRaw);
+        const items = batchPayload?.parts;
+        if (!Array.isArray(items) || items.length === 0) {
+          break;
+        }
+        for (const item of items) {
+          const url = item?.uploadUrl || item?.partUrl;
+          if (item && typeof item.partNumber === 'number' && url) {
+            partUrlCache.set(item.partNumber, url);
+          }
+        }
+      } catch (err: unknown) {
+        if (isAbortError(err, options.signal)) {
+          throw new Error(USER_ABORT_ERROR_MESSAGE);
+        }
+        // Gracefully fall back to per-part GET /part-url when batch endpoint is unavailable
+        break;
+      }
+    }
+  };
+
   const uploadSinglePartWithRetry = async (partNumber: number): Promise<void> => {
     const start = (partNumber - 1) * partSize;
     const end = Math.min(start + partSize, blob.size);
@@ -854,17 +881,22 @@ async function runResumableMultipartAttempt(
       }
 
       try {
-        const partUrlRaw = await apiGet<PartUrlPayload>(
-          `${baseEndpoint}/multipart/${encodeURIComponent(sessionId)}/part-url`,
-          {
-            ...apiHeadersOpt,
-            params: { partNumber },
-            signal: options.signal,
-            silent: resumedFromCheckpoint && allowStaleRecovery,
-          },
-        );
-        const unwrappedPartUrl = unwrapPayload<PartUrlPayload>(partUrlRaw);
-        const partUploadUrl = unwrappedPartUrl?.uploadUrl || unwrappedPartUrl?.partUrl || '';
+        let partUploadUrl = partUrlCache.get(partNumber) || '';
+        if (partUploadUrl) {
+          partUrlCache.delete(partNumber);
+        } else {
+          const partUrlRaw = await apiGet<PartUrlPayload>(
+            `${baseEndpoint}/multipart/${encodeURIComponent(sessionId)}/part-url`,
+            {
+              ...apiHeadersOpt,
+              params: { partNumber },
+              signal: options.signal,
+              silent: resumedFromCheckpoint && allowStaleRecovery,
+            },
+          );
+          const unwrappedPartUrl = unwrapPayload<PartUrlPayload>(partUrlRaw);
+          partUploadUrl = unwrappedPartUrl?.uploadUrl || unwrappedPartUrl?.partUrl || '';
+        }
         if (!partUploadUrl) {
           throw new Error(`Missing presigned URL for part ${partNumber}`);
         }
@@ -911,6 +943,8 @@ async function runResumableMultipartAttempt(
   };
 
   try {
+    await prefetchPartUrlBatches();
+
     let cursor = 0;
     const worker = async () => {
       while (cursor < pendingPartNumbers.length) {
@@ -980,7 +1014,7 @@ async function executeResumableMultipartUpload(
   options: SmartUploadOptions,
 ): Promise<SmartUploadResult> {
   const baseEndpoint = (options.baseEndpoint || '/api/v1/files').replace(/\/+$/, '');
-  const effectiveSpaceId = options.spaceId ?? options.projectId;
+  const effectiveSpaceId = options.spaceId;
   const checkpointStore = options.checkpointStore ?? defaultCheckpointStore;
   const lastModified = blob instanceof File ? blob.lastModified : 0;
   const fingerprint = buildUploadFingerprint({
@@ -990,7 +1024,6 @@ async function executeResumableMultipartUpload(
     lastModified,
     spaceId: effectiveSpaceId,
     parentId: options.parentId,
-    pageId: options.pageId,
   });
 
   try {

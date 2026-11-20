@@ -16,16 +16,15 @@ import type { StorageItem } from '../types/storage.types';
 import { useStorageUIStore } from '../store/storage-ui.store';
 
 export function useTopbar({
-  projectId,
+  spaceId,
   parentId,
   onSearchChange,
 }: {
-  projectId?: string;
+  spaceId?: string;
   parentId?: string | null;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
 }) {
-  const spaceId = projectId;
   const queryClient = useQueryClient();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +71,7 @@ export function useTopbar({
   const performSingleFileUpload = useCallback(
     async (file: File, targetFolder: string | null) => {
       const uploadPromise = uploadFile(file, {
-        projectId,
+        spaceId,
         parentId: targetFolder,
       });
 
@@ -86,7 +85,7 @@ export function useTopbar({
 
       await uploadPromise.catch((err) => console.error(err));
     },
-    [projectId],
+    [spaceId],
   );
 
   const handleUploadFiles = useCallback(
@@ -130,7 +129,7 @@ export function useTopbar({
           }
           try {
             const created = (await createFolder(seg, {
-              projectId,
+              spaceId,
               parentId: currentParent,
             })) as { id?: string; folder?: { id?: string } };
             const folderId = created?.id || created?.folder?.id || currentParent;
@@ -203,7 +202,7 @@ export function useTopbar({
         await queryClient.invalidateQueries({ queryKey: storageKeys.all });
       }
     },
-    [spaceId, projectId, performSingleFileUpload, setDuplicatePrompt, queryClient],
+    [spaceId, performSingleFileUpload, setDuplicatePrompt, queryClient],
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

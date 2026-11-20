@@ -70,7 +70,7 @@ export default function HomePage({
       ? params.projectId
       : undefined;
 
-  const activeProjectId =
+  const activeSpaceId =
     routeProjectId ||
     (activeSpace.type === 'project' &&
     activeSpace.projectId &&
@@ -147,13 +147,13 @@ export default function HomePage({
   useEffect(() => {
     setCurrentFolderId(null, false);
     clearSelection();
-  }, [activeProjectId, setCurrentFolderId, clearSelection]);
+  }, [activeSpaceId, setCurrentFolderId, clearSelection]);
 
   // Upload handler for current active folder
   const activeUploadFolder =
     activeSection === 'my-files' ? currentFolderId : null;
   const { handleUploadFiles } = useTopbar({
-    projectId: activeProjectId,
+    spaceId: activeSpaceId,
     parentId: activeUploadFolder,
     searchQuery,
     onSearchChange: setSearchQuery,
@@ -162,7 +162,7 @@ export default function HomePage({
   // ── Unified Section Infinite Query ─────────────────────────────────────────
   const activeQuery = useSectionFiles(
     activeSection,
-    activeProjectId,
+    activeSpaceId,
     currentFolderId,
     queryParams,
   );
@@ -335,7 +335,7 @@ export default function HomePage({
           onBreadcrumbNavigate={
             activeSection === 'my-files' ? handleBreadcrumbNavigate : undefined
           }
-          projectId={activeProjectId}
+          spaceId={activeSpaceId}
           parentId={activeUploadFolder}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

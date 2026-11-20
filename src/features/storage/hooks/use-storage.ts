@@ -143,13 +143,13 @@ export const useCreateFolder = () =>
   useStorageMutation(
     ({
       name,
-      projectId,
+      spaceId,
       parentId,
     }: {
       name: string;
-      projectId?: string;
+      spaceId?: string;
       parentId?: string | null;
-    }) => createFolder(name, { projectId, parentId }),
+    }) => createFolder(name, { spaceId, parentId }),
   );
 
 export const useToggleStarItem = () =>

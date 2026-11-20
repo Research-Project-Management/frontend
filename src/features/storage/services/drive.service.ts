@@ -6,7 +6,7 @@
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
-import { resolveFileUrl } from '@/shared/lib/file-client';
+import { fetchAuthorized } from '@/shared/lib/file-client';
 import type {
   StorageResponse,
   CreateFolderParams,
@@ -14,7 +14,6 @@ import type {
 
 export interface FileQueryParams {
   spaceId?: string | null;
-  projectId?: string | null;
   parentId?: string | null;
   search?: string;
   sortBy?: string;
@@ -28,7 +27,7 @@ export function buildQueryString(params?: FileQueryParams): string {
   if (!params) return '';
 
   const searchParams = new URLSearchParams();
-  const effectiveSpaceId = params.spaceId || params.projectId;
+  const effectiveSpaceId = params.spaceId;
 
   if (
     effectiveSpaceId &&
@@ -131,12 +130,10 @@ export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => 
 // ── Mutation Operations ──────────────────────────────────────────────────────
 
 export const createFolder = (name: string, params: CreateFolderParams = {}) => {
-  const spaceId = params.spaceId || params.projectId;
   return apiPost('/api/v1/experiments/files/folder', {
     name,
     parentId: params.parentId ?? null,
-    ...(params.pageId ? { pageId: params.pageId } : {}),
-    ...(spaceId ? { spaceId } : {}),
+    ...(params.spaceId ? { spaceId: params.spaceId } : {}),
   });
 };
 
@@ -290,60 +287,7 @@ export const getVersionDownloadUrl = (fileId: string, versionNumber: number): st
   return `${API_BASE_URL}/api/v1/experiments/files/${encodeURIComponent(fileId)}/versions/${versionNumber}/download`;
 };
 
-// ── Stream & Preview Operations ──────────────────────────────────────────────
-
-export const fetchAuthorized = async (
-  url: string,
-  errorTypeOrInit: string | RequestInit = 'content',
-  init?: RequestInit,
-): Promise<Response> => {
-  const token = getAuthToken();
-  const requestInit = typeof errorTypeOrInit === 'object' ? errorTypeOrInit : init;
-  const errorType = typeof errorTypeOrInit === 'string' ? errorTypeOrInit : 'content';
-  const headers: Record<string, string> = {
-    ...(requestInit?.headers as Record<string, string> | undefined),
-  };
-  if (token && !url.startsWith('blob:') && !url.startsWith('data:')) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  const response = await fetch(url, { ...requestInit, credentials: 'include', headers });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file ${errorType}: ${response.statusText}`);
-  }
-  return response;
-};
-
-export const getFileArrayBuffer = async (url: string): Promise<ArrayBuffer> => {
-  const res = await fetchAuthorized(url, 'buffer');
-  return res.arrayBuffer();
-};
-
-export const getFileBlob = async (url: string): Promise<Blob> => {
-  const res = await fetchAuthorized(url, 'blob');
-  return res.blob();
-};
-
-export const downloadFileAuthorized = async (
-  url: string,
-  filename: string,
-): Promise<void> => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  const fullUrl = resolveFileUrl(url);
-  if (!fullUrl) return;
-
-  const blob = await getFileBlob(fullUrl);
-  const blobUrl = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-  }
-};
+// ── Preview Operations ───────────────────────────────────────────────────────
 
 interface PdfJsModule {
   GlobalWorkerOptions?: { workerSrc: string };
@@ -382,7 +326,11 @@ async function getPdfjs(): Promise<PdfJsModule | null> {
 export const previewServices = {
   async generatePreview(url: string): Promise<string | null> {
     try {
-      const arrayBuffer = await getFileArrayBuffer(url);
+      const response = await fetchAuthorized(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file buffer: ${response.statusText}`);
+      }
+      const arrayBuffer = await response.arrayBuffer();
       const pdfjsLib = await getPdfjs();
       if (!pdfjsLib) return null;
 

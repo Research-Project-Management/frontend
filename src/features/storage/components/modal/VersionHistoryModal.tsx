@@ -26,9 +26,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useFileVersions, useUploadNewVersion, useRevertFileVersion } from '../../hooks/use-storage';
-import { getVersionDownloadUrl, downloadFileAuthorized } from '../../services/drive.service';
+import { getVersionDownloadUrl } from '../../services/drive.service';
 import { formatFileSize, formatDate } from '../../utils/storage.util';
-import { resolveFileUrl } from '@/shared/lib/file-client';
+import { downloadFileAuthorized, resolveFileUrl } from '@/shared/lib/file-client';
 import type { StorageItem } from '../../types/storage.types';
 import { toast } from 'sonner';
 

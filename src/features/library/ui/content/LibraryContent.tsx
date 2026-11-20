@@ -317,10 +317,35 @@ export function LibraryContent({
 
   const isAccessDenied = React.useMemo(() => {
     if (!isError || !error) return false;
-    const errorMsg = error instanceof Error ? error.message : String(error ?? '');
+    const errObj = error as unknown as Record<string, unknown>;
+    const resObj = errObj?.response as Record<string, unknown> | undefined;
+    const dataObj = resObj?.data as Record<string, unknown> | undefined;
+    const innerErr = dataObj?.error as Record<string, unknown> | undefined;
+
+    const statusCode =
+      (errObj?.statusCode as number | undefined) ??
+      (errObj?.status as number | undefined) ??
+      (resObj?.status as number | undefined) ??
+      (dataObj?.statusCode as number | undefined);
+
+    const code =
+      (errObj?.code as string | undefined) ??
+      (dataObj?.code as string | undefined) ??
+      (innerErr?.code as string | undefined);
+
+    const errorMsg =
+      error instanceof Error
+        ? error.message
+        : String(errObj?.message ?? error ?? '');
+    const resMsg = String(innerErr?.message ?? dataObj?.message ?? '');
+    const combinedMsg = `${errorMsg} ${resMsg}`.toLowerCase();
+
     return (
-      (error as { statusCode?: number })?.statusCode === 403 ||
-      errorMsg.toLowerCase().includes('access denied')
+      statusCode === 403 ||
+      code === 'ACCESS_DENIED' ||
+      combinedMsg.includes('access denied') ||
+      combinedMsg.includes('forbidden') ||
+      combinedMsg.includes('not a member')
     );
   }, [isError, error]);
 

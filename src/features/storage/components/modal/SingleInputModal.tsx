@@ -92,11 +92,11 @@ export function SingleInputModal({
 }
 
 type CreateFolderModalProps = {
-  projectId?: string;
+  spaceId?: string;
   parentId?: string | null;
 };
 
-export function CreateFolderModal({ projectId, parentId }: CreateFolderModalProps) {
+export function CreateFolderModal({ spaceId, parentId }: CreateFolderModalProps) {
   const isOpen = useStorageUIStore((s) => s.isCreateFolderOpen);
   const close = useStorageUIStore((s) => s.closeCreateFolderModal);
   const createFolderMutation = useCreateFolder();
@@ -126,7 +126,7 @@ export function CreateFolderModal({ projectId, parentId }: CreateFolderModalProp
     try {
       await createFolderMutation.mutateAsync({
         name: trimmed,
-        projectId,
+        spaceId,
         parentId: parentId || null,
       });
       toast.success(`Created folder "${trimmed}"`);

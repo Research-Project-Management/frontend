@@ -50,7 +50,7 @@ const CORE_PILLARS: ShellNavItem[] = [
   },
   {
     id: 'labs',
-    label: 'Experiments',
+    label: 'Labs',
     icon: Microscope,
     getHref: (projectId) => (projectId ? `/projects/${projectId}/experiments` : '/experiments'),
   },

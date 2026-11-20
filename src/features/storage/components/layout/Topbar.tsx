@@ -48,7 +48,7 @@ interface TopbarProps {
   onBreadcrumbNavigate?: (folderId: string | null) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  projectId?: string;
+  spaceId?: string;
   parentId?: string | null;
   children?: React.ReactNode;
   className?: string;
@@ -59,7 +59,7 @@ export default function Topbar({
   onBreadcrumbNavigate,
   searchQuery = '',
   onSearchChange,
-  projectId,
+  spaceId,
   parentId,
   children,
   className,
@@ -79,7 +79,7 @@ export default function Topbar({
     folderInputRef,
     fileInputRef,
     duplicatePrompt,
-  } = useTopbar({ searchQuery, onSearchChange, projectId, parentId });
+  } = useTopbar({ searchQuery, onSearchChange, spaceId, parentId });
 
   const view = useViewStore((s) => s.view);
   const setView = useViewStore((s) => s.setView);
@@ -361,9 +361,9 @@ export default function Topbar({
           onChange={handleFolderSelect}
         />
 
-        <CreateFolderModal projectId={projectId} parentId={parentId} />
+        <CreateFolderModal spaceId={spaceId} parentId={parentId} />
         <RenameModal />
-        <MoveModal projectId={projectId} />
+        <MoveModal spaceId={spaceId} />
         <DuplicateModal
           isOpen={duplicatePrompt !== null}
           filename={duplicatePrompt?.file.name ?? ''}

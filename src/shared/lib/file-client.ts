@@ -41,7 +41,7 @@ export interface ThumbnailOptions {
 }
 
 export interface UploadScope {
-  readonly type: 'project' | 'page' | 'general';
+  readonly type: 'project' | 'general';
   readonly id?: string;
 }
 
@@ -246,39 +246,22 @@ const SCOPE_UUID_REGEX =
 
 function parseScopeFromPayload(payload: FileUploadPayload): {
   spaceId?: string;
-  pageId?: string;
-  extraFormFields?: Record<string, string>;
 } {
   const { prefix, scope } = payload;
 
   if (prefix) {
     const parts = prefix.split('/').filter(Boolean);
-    if (parts.length >= 2) {
-      if (parts.includes('library')) {
-        return { extraFormFields: { source: 'library' } };
-      }
-      if (parts[0] === 'project' && SCOPE_UUID_REGEX.test(parts[1])) {
-        return { spaceId: parts[1] };
-      }
-      if (parts[0] === 'page' && SCOPE_UUID_REGEX.test(parts[1])) {
-        return { pageId: parts[1] };
-      }
-    } else if (parts.length === 1 && SCOPE_UUID_REGEX.test(parts[0])) {
+    if (parts.length >= 2 && parts[0] === 'project' && SCOPE_UUID_REGEX.test(parts[1])) {
+      return { spaceId: parts[1] };
+    }
+    if (parts.length === 1 && SCOPE_UUID_REGEX.test(parts[0])) {
       return { spaceId: parts[0] };
     }
     return {};
   }
 
-  if (scope) {
-    if ((scope.type as string) === 'library' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
-      return { spaceId: scope.id, extraFormFields: { source: 'library' } };
-    }
-    if (scope.type === 'project' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
-      return { spaceId: scope.id };
-    }
-    if (scope.type === 'page' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
-      return { pageId: scope.id };
-    }
+  if (scope?.type === 'project' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
+    return { spaceId: scope.id };
   }
 
   return {};
@@ -297,15 +280,13 @@ export async function uploadFileWithDetails(
   payload: FileUploadPayload,
 ): Promise<{ url: string; fileId: string }> {
   const { file, signal, onProgress } = payload;
-  const { spaceId, pageId, extraFormFields } = parseScopeFromPayload(payload);
+  const { spaceId } = parseScopeFromPayload(payload);
 
   const result = await smartUpload(file, {
     baseEndpoint: '/api/v1/files',
     filename: file.name,
     mimeType: file.type || 'application/octet-stream',
     spaceId,
-    pageId,
-    extraFormFields,
     signal,
     onProgress,
     resolveUrl: resolveFileUrl,

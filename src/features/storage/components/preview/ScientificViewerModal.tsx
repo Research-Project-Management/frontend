@@ -22,9 +22,12 @@ import {
 } from '@/shared/components/ui/dialog';
 import { renderMarkdown } from '@/shared/components/markdown/render-markdown';
 import type { StorageItem } from '@/features/storage/types/storage.types';
-import { fetchAuthorized } from '@/features/storage/services/drive.service';
 import { isScientificTextFile } from '@/features/storage/utils/storage.util';
-import { resolveFileUrl, downloadFileUrl } from '@/shared/lib/file-client';
+import {
+  resolveFileUrl,
+  downloadFileUrl,
+  fetchAuthorized,
+} from '@/shared/lib/file-client';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { toast } from 'sonner';
@@ -91,7 +94,12 @@ export default function ScientificViewerModal({
       }
 
       fetchAuthorized(url, { signal: controller.signal })
-        .then((res) => res.text())
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to fetch file content: ${res.statusText}`);
+          }
+          return res.text();
+        })
         .then((text) => {
           if (isCancelled) return;
           setContent(text);

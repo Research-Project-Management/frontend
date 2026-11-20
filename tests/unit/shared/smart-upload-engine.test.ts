@@ -637,4 +637,79 @@ describe('Unified SmartUploadEngine', () => {
     expect(mpuRes.fileId).toBe('mpu-blob-1');
     expect(xhrCalls[0].url).toBe('https://r2.example.com/mpu-part-1');
   });
+
+  it('7. Batch-fetches presigned part URLs via POST /multipart/:sessionId/part-urls in a single request and skips single /part-url', async () => {
+    const file = new File([new Uint8Array(96)], 'batch-paper.bin', {
+      type: 'application/octet-stream',
+    });
+
+    const requestedEndpoints: string[] = [];
+    let batchRequestParts: number[] = [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      requestedEndpoints.push(url);
+      if (url.includes('/multipart/initiate')) {
+        return new Response(
+          JSON.stringify({
+            sessionId: 'sess-batch-1',
+            uploadId: 'r2-batch-mpu',
+            partSize: 32,
+            totalParts: 3,
+            deduplicated: false,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.includes('/part-urls')) {
+        const parsed = JSON.parse(String(init?.body || '{}')) as {
+          partNumbers?: number[];
+        };
+        batchRequestParts = parsed.partNumbers ?? [];
+        return new Response(
+          JSON.stringify({
+            parts: batchRequestParts.map((partNumber) => ({
+              partNumber,
+              uploadUrl: `https://r2.example.com/batch-part/${partNumber}`,
+            })),
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.includes('/multipart/complete')) {
+        return new Response(
+          JSON.stringify({
+            fileId: 'batch-blob-1',
+            blobId: 'batch-blob-1',
+            url: '/api/v1/files/batch-blob-1/content',
+            filename: 'batch-paper.bin',
+            size: 96,
+            mimeType: 'application/octet-stream',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    xhrCalls = [];
+    xhrHandler = (call, instance) => {
+      const partNum = call.url.split('/').pop();
+      instance.status = 200;
+      instance.headers = { ETag: `"etag-batch-${partNum}"` };
+      return 'ok';
+    };
+
+    const res = await smartUpload(file, {
+      baseEndpoint: '/api/v1/files',
+      multipartThresholdBytes: 32,
+      concurrency: 2,
+    });
+
+    expect(res.fileId).toBe('batch-blob-1');
+    expect(batchRequestParts).toEqual([1, 2, 3]);
+    expect(requestedEndpoints.filter((u) => u.includes('/part-urls'))).toHaveLength(1);
+    expect(requestedEndpoints.some((u) => u.endsWith('/part-url') || u.includes('/part-url?'))).toBe(false);
+    expect(xhrCalls).toHaveLength(3);
+  });
 });

@@ -178,12 +178,18 @@ export interface StickyDockProps {
   className?: string;
   buttonClassName?: string;
   mode?: 'sidebar' | 'floating';
+  onAiClick?: () => void;
+  isAiActive?: boolean;
+  aiTooltip?: string;
 }
 
 export default function StickyDock({
   className,
   buttonClassName,
   mode = 'sidebar',
+  onAiClick,
+  isAiActive,
+  aiTooltip,
 }: StickyDockProps = {}) {
   const [isPillOpen, setIsPillOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -194,6 +200,10 @@ export default function StickyDock({
   const isAiOpen = useAiCompanionStore((s) => s.isOpen);
   const aiWidth = useAiCompanionStore((s) => s.width);
   const toggleAiOpen = useAiCompanionStore((s) => s.toggleOpen);
+
+  const hasCustomAiHandler = Boolean(onAiClick);
+  const drawerOpen = hasCustomAiHandler ? false : isAiOpen;
+  const aiButtonActive = hasCustomAiHandler ? Boolean(isAiActive) : isAiOpen;
 
   const pathname = usePathname();
   const { totalBadgeCount } = useChatBadgeCounts();
@@ -259,8 +269,8 @@ export default function StickyDock({
 
     const colorConfig = getStickyColorConfig(activeSticky?.color || 'pink-1');
 
-  const floatingRightPx = isAiOpen ? aiWidth + 24 : 20;
-  const stickyNoteRightPx = isAiOpen ? aiWidth + 76 : 72;
+  const floatingRightPx = drawerOpen ? aiWidth + 24 : 20;
+  const stickyNoteRightPx = drawerOpen ? aiWidth + 76 : 72;
 
   return (
     <>
@@ -271,7 +281,7 @@ export default function StickyDock({
           isFloating
             ? cn(
                 'hidden md:flex fixed bottom-5 z-40 items-center justify-center size-10 transition-all duration-200',
-                (isAiOpen || isChatActive) && 'opacity-0 pointer-events-none scale-90 translate-y-2'
+                (drawerOpen || isChatActive) && 'opacity-0 pointer-events-none scale-90 translate-y-2'
               )
             : 'relative flex items-center justify-center size-8',
           className
@@ -291,7 +301,7 @@ export default function StickyDock({
                 isPillOpen
                   ? 'opacity-0 pointer-events-none'
                   : isFloating
-                  ? isAiOpen || activeStickyId
+                  ? aiButtonActive || activeStickyId
                     ? 'bg-muted'
                     : ''
                   : activeStickyId
@@ -333,13 +343,17 @@ export default function StickyDock({
                   <button
                     type="button"
                     onClick={() => {
-                      toggleAiOpen();
+                      if (onAiClick) {
+                        onAiClick();
+                      } else {
+                        toggleAiOpen();
+                      }
                       setIsPillOpen(false);
                     }}
                     aria-label="AI Assistant"
                     className={cn(
                       'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
-                      isAiOpen && 'bg-muted'
+                      aiButtonActive && 'bg-muted'
                     )}
                   >
                     <img
@@ -350,7 +364,7 @@ export default function StickyDock({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side={tooltipSide} sideOffset={12}>
-                  AI Assistant (Ctrl+J)
+                  {aiTooltip ?? 'AI Assistant (Ctrl+J)'}
                 </TooltipContent>
               </Tooltip>
 

@@ -311,14 +311,29 @@ export function LibraryTopbar({
     }
   };
 
+  const [isMounted, setIsMounted] = useState(false);
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const params = useParams() as { collectionId?: string };
   const activeCollectionId = params?.collectionId;
 
   const effectiveSpaceId = propSpaceId || activeSpaceId;
-  const displayTitle = title || spaceName;
-  const RootIcon = isProject ? Folder : LibraryIcon;
+  const isServerProject = Boolean(propSpaceId && propSpaceId !== "user");
+  const effectiveIsProject = isMounted ? isProject : isServerProject;
+  const serverFallbackTitle = isServerProject ? (title || "Project Library") : "My Library";
+  const hydratedTitle = title || (isProject ? (spaceName || "Project Library") : "My Library");
+  const displayTitle = isMounted ? hydratedTitle : serverFallbackTitle;
+  const RootIcon = effectiveIsProject ? Folder : LibraryIcon;
   const Icon =
-    propIcon !== undefined ? propIcon : isTrash ? Trash2 : LibraryIcon;
+    propIcon !== undefined
+      ? propIcon
+      : isTrash
+        ? Trash2
+        : effectiveIsProject
+          ? Folder
+          : LibraryIcon;
 
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 

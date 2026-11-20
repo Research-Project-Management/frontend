@@ -245,7 +245,7 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
 
   describe('3. aiCoordinator Diff Proposal & Compiler Integration', () => {
     it('proposes an inline diff on target line and triggers inline diff decoration', () => {
-      const success = aiCoordinator.proposeDiff('doc-1', '\\textbf{Fixed Macro}', {
+      const success = aiCoordinator.proposeDiff('main-doc', '\\textbf{Fixed Macro}', {
         line: 3,
         title: 'Replaced unknown macro with textbf',
       });

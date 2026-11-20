@@ -430,7 +430,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByRole('menuitem', { name: /italics/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /underline/i })).toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: /bullet list/i })).toBeInTheDocument();
-      expect(screen.getByRole('menuitem', { name: /format document/i })).toBeInTheDocument();
+      expect(screen.queryByRole('menuitem', { name: /format document/i })).toBeNull();
       expect(screen.queryByRole('menuitem', { name: /insert citation/i })).toBeNull();
     });
   });

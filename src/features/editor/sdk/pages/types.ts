@@ -147,65 +147,6 @@ export interface TextRangeDto {
   endCol: number;
 }
 
-export interface TrackChangeDto {
-  id: string;
-  spaceId?: string | null;
-  projectId: string;
-  docId: string;
-  type: 'insert' | 'delete';
-  text: string;
-  range?: TextRangeDto;
-  fromIndex?: number;
-  toIndex?: number;
-  authorId?: string;
-  createdById?: string | null;
-  authorName?: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  resolvedAt?: string | null;
-  resolvedById?: string | null;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface CommentReplyDto {
-  id: string;
-  threadId: string;
-  authorId?: string;
-  createdById?: string | null;
-  authorName?: string;
-  content: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface CommentThreadDto {
-  id: string;
-  spaceId?: string | null;
-  projectId: string;
-  docId: string;
-  authorId?: string;
-  createdById?: string | null;
-  authorName?: string;
-  content?: string;
-  quote?: string | null;
-  range?: TextRangeDto;
-  fromIndex?: number;
-  toIndex?: number;
-  selectedText?: string;
-  resolved?: boolean;
-  isResolved?: boolean;
-  resolvedAt?: string | null;
-  resolvedById?: string | null;
-  replies: CommentReplyDto[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DocReviewsResponseDto {
-  changes: TrackChangeDto[];
-  threads: CommentThreadDto[];
-}
-
 export type ReviewStatus =
   | 'draft'
   | 'in_review'

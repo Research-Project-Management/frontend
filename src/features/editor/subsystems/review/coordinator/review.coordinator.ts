@@ -1,54 +1,42 @@
-/**
- * review.coordinator.ts
- *
- * Headless Review & Track Changes Coordinator (Coordinators Layer).
- *
- * Responsibilities:
- * - Single source of coordination between CodeMirror 6, Sidebar ReviewTab, and Backend Review/Suggestion Service.
- * - Handles navigation between comments/suggestions and editor line offsets.
- * - Dispatches single-click Accept and Reject mutations, updating editor state and document tree.
- * - Executes 0ms optimistic local document edits for instant user feedback.
- * - Bridges track changes view modes ('changes' | 'clean' | 'original') and review mode directly to CodeMirror.
- */
-
-import { type EditorView } from '@codemirror/view';
+import type { EditorView } from '@codemirror/view';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { getActiveEditorEngine } from '@/features/editor/core/bus/engine-registry';
-import {
-  trackChangesStateField,
-  resolveSuggestionRange,
-  type TrackChangesViewMode,
-} from '@/features/editor/subsystems/review/extensions/track-changes-state';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import {
+  isLocalSuggestionId,
+  resolveSuggestionRange,
+  reviewStateField,
+  type TrackChangesViewMode,
+} from '../extensions/state';
 import type {
-  ReviewServicePort,
-  ReviewNotificationPort,
-  ReviewStorePort,
   ReviewCoordinatorPorts,
-} from '@/features/editor/subsystems/review/model/review-service-port';
+  ReviewNotificationPort,
+  ReviewServicePort,
+  ReviewStorePort,
+} from '../model/ports';
 import {
-  type SuggestionMemento,
+  captureSnapshot,
+  mutateSuggestion,
+  restoreSnapshot,
+  revertMemento,
+  syncDecorations,
+  syncViewToCache,
   type ReviewRollbackSnapshot,
-  mutateSuggestionInView,
-  syncMutatedViewToCache,
-  revertMementoInView,
-  captureRollbackSnapshotForViews,
-  applySnapshotToBuffers,
-  reconcileAndDispatchReviewDecorations,
-} from './suggestion-buffer-mutator';
+  type SuggestionMemento,
+} from './buffer';
 import {
-  type SuggestionResolutionHost,
-  defaultReviewServicePort,
   defaultReviewNotificationPort,
+  defaultReviewServicePort,
   defaultReviewStorePort,
-  scheduleLocalSuggestionCreate,
-  executeResolveSingleSuggestion,
-  executeResolveAllSuggestions,
-  executeResolveSelectedSuggestions,
-} from './suggestion-resolution.service';
+  resolveAll,
+  resolveOne,
+  resolveSelected,
+  scheduleLocalCreate,
+  type ResolutionHost,
+} from './resolver';
 
-export type { SuggestionMemento, ReviewRollbackSnapshot };
+export type { ReviewRollbackSnapshot, SuggestionMemento };
 
 export class ReviewCoordinator {
   private servicePort: ReviewServicePort = defaultReviewServicePort;
@@ -65,7 +53,6 @@ export class ReviewCoordinator {
   private rollbackSnapshots = new Map<string, SuggestionMemento>();
   private readonly inFlightSuggestionCreates = new Set<string>();
   private readonly inFlightResolutions = new Set<string>();
-  private pendingConcurrentSuggestionUpdates = new Map<string, { pageId: string; sug: PageSuggestion }>();
   private currentViewMode: TrackChangesViewMode = 'changes';
   private currentReviewMode = false;
   private currentReviewStatuses = new Map<string, string>();
@@ -114,7 +101,6 @@ export class ReviewCoordinator {
   public reset(): void {
     for (const timer of this.pendingPersistTimers.values()) clearTimeout(timer);
     this.pendingPersistTimers.clear();
-    this.pendingConcurrentSuggestionUpdates.clear();
     this.inFlightSuggestionCreates.clear();
     this.inFlightResolutions.clear();
     this.rollbackSnapshots.clear();
@@ -129,8 +115,8 @@ export class ReviewCoordinator {
     this.currentReviewMode = false;
   }
 
-  public getReviewStatus(pageId?: string | null): string {
-    const targetId = pageId || this.activePageId;
+  public getReviewStatus(docId?: string | null): string {
+    const targetId = docId || this.activePageId;
     if (!targetId) return 'draft';
     return this.currentReviewStatuses.get(targetId) || 'draft';
   }
@@ -147,7 +133,7 @@ export class ReviewCoordinator {
     this.storePort = defaultReviewStorePort;
   }
 
-  private getResolutionHost(): SuggestionResolutionHost {
+  private getResolutionHost(): ResolutionHost {
     return {
       getServicePort: () => this.servicePort,
       getNotificationPort: () => this.notificationPort,
@@ -161,13 +147,12 @@ export class ReviewCoordinator {
       pendingPersistTimers: this.pendingPersistTimers,
       inFlightSuggestionCreates: this.inFlightSuggestionCreates,
       inFlightResolutions: this.inFlightResolutions,
-      pendingConcurrentUpdates: this.pendingConcurrentSuggestionUpdates,
       getViewsForFile: (fileId, fallback) => this.getViewsForFile(fileId, fallback),
       resolveKnownSuggestion: (id) => this.resolveKnownSuggestion(id),
       clearPendingPersistTimer: (id) => this.clearPendingPersistTimer(id),
       applySuggestionLocally: (v, sug, action) => this.applySuggestionLocally(v, sug, action),
-      applyAllLocally: (action, pageId) => this.applyAllLocally(action, pageId),
-      applySelectedLocally: (ids, action, pageId) => this.applySelectedLocally(ids, action, pageId),
+      applyAllLocally: (action, docId) => this.applyAllLocally(action, docId),
+      applySelectedLocally: (ids, action, docId) => this.applySelectedLocally(ids, action, docId),
       rollbackSuggestionLocally: (id) => this.rollbackSuggestionLocally(id),
       syncEditorDecorations: (v, sugs, comments, vm, rm, pid) =>
         this.syncEditorDecorations(v, sugs, comments, vm, rm, pid),
@@ -195,7 +180,7 @@ export class ReviewCoordinator {
       }
     });
     editorCommandBus.subscribe('review:create-comment', (cmd) => {
-      this.initiateComment(cmd.line, cmd.selectedText);
+      this.initiateComment(cmd.line, cmd.selectedText, cmd.endLine);
     });
 
     const reviewEventHandlers: Record<
@@ -217,11 +202,11 @@ export class ReviewCoordinator {
       'suggestion:local-recorded': (cmd) => {
         const sug = (cmd.payload as { suggestion?: PageSuggestion })?.suggestion;
         if (sug) {
-          const targetPageId = sug.pageId || cmd.pageId || this.activePageId || '';
-          const normalizedSug: PageSuggestion = { ...sug, pageId: targetPageId };
-          this.currentSuggestions.set(sug.id, normalizedSug);
-          if (targetPageId && sug.id.startsWith('sug-local-')) {
-            scheduleLocalSuggestionCreate(this.getResolutionHost(), targetPageId, normalizedSug);
+          const targetDocId = sug.pageId || cmd.pageId || this.activePageId || '';
+          const normalized: PageSuggestion = { ...sug, pageId: targetDocId };
+          this.currentSuggestions.set(sug.id, normalized);
+          if (targetDocId && isLocalSuggestionId(sug.id)) {
+            scheduleLocalCreate(this.getResolutionHost(), targetDocId, normalized);
           }
         }
       },
@@ -233,7 +218,7 @@ export class ReviewCoordinator {
     });
   }
 
-  public initiateComment(optLine?: number, optSelectedText?: string): void {
+  public initiateComment(optLine?: number, optSelectedText?: string, optEndLine?: number): void {
     const engine = getActiveEditorEngine();
     const sel = engine?.getSelection?.() as
       | { startLine?: number; endLine?: number; fromLine?: number; toLine?: number }
@@ -242,33 +227,33 @@ export class ReviewCoordinator {
     const cursor = engine?.getCursorPosition?.();
 
     const startLine = optLine ?? sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
-    const endLine = optLine ?? sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
+    const endLine = optEndLine ?? optLine ?? sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
     const selectedText = optSelectedText ?? engine?.getSelectedText?.() ?? '';
 
     this.storePort.setPendingComment({ startLine, endLine, selectedText });
     this.storePort.openReviewSidebar();
   }
 
-  public bindEditorView(view: EditorView | null, pageId: string): void {
+  public bindEditorView(view: EditorView | null, docId: string): void {
     if (!view) {
-      this.unbindEditorView(null, pageId);
+      this.unbindEditorView(null, docId);
       return;
     }
 
-    const isPageSwitch = this.activePageId !== null && this.activePageId !== pageId;
+    const isPageSwitch = this.activePageId !== null && this.activePageId !== docId;
     this.lastBoundView = view;
-    this.activePageId = pageId;
+    this.activePageId = docId;
 
-    let set = this.viewsByFileId.get(pageId);
+    let set = this.viewsByFileId.get(docId);
     if (!set) {
       set = new Set<EditorView>();
-      this.viewsByFileId.set(pageId, set);
+      this.viewsByFileId.set(docId, set);
     }
     set.add(view);
 
     if (isPageSwitch) {
       for (const [id, s] of this.currentSuggestions.entries()) {
-        if (s.pageId && s.pageId !== pageId && !this.viewsByFileId.has(s.pageId)) {
+        if (s.pageId && s.pageId !== docId && !this.viewsByFileId.has(s.pageId)) {
           this.currentSuggestions.delete(id);
         } else if (!s.pageId) {
           this.currentSuggestions.delete(id);
@@ -279,31 +264,31 @@ export class ReviewCoordinator {
 
     this.syncEditorDecorations(
       view,
-      Array.from(this.currentSuggestions.values()).filter((s) => !s.pageId || s.pageId === pageId),
+      Array.from(this.currentSuggestions.values()).filter((s) => !s.pageId || s.pageId === docId),
       Array.from(this.currentComments.values()).filter((c) => {
-        const commentPageId = c.page || c.projectPageId;
-        return !commentPageId || commentPageId === pageId;
+        const commentDocId = c.page || c.projectPageId;
+        return !commentDocId || commentDocId === docId;
       }),
       this.currentViewMode,
       this.currentReviewMode,
-      pageId,
+      docId,
     );
   }
 
-  public unbindEditorView(view: EditorView | null, pageId: string): void {
-    const set = this.viewsByFileId.get(pageId);
+  public unbindEditorView(view: EditorView | null, docId: string): void {
+    const set = this.viewsByFileId.get(docId);
     if (set) {
       if (view) set.delete(view);
       else set.clear();
-      if (set.size === 0) this.viewsByFileId.delete(pageId);
+      if (set.size === 0) this.viewsByFileId.delete(docId);
     }
 
     if (view && this.lastBoundView === view) {
       this.lastBoundView = null;
-      for (const [, views] of this.viewsByFileId.entries()) {
+      for (const views of this.viewsByFileId.values()) {
         for (const v of views) this.lastBoundView = v;
       }
-    } else if (!view && this.activePageId === pageId && !this.viewsByFileId.has(pageId)) {
+    } else if (!view && this.activePageId === docId && !this.viewsByFileId.has(docId)) {
       this.lastBoundView = null;
       for (const [fid, views] of this.viewsByFileId.entries()) {
         for (const v of views) {
@@ -323,10 +308,10 @@ export class ReviewCoordinator {
     );
   }
 
-  public getLocalSuggestions(pageId?: string | null): PageSuggestion[] {
+  public getLocalSuggestions(docId?: string | null): PageSuggestion[] {
     const result: PageSuggestion[] = [];
     for (const s of this.currentSuggestions.values()) {
-      if (s.id.startsWith('sug-local-') && (!pageId || !s.pageId || s.pageId === pageId)) {
+      if (isLocalSuggestionId(s.id) && (!docId || !s.pageId || s.pageId === docId)) {
         result.push(s);
       }
     }
@@ -338,16 +323,16 @@ export class ReviewCoordinator {
     suggestions: PageSuggestion[],
     comments: PageComment[],
     viewMode: TrackChangesViewMode = 'changes',
-    reviewMode: boolean = false,
-    pageId?: string | null,
+    reviewMode = false,
+    docId?: string | null,
   ): void {
-    const targetPageId = pageId ?? this.activePageId;
+    const targetDocId = docId ?? this.activePageId;
     this.currentViewMode = viewMode;
     this.currentReviewMode = reviewMode;
-    const targetViews = this.getViewsForFile(targetPageId, view);
+    const targetViews = this.getViewsForFile(targetDocId, view);
 
-    reconcileAndDispatchReviewDecorations({
-      targetPageId,
+    syncDecorations({
+      targetDocId,
       suggestions,
       comments,
       viewMode,
@@ -364,7 +349,7 @@ export class ReviewCoordinator {
     sug: PageSuggestion,
     action: 'accept' | 'reject',
   ): void {
-    const memento = mutateSuggestionInView(view, sug, action);
+    const memento = mutateSuggestion(view, sug, action);
     this.rollbackSnapshots.set(sug.id, memento);
 
     this.currentSuggestions.set(sug.id, {
@@ -372,8 +357,8 @@ export class ReviewCoordinator {
       status: action === 'accept' ? ('accepted' as const) : ('rejected' as const),
     });
 
-    const targetPageId = sug.pageId || this.activePageId;
-    syncMutatedViewToCache(view, targetPageId);
+    const targetDocId = sug.pageId || this.activePageId;
+    syncViewToCache(view, targetDocId);
 
     this.syncEditorDecorations(
       view,
@@ -381,18 +366,14 @@ export class ReviewCoordinator {
       Array.from(this.currentComments.values()),
       this.currentViewMode,
       this.currentReviewMode,
-      targetPageId,
+      targetDocId,
     );
   }
 
   private resolveKnownSuggestion(suggestionId: string): PageSuggestion | undefined {
-    const cached =
-      this.currentSuggestions.get(suggestionId) ??
-      (this.localToPersistedId.has(suggestionId)
-        ? this.currentSuggestions.get(this.localToPersistedId.get(suggestionId)!)
-        : undefined);
+    const cached = this.getSuggestion(suggestionId);
     if (cached) return cached;
-    const stateSugs = this.activeView?.state.field(trackChangesStateField, false)?.suggestions || [];
+    const stateSugs = this.activeView?.state.field(reviewStateField, false)?.suggestions || [];
     const mappedId = this.localToPersistedId.get(suggestionId);
     return stateSugs.find((s) => s.id === suggestionId || (mappedId && s.id === mappedId));
   }
@@ -404,7 +385,7 @@ export class ReviewCoordinator {
     this.rollbackSnapshots.delete(effectiveId);
     this.rollbackSnapshots.delete(suggestionId);
 
-    revertMementoInView(snap, this.activePageId);
+    revertMemento(snap, this.activePageId);
 
     this.currentSuggestions.set(snap.sug.id, { ...snap.sug, status: 'pending' });
     this.syncEditorDecorations(
@@ -416,14 +397,14 @@ export class ReviewCoordinator {
     );
   }
 
-  public getRollbackSnapshot(pageId?: string): ReviewRollbackSnapshot {
-    const targetPageId = pageId || this.activePageId;
-    const targetViews = this.getViewsForFile(targetPageId, this.activeView);
-    return captureRollbackSnapshotForViews(targetPageId, targetViews, this.currentSuggestions);
+  public getRollbackSnapshot(docId?: string): ReviewRollbackSnapshot {
+    const targetDocId = docId || this.activePageId;
+    const targetViews = this.getViewsForFile(targetDocId, this.activeView);
+    return captureSnapshot(targetDocId, targetViews, this.currentSuggestions);
   }
 
   public restoreSnapshot(snapshot: ReviewRollbackSnapshot): void {
-    applySnapshotToBuffers(snapshot);
+    restoreSnapshot(snapshot);
 
     this.currentSuggestions.clear();
     for (const [id, sug] of snapshot.suggestions) {
@@ -448,22 +429,21 @@ export class ReviewCoordinator {
       clearTimeout(timer);
       this.pendingPersistTimers.delete(suggestionId);
     }
-    this.pendingConcurrentSuggestionUpdates.delete(suggestionId);
   }
 
   public applySuggestionByIdLocally(
     suggestionId: string,
     action: 'accept' | 'reject',
-    targetPageId?: string,
+    targetDocId?: string,
   ): void {
     this.clearPendingPersistTimer(suggestionId);
     const sug = this.resolveKnownSuggestion(suggestionId);
     if (!sug) return;
     if (sug.id !== suggestionId) this.clearPendingPersistTimer(sug.id);
 
-    const effectivePageId = targetPageId || sug.pageId;
-    if (effectivePageId && this.activePageId && effectivePageId !== this.activePageId) {
-      const registeredViews = this.viewsByFileId.get(effectivePageId);
+    const effectiveDocId = targetDocId || sug.pageId;
+    if (effectiveDocId && this.activePageId && effectiveDocId !== this.activePageId) {
+      const registeredViews = this.viewsByFileId.get(effectiveDocId);
       if (registeredViews && registeredViews.size > 0) {
         for (const view of registeredViews) this.applySuggestionLocally(view, sug, action);
       } else {
@@ -475,30 +455,29 @@ export class ReviewCoordinator {
       return;
     }
 
-    for (const view of this.getViewsForFile(effectivePageId, this.activeView)) {
+    for (const view of this.getViewsForFile(effectiveDocId, this.activeView)) {
       this.applySuggestionLocally(view, sug, action);
     }
   }
 
-  public applyAllLocally(action: 'accept' | 'reject', pageId?: string): void {
+  public applyAllLocally(action: 'accept' | 'reject', docId?: string): void {
     for (const [localId, timer] of this.pendingPersistTimers.entries()) {
       const localSug = this.currentSuggestions.get(localId);
-      if (!pageId || !localSug?.pageId || localSug.pageId === pageId) {
+      if (!docId || !localSug?.pageId || localSug.pageId === docId) {
         clearTimeout(timer);
         this.pendingPersistTimers.delete(localId);
-        this.pendingConcurrentSuggestionUpdates.delete(localId);
       }
     }
-    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    const targetViews = this.getViewsForFile(docId, this.activeView);
     if (targetViews.length === 0) return;
     const primaryView = targetViews[0];
     const doc = primaryView.state.doc;
-    const stateSugs = primaryView.state.field(trackChangesStateField, false)?.suggestions || [];
+    const stateSugs = primaryView.state.field(reviewStateField, false)?.suggestions || [];
     for (const s of stateSugs) {
       if (!this.currentSuggestions.has(s.id)) this.currentSuggestions.set(s.id, s);
     }
     const pending = Array.from(this.currentSuggestions.values())
-      .filter((s) => s.status === 'pending' && (!pageId || !s.pageId || s.pageId === pageId))
+      .filter((s) => s.status === 'pending' && (!docId || !s.pageId || s.pageId === docId))
       .map((s) => ({ sug: s, range: resolveSuggestionRange(doc, s) }))
       .sort((a, b) => b.range.from - a.range.from);
 
@@ -510,10 +489,10 @@ export class ReviewCoordinator {
   public applySelectedLocally(
     suggestionIds: string[],
     action: 'accept' | 'reject',
-    pageId?: string,
+    docId?: string,
   ): void {
     for (const rawId of suggestionIds) this.clearPendingPersistTimer(rawId);
-    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    const targetViews = this.getViewsForFile(docId, this.activeView);
     if (targetViews.length === 0 || !suggestionIds.length) return;
     const doc = targetViews[0].state.doc;
     const resolved: { sug: PageSuggestion; range: { from: number; to: number } }[] = [];
@@ -550,28 +529,28 @@ export class ReviewCoordinator {
     if (engine?.jumpToLine) engine.jumpToLine(lineNum, 'synctex');
   }
 
-  public async acceptSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
-    return executeResolveSingleSuggestion(this.getResolutionHost(), pageId, suggestionId, 'accept');
+  public async acceptSuggestion(docId: string, suggestionId: string): Promise<boolean> {
+    return resolveOne(this.getResolutionHost(), docId, suggestionId, 'accept');
   }
 
-  public async rejectSuggestion(pageId: string, suggestionId: string): Promise<boolean> {
-    return executeResolveSingleSuggestion(this.getResolutionHost(), pageId, suggestionId, 'reject');
+  public async rejectSuggestion(docId: string, suggestionId: string): Promise<boolean> {
+    return resolveOne(this.getResolutionHost(), docId, suggestionId, 'reject');
   }
 
-  public async acceptAll(pageId: string): Promise<boolean> {
-    return executeResolveAllSuggestions(this.getResolutionHost(), pageId, 'accept');
+  public async acceptAll(docId: string): Promise<boolean> {
+    return resolveAll(this.getResolutionHost(), docId, 'accept');
   }
 
-  public async rejectAll(pageId: string): Promise<boolean> {
-    return executeResolveAllSuggestions(this.getResolutionHost(), pageId, 'reject');
+  public async rejectAll(docId: string): Promise<boolean> {
+    return resolveAll(this.getResolutionHost(), docId, 'reject');
   }
 
-  public async acceptSelected(pageId: string, suggestionIds: string[]): Promise<boolean> {
-    return executeResolveSelectedSuggestions(this.getResolutionHost(), pageId, suggestionIds, 'accept');
+  public async acceptSelected(docId: string, suggestionIds: string[]): Promise<boolean> {
+    return resolveSelected(this.getResolutionHost(), docId, suggestionIds, 'accept');
   }
 
-  public async rejectSelected(pageId: string, suggestionIds: string[]): Promise<boolean> {
-    return executeResolveSelectedSuggestions(this.getResolutionHost(), pageId, suggestionIds, 'reject');
+  public async rejectSelected(docId: string, suggestionIds: string[]): Promise<boolean> {
+    return resolveSelected(this.getResolutionHost(), docId, suggestionIds, 'reject');
   }
 }
 

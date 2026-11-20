@@ -420,18 +420,6 @@ export function EditorArea() {
             isSplitActive={false}
             availableFiles={allSelectableFiles}
             onFocusPane={() => setActiveEditorPane('primary')}
-            onSplitRight={() => {
-              const otherFile = childFiles.find((f) => f.id !== displayPage?.id);
-              const targetId = otherFile?.id || parentPage?.id || displayPage?.id;
-              if (targetId) {
-                if (pageId) {
-                  setSecondaryActiveTab(pageId, targetId);
-                }
-                setSecondaryFileId(targetId);
-              }
-              setEditorSplitMode('vertical');
-              setActiveEditorPane('secondary');
-            }}
             onSelectFile={(selectedId) => selectFile(selectedId)}
           />
         )}

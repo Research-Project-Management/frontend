@@ -40,7 +40,6 @@ export const createReplySchema = z.object({
 });
 
 export type CreateReplyInput = z.infer<typeof createReplySchema>;
-export type AddReplyInput = CreateReplyInput;
 
 export type CommentStatus = 'open' | 'resolved';
 
@@ -76,4 +75,3 @@ export interface PageComment {
 }
 
 export type Comment = PageComment;
-export type DocumentComment = PageComment;

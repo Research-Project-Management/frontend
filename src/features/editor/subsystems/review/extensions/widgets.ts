@@ -1,17 +1,10 @@
-/**
- * track-changes-widgets.ts
- *
- * DOM Widgets, Gutter Markers, Hover Tooltip DOM renderer, and Base Theme
- * for the CodeMirror 6 Review Mode & Track Changes extension.
- */
-
-import { EditorView, WidgetType, GutterMarker } from '@codemirror/view';
+import { EditorView, GutterMarker, WidgetType } from '@codemirror/view';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
-  timeAgo,
   formatReviewDate,
   getAuthorColor,
+  timeAgo,
 } from '@/features/editor/domain/collaboration/author-display';
 
 function escapeHtml(str: string): string {
@@ -23,12 +16,12 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
-export class CleanReplacePreviewWidget extends WidgetType {
+export class CleanReplaceWidget extends WidgetType {
   constructor(private readonly text: string) {
     super();
   }
 
-  override eq(other: CleanReplacePreviewWidget): boolean {
+  override eq(other: CleanReplaceWidget): boolean {
     return this.text === other.text;
   }
 
@@ -40,13 +33,11 @@ export class CleanReplacePreviewWidget extends WidgetType {
   }
 }
 
-// ─── GUTTER MARKERS: COMMENTS & SUGGESTIONS IN LINE MARGIN ───────────────────
-
 export class CommentGutterMarker extends GutterMarker {
   constructor(
     private readonly count: number,
     private readonly firstCommentId: string,
-    private readonly line: number
+    private readonly line: number,
   ) {
     super();
   }
@@ -87,7 +78,7 @@ export class SuggestionGutterMarker extends GutterMarker {
     private readonly firstSuggestionId: string,
     private readonly line: number,
     private readonly hasInsert: boolean,
-    private readonly hasDelete: boolean
+    private readonly hasDelete: boolean,
   ) {
     super();
   }
@@ -142,7 +133,7 @@ export class CombinedReviewGutterMarker extends GutterMarker {
     private readonly suggestionCount: number,
     private readonly firstCommentId: string,
     private readonly firstSuggestionId: string,
-    private readonly line: number
+    private readonly line: number,
   ) {
     super();
   }
@@ -173,7 +164,7 @@ export class CombinedReviewGutterMarker extends GutterMarker {
   }
 }
 
-export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
+export function createSuggestionTooltipDom(s: PageSuggestion): HTMLElement {
   const dom = document.createElement('div');
   dom.className = 'cm-track-tooltip';
   dom.setAttribute('data-testid', 'inline-suggestion-tooltip');
@@ -288,9 +279,7 @@ export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
   return dom;
 }
 
-// ─── STYLES & THEME ─────────────────────────────────────────────────────────
-
-export const trackChangesTheme = EditorView.baseTheme({
+export const reviewTheme = EditorView.baseTheme({
   '.cm-track-change-insert': {
     backgroundColor: 'color-mix(in srgb, var(--success, #1A7F37) 18%, transparent)',
     textDecoration: 'underline',

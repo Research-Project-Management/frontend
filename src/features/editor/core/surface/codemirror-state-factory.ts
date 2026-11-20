@@ -20,7 +20,7 @@ import type {
 } from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';
 import { diffProposalField } from '@/features/editor/core/engine/extensions/inline-diff';
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
-import { createTrackChangesExtension } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
+import { createReviewExtension } from '@/features/editor/subsystems/review';
 import { createDiagnosticsGutter } from '@/features/editor/subsystems/diagnostics/extensions/diagnostics-gutter';
 import { createLatexLinterExtension } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -99,7 +99,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     awareness: options.awareness,
   });
 
-  const trackChangesExtension = createTrackChangesExtension({
+  const reviewExtension = createReviewExtension({
     pageId: options.fileId,
     initialViewMode:
       options.trackChangesViewMode === 'clean' ||
@@ -115,7 +115,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     linterExtension,
     diagnosticsExtension,
     collabExtension,
-    trackChangesExtension,
+    reviewExtension,
     options.viewUpdateListener,
   ];
 

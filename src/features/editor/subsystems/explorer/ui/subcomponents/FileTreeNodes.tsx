@@ -135,11 +135,11 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   if (isRenaming && onRenameChange && onCommitRename && onCancelRename) {
     return (
       <div
-        className="group/row flex h-8 items-center w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
+        className="group/row flex h-8 items-center w-full rounded-md px-2 bg-muted/40 transition-colors select-none"
       >
         <IndentGuides depth={depth} />
-        <span className="size-3.5 shrink-0" aria-hidden="true" />
-        <Icon className={cn('size-4 shrink-0 mr-2', color)} strokeWidth={1.5} />
+        {depth > 0 && <span className="w-3.5 shrink-0" aria-hidden="true" />}
+        <Icon className={cn('size-4 shrink-0 mr-1.5', color)} strokeWidth={1.5} />
         <RenameInput
           value={renameValue}
           onChange={onRenameChange}
@@ -176,11 +176,11 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           }
         }
       }}
-      className="group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground text-foreground hover:bg-muted/60 font-normal"
+      className="group/row relative flex h-7.5 w-full items-center rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground text-foreground hover:bg-muted/60 font-normal"
     >
       <IndentGuides depth={depth} />
-      <span className="size-3.5 shrink-0" aria-hidden="true" />
-      <Icon className={cn('size-4 shrink-0', color)} strokeWidth={1.5} />
+      {depth > 0 && <span className="w-3.5 shrink-0" aria-hidden="true" />}
+      <Icon className={cn('size-4 shrink-0 mr-1.5', color)} strokeWidth={1.5} />
 
       <Tooltip delayDuration={400}>
         <TooltipTrigger asChild>

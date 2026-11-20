@@ -1,20 +1,12 @@
-/**
- * review-service-port.ts
- *
- * Ports & Seams for the ReviewCoordinator Deep Module (Matt Pocock Codebase Design).
- * Allows production adapters (pagesService.suggestions, sonner toast, Zustand stores) and
- * in-memory test stand-ins to be swapped cleanly across the boundary.
- */
-
 export interface ReviewServicePort {
-  acceptSuggestion(pageId: string, suggestionId: string): Promise<unknown>;
-  rejectSuggestion(pageId: string, suggestionId: string): Promise<unknown>;
-  acceptAllSuggestions(pageId: string): Promise<unknown>;
-  rejectAllSuggestions(pageId: string): Promise<unknown>;
-  acceptSelectedSuggestions(pageId: string, suggestionIds: string[]): Promise<unknown>;
-  rejectSelectedSuggestions(pageId: string, suggestionIds: string[]): Promise<unknown>;
+  acceptSuggestion(docId: string, suggestionId: string): Promise<unknown>;
+  rejectSuggestion(docId: string, suggestionId: string): Promise<unknown>;
+  acceptAllSuggestions(docId: string): Promise<unknown>;
+  rejectAllSuggestions(docId: string): Promise<unknown>;
+  acceptSelectedSuggestions(docId: string, suggestionIds: string[]): Promise<unknown>;
+  rejectSelectedSuggestions(docId: string, suggestionIds: string[]): Promise<unknown>;
   batchResolve?(
-    pageId: string,
+    docId: string,
     payload: { suggestionIds: string[]; action: 'accept' | 'reject' },
   ): Promise<unknown>;
   createSuggestion?(payload: {

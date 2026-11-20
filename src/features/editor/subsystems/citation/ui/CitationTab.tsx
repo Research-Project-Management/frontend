@@ -9,9 +9,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { Search as SearchIcon, Plus, X } from 'lucide-react';
-import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useCitationTabState } from './hooks/useCitationTabState';
@@ -51,107 +49,102 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     refreshContent,
   } = useCitationTabState();
 
-  const [isSearchOpen, setIsSearchOpen] = useState(Boolean(searchQuery));
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const showSearchInput = isSearchOpen || Boolean(searchQuery);
+  const handleOpenSearch = useCallback(() => {
+    setIsSearchOpen(true);
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  }, []);
 
-  const handleToggleSearch = useCallback(() => {
-    if (showSearchInput) {
-      if (searchQuery) setSearchQuery('');
-      setIsSearchOpen(false);
-    } else {
-      setIsSearchOpen(true);
-      requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
-      });
-    }
-  }, [showSearchInput, searchQuery, setSearchQuery]);
+  const handleCloseSearch = useCallback(() => {
+    setSearchQuery('');
+    setIsSearchOpen(false);
+  }, [setSearchQuery]);
 
   return (
     <div className="h-full flex flex-col bg-background text-foreground select-none">
-      {/* ── Header Toolbar (h-9) ── */}
-      <SidebarPanelHeader
-        title="Citations"
-        onClose={onClose}
-        closeAriaLabel="Close citations panel"
-      >
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={handleToggleSearch}
-              className={cn(
-                'size-7 flex items-center justify-center rounded-md transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                showSearchInput ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted',
-              )}
-              aria-label={showSearchInput ? 'Hide citation search' : 'Search citations'}
-              aria-pressed={showSearchInput}
-            >
-              <SearchIcon className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-11">
-            {showSearchInput ? 'Hide search' : 'Search citations'}
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={() => openPickerModal()}
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
-              aria-label="Insert citation"
-            >
-              <Plus className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-11">
-            Insert citation
-          </TooltipContent>
-        </Tooltip>
-      </SidebarPanelHeader>
-
-      {/* ── Search Bar (Collapsible, no border divider) ── */}
-      {showSearchInput && (
-        <div className="px-2 pb-1.5 pt-0.5 shrink-0 bg-background animate-in fade-in duration-100">
-          <div className="relative">
-            <SearchIcon
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0"
-              strokeWidth={1.5}
-            />
-            <Input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search citations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setSearchQuery('');
-                  setIsSearchOpen(false);
-                }
-              }}
-              className="h-7 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border focus-visible:border-primary w-full transition-colors"
-            />
-            {searchQuery && (
+      {/* ── Header Toolbar (h-9 sticky) ── */}
+      <div className="relative h-9 shrink-0">
+        <SidebarPanelHeader
+          title="Citations"
+          onClose={onClose}
+          closeAriaLabel="Close citations panel"
+        >
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  searchInputRef.current?.focus();
-                }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-opacity cursor-pointer"
-                aria-label="Clear search"
+                onClick={handleOpenSearch}
+                className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
+                aria-label="Search citations"
               >
-                <X className="size-3 text-foreground" strokeWidth={1.5} />
+                <SearchIcon className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
               </button>
-            )}
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">
+              Search citations
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => openPickerModal()}
+                className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
+                aria-label="Insert citation"
+              >
+                <Plus className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-11">
+              Insert citation
+            </TooltipContent>
+          </Tooltip>
+        </SidebarPanelHeader>
+
+        {/* ── Search Overlay (Bung ra kiểu sticky che thông tin header) ── */}
+        {isSearchOpen && (
+          <div className="absolute inset-0 bg-background flex items-center px-2 z-10 animate-in fade-in duration-100">
+            <div className="w-full flex items-center h-7 px-2 rounded-md bg-muted/50 text-foreground">
+              <SearchIcon className="size-3.5 text-muted-foreground shrink-0 mr-1.5 pointer-events-none" strokeWidth={1.5} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                autoFocus
+                placeholder="Search citations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    handleCloseSearch();
+                  }
+                }}
+                className="flex-1 min-w-0 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none"
+              />
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleCloseSearch}
+                    className="size-5 shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border ml-1"
+                    aria-label="Close search"
+                  >
+                    <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Close search
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ── Content List ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-4 space-y-1 bg-background sidebar-scrollbar">

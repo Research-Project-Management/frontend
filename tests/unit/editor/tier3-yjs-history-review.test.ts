@@ -12,10 +12,10 @@ import {
 } from '@/features/editor/sdk/realtime/yjs-provider-pool';
 import { YjsSocketIOProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import {
-  createTrackChangesExtension,
-  trackChangesStateField,
-} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
-import { ReviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
+  createReviewExtension,
+  reviewStateField,
+  ReviewCoordinator,
+} from '@/features/editor/subsystems/review';
 import { history, review } from '@/features/editor/sdk/pages.service';
 import { useConnectivityStore } from '@/features/editor/core';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
@@ -158,7 +158,7 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
       const state = EditorState.create({
         doc: 'Hello world!',
         extensions: [
-          createTrackChangesExtension({
+          createReviewExtension({
             pageId: 'doc-tc-3',
             initialViewMode: 'changes',
             initialReviewMode: true,
@@ -174,7 +174,7 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
       });
 
       expect(editorView.state.doc.toString()).toBe('Hello worldearth!');
-      const fieldState = editorView.state.field(trackChangesStateField);
+      const fieldState = editorView.state.field(reviewStateField);
       expect(fieldState.suggestions).toHaveLength(2);
       expect(fieldState.suggestions[0]).toMatchObject({
         type: 'delete',
@@ -268,7 +268,7 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
       const liveView = new EditorView({
         state: EditorState.create({
           doc: 'old line',
-          extensions: [createTrackChangesExtension({ pageId: 'page-yjs-guard', initialSuggestions: [yjsSug] })],
+          extensions: [createReviewExtension({ pageId: 'page-yjs-guard', initialSuggestions: [yjsSug] })],
         }),
         parent: container,
       });
@@ -284,7 +284,7 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
       const httpView = new EditorView({
         state: EditorState.create({
           doc: 'old line',
-          extensions: [createTrackChangesExtension({ pageId: 'page-http-guard', initialSuggestions: [httpSug] })],
+          extensions: [createReviewExtension({ pageId: 'page-http-guard', initialSuggestions: [httpSug] })],
         }),
         parent: container,
       });

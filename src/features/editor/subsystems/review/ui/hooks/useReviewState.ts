@@ -1,36 +1,34 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore } from '@/features/editor/core';
-import { useDocumentCollaborationStore } from '@/features/editor/core';
-import { useSettingsStore } from '@/features/editor/core';
+import {
+  editorCommandBus,
+  useDocumentCollaborationStore,
+  usePageStore,
+  useSettingsStore,
+} from '@/features/editor/core';
 import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { usePageComments } from './useComment';
-import {
-  usePageSuggestions,
-  useAcceptSuggestion,
-  useRejectSuggestion,
-  useAcceptAllSuggestions,
-  useRejectAllSuggestions,
-} from './useSuggestion';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
-import { editorCommandBus } from '@/features/editor/core';
-import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { useReviewRealtimeSync } from './useReviewRealtimeSync';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
-import { pagesService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/pages.service';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { reviewCoordinator } from '../../coordinator/review.coordinator';
+import type { ReviewScope } from '../subcomponents/Nav';
+import { usePageComments } from './useComments';
+import {
+  useAcceptAllSuggestions,
+  useAcceptSuggestion,
+  usePageSuggestions,
+  useRejectAllSuggestions,
+  useRejectSuggestion,
+} from './useSuggestions';
 
-export type { ReviewPendingCountResult } from './useReviewPendingCount';
-export { useReviewPendingCount } from './useReviewPendingCount';
-import type { ReviewScope } from '../subcomponents/ReviewNav';
+export type { ReviewPendingCountResult } from './usePendingCount';
+export { useReviewPendingCount } from './usePendingCount';
 export type { ReviewScope };
 
 const EMPTY_ARRAY: never[] = [];
@@ -38,24 +36,19 @@ const EMPTY_ARRAY: never[] = [];
 function scrollToReviewItem(
   targetId: string,
   prefix: 'comment' | 'suggestion' = 'comment',
-  timerRef?: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
+  timerRef?: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
 ): void {
   requestAnimationFrame(() => {
     const el = document.getElementById(`${prefix}-${targetId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      if (timerRef?.current) {
-        clearTimeout(timerRef.current);
-      }
+      if (timerRef?.current) clearTimeout(timerRef.current);
       const timer = setTimeout(() => {
         if (timerRef) timerRef.current = null;
-        const retryEl = document.getElementById(`${prefix}-${targetId}`);
-        retryEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(`${prefix}-${targetId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 80);
-      if (timerRef) {
-        timerRef.current = timer;
-      }
+      if (timerRef) timerRef.current = timer;
     }
   });
 }
@@ -89,51 +82,12 @@ export function useReviewState() {
 
   const { user } = useAuth();
   const { selectFile } = useActiveDocument();
-  const queryClient = useQueryClient();
 
-  const { data: reviewStatusData } = useQuery({
-    queryKey: ['manuscript-review-status', projectId, pageId],
-    queryFn: async () => {
-      if (!pageId) return null;
-      return await pagesService.review.getReviewStatus(projectId, pageId);
-    },
-    enabled: Boolean(pageId),
-    staleTime: 30_000,
-  });
-
-  const reviewInfo: ReviewRoundInfo = useMemo(
-    () =>
-      reviewStatusData?.review || {
-        status: (reviewCoordinator.getReviewStatus(pageId) as ReviewStatus) || 'draft',
-        roundNumber: 1,
-      },
-    [reviewStatusData, pageId],
-  );
-
-  const updateReviewStatusMutation = useMutation({
-    mutationFn: async (payload: { status: ReviewStatus; notes?: string; deadline?: string }) => {
-      if (!pageId) throw new Error('No active document');
-      return await pagesService.review.updateReviewStatus(projectId, pageId, payload);
-    },
-    onSuccess: (res) => {
-      if (pageId) {
-        queryClient.setQueryData(['manuscript-review-status', projectId, pageId], res);
-      }
-      toast.success(`Review status updated to ${res.review.status.replace('_', ' ')}`);
-    },
-    onError: (err: unknown) => {
-      toast.error((err as Error)?.message || 'Failed to update review status');
-    },
-  });
-
-  // Navigation Scope: 'current' | 'overview'
   const [scope, setScope] = useState<ReviewScope>('current');
-  // Resolved comments toggle: default true to display all review items directly
   const [showResolved, setShowResolved] = useState(true);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [overviewResolvedCount, setOverviewResolvedCount] = useState(0);
 
-  // New Comment form visibility and context
   const [showAddForm, setShowAddForm] = useState(false);
   const [pendingQuote, setPendingQuote] = useState<string | null>(null);
   const [commentLine, setCommentLine] = useState<number | null>(null);
@@ -142,7 +96,6 @@ export function useReviewState() {
   const pendingComment = useDocumentCollaborationStore((s) => s.pendingComment);
   const clearPendingComment = useDocumentCollaborationStore((s) => s.clearPendingComment);
 
-  // Fetch project members for author resolution and @mentions with 5-minute cache
   const { data: projectMembersData } = useQuery({
     queryKey: ['project-members', projectId],
     queryFn: async () => {
@@ -205,9 +158,6 @@ export function useReviewState() {
     return map;
   }, [mentionMembers]);
 
-  // Real-time review query synchronization
-  useReviewRealtimeSync({ pageId });
-
   const scrollRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navLineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -215,16 +165,11 @@ export function useReviewState() {
     const scrollRetryTimer = scrollRetryTimerRef;
     const navLineTimer = navLineTimerRef;
     return () => {
-      if (scrollRetryTimer.current) {
-        clearTimeout(scrollRetryTimer.current);
-      }
-      if (navLineTimer.current) {
-        clearTimeout(navLineTimer.current);
-      }
+      if (scrollRetryTimer.current) clearTimeout(scrollRetryTimer.current);
+      if (navLineTimer.current) clearTimeout(navLineTimer.current);
     };
   }, []);
 
-  // Listen to deep-link events from CodeMirror glyphs
   useEffect(() => {
     const unsub = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
       setScope('current');
@@ -236,11 +181,9 @@ export function useReviewState() {
         scrollToReviewItem(cmd.suggestionId, 'suggestion', scrollRetryTimerRef);
       }
     });
-
     return () => unsub();
   }, []);
 
-  // Listen to editor text selection -> comment action
   useEffect(() => {
     if (!pendingComment) return;
     setCommentLine(pendingComment.startLine ?? null);
@@ -250,7 +193,6 @@ export function useReviewState() {
     clearPendingComment();
   }, [pendingComment, clearPendingComment]);
 
-  // Queries for current document
   const {
     data: commentsData,
     isLoading: isCommentsLoading,
@@ -273,13 +215,10 @@ export function useReviewState() {
     const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
       if (!cmd.pageId || cmd.pageId === pageId) {
         setLocalRev((r) => r + 1);
-        if (cmd.event === 'review:status-changed' && pageId) {
-          void queryClient.invalidateQueries({ queryKey: ['manuscript-review-status', projectId, pageId] });
-        }
       }
     });
     return () => unsub();
-  }, [pageId, projectId, queryClient]);
+  }, [pageId]);
 
   const suggestions = useMemo(() => {
     void localRev;
@@ -292,13 +231,11 @@ export function useReviewState() {
     return Array.from(map.values());
   }, [serverSuggestions, pageId, localRev]);
 
-  // Suggestions mutations
   const acceptMutation = useAcceptSuggestion();
   const rejectMutation = useRejectSuggestion();
   const acceptAllMutation = useAcceptAllSuggestions();
   const rejectAllMutation = useRejectAllSuggestions();
 
-  // Project files query for Overview tab
   const { data: projectFilesData } = useQuery(filesQuery(rootPageId || pageId || ''));
   const projectFiles = projectFilesData ?? EMPTY_ARRAY;
   const allProjectFiles = useMemo<Array<{ id: string; title: string }>>(() => {
@@ -313,7 +250,6 @@ export function useReviewState() {
     return list;
   }, [projectFiles, rootPageId, pageId, currentPageTitle]);
 
-  // Calculations
   const openComments = useMemo(() => comments.filter((c) => c.status === 'open'), [comments]);
   const resolvedComments = useMemo(() => comments.filter((c) => c.status === 'resolved'), [comments]);
   const pendingSuggestions = useMemo(() => suggestions.filter((s) => s.status === 'pending'), [suggestions]);
@@ -325,7 +261,6 @@ export function useReviewState() {
   const reviewMode = useSettingsStore((s) => s.reviewMode);
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
 
-  // Sync active suggestions and comments into CodeMirror editor decorations
   useEffect(() => {
     reviewCoordinator.syncEditorDecorations(
       null,
@@ -333,7 +268,7 @@ export function useReviewState() {
       comments,
       trackChangesViewMode,
       Boolean(reviewMode),
-      pageId
+      pageId,
     );
   }, [suggestions, comments, trackChangesViewMode, reviewMode, pageId]);
 
@@ -353,18 +288,19 @@ export function useReviewState() {
     jumpToEditorLine(line);
   }, []);
 
-  const handleNavigateToFileAndLine = useCallback((targetFileId: string, line?: number) => {
-    selectFile(targetFileId);
-    if (line != null) {
-      if (navLineTimerRef.current) {
-        clearTimeout(navLineTimerRef.current);
+  const handleNavigateToFileAndLine = useCallback(
+    (targetFileId: string, line?: number) => {
+      selectFile(targetFileId);
+      if (line != null) {
+        if (navLineTimerRef.current) clearTimeout(navLineTimerRef.current);
+        navLineTimerRef.current = setTimeout(() => {
+          navLineTimerRef.current = null;
+          jumpToEditorLine(line);
+        }, 100);
       }
-      navLineTimerRef.current = setTimeout(() => {
-        navLineTimerRef.current = null;
-        jumpToEditorLine(line);
-      }, 100);
-    }
-  }, [selectFile]);
+    },
+    [selectFile],
+  );
 
   const handleAcceptSuggestion = useCallback(
     (suggestionId: string) => {
@@ -436,9 +372,6 @@ export function useReviewState() {
     handleNavigateToLine,
     handleNavigateToFileAndLine,
     setOverviewResolvedCount,
-    reviewInfo,
-    updateReviewStatus: updateReviewStatusMutation.mutate,
-    isUpdatingReviewStatus: updateReviewStatusMutation.isPending,
   };
 }
 

@@ -25,7 +25,7 @@ import {
   bracketMatching,
 } from '@codemirror/language';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { search, searchKeymap } from '@codemirror/search';
+import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { vim, Vim } from '@replit/codemirror-vim';
 import { latexLanguage, lineHighlightField, synctexHighlightTheme } from '@/features/editor/core/engine/extensions/latex-language';
 import { createLatexAutocompleteExtension } from '@/features/editor/core/engine/extensions/latex-autocomplete';
@@ -36,9 +36,10 @@ import {
 } from '@/features/editor/subsystems/diagnostics';
 import { latexMathHoverTooltip } from '@/features/editor/core/engine/extensions/latex-math-preview';
 import { latexCitationHoverTooltip } from '@/features/editor/subsystems/citation';
-import { createInlineDiffExtension } from '@/features/editor/subsystems/review';
+import { createInlineDiffExtension } from '@/features/editor/core/engine/extensions/inline-diff';
 import { createLatexFoldExtension } from '@/features/editor/core/engine/extensions/latex-folding';
 import { createLatexSpellingExtension } from '@/features/editor/core/engine/extensions/latex-spelling';
+import { createSelectionGutterActionsExtension } from '@/features/editor/core/engine/extensions/selection-gutter-actions';
 import { getThemeExtension } from './editor-themes';
 import {
   editorBaseTheme,
@@ -172,7 +173,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     enableLinter = true,
     enableInlineDiff = true,
     enableFolding = true,
-    enableErrorLens = true,
+    enableErrorLens = false,
     enableSpellCheck = true,
     enableSmartPaste = true,
     projectId,
@@ -193,6 +194,8 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     history(),
     EditorState.allowMultipleSelections.of(true),
     search({ top: false }),
+    highlightSelectionMatches(),
+    createSelectionGutterActionsExtension(),
     rectangularSelection(),
     crosshairCursor(),
     latexLanguage,

@@ -108,8 +108,8 @@ describe('Split Editor Panes & Detached PDF Preview (Overleaf Parity)', () => {
 
       expect(document.querySelector('[data-file-id="doc-main"], [data-file-id="doc-1"]')).toBeInTheDocument();
       expect(document.querySelector('[data-file-id="doc-bib"]')).toBeNull();
-      // Split button is visible on the single pane toolbar
-      expect(screen.getByTitle(/split editor right/i)).toBeInTheDocument();
+      // Duplicate split button is removed from the editor toolbar
+      expect(screen.queryByTitle(/split editor right/i)).toBeNull();
     });
 
     it('renders dual EditorPanes with ResizablePanelGroup when editorSplitMode is "vertical"', () => {

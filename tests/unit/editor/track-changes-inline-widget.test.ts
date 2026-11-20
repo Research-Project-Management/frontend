@@ -14,19 +14,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import {
-  createTrackChangesExtension,
-  trackChangesStateField,
-  trackChangesDecorationsField,
-  trackChangesHoverTooltip,
-  getTrackChangesTooltip,
-  trackChangesGutter,
-  setTrackChangesSuggestionsEffect,
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
-  setTrackChangesCommentsEffect,
+  createReviewExtension,
+  reviewStateField,
+  reviewDecorationsField,
+  reviewHoverTooltip,
+  getSuggestionTooltip,
+  reviewGutter,
+  setSuggestionsEffect,
+  setViewModeEffect,
+  setReviewModeEffect,
+  setCommentsEffect,
   getSafeOffset,
-} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
-import { reviewCoordinator } from '@/features/editor/subsystems/review';
+  reviewCoordinator,
+} from '@/features/editor/subsystems/review';
 import { editorCommandBus } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
@@ -112,7 +112,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
     const state = EditorState.create({
       doc: sampleDoc,
       extensions: [
-        createTrackChangesExtension({
+        createReviewExtension({
           initialSuggestions: mockSuggestions,
           initialComments: mockComments,
           initialViewMode,
@@ -132,7 +132,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
   describe('1. CodeMirror ViewModes & Visual Decorations', () => {
     it('renders insertion and deletion decorations in "changes" mode', () => {
       const editor = createTestEditor('changes');
-      const decos = editor.state.field(trackChangesDecorationsField);
+      const decos = editor.state.field(reviewDecorationsField);
       expect(decos).toBeDefined();
 
       let foundInsert = false;
@@ -150,7 +150,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
 
     it('hides deleted text and renders clean in "clean" mode (Show final text)', () => {
       const editor = createTestEditor('clean');
-      const decos = editor.state.field(trackChangesDecorationsField);
+      const decos = editor.state.field(reviewDecorationsField);
 
       let foundDeleteMark = false;
       let foundReplaceDeco = false;
@@ -168,7 +168,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
 
     it('hides inserted text in "original" mode (Show original text)', () => {
       const editor = createTestEditor('original');
-      const decos = editor.state.field(trackChangesDecorationsField);
+      const decos = editor.state.field(reviewDecorationsField);
 
       let foundInsertMark = false;
       let foundReplaceDeco = false;
@@ -189,21 +189,21 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
 
       // Switch to clean
       editor.dispatch({
-        effects: setTrackChangesViewModeEffect.of('clean'),
+        effects: setViewModeEffect.of('clean'),
       });
-      expect(editor.state.field(trackChangesStateField).viewMode).toBe('clean');
+      expect(editor.state.field(reviewStateField).viewMode).toBe('clean');
 
       // Switch to original
       editor.dispatch({
-        effects: setTrackChangesViewModeEffect.of('original'),
+        effects: setViewModeEffect.of('original'),
       });
-      expect(editor.state.field(trackChangesStateField).viewMode).toBe('original');
+      expect(editor.state.field(reviewStateField).viewMode).toBe('original');
 
       // Switch back to changes
       editor.dispatch({
-        effects: setTrackChangesViewModeEffect.of('changes'),
+        effects: setViewModeEffect.of('changes'),
       });
-      expect(editor.state.field(trackChangesStateField).viewMode).toBe('changes');
+      expect(editor.state.field(reviewStateField).viewMode).toBe('changes');
     });
   });
 
@@ -215,7 +215,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       const testPos = line4.from + 16; // inside the suggestions
 
       // Query tooltip for this position
-      const tooltip = getTrackChangesTooltip(editor, testPos);
+      const tooltip = getSuggestionTooltip(editor, testPos);
 
       expect(tooltip).not.toBeNull();
       expect(tooltip!.pos).toBeDefined();
@@ -240,7 +240,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
 
       const pos = editor.state.doc.line(4).from + 16;
-      const tooltip = getTrackChangesTooltip(editor, pos);
+      const tooltip = getSuggestionTooltip(editor, pos);
       expect(tooltip).not.toBeNull();
       const dom = tooltip!.create(editor).dom;
 
@@ -260,7 +260,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
 
       const pos = editor.state.doc.line(4).from + 16;
-      const tooltip = getTrackChangesTooltip(editor, pos);
+      const tooltip = getSuggestionTooltip(editor, pos);
       expect(tooltip).not.toBeNull();
       const dom = tooltip!.create(editor).dom;
 
@@ -318,7 +318,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
   describe('4. Review Gutter Markers', () => {
     it('creates gutter markers for comment and suggestion lines', () => {
       const editor = createTestEditor('changes');
-      const gutterExt = trackChangesGutter as any;
+      const gutterExt = reviewGutter as any;
       expect(gutterExt).toBeDefined();
 
       const line3 = editor.state.doc.line(3);

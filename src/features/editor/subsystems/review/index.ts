@@ -1,63 +1,62 @@
 /**
  * src/features/editor/subsystems/review/index.ts
  *
- * Review & Track Changes Subsystem Public Seam & Facade Port (Matt Pocock Deep Module).
- *
- * Responsibilities:
- * - CodeMirror 6 Review Mode & Track Changes Extensions (Visual decorations & Inline popover widgets).
- * - Realtime Comments & Thread Resolutions.
- * - Single-Click Suggestion Accept / Reject with Optimistic Buffer Updating.
- * - Review Sidebar Tab (Overview, Comments list, Suggestions list).
+ * Review & Track Changes Subsystem Public Seam.
  */
 
-// 1. Coordinators
+// 1. Coordinator & Ports
 export {
   reviewCoordinator,
   ReviewCoordinator,
+  type ReviewRollbackSnapshot,
+  type SuggestionMemento,
 } from './coordinator/review.coordinator';
 export type {
   ReviewServicePort,
   ReviewNotificationPort,
   ReviewStorePort,
   ReviewCoordinatorPorts,
-} from './model/review-service-port';
+} from './model/ports';
 
 // 2. CodeMirror Extensions
 export {
-  createTrackChangesExtension,
-  trackChangesExtension,
-  trackChangesStateField,
-  trackChangesDecorationsField,
-  trackChangesGutter,
-  trackChangesHoverTooltip,
-  setTrackChangesSuggestionsEffect,
-  setTrackChangesCommentsEffect,
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
+  createReviewExtension,
+  reviewStateField,
+  reviewDecorationsField,
+  reviewGutter,
+  reviewHoverTooltip,
+  getSuggestionTooltip,
+  reviewModeFilter,
+  reviewTheme,
+  setSuggestionsEffect,
+  setCommentsEffect,
+  setViewModeEffect,
+  setReviewModeEffect,
+  setReviewDataEffect,
   getSafeOffset,
+  resolveSuggestionRange,
+  isLocalSuggestionId,
+  createLocalSuggestionId,
   type TrackChangesViewMode,
-  type TrackChangesConfig,
-  type TrackChangesExtensionOptions,
-} from './extensions/track-changes.extension';
-export {
-  createInlineDiffExtension,
-  diffProposalField,
-  proposeDiffEffect,
-  acceptDiffEffect,
-  rejectDiffEffect,
-  clearDiffEffect,
-  type DiffProposal,
-} from '@/features/editor/core/engine/extensions/inline-diff';
+  type ReviewExtensionConfig,
+  type ReviewExtensionOptions,
+  type RawSuggestion,
+  type RawComment,
+} from './extensions/review.extension';
 
 // 3. UI Presentation Layer
-export { default as ReviewTab } from './ui/ReviewTab';
-export { MentionTextarea } from './ui/subcomponents/MentionTextarea';
+export { ReviewTab } from './ui/ReviewTab';
+export {
+  MentionTextarea,
+  type MentionTextareaProps,
+  type MentionTextareaRef,
+} from './ui/subcomponents/MentionInput';
 export {
   OverviewView,
   OverviewFileGroup,
   type OverviewViewProps,
   type OverviewFileGroupProps,
-} from './ui/subcomponents/ReviewOverview';
+} from './ui/subcomponents/Overview';
 export {
   CommentCard,
   ReplyRow,
@@ -67,7 +66,7 @@ export {
   type ReplyRowProps,
   type ReplyFormProps,
   type NewCommentFormProps,
-} from './ui/subcomponents/ReviewComments';
+} from './ui/subcomponents/Comments';
 export {
   SuggestionCard,
   SuggestionBulkActions,
@@ -75,7 +74,7 @@ export {
   type SuggestionCardProps,
   type SuggestionBulkActionsProps,
   type TrackChangesControlBarProps,
-} from './ui/subcomponents/ReviewSuggestions';
+} from './ui/subcomponents/Suggestions';
 export {
   ReviewHeader,
   ReviewBottomNav,
@@ -84,14 +83,17 @@ export {
   type ReviewHeaderProps,
   type ReviewBottomNavProps,
   type EmptyReviewStateProps,
-} from './ui/subcomponents/ReviewNav';
+} from './ui/subcomponents/Nav';
 export {
   ReviewIcon,
-  ReviewSolidIcon,
   ResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,
-} from './ui/subcomponents/ReviewBadges';
+  type MentionBadgeProps,
+  type MentionRendererProps,
+} from './ui/subcomponents/Badges';
+
+// 4. Hooks
 export {
   suggestionKeys,
   usePageSuggestions,
@@ -100,7 +102,7 @@ export {
   useRejectSuggestion,
   useAcceptAllSuggestions,
   useRejectAllSuggestions,
-} from './ui/hooks/useSuggestion';
+} from './ui/hooks/useSuggestions';
 export {
   commentKeys,
   usePageComments,
@@ -110,14 +112,10 @@ export {
   useAddReply,
   useResolveComment,
   useDeleteReply,
-} from './ui/hooks/useComment';
+} from './ui/hooks/useComments';
+export { useReviewSync } from './ui/hooks/useReviewSync';
 export {
   useReviewPendingCount,
   type ReviewPendingCountResult,
-} from './ui/hooks/useReviewPendingCount';
-export {
-  useSafeQueryClient,
-  fallbackQueryClient,
-} from './ui/hooks/safeQueryClient';
-
-
+} from './ui/hooks/usePendingCount';
+export { useReviewState } from './ui/hooks/useReviewState';

@@ -289,6 +289,8 @@ export function createLatexLinterExtension(filePath?: string): Extension {
     createLatexLinterPlugin(filePath),
     linter(createLatexLinterSource(filePath), {
       delay: 300, // 300ms debounced synchronous execution (0 network calls while typing)
+      // @codemirror/lint checks `if (!found)` rather than `!found.length`, so return null to suppress the hover popup completely
+      tooltipFilter: (() => null) as unknown as () => Diagnostic[],
     }),
   ];
 }

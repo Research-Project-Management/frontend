@@ -1,36 +1,55 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { RefreshCw, SquarePen } from 'lucide-react';
+import { ChevronRight, History, SquarePen } from 'lucide-react';
 import {
-  clearPageChat,
-  uploadDocument,
+  CompanionHistory,
+  CompanionMessages,
+  Composer,
+  ContextPicker,
+  getRagDocumentId,
+  sourceEntryToAttachedPayload,
+  sourcesToAttachments,
+  threadPool,
+  useActiveAiSpace,
+  useAiCompanionStore,
   useAiThread,
+  useTurnContext,
+  type CompanionSuggestionItem,
   type ContextTab,
+  type MessageCodeActions,
+  type SourceEntry,
 } from '@/features/ai';
-import { AIIcon } from '@/shared/components/icons';
+import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
+import {
+  getLineContext,
+  parseLatexStructure,
+} from '@/features/editor/domain/latex/latex-structure';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { cn } from '@/shared/lib/utils';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
-import { AiInputArea } from './AiInputArea';
-import { AiMessageItem } from './AiMessageItem';
-import { AiSuggestionsHero } from './AiSuggestionsHero';
-import {
-  type AttachedFile,
-  type UploadingFileItem,
-} from './ai-attachments';
 import { useAiChatActions } from './useAiChatActions';
 
 interface AiTabProps {
   onClose?: () => void;
 }
+
+const EDITOR_SUGGESTIONS: readonly CompanionSuggestionItem[] = QUICK_ACTIONS.slice(
+  0,
+  5,
+).map((act) => ({
+  id: act.id,
+  label: act.label,
+  text: act.prompt,
+  prompt: act.prompt,
+}));
 
 export default function AiTab({ onClose }: AiTabProps) {
   void onClose;
@@ -39,6 +58,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     pageId?: string;
     draftId?: string;
   }>();
+
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const rootPageId = usePageStore((s) => s.rootPageId);
   const parentPageId = usePageStore((s) => s.parentPageId);
@@ -67,35 +87,62 @@ export default function AiTab({ onClose }: AiTabProps) {
     currentPageId ||
     null;
 
+  const activeFilename =
+    activeFilePage?.title || currentPageTitle || 'document.tex';
+
+  const {
+    activeChatId,
+    setActiveChatId,
+    isHistoryView,
+    toggleHistoryView,
+    setHistoryView,
+    pendingPrompt,
+    setPendingPrompt,
+  } = useAiCompanionStore();
+
+  const { spaceId: workspaceSpaceId } = useActiveAiSpace(currentProjectId);
+
+  const threadKey = activeChatId || 'draft:companion';
   const thread = useAiThread({
-    threadKey: activePageId ? `page:${activePageId}` : 'draft:editor',
-    pageId: activePageId,
-    spaceId: currentProjectId,
+    threadKey,
+    chatId: activeChatId,
+    spaceId: workspaceSpaceId,
     mode: 'editor',
+    onChatIdAssigned: (newChatId) => {
+      setActiveChatId(newChatId);
+    },
+    onSessionNotFound: () => {
+      setActiveChatId(null);
+    },
   });
 
-  const [inputPrompt, setInputPrompt] = useState('');
+  const effectiveSpaceId = thread.spaceId ?? workspaceSpaceId;
+  const turnCtx = useTurnContext({ spaceId: effectiveSpaceId });
+
+  const [promptToFill, setPromptToFill] = useState('');
+  const [draftRevision, setDraftRevision] = useState(0);
   const [selectionContext, setSelectionContext] = useState<string | null>(null);
   const [selectionFileId, setSelectionFileId] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFileItem[]>([]);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [pickerTab, setPickerTab] = useState<ContextTab | null>(null);
+  const [pendingAutoSend, setPendingAutoSend] = useState<{
+    prompt: string;
+    selectedText?: string;
+  } | null>(null);
 
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastErrorRef = useRef<Error | null>(null);
 
   const {
     insertAtCursor,
     replaceSelection,
     proposeDiff,
+    reviewEditorPatch,
+    applyAllEditorPatches,
     copyCode,
-    notifyItemsAttached,
-    notifyFileAttached,
-    notifyFileError,
     notifyChatError,
-    notifyChatCleared,
   } = useAiChatActions({ engine, selectionFileId });
 
   useEffect(() => {
@@ -106,8 +153,6 @@ export default function AiTab({ onClose }: AiTabProps) {
     };
   }, []);
 
-  // Notify on surfaced stream error
-  const lastErrorRef = useRef<Error | null>(null);
   useEffect(() => {
     if (thread.error && thread.error !== lastErrorRef.current) {
       lastErrorRef.current = thread.error;
@@ -117,97 +162,55 @@ export default function AiTab({ onClose }: AiTabProps) {
     }
   }, [thread.error, notifyChatError]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    e.target.value = '';
-
-    for (const file of files) {
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      setUploadingFiles((prev) => [
-        ...prev,
-        {
-          id: tempId,
-          name: file.name,
-          size: file.size,
-          progress: 10,
-          stage: 'uploading',
-        },
-      ]);
-
-      try {
-        const doc = await uploadDocument(
-          currentProjectId || 'personal',
-          file,
-          (prog) => {
-            setUploadingFiles((prev) =>
-              prev.map((item) =>
-                item.id === tempId
-                  ? { ...item, progress: prog.percent, stage: prog.stage }
-                  : item,
-              ),
-            );
-          },
-        );
-
-        setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
-        setAttachedFiles((prev) => [
-          ...prev,
-          { id: doc.id, name: doc.name || file.name, size: doc.size || file.size },
-        ]);
-        notifyFileAttached(file.name);
-      } catch (err: unknown) {
-        setUploadingFiles((prev) => prev.filter((item) => item.id !== tempId));
-        notifyFileError(
-          file.name,
-          err instanceof Error ? err.message : 'Upload failed',
-        );
-      }
-    }
-  };
-
-  const removeAttachedFile = (fileId: string) => {
-    setAttachedFiles((prev) => prev.filter((f) => f.id !== fileId));
-  };
-
-  const scrollToBottom = useCallback(() => {
+  useEffect(() => {
     if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [thread.messages, thread.isStreaming, scrollToBottom]);
+  }, [thread.messages, thread.isStreaming]);
 
   useEffect(() => {
     setSelectionContext(null);
     setSelectionFileId(null);
-    setAttachedFiles([]);
   }, [activePageId]);
 
   useEffect(() => {
     return editorCommandBus.subscribe('sidebar:open-ai-panel', (cmd) => {
+      setHistoryView(false);
       const currentFileId =
         usePageStore.getState().activeFilePage?.id ||
         usePageStore.getState().currentPage?.id ||
         null;
-      if (cmd?.selectedText) {
-        setSelectionContext(cmd.selectedText);
-        setSelectionFileId(currentFileId);
-      } else if (engine) {
-        const text = engine.getSelectedText();
-        if (text.trim()) {
-          setSelectionContext(text);
+
+      const resolvedSelectedText = cmd?.selectedText?.trim()
+        ? cmd.selectedText
+        : engine?.getSelectedText?.().trim()
+          ? engine.getSelectedText()
+          : '';
+
+      if (cmd?.autoSend && cmd?.initialPrompt) {
+        if (resolvedSelectedText) {
+          setSelectionContext(resolvedSelectedText);
           setSelectionFileId(currentFileId);
         }
+        setPromptToFill('');
+        setPendingAutoSend({
+          prompt: cmd.initialPrompt,
+          selectedText: resolvedSelectedText || undefined,
+        });
+        return;
+      }
+
+      if (resolvedSelectedText) {
+        setSelectionContext(resolvedSelectedText);
+        setSelectionFileId(currentFileId);
       }
 
       if (cmd?.initialPrompt) {
-        setInputPrompt(cmd.initialPrompt);
+        setPromptToFill(cmd.initialPrompt);
+        setDraftRevision((prev) => prev + 1);
       }
     });
-  }, [engine]);
+  }, [engine, setHistoryView]);
 
   useEffect(() => {
     return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
@@ -218,254 +221,439 @@ export default function AiTab({ onClose }: AiTabProps) {
     });
   }, []);
 
-  const handleStopStreaming = () => {
-    void thread.stop();
-  };
-
-  const handleSendMessage = async (customPrompt?: string) => {
-    const textToSend = (customPrompt || inputPrompt).trim();
-    if ((!textToSend && attachedFiles.length === 0) || thread.isStreaming) return;
-
-    let displayContent = textToSend;
-    if (selectionContext && !customPrompt) {
-      displayContent = `> ${selectionContext.slice(0, 100).replace(/\n/g, ' ')}${
-        selectionContext.length > 100 ? '...' : ''
-      }\n\n${textToSend}`;
-    }
-
-    setInputPrompt('');
-
-    const activeFilename =
-      activeFilePage?.title || currentPageTitle || 'document.tex';
-    const fileContent = getContent();
-    const selRange = engine?.getSelection?.() ?? null;
-    const finalDocIds = attachedFiles.map((f) => f.id);
-    const finalWebSearch = webSearchEnabled ? ['*'] : undefined;
-
-    await thread.send(displayContent, {
-      mode: 'editor',
-      chatId: thread.chatId,
-      spaceId: currentProjectId,
-      documentIds: finalDocIds.length > 0 ? finalDocIds : undefined,
-      attachments: attachedFiles.map((f) => ({
-        id: f.id,
-        name: f.name,
-        size: f.size,
-        sourceType: 'upload',
-      })),
-      webSearchSites: finalWebSearch,
-      editor: {
-        pageId: activePageId,
-        filename: activeFilename,
-        fileContent,
-        selection: selectionContext ?? undefined,
-        selectionStartLine: selRange?.startLine ?? undefined,
-        selectionEndLine: selRange?.endLine ?? undefined,
-        selectionStartColumn: selRange?.startColumn ?? undefined,
-        selectionEndColumn: selRange?.endColumn ?? undefined,
+  const handleSend = useCallback(
+    async (
+      rawText: string,
+      overrides?: {
+        spaceId?: string | null;
+        webSearchSites?: string[] | null;
+        documentIds?: string[] | null;
+        attachedFiles?: Array<{ id: string; name: string; size?: number }>;
+        selectedText?: string;
+        isExternalHandoff?: boolean;
       },
-    });
+    ) => {
+      if (thread.isStreaming) return;
 
-    setSelectionContext(null);
-    setSelectionFileId(null);
-  };
-
-  const handleClearChat = async () => {
-    if (thread.messages.length === 0 && !thread.isStreaming) return;
-    if (activePageId) {
-      try {
-        await clearPageChat(activePageId);
-      } catch {
-        // Fallback silently
+      const trimmed = rawText.trim();
+      const extraSources: SourceEntry[] = [];
+      if (overrides?.attachedFiles?.length) {
+        for (const f of overrides.attachedFiles) {
+          extraSources.push({
+            id: f.id,
+            name: f.name,
+            size: f.size,
+            enabled: true,
+            sourceType: 'upload',
+          });
+        }
+      } else {
+        for (const s of turnCtx.sources) {
+          if (s.enabled) extraSources.push(s);
+        }
       }
-    }
-    thread.reset({ keepMeta: false });
-    setSelectionContext(null);
-    setSelectionFileId(null);
-    setInputPrompt('');
-    notifyChatCleared();
-  };
 
-  const handleCopyCode = async (code: string, blockId: string) => {
-    await copyCode(code);
-    setCopiedIndex(blockId);
-    if (copyTimerRef.current) {
-      clearTimeout(copyTimerRef.current);
-    }
-    copyTimerRef.current = setTimeout(() => {
-      copyTimerRef.current = null;
-      setCopiedIndex(null);
-    }, 2000);
-  };
+      const activeSelection = overrides?.selectedText ?? selectionContext;
 
-  const handleSourcesAttached = useCallback(
-    (items: AttachedFile[], source: 'library' | 'documents') => {
-      setAttachedFiles((prev) => {
-        const existingIds = new Set(prev.map((f) => f.id));
-        const newOnes = items
-          .filter((it) => !existingIds.has(it.id))
-          .map((it) => ({ id: it.id, name: it.name, size: it.size }));
-        return [...prev, ...newOnes];
+      if (!trimmed && !activeSelection && extraSources.length === 0) return;
+
+      let displayContent = trimmed;
+      if (activeSelection && !overrides?.isExternalHandoff) {
+        const quotePrefix = `> ${activeSelection.slice(0, 100).replace(/\n/g, ' ')}${
+          activeSelection.length > 100 ? '...' : ''
+        }`;
+        displayContent = trimmed
+          ? `${quotePrefix}\n\n${trimmed}`
+          : `${quotePrefix}\n\nExplain or help improve this LaTeX selection.`;
+      }
+
+      const activeFileId = activeFilePage?.id || currentPageId || null;
+      const activeFilePath = (
+        activeFilePage?.path ||
+        activeFilePage?.title ||
+        currentPageTitle ||
+        'document.tex'
+      ).replace(/^\/+/, '');
+      const fileContent = getContent();
+      const selRange = engine?.getSelection?.() ?? null;
+      const cursorPos = engine?.getCursorPosition?.() ?? null;
+      const lines = fileContent ? fileContent.split('\n') : [];
+      const anchorLine = selRange?.startLine ?? cursorPos?.line ?? 1;
+      const contextBefore =
+        lines.length > 0 && anchorLine > 1
+          ? lines.slice(Math.max(0, anchorLine - 41), anchorLine - 1).join('\n')
+          : undefined;
+      const contextAfter =
+        lines.length > 0 && anchorLine <= lines.length
+          ? lines
+              .slice(
+                selRange?.endLine ?? anchorLine,
+                Math.min(lines.length, (selRange?.endLine ?? anchorLine) + 40),
+              )
+              .join('\n')
+          : undefined;
+      const cursorContext =
+        lines.length > 0 && cursorPos?.line
+          ? lines
+              .slice(
+                Math.max(0, cursorPos.line - 6),
+                Math.min(lines.length, cursorPos.line + 5),
+              )
+              .join('\n')
+          : undefined;
+
+      const structure = parseLatexStructure(fileContent);
+      const { section: currentSection, environment: currentEnvironment } =
+        getLineContext(anchorLine, structure);
+      const structureSummary =
+        structure.sections.length > 0
+          ? structure.sections
+              .slice(0, 30)
+              .map((s) => `L${s.startLine}: \\${s.level}{${s.title}}`)
+              .join('\n')
+          : undefined;
+
+      const compileErrors = diagnosticsCoordinator
+        .getDiagnosticsForFile(activeFilePath)
+        .slice(0, 10)
+        .map((d) => ({
+          line: d.line,
+          severity: d.severity,
+          message: d.message,
+          context: d.context,
+        }));
+
+      const combinedDocIds = Array.from(
+        new Set([
+          ...(overrides?.documentIds ?? []),
+          ...extraSources
+            .map(getRagDocumentId)
+            .filter((id): id is string => Boolean(id)),
+        ]),
+      ).filter(Boolean);
+      const attachedSources = extraSources.map(sourceEntryToAttachedPayload);
+      const wireAttachments = sourcesToAttachments(extraSources);
+
+      const finalWebSearch =
+        overrides?.webSearchSites !== undefined
+          ? (overrides.webSearchSites ?? undefined)
+          : turnCtx.webSearchEnabled
+            ? turnCtx.webSearchSites.length > 0
+              ? turnCtx.webSearchSites
+              : ['*']
+            : undefined;
+
+      const targetSpaceId =
+        overrides?.spaceId !== undefined ? overrides.spaceId : effectiveSpaceId;
+      const selectionSnapshot = activeSelection;
+
+      if (!overrides?.isExternalHandoff) {
+        setSelectionContext(null);
+        setSelectionFileId(null);
+        setPromptToFill('');
+        turnCtx.clearSources();
+      }
+
+      await thread.send(displayContent, {
+        mode: 'editor',
+        chatId: activeChatId,
+        spaceId: targetSpaceId,
+        documentIds: combinedDocIds.length > 0 ? combinedDocIds : undefined,
+        attachedSources: attachedSources.length > 0 ? attachedSources : undefined,
+        attachments: wireAttachments.length > 0 ? wireAttachments : undefined,
+        webSearchSites: finalWebSearch,
+        editor: {
+          pageId: activePageId,
+          activeFileId,
+          activeFilePath,
+          filename: activeFilename,
+          fileContent,
+          cursorLine: cursorPos?.line ?? undefined,
+          cursorColumn: cursorPos?.column ?? undefined,
+          cursorContext,
+          selection: selectionSnapshot ?? undefined,
+          selectionStartLine: selRange?.startLine ?? undefined,
+          selectionEndLine: selRange?.endLine ?? undefined,
+          selectionStartColumn: selRange?.startColumn ?? undefined,
+          selectionEndColumn: selRange?.endColumn ?? undefined,
+          contextBefore,
+          contextAfter,
+          currentSection,
+          currentEnvironment,
+          documentStructureSummary: structureSummary,
+          compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
+        },
       });
-      notifyItemsAttached(items.length, source);
     },
-    [notifyItemsAttached],
+    [
+      thread,
+      turnCtx,
+      selectionContext,
+      activeFilePage,
+      currentPageId,
+      currentPageTitle,
+      activeFilename,
+      getContent,
+      engine,
+      effectiveSpaceId,
+      activeChatId,
+      activePageId,
+    ],
   );
 
-  const lastMessage = thread.messages[thread.messages.length - 1];
-  const isWaitingFirstChunk =
-    thread.isStreaming && (!lastMessage || lastMessage.role === 'user');
+  // Consume auto-send Writing Tools actions from selection gutter pill
+  useEffect(() => {
+    if (pendingAutoSend && !thread.isStreaming) {
+      const next = pendingAutoSend;
+      setPendingAutoSend(null);
+      void handleSend(next.prompt, {
+        selectedText: next.selectedText,
+      });
+    }
+  }, [pendingAutoSend, thread.isStreaming, handleSend]);
+
+  // Consume external handoff prompts from Global AI store
+  useEffect(() => {
+    if (pendingPrompt && pendingPrompt.text && !thread.isStreaming) {
+      const prompt = { ...pendingPrompt };
+      setPendingPrompt(null);
+      void handleSend(prompt.text, {
+        isExternalHandoff: true,
+        spaceId: prompt.spaceId ?? prompt.projectId,
+        documentIds: prompt.documentIds,
+        attachedFiles: prompt.attachedFiles,
+        webSearchSites:
+          prompt.webSearchSites || (prompt.webSearch ? ['*'] : undefined),
+      });
+    }
+  }, [pendingPrompt, thread.isStreaming, setPendingPrompt, handleSend]);
+
+  const startNewChat = useCallback(() => {
+    threadPool.get('draft:companion')?.reset();
+    setActiveChatId(null);
+    setHistoryView(false);
+    setSelectionContext(null);
+    setSelectionFileId(null);
+    setPromptToFill('');
+  }, [setActiveChatId, setHistoryView]);
+
+  const handleCopyCode = useCallback(
+    async (code: string, blockId: string) => {
+      await copyCode(code);
+      setCopiedIndex(blockId);
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+      copyTimerRef.current = setTimeout(() => {
+        copyTimerRef.current = null;
+        setCopiedIndex(null);
+      }, 2000);
+    },
+    [copyCode],
+  );
+
+  const hasSelectionForReply = Boolean(
+    selectionContext || engine?.getSelectedText?.().trim(),
+  );
+
+  const codeActions = useMemo<MessageCodeActions>(
+    () => ({
+      hasSelection: hasSelectionForReply,
+      copiedBlockId: copiedIndex,
+      onCopyCode: (code, blockId) => void handleCopyCode(code, blockId),
+      onInsertAtCursor: insertAtCursor,
+      onProposeDiff: proposeDiff,
+      onReplaceSelection: replaceSelection,
+    }),
+    [
+      hasSelectionForReply,
+      copiedIndex,
+      handleCopyCode,
+      insertAtCursor,
+      proposeDiff,
+      replaceSelection,
+    ],
+  );
+
+  const selectedIdSet = useMemo(
+    () => new Set(turnCtx.sources.map((s) => s.id)),
+    [turnCtx.sources],
+  );
+
+  const firstUserMsg = thread.messages.find((m) => m.role === 'user')?.content;
+  const isGreeting =
+    firstUserMsg &&
+    /^(hello|hi|hey|greetings|howdy)[!.,? ]*$/i.test(firstUserMsg.trim());
+  const chatTitle =
+    thread.title && thread.title !== 'New Chat'
+      ? thread.title
+      : !isGreeting && firstUserMsg
+        ? firstUserMsg.length > 36
+          ? `${firstUserMsg.slice(0, 36)}...`
+          : firstUserMsg
+        : thread.title || 'AI Assistant';
+  const displayTitle =
+    (thread.messages.length > 0 || thread.title) && chatTitle
+      ? chatTitle
+      : 'AI Assistant';
 
   return (
     <TooltipProvider delayDuration={150}>
       <div
         role="region"
-        aria-label="AI Research Assistant"
-        className="flex flex-col h-full select-none overflow-hidden"
+        aria-label="AI Assistant"
+        className="flex flex-col h-full min-h-0 select-none overflow-hidden bg-background"
       >
-        <div className="flex h-9 items-center justify-between px-3 border-b border-border shrink-0 select-none">
-          <div className="flex items-center min-w-0">
-            <h2 className="text-13 font-semibold text-foreground truncate">
-              AI Assistant
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-1">
+        {isHistoryView ? (
+          <header className="flex h-10 items-center justify-between px-3 border-b border-border bg-transparent shrink-0 select-none">
+            <span className="text-13 font-semibold text-foreground tracking-tight">
+              Chat history
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => void handleClearChat()}
-                  disabled={thread.isStreaming}
-                  className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
-                  aria-label="New chat"
+                  onClick={() => setHistoryView(false)}
+                  className="relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                  aria-label="Back to chat"
                 >
-                  <SquarePen className="size-3.5 text-foreground" />
+                  <ChevronRight className="size-4 shrink-0 text-foreground" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={4}>
-                New chat
+                Back to chat
               </TooltipContent>
             </Tooltip>
-          </div>
-        </div>
-
-        {selectionContext && (
-          <div className="flex items-center justify-between gap-2 px-3 py-1.5 bg-ai-subtle/80 border-b border-border/80 text-foreground shrink-0 select-none animate-in fade-in duration-150">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <AIIcon className="size-3 text-ai shrink-0" />
-              <span className="text-11 font-medium text-foreground truncate">
-                Selection: &ldquo;
-                <span className="font-mono opacity-80">
-                  {selectionContext.slice(0, 32)}
-                  {selectionContext.length > 32 ? '...' : ''}
-                </span>
-                &rdquo;
+          </header>
+        ) : (
+          <header className="flex h-10 items-center justify-between px-3 border-b border-border bg-transparent shrink-0 select-none">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+              <img
+                src="/Chat.svg"
+                alt="AI Assistant"
+                className="size-4 shrink-0 rounded-full object-contain"
+              />
+              <span
+                className="text-13 font-semibold text-foreground tracking-tight truncate"
+                title={displayTitle}
+              >
+                {displayTitle}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setSelectionContext(null)}
-              className="text-muted-foreground hover:text-foreground text-11 px-1.5 py-0.5 rounded-sm hover:bg-muted transition-colors cursor-pointer"
-              title="Clear selection"
-            >
-              Clear
-            </button>
-          </div>
+
+            <div className="flex items-center gap-0.5 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={startNewChat}
+                    className="relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                    aria-label="New chat"
+                  >
+                    <SquarePen className="size-3.5 shrink-0 text-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4}>
+                  New chat
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={toggleHistoryView}
+                    className="relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                    aria-label="Chat history"
+                  >
+                    <History className="size-3.5 shrink-0 text-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4}>
+                  Chat history
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </header>
         )}
 
-        <div
-          className={cn(
-            'flex-1 px-3.5 select-text',
-            thread.messages.length === 0 && !thread.isStreaming
-              ? 'overflow-hidden flex flex-col justify-center py-2'
-              : 'overflow-y-auto sidebar-scrollbar py-3 space-y-3',
-          )}
-        >
-          {thread.isLoadingHistory && (
-            <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
-              <RefreshCw className="size-3.5 animate-spin motion-reduce:animate-none text-ai" />
-              <span>Loading history...</span>
-            </div>
-          )}
-
-          {thread.messages.length === 0 &&
-            !thread.isStreaming &&
-            !thread.isLoadingHistory && (
-              <AiSuggestionsHero onSelectSuggestion={handleSendMessage} />
-            )}
-
-          {thread.messages.map((msg, idx) => {
-            const isLast = idx === thread.messages.length - 1;
-            const streamingBubble =
-              isLast && thread.isStreaming && msg.role === 'assistant';
-            return (
-              <AiMessageItem
-                key={msg.id || idx}
-                msg={msg}
-                isStreaming={streamingBubble}
-                hasSelectionContext={Boolean(selectionContext)}
-                copiedIndex={copiedIndex}
-                onCopyCode={handleCopyCode}
-                onInsertAtCursor={insertAtCursor}
-                onProposeDiff={proposeDiff}
-                onReplaceSelection={replaceSelection}
-                onResumeHitl={(decisions) =>
-                  void thread.resume(decisions, currentProjectId)
-                }
-              />
-            );
-          })}
-
-          {isWaitingFirstChunk && (
-            <AiMessageItem
-              isStreaming
-              rawStreamingContent=""
-              hasSelectionContext={Boolean(selectionContext)}
-              copiedIndex={copiedIndex}
-              onCopyCode={handleCopyCode}
-              onInsertAtCursor={insertAtCursor}
-              onProposeDiff={proposeDiff}
-              onReplaceSelection={replaceSelection}
+        {isHistoryView ? (
+          <CompanionHistory
+            currentSpaceId={effectiveSpaceId}
+            onNewChat={startNewChat}
+          />
+        ) : (
+          <>
+            <CompanionMessages
+              messages={thread.messages}
+              isStreaming={thread.isStreaming}
+              isLoadingHistory={thread.isLoadingHistory}
+              activeAgent={thread.activeAgent}
+              error={thread.error}
+              messagesEndRef={messagesEndRef}
+              scrollContainerRef={scrollContainerRef}
+              suggestions={EDITOR_SUGGESTIONS}
+              suggestionsTitle="Suggestions"
+              onSelectPrompt={(prompt) => void handleSend(prompt)}
+              onResumeHitl={(decisions) =>
+                void thread.resume(decisions, effectiveSpaceId)
+              }
+              onRetry={() => void thread.retry()}
+              onReviewEditorPatch={reviewEditorPatch}
+              onApplyAllEditorPatches={applyAllEditorPatches}
+              codeActions={codeActions}
             />
-          )}
 
-          {thread.error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-12 text-destructive flex items-center justify-between gap-2">
-              <span className="truncate">
-                {thread.error.message || 'Could not connect to the AI server.'}
-              </span>
-              <button
-                type="button"
-                onClick={() => void thread.retry()}
-                className="underline font-medium shrink-0 cursor-pointer"
-              >
-                Retry
-              </button>
-            </div>
-          )}
+            <Composer
+              variant="companion"
+              className="px-3 pb-2.5 pt-1.5 bg-background"
+              placeholder={
+                selectionContext
+                  ? 'Ask AI about the selected text...'
+                  : 'Ask AI about paper, LaTeX syntax...'
+              }
+              showDisclaimer
+              initialValue={promptToFill}
+              draftRevision={draftRevision}
+              sources={turnCtx.sources}
+              uploadingFiles={turnCtx.uploadingFiles}
+              isUploading={turnCtx.isUploading}
+              onUploadFiles={turnCtx.uploadFiles}
+              onRemoveSource={turnCtx.removeSource}
+              onToggleSource={turnCtx.toggleSource}
+              onOpenPicker={setPickerTab}
+              webSearchEnabled={turnCtx.webSearchEnabled}
+              webSearchSites={turnCtx.webSearchSites}
+              onWebSearchChange={turnCtx.setWebSearchEnabled}
+              onWebSearchSitesChange={turnCtx.setWebSearchSites}
+              quotedPassage={
+                selectionContext
+                  ? {
+                      text: selectionContext,
+                      label: activeFilename
+                        ? `Selected LaTeX • ${activeFilename}`
+                        : 'Selected LaTeX',
+                    }
+                  : null
+              }
+              onClearQuotedPassage={() => {
+                setSelectionContext(null);
+                setSelectionFileId(null);
+              }}
+              isStreaming={thread.isStreaming}
+              onSend={(text) => handleSend(text)}
+              onStop={() => void thread.stop()}
+            />
+          </>
+        )}
 
-          <div ref={messagesEndRef} />
-        </div>
-
-        <AiInputArea
-          inputPrompt={inputPrompt}
-          setInputPrompt={setInputPrompt}
-          onSendMessage={handleSendMessage}
-          onStopStreaming={handleStopStreaming}
-          isStreaming={thread.isStreaming}
-          selectionContext={selectionContext}
-          hasMessages={thread.messages.length > 0}
-          attachedFiles={attachedFiles}
-          uploadingFiles={uploadingFiles}
-          onRemoveAttachedFile={removeAttachedFile}
-          onFileUpload={handleFileUpload}
-          webSearchEnabled={webSearchEnabled}
-          setWebSearchEnabled={setWebSearchEnabled}
-          currentProjectId={currentProjectId}
-          pickerTab={pickerTab}
-          setPickerTab={setPickerTab}
-          onSourcesAttached={handleSourcesAttached}
+        <ContextPicker
+          open={Boolean(pickerTab)}
+          onOpenChange={(open) => !open && setPickerTab(null)}
+          initialTab={pickerTab ?? 'library'}
+          spaceId={effectiveSpaceId}
+          selectedIds={selectedIdSet}
+          onSelect={(entries) => turnCtx.addSources(entries)}
         />
       </div>
     </TooltipProvider>

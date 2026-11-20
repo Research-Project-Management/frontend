@@ -8,16 +8,16 @@ import {
   ReviewHeader,
   ReviewBottomNav,
   EmptyReviewState,
-} from './subcomponents/ReviewNav';
+} from './subcomponents/Nav';
 import {
   CommentCard,
   NewCommentForm,
-} from './subcomponents/ReviewComments';
+} from './subcomponents/Comments';
 import {
   SuggestionCard,
   SuggestionBulkActions,
-} from './subcomponents/ReviewSuggestions';
-import { OverviewView } from './subcomponents/ReviewOverview';
+} from './subcomponents/Suggestions';
+import { OverviewView } from './subcomponents/Overview';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 
 export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
@@ -61,9 +61,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     handleNavigateToLine,
     handleNavigateToFileAndLine,
     setOverviewResolvedCount,
-    reviewInfo,
-    updateReviewStatus,
-    isUpdatingReviewStatus,
   } = useReviewState();
 
 
@@ -74,10 +71,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         showResolved={showResolved}
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
-        reviewStatus={reviewInfo.status}
-        roundNumber={reviewInfo.roundNumber}
-        onUpdateReviewStatus={(status) => updateReviewStatus({ status })}
-        isUpdatingReviewStatus={isUpdatingReviewStatus}
         onClose={onClose}
       />
 

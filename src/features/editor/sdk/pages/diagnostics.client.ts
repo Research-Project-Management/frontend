@@ -1,14 +1,13 @@
 /**
  * diagnostics.client.ts
  *
- * Diagnostics, linter, autofix, and explanation sub-API.
+ * Diagnostics, linter, and explanation sub-API.
  */
 
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { PAGES_API_BASE } from './base';
 import type {
   DiagnosticReportDto,
-  AutoFixResultDto,
   ErrorExplanationDto,
 } from './types';
 
@@ -91,10 +90,6 @@ export const diagnostics = {
 
   lintProject: async (projectId: string): Promise<DiagnosticReportDto> => {
     return await apiPost<DiagnosticReportDto>(`${PAGES_API_BASE}/diagnostics/spaces/${projectId}/lint`, {});
-  },
-
-  autoFix: async (source: string): Promise<AutoFixResultDto> => {
-    return await apiPost<AutoFixResultDto>(`${PAGES_API_BASE}/diagnostics/autofix`, { source });
   },
 
   getExplanation: async (code: string): Promise<ErrorExplanationDto> => {

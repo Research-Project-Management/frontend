@@ -162,22 +162,22 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
         }
       }}
       className={cn(
-        'group/row relative flex h-7.5 w-full items-center gap-1.5 rounded-md pl-2 pr-1 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+        'group/row relative flex h-7.5 w-full items-center rounded-md px-2 transition-colors cursor-pointer select-none text-12 leading-5 tracking-tight outline-none focus-visible:ring-1 focus-visible:ring-foreground',
         'text-foreground hover:bg-muted/60 font-normal',
       )}
     >
       <IndentGuides depth={depth} />
       <ChevronRight
         className={cn(
-          'size-3.5 shrink-0 text-foreground transition-transform duration-150',
+          'size-3.5 shrink-0 mr-1 text-foreground transition-transform duration-150',
           isExpanded && 'rotate-90',
         )}
         strokeWidth={1.75}
       />
       {isExpanded ? (
-        <FolderOpen className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+        <FolderOpen className="size-4 shrink-0 mr-1.5 text-foreground" strokeWidth={1.5} />
       ) : (
-        <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+        <Folder className="size-4 shrink-0 mr-1.5 text-foreground" strokeWidth={1.5} />
       )}
 
       <span className="flex-1 min-w-0 truncate text-12 font-medium tracking-tight text-foreground">

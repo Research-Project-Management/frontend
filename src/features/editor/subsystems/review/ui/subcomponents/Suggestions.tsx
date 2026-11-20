@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReviewSuggestions.tsx
+ * Suggestions.tsx
  *
  * Cohesive suggestion and track changes controls for the Review sidebar:
  * - SuggestionCard: displays suggestion author, line jump, diff preview, accept/reject buttons
@@ -12,9 +12,11 @@
 import React, { useMemo } from 'react';
 import { CheckCircle2, User, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
+import type {
+  PageSuggestion,
+  TrackChangesViewMode,
+} from '@/features/editor/domain/types/suggestion.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
-import type { TrackChangesViewMode } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
 const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {

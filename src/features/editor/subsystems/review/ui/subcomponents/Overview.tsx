@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReviewOverview.tsx
+ * Overview.tsx
  *
  * Cohesive multi-file overview views for the Review sidebar:
  * - OverviewView: Project-wide comments & suggestions aggregated across files
@@ -13,18 +13,18 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
 import { usePageStore } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { usePageComments } from '@/features/editor/subsystems/review/ui/hooks/useComment';
+import { usePageComments } from '../hooks/useComments';
 import {
   usePageSuggestions,
   useAcceptSuggestion,
   useRejectSuggestion,
-} from '@/features/editor/subsystems/review/ui/hooks/useSuggestion';
+} from '../hooks/useSuggestions';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
-import { CommentCard } from './ReviewComments';
-import { SuggestionCard } from './ReviewSuggestions';
-import { EmptyReviewState } from './ReviewNav';
+import { CommentCard } from './Comments';
+import { SuggestionCard } from './Suggestions';
+import { EmptyReviewState } from './Nav';
 
 // ── Overview File Group ─────────────────────────────────────────────────────
 
@@ -218,10 +218,9 @@ export function OverviewView({
     });
   }, []);
 
-  const totalResolved = overviewData?.totals?.totalResolvedCount !== undefined
-    ? overviewData.totals.totalResolvedCount
-    : (overviewData as any)?.summary?.resolvedComments !== undefined
-      ? ((overviewData as any).summary.resolvedComments + ((overviewData as any).summary.resolvedSuggestions || 0))
+  const totalResolved =
+    overviewData?.totals?.totalResolvedCount !== undefined
+      ? overviewData.totals.totalResolvedCount
       : Object.values(fileCounts).reduce((acc, curr) => acc + curr.resolved, 0);
 
   useEffect(() => {

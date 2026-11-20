@@ -35,6 +35,7 @@ import {
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import type { CompilerLogFocusTarget } from '@/features/editor/domain/types/compiler.types';
 import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
@@ -121,6 +122,22 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   }, []);
 
   const [showLogsOverlay, setShowLogsOverlay] = useState<boolean>(false);
+  const [pendingLogFocus, setPendingLogFocus] = useState<CompilerLogFocusTarget | null>(null);
+  const logFocusNonceRef = useRef(0);
+
+  useEffect(() => {
+    return editorCommandBus.subscribe('compiler:open-logs', (cmd) => {
+      setShowLogsOverlay(true);
+      logFocusNonceRef.current += 1;
+      setPendingLogFocus({
+        file: cmd.file,
+        line: cmd.line,
+        severity: cmd.severity,
+        message: cmd.message,
+        nonce: logFocusNonceRef.current,
+      });
+    });
+  }, []);
 
   // 1. Compilation Controller
   const {
@@ -327,6 +344,15 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     a.click();
   }, [pdfUrl, documentTitle]);
 
+  const handleCloseLogs = useCallback(() => {
+    setShowLogsOverlay(false);
+    setPendingLogFocus(null);
+  }, []);
+
+  const handleFocusTargetHandled = useCallback(() => {
+    setPendingLogFocus(null);
+  }, []);
+
   return (
     <div className="h-full w-full flex flex-col bg-canvas select-none relative min-h-0">
       {showLogsOverlay ? (
@@ -334,13 +360,15 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
           <CompilerLogs
             log={compileLog || ''}
             parsedLog={fallbackParsedLog ?? undefined}
-            onClose={() => setShowLogsOverlay(false)}
+            onClose={handleCloseLogs}
             onCompile={handleCompile}
             onClearCacheAndCompile={handleClearCacheAndCompile}
             onStopCompilation={handleStopCompilation}
             onJumpToError={(file, line) =>
               handleJumpToSource(file || null, line, undefined, undefined, undefined, 'error')
             }
+            focusTarget={pendingLogFocus}
+            onFocusTargetHandled={handleFocusTargetHandled}
           />
         </div>
       ) : (

@@ -6,7 +6,7 @@
 
 import * as Y from 'yjs';
 import { io, type Socket } from 'socket.io-client';
-import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
+import { getRealtimeBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import type { CollaborationPresence } from '../pages/types';
 import {
@@ -35,11 +35,9 @@ export const RELAYABLE_SOCKET_EVENTS = [
 
 export const REVIEW_SOCKET_EVENTS = [
   'review:status-changed',
-  'track-changes:recorded',
   'track-changes:created',
   'track-changes:resolved',
   'comment:created',
-  'comment:replied',
   'comment:reply-added',
   'comment:reply-updated',
   'comment:reply-deleted',
@@ -50,11 +48,9 @@ export const REVIEW_SOCKET_EVENTS = [
 
 const REVIEW_EVENT_MAP: Record<string, string> = {
   'review:status-changed': 'review:status-changed',
-  'track-changes:recorded': 'suggestion:recorded',
   'track-changes:created': 'suggestion:recorded',
   'track-changes:resolved': 'suggestion:resolved',
   'comment:created': 'comment:created',
-  'comment:replied': 'comment:replied',
   'comment:reply-added': 'comment:replied',
   'comment:reply-updated': 'comment:replied',
   'comment:reply-deleted': 'comment:replied',
@@ -412,8 +408,8 @@ export function resolveCrossTabTransportConfig(
 }
 
 export function createRealtimeSocketInstance(options: YjsSocketIOProviderOptions): Socket {
-  const rawBase = (options.baseUrl || getEffectiveBaseUrl() || '').replace(/\/$/, '');
-  const socketUrl = rawBase ? `${rawBase}/manuscripts` : '/manuscripts';
+  const rawBase = (options.baseUrl || getRealtimeBaseUrl() || '').replace(/\/$/, '');
+  const socketUrl = rawBase ? `${rawBase}/pages` : '/pages';
   const user = options.user;
   const socketOpts = {
     path: '/socket.io',

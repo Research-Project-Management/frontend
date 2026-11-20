@@ -18,7 +18,7 @@ import {
   useViewerStore,
 } from './subsystems/compiler';
 import { diagnosticsCoordinator } from './subsystems/diagnostics/coordinator/diagnostics.coordinator';
-import { reviewCoordinator } from './subsystems/review/coordinator/review.coordinator';
+import { reviewCoordinator } from './subsystems/review';
 import { navigationCoordinator } from './subsystems/navigation/coordinator/navigation.coordinator';
 
 export interface ResetEditorWorkspaceOptions {

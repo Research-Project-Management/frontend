@@ -24,6 +24,7 @@ vi.mock('@/shared/lib/api', () => ({
   apiDelete: apiDeleteMock,
   getAuthToken: () => 'test-token',
   getEffectiveBaseUrl: () => 'http://localhost:4000/api/v1',
+  getRealtimeBaseUrl: () => 'http://localhost:3014',
 }));
 
 describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {

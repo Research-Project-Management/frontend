@@ -1,24 +1,18 @@
-/**
- * suggestion-buffer-mutator.ts
- *
- * Pure CodeMirror buffer mutation, rollback snapshot capture/restore,
- * and server-patched document resynchronization helpers for ReviewCoordinator.
- */
-
-import { type EditorView } from '@codemirror/view';
+import type { EditorView } from '@codemirror/view';
 import { programmaticSyncAnnotation } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
-import {
-  setTrackChangesSuggestionsEffect,
-  setTrackChangesCommentsEffect,
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
-  resolveSuggestionRange,
-  type TrackChangesViewMode,
-} from '@/features/editor/subsystems/review/extensions/track-changes-state';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import {
+  isLocalSuggestionId,
+  resolveSuggestionRange,
+  setCommentsEffect,
+  setReviewModeEffect,
+  setSuggestionsEffect,
+  setViewModeEffect,
+  type TrackChangesViewMode,
+} from '../extensions/state';
 
 export interface SuggestionMemento {
   readonly view: EditorView;
@@ -34,7 +28,7 @@ export interface ReviewRollbackSnapshot {
   readonly suggestions: Array<[string, PageSuggestion]>;
 }
 
-export function mutateSuggestionInView(
+export function mutateSuggestion(
   view: EditorView,
   sug: PageSuggestion,
   action: 'accept' | 'reject',
@@ -107,20 +101,20 @@ export function mutateSuggestionInView(
   };
 }
 
-export function syncMutatedViewToCache(
+export function syncViewToCache(
   view: EditorView,
-  targetPageId: string | null | undefined,
+  targetDocId: string | null | undefined,
 ): void {
-  if (targetPageId && lruDocumentCache.getModel(targetPageId)) {
+  if (targetDocId && lruDocumentCache.getModel(targetDocId)) {
     const nextText = view.state.doc.toString();
-    lruDocumentCache.updateContent(targetPageId, nextText, true);
-    sessionCoordinator.notifyContentChange(targetPageId, nextText);
+    lruDocumentCache.updateContent(targetDocId, nextText, true);
+    sessionCoordinator.notifyContentChange(targetDocId, nextText);
   }
 }
 
-export function revertMementoInView(
+export function revertMemento(
   snap: SuggestionMemento,
-  activePageId: string | null,
+  activeDocId: string | null,
 ): void {
   const { view, sug, range, postMutationTo, originalText } = snap;
   const currentLen = view.state.doc.length;
@@ -134,10 +128,10 @@ export function revertMementoInView(
     });
   }
 
-  syncMutatedViewToCache(view, sug.pageId || activePageId);
+  syncViewToCache(view, sug.pageId || activeDocId);
 }
 
-export function captureRollbackSnapshotForViews(
+export function captureSnapshot(
   pageId: string | null,
   targetViews: EditorView[],
   currentSuggestions: Map<string, PageSuggestion>,
@@ -155,7 +149,7 @@ export function captureRollbackSnapshotForViews(
   };
 }
 
-export function applySnapshotToBuffers(snapshot: ReviewRollbackSnapshot): void {
+export function restoreSnapshot(snapshot: ReviewRollbackSnapshot): void {
   for (const { view, text } of snapshot.viewDocs) {
     const currentText = view.state.doc.toString();
     if (currentText !== text) {
@@ -173,12 +167,12 @@ export function applySnapshotToBuffers(snapshot: ReviewRollbackSnapshot): void {
   }
 }
 
-export function syncServerPatchedDocumentToViews(
-  pageId: string,
+export function syncServerDoc(
+  docId: string,
   res: unknown,
   targetViews: EditorView[],
 ): void {
-  if (!pageId || !res || typeof res !== 'object') return;
+  if (!docId || !res || typeof res !== 'object') return;
   const payload = res as {
     page?: { rev?: number; content?: unknown };
     rev?: number;
@@ -186,7 +180,7 @@ export function syncServerPatchedDocumentToViews(
   };
   const serverRev = payload.page?.rev ?? payload.rev;
   if (typeof serverRev === 'number') {
-    lruDocumentCache.setServerRev(pageId, serverRev);
+    lruDocumentCache.setServerRev(docId, serverRev);
   }
   const rawContent = payload.page?.content ?? payload.content;
   const serverText =
@@ -199,7 +193,7 @@ export function syncServerPatchedDocumentToViews(
               '',
           )
         : null;
-  if (typeof serverText === 'string' && !sessionCoordinator.isRealtimeConnected(pageId)) {
+  if (typeof serverText === 'string' && !sessionCoordinator.isRealtimeConnected(docId)) {
     for (const view of targetViews) {
       const currentText = view.state.doc.toString();
       if (currentText !== serverText) {
@@ -209,15 +203,15 @@ export function syncServerPatchedDocumentToViews(
         });
       }
     }
-    if (lruDocumentCache.getModel(pageId)) {
-      lruDocumentCache.updateContent(pageId, serverText, false);
-      lruDocumentCache.markClean(pageId);
+    if (lruDocumentCache.getModel(docId)) {
+      lruDocumentCache.updateContent(docId, serverText, false);
+      lruDocumentCache.markClean(docId);
     }
   }
 }
 
-export function reconcileAndDispatchReviewDecorations(params: {
-  targetPageId: string | null;
+export function syncDecorations(params: {
+  targetDocId: string | null;
   suggestions: PageSuggestion[];
   comments: PageComment[];
   viewMode: TrackChangesViewMode;
@@ -228,7 +222,7 @@ export function reconcileAndDispatchReviewDecorations(params: {
   targetViews: EditorView[];
 }): void {
   const {
-    targetPageId,
+    targetDocId,
     suggestions,
     comments,
     viewMode,
@@ -241,9 +235,9 @@ export function reconcileAndDispatchReviewDecorations(params: {
 
   const preservedLocal: PageSuggestion[] = [];
   for (const [id, s] of Array.from(currentSuggestions.entries())) {
-    const matchesTarget = !targetPageId || !s.pageId || s.pageId === targetPageId;
+    const matchesTarget = !targetDocId || !s.pageId || s.pageId === targetDocId;
     if (matchesTarget) {
-      if (s.id.startsWith('sug-local-')) {
+      if (isLocalSuggestionId(s.id)) {
         preservedLocal.push(s);
       }
       currentSuggestions.delete(id);
@@ -252,7 +246,7 @@ export function reconcileAndDispatchReviewDecorations(params: {
 
   const scopedSuggestions: PageSuggestion[] = [];
   for (const s of suggestions) {
-    if (!targetPageId || !s.pageId || s.pageId === targetPageId) {
+    if (!targetDocId || !s.pageId || s.pageId === targetDocId) {
       currentSuggestions.set(s.id, s);
       scopedSuggestions.push(s);
     }
@@ -266,20 +260,20 @@ export function reconcileAndDispatchReviewDecorations(params: {
     }
   }
 
-  const mergedSuggestions = targetPageId
+  const mergedSuggestions = targetDocId
     ? scopedSuggestions
     : Array.from(currentSuggestions.values());
 
   for (const [id, c] of Array.from(currentComments.entries())) {
-    const commentPageId = c.page || c.projectPageId;
-    if (!targetPageId || !commentPageId || commentPageId === targetPageId) {
+    const commentDocId = c.page || c.projectPageId;
+    if (!targetDocId || !commentDocId || commentDocId === targetDocId) {
       currentComments.delete(id);
     }
   }
   const scopedComments: PageComment[] = [];
   for (const c of comments) {
-    const commentPageId = c.page || c.projectPageId;
-    if (!targetPageId || !commentPageId || commentPageId === targetPageId) {
+    const commentDocId = c.page || c.projectPageId;
+    if (!targetDocId || !commentDocId || commentDocId === targetDocId) {
       currentComments.set(c.id, c);
       scopedComments.push(c);
     }
@@ -289,10 +283,10 @@ export function reconcileAndDispatchReviewDecorations(params: {
     try {
       targetView.dispatch({
         effects: [
-          setTrackChangesSuggestionsEffect.of(mergedSuggestions),
-          setTrackChangesCommentsEffect.of(scopedComments),
-          setTrackChangesViewModeEffect.of(viewMode),
-          setTrackChangesReviewModeEffect.of(reviewMode),
+          setSuggestionsEffect.of(mergedSuggestions),
+          setCommentsEffect.of(scopedComments),
+          setViewModeEffect.of(viewMode),
+          setReviewModeEffect.of(reviewMode),
         ],
       });
     } catch (err) {

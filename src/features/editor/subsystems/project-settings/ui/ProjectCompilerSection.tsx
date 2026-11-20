@@ -331,10 +331,10 @@ export function ProjectCompilerSection({
         />
       </SettingRow>
 
-      {/* Error Lens (Inline LaTeX Errors & AI Fix) */}
+      {/* Error Lens (Inline Diagnostics) */}
       <SettingRow
         title="Error lens"
-        description="Inline error badges at erroneous lines with 1-click AI fix"
+        description="Show inline diagnostic messages at the end of lines with errors or warnings"
       >
         <SettingsSwitch
           checked={errorLensEnabled}
@@ -393,7 +393,7 @@ export function ProjectCompilerSection({
       {/* Font Size */}
       <SettingRow
         title="Font size"
-        description="Editor editor font size in pixels"
+        description="Editor font size in pixels"
       >
         <Select
           value={String(fontSize)}

@@ -304,34 +304,17 @@ export function ResizeHandle({
         'group relative shrink-0 outline-none select-none z-20 flex items-center justify-center overflow-hidden transition-colors duration-150 touch-none',
         isHorizontal
           ? cn(
-              'h-[8px] w-full flex-row bg-muted/50 border-y border-border/80 hover:bg-primary/10 hover:border-primary/40 focus-visible:bg-primary/10 focus-visible:border-primary/50 cursor-row-resize',
-              activeDragging && 'bg-primary/15 border-primary',
+              'h-[8px] w-full flex-row bg-muted/40 border-y border-border/70 hover:bg-primary/12 hover:border-primary/30 focus-visible:bg-primary/12 focus-visible:border-primary/40 cursor-row-resize',
+              activeDragging && 'bg-primary/20 border-primary/50',
             )
           : cn(
-              'w-[10px] h-full flex-col bg-muted/50 border-x border-border/80 hover:bg-primary/10 hover:border-primary/40 focus-visible:bg-primary/10 focus-visible:border-primary/50',
-              activeDragging && 'bg-primary/15 border-primary',
+              'w-[10px] h-full flex-col bg-muted/40 border-x border-border/70 hover:bg-primary/12 hover:border-primary/30 focus-visible:bg-primary/12 focus-visible:border-primary/40',
+              activeDragging && 'bg-primary/20 border-primary/50',
               isCollapsed && !onDragX ? 'cursor-pointer' : 'cursor-col-resize',
             ),
         className,
       )}
     >
-      {/* ── Active / Hover Center Guide Line ──────────────────────────────── */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none block transition-colors duration-150',
-          isHorizontal
-            ? cn(
-                'w-full h-px bg-transparent group-hover:bg-primary/50 group-focus-visible:bg-primary/50',
-                activeDragging && 'h-[2px] bg-primary',
-              )
-            : cn(
-                'h-full w-px bg-transparent group-hover:bg-primary/50 group-focus-visible:bg-primary/50',
-                activeDragging && 'w-[2px] bg-primary',
-              ),
-        )}
-      />
-
       {/* ── Flush Collapse / Expand Segment strictly inside 10px groove ─── */}
       {showCollapseButton && (
         <button
@@ -348,7 +331,7 @@ export function ResizeHandle({
             'hover:bg-primary/15 hover:text-primary hover:border-primary/40',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
             'transition-colors duration-150 cursor-pointer',
-            activeDragging && 'bg-primary/15 text-primary border-primary',
+            activeDragging && 'bg-primary/15 text-primary border-primary/50',
           )}
         >
           {isPointingLeft ? (
@@ -365,9 +348,24 @@ export function ResizeHandle({
           aria-hidden="true"
           className="pointer-events-none select-none absolute top-[58%] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-[3px]"
         >
-          <span className="size-[3px] rounded-full bg-muted-foreground/40 group-hover:bg-primary/70 transition-colors" />
-          <span className="size-[3px] rounded-full bg-muted-foreground/40 group-hover:bg-primary/70 transition-colors" />
-          <span className="size-[3px] rounded-full bg-muted-foreground/40 group-hover:bg-primary/70 transition-colors" />
+          <span
+            className={cn(
+              'size-[3px] rounded-full transition-colors',
+              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+            )}
+          />
+          <span
+            className={cn(
+              'size-[3px] rounded-full transition-colors',
+              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+            )}
+          />
+          <span
+            className={cn(
+              'size-[3px] rounded-full transition-colors',
+              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+            )}
+          />
         </div>
       )}
 

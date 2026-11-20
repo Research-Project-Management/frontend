@@ -32,7 +32,6 @@ import { resolveProjectFileByLogPath } from '@/features/editor/subsystems/compil
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { useConnectivityStore } from '@/features/editor/core/store/connectivity.store';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import type { CompileReport } from '@/features/editor/domain/types/compiler.types';
 
 describe('Editor Diagnostics Pipeline, Outcome UI & CodeMirror Bridge', () => {
@@ -401,8 +400,7 @@ describe('Editor Diagnostics Pipeline, Outcome UI & CodeMirror Bridge', () => {
       expect(cleared.field(compilerDiagnosticsField).items).toHaveLength(0);
     });
 
-    it('renders stale indicator and resolves live line via ErrorLensWidget.toDOM(view)', () => {
-      const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
+    it('renders stale indicator in ErrorLensWidget DOM without duplicate AI action buttons', () => {
       const container = document.createElement('div');
       document.body.appendChild(container);
 
@@ -432,25 +430,8 @@ describe('Editor Diagnostics Pipeline, Outcome UI & CodeMirror Bridge', () => {
       const lensEl = view.dom.querySelector('.cm-error-lens') as HTMLElement | null;
       expect(lensEl).not.toBeNull();
       expect(lensEl?.classList.contains('cm-error-lens-stale')).toBe(true);
-
-      // Insert two lines above line 3 so the line moves down to line 5
-      view.dispatch({
-        changes: { from: 0, to: 0, insert: 'a\nb\n' },
-      });
-
-      // Mock posAtDOM to simulate CM6 live position lookup in jsdom
-      vi.spyOn(view, 'posAtDOM').mockReturnValue(view.state.doc.line(5).from);
-
-      const fixBtn = view.dom.querySelector('[data-testid="error-lens-fix-btn"]') as HTMLButtonElement | null;
-      expect(fixBtn).not.toBeNull();
-      fireEvent.click(fixBtn!);
-
-      expect(dispatchSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'ai:autofix-diagnostic',
-          diagnostic: expect.objectContaining({ line: 5 }),
-        }),
-      );
+      expect(view.dom.querySelector('[data-testid="error-lens-fix-btn"]')).toBeNull();
+      expect(view.dom.querySelector('[data-testid="error-lens-ask-btn"]')).toBeNull();
 
       // Verify standalone widget call without view falls back cleanly
       const standalone = new ErrorLensWidget(
@@ -465,6 +446,8 @@ describe('Editor Diagnostics Pipeline, Outcome UI & CodeMirror Bridge', () => {
       );
       const dom = standalone.toDOM();
       expect(dom.getAttribute('data-line')).toBe('9');
+      expect(dom.querySelector('[data-testid="error-lens-fix-btn"]')).toBeNull();
+      expect(dom.querySelector('[data-testid="error-lens-ask-btn"]')).toBeNull();
 
       view.destroy();
     });

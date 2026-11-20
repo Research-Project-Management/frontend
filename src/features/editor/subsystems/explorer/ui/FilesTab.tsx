@@ -215,8 +215,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onStartCreateFolder={() => c.handleStartCreateFolder('')}
           onOpenUploadModal={c.handleOpenUploadModal}
           onClose={onClose}
-          fileFilter={c.fileFilter}
-          onFileFilterChange={c.setFileFilter}
+          sortBy={c.sortBy}
+          sortDirection={c.sortDirection}
+          onSortChange={c.handleSortChange}
         />
 
         {c.isFileTreeOpen && (

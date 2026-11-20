@@ -27,6 +27,7 @@ import type {
   LogEntry,
   ParsedLog,
   ErrorExplanationDto,
+  CompilerLogFocusTarget,
 } from '@/features/editor/domain/types/compiler.types';
 import {
   parseLatexLog,
@@ -46,6 +47,97 @@ export interface UseCompilerLogsStateOptions {
   onJumpToError?: (file: string, line: number) => void;
   onClearCacheAndCompile?: () => void;
   onCompile?: () => void;
+  focusTarget?: CompilerLogFocusTarget | null;
+  onFocusTargetHandled?: () => void;
+}
+
+function normalizeLogPath(filePath?: string): string {
+  return (filePath || '').replace(/^\.\//, '').replace(/^\/+/, '').toLowerCase();
+}
+
+function scoreLogEntryMatch(entry: LogEntry, target: CompilerLogFocusTarget): number {
+  let score = 0;
+  if (typeof target.line === 'number' && entry.line === target.line) {
+    score += 10;
+  }
+
+  const targetMsg = target.message?.trim().toLowerCase() || '';
+  const entryMsg = entry.message?.trim().toLowerCase() || '';
+  if (targetMsg && entryMsg) {
+    if (entryMsg === targetMsg) {
+      score += 8;
+    } else if (entryMsg.includes(targetMsg) || targetMsg.includes(entryMsg)) {
+      score += 5;
+    }
+  }
+
+  const targetFile = normalizeLogPath(target.file);
+  const entryFile = normalizeLogPath(entry.file);
+  if (targetFile && entryFile) {
+    if (targetFile === entryFile) {
+      score += 4;
+    } else {
+      const targetBase = targetFile.split('/').pop() || '';
+      const entryBase = entryFile.split('/').pop() || '';
+      if (targetBase && entryBase && targetBase === entryBase) {
+        score += 2;
+      }
+    }
+  }
+
+  return score;
+}
+
+function findMatchingLogEntry(
+  target: CompilerLogFocusTarget,
+  errors: LogEntry[],
+  warnings: LogEntry[],
+  badBoxes: LogEntry[],
+): { type: 'error' | 'warning' | 'badbox'; index: number; domId: string } | null {
+  const buckets: Array<{ type: 'error' | 'warning' | 'badbox'; prefix: string; items: LogEntry[] }> =
+    target.severity === 'warning'
+      ? [
+          { type: 'warning', prefix: 'warn', items: warnings },
+          { type: 'error', prefix: 'err', items: errors },
+          { type: 'badbox', prefix: 'info', items: badBoxes },
+        ]
+      : [
+          { type: 'error', prefix: 'err', items: errors },
+          { type: 'warning', prefix: 'warn', items: warnings },
+          { type: 'badbox', prefix: 'info', items: badBoxes },
+        ];
+
+  let best: { type: 'error' | 'warning' | 'badbox'; index: number; domId: string; score: number } | null =
+    null;
+
+  for (const bucket of buckets) {
+    for (let i = 0; i < bucket.items.length; i += 1) {
+      const s = scoreLogEntryMatch(bucket.items[i], target);
+      if (s >= 8 && (!best || s > best.score)) {
+        best = {
+          type: bucket.type,
+          index: i,
+          domId: `log-entry-${bucket.prefix}-${i}`,
+          score: s,
+        };
+      }
+    }
+  }
+
+  if (best) {
+    return { type: best.type, index: best.index, domId: best.domId };
+  }
+
+  if (target.severity === 'warning' && warnings.length > 0) {
+    return { type: 'warning', index: 0, domId: 'log-entry-warn-0' };
+  }
+  if (errors.length > 0) {
+    return { type: 'error', index: 0, domId: 'log-entry-err-0' };
+  }
+  if (warnings.length > 0) {
+    return { type: 'warning', index: 0, domId: 'log-entry-warn-0' };
+  }
+  return null;
 }
 
 export interface CompilerLogVisibleRow {
@@ -62,6 +154,8 @@ export function useCompilerLogsState({
   onJumpToError,
   onClearCacheAndCompile,
   onCompile,
+  focusTarget,
+  onFocusTargetHandled,
 }: UseCompilerLogsStateOptions) {
   const scratchTargetId = usePageStore(
     (s) => s.rootPageId || s.parentPageId || s.currentPage?.id || s.spaceId || s.projectId,
@@ -583,32 +677,6 @@ export function useCompilerLogsState({
     scrollToErrorEntryRef.current = scrollToErrorEntry;
   }, [scrollToErrorEntry]);
 
-  useEffect(() => {
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    const unsub = editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
-      const { error } = cmd;
-      setActiveTab('errors');
-
-      const idx = parsed.errors.findIndex(
-        (e: LogEntry) =>
-          (error.line && e.line === error.line) ||
-          (error.message && (e.message.includes(error.message) || error.message.includes(e.message))),
-      );
-
-      const targetIdx = idx !== -1 ? idx : parsed.errors.length > 0 ? 0 : -1;
-      if (targetIdx !== -1) {
-        if (scrollTimer) clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          scrollToErrorEntryRef.current(targetIdx, 'center');
-        }, 120);
-      }
-    });
-    return () => {
-      unsub();
-      if (scrollTimer) clearTimeout(scrollTimer);
-    };
-  }, [parsed.errors]);
-
   const handleEntryClick = useCallback(
     (entry: LogEntry) => {
       if (entry.line) {
@@ -671,6 +739,81 @@ export function useCompilerLogsState({
       }
     });
   }, []);
+
+  const lastHandledFocusNonceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!focusTarget || lastHandledFocusNonceRef.current === focusTarget.nonce) {
+      return;
+    }
+
+    const match = findMatchingLogEntry(
+      focusTarget,
+      parsed.errors,
+      displayedWarnings,
+      displayedBadBoxes,
+    );
+    lastHandledFocusNonceRef.current = focusTarget.nonce;
+
+    if (!match) {
+      onFocusTargetHandled?.();
+      return;
+    }
+
+    const targetTab: TabType =
+      match.type === 'error'
+        ? activeTab === 'all' || activeTab === 'errors'
+          ? activeTab
+          : 'errors'
+        : match.type === 'warning'
+          ? activeTab === 'all' || activeTab === 'warnings'
+            ? activeTab
+            : 'warnings'
+          : activeTab === 'all' || activeTab === 'info'
+            ? activeTab
+            : 'info';
+
+    if (targetTab !== activeTab) {
+      setActiveTab(targetTab);
+    }
+
+    if (match.type === 'error') {
+      setCurrentErrorIdx(match.index);
+    }
+
+    const visibleIdx =
+      targetTab !== 'all'
+        ? match.index
+        : match.type === 'error'
+          ? match.index
+          : match.type === 'warning'
+            ? parsed.errors.length + match.index
+            : parsed.errors.length + displayedWarnings.length + match.index;
+
+    if (isVirtualized) {
+      rowVirtualizer.scrollToIndex(visibleIdx, { align: 'center' });
+    }
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(match.domId);
+        el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      });
+    } else {
+      const el = document.getElementById(match.domId);
+      el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }
+
+    onFocusTargetHandled?.();
+  }, [
+    focusTarget,
+    parsed.errors,
+    displayedWarnings,
+    displayedBadBoxes,
+    activeTab,
+    isVirtualized,
+    rowVirtualizer,
+    onFocusTargetHandled,
+  ]);
 
   const totalLogsCount =
     parsed.errors.length + displayedWarnings.length + displayedBadBoxes.length;

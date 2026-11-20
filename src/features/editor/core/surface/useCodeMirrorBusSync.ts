@@ -21,7 +21,7 @@ import { visibilityCoordinator } from '@/features/editor/core/coordinator/visibi
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
-import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
+import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   applyDiffToYText,

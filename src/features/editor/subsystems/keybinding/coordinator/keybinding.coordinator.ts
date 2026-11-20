@@ -151,17 +151,13 @@ export class KeybindingCoordinator {
       },
     });
 
-    // 8. Toggle AI Research Assistant (Mod-i)
+    // 8. Toggle AI Assistant (Mod-j)
     this.register({
       id: 'workbench.toggleAiPanel',
-      key: 'Mod-i',
-      description: 'Toggle AI Research Assistant Panel',
+      key: 'Mod-j',
+      description: 'Toggle AI Assistant Panel (Ctrl+J)',
       scope: 'any',
       handler: (e) => {
-        if (this.isEditorFocused()) {
-          // Let CodeMirror / Visual editor handle Overleaf italic formatting (\textit)
-          return;
-        }
         e.preventDefault();
         editorCommandBus.dispatch({ type: 'sidebar:toggle-ai-panel' });
       },

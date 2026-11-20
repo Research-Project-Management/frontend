@@ -32,7 +32,6 @@ import {
   MessageSquarePlus,
   Search,
   Bookmark,
-  Columns2,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { SourceVisualSwitcher } from './SourceVisualSwitcher';
@@ -52,7 +51,6 @@ import { EditorToolbarOverflowMenu, OmegaIcon } from './EditorToolbarOverflowMen
 export interface EditorToolbarProps {
   className?: string;
   readOnly?: boolean;
-  onSplitRight?: () => void;
 }
 
 function ToolbarSeparator({ className }: { className?: string }) {
@@ -62,7 +60,7 @@ function ToolbarSeparator({ className }: { className?: string }) {
 const iconButtonClass =
   'size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-muted shrink-0';
 
-export function EditorToolbar({ className, readOnly = false, onSplitRight }: EditorToolbarProps) {
+export function EditorToolbar({ className, readOnly = false }: EditorToolbarProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const actions = useEditorToolbarActions(readOnly);
 
@@ -403,29 +401,6 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
         <EditingModeDropdown />
         <ToolbarSeparator />
         <SourceVisualSwitcher />
-
-        {onSplitRight && (
-          <>
-            <ToolbarSeparator />
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSplitRight}
-                  className={iconButtonClass}
-                  title="Split editor right"
-                  aria-label="Split editor right"
-                >
-                  <Columns2 className="size-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                <span>Split editor right</span>
-              </TooltipContent>
-            </Tooltip>
-          </>
-        )}
       </div>
     </div>
   );

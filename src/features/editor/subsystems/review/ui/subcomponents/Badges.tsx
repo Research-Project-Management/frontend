@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * ReviewBadges.tsx
+ * Badges.tsx
  *
  * Cohesive badge and icon presentations for the Review sidebar:
- * - Overleaf review, solid cutout, and resolved comment icons
+ * - Overleaf review and resolved comment icons
  * - Mention badges and mention text tokens renderer
  */
 
@@ -35,8 +35,6 @@ export function ReviewIcon({
     </svg>
   );
 }
-
-export const ReviewSolidIcon = ReviewIcon;
 
 export function ResolvedCommentsIcon({
   className = 'size-4',

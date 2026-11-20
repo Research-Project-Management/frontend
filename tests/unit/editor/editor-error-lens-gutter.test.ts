@@ -78,64 +78,23 @@ describe('LaTeX Error Lens & Diagnostic Gutter Parity', () => {
       expect(msgSpan?.textContent).toBe('Overfull \\hbox (10.0pt too wide)');
     });
 
-    it('dispatches "ai:autofix-diagnostic" when clicking "Fix with AI"', () => {
-      const dispatched: any[] = [];
-      const unsub = editorCommandBus.subscribe('ai:autofix-diagnostic', (cmd) => {
-        dispatched.push(cmd);
-      });
+    it('does not embed duplicate Fix with AI or Ask AI buttons inside ErrorLensWidget DOM', () => {
+      const widget = new ErrorLensWidget(
+        {
+          id: 'fix-diag-1',
+          file: 'main.tex',
+          line: 18,
+          message: 'Missing $ inserted',
+          severity: 'error',
+        },
+        'main.tex',
+      );
 
-      const diag = {
-        id: 'fix-diag-1',
-        file: 'main.tex',
-        line: 18,
-        message: 'Missing $ inserted',
-        severity: 'error' as const,
-      };
-
-      const widget = new ErrorLensWidget(diag, 'main.tex');
       const dom = widget.toDOM();
 
-      const fixBtn = dom.querySelector('button[data-testid="error-lens-fix-btn"]') as HTMLButtonElement;
-      expect(fixBtn).toBeDefined();
-
-      fixBtn.click();
-
-      expect(dispatched).toHaveLength(1);
-      expect(dispatched[0].diagnostic.id).toBe('fix-diag-1');
-      expect(dispatched[0].diagnostic.line).toBe(18);
-
-      unsub();
-    });
-
-    it('dispatches "editor:suggest-fix" when clicking "Ask AI" in sidebar', () => {
-      const dispatched: any[] = [];
-      const unsub = editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
-        dispatched.push(cmd);
-      });
-
-      const diag = {
-        id: 'ask-diag-1',
-        file: 'chapters/intro.tex',
-        line: 42,
-        message: 'Undefined control sequence \\citep',
-        context: 'l.42 \\citep{key}',
-        severity: 'error' as const,
-      };
-
-      const widget = new ErrorLensWidget(diag, 'chapters/intro.tex');
-      const dom = widget.toDOM();
-
-      const askBtn = dom.querySelector('button[data-testid="error-lens-ask-btn"]') as HTMLButtonElement;
-      expect(askBtn).toBeDefined();
-
-      askBtn.click();
-
-      expect(dispatched).toHaveLength(1);
-      expect(dispatched[0].error.line).toBe(42);
-      expect(dispatched[0].error.file).toBe('chapters/intro.tex');
-      expect(dispatched[0].error.message).toContain('\\citep');
-
-      unsub();
+      expect(dom.querySelector('.cm-error-lens-msg')?.textContent).toBe('Missing $ inserted');
+      expect(dom.querySelector('button[data-testid="error-lens-fix-btn"]')).toBeNull();
+      expect(dom.querySelector('button[data-testid="error-lens-ask-btn"]')).toBeNull();
     });
   });
 
@@ -317,14 +276,17 @@ describe('LaTeX Error Lens & Diagnostic Gutter Parity', () => {
   });
 
   describe('5. Settings Store Integration', () => {
-    it('allows toggling errorLensEnabled via settings store', () => {
+    it('defaults errorLensEnabled to false (Overleaf parity) and allows toggling via settings store', () => {
+      expect(useSettingsStore.getInitialState().errorLensEnabled).toBe(false);
+
+      useSettingsStore.getState().setErrorLensEnabled(false);
+      expect(useSettingsStore.getState().errorLensEnabled).toBe(false);
+
+      useSettingsStore.getState().toggleErrorLensEnabled();
       expect(useSettingsStore.getState().errorLensEnabled).toBe(true);
 
       useSettingsStore.getState().toggleErrorLensEnabled();
       expect(useSettingsStore.getState().errorLensEnabled).toBe(false);
-
-      useSettingsStore.getState().setErrorLensEnabled(true);
-      expect(useSettingsStore.getState().errorLensEnabled).toBe(true);
     });
   });
 });

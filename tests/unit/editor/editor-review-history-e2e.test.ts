@@ -10,18 +10,18 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 import {
-  createTrackChangesExtension,
-  trackChangesExtension,
+  createReviewExtension,
   setReviewModeEffect,
   setViewModeEffect,
-  setTrackChangesDataEffect,
-  trackChangesStateField,
-  trackChangesDecorationsField,
-} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
-import { reviewCoordinator } from '@/features/editor/subsystems/review';
+  setReviewDataEffect,
+  reviewStateField,
+  reviewDecorationsField,
+  reviewCoordinator,
+  type RawSuggestion,
+  type RawComment,
+} from '@/features/editor/subsystems/review';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
-import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/pages/types';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {
@@ -45,7 +45,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       const state = EditorState.create({
         doc: initialDoc,
         extensions: [
-          trackChangesExtension({
+          createReviewExtension({
             reviewMode: 'on',
             viewMode: 'show',
           }),
@@ -64,7 +64,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
     });
 
     it('initializes track changes state with provided options', () => {
-      const stateVal = view.state.field(trackChangesStateField);
+      const stateVal = view.state.field(reviewStateField);
       expect(stateVal).toBeDefined();
       expect(stateVal.reviewMode).toBe(true);
       expect(stateVal.viewMode).toBe('show');
@@ -77,19 +77,19 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       view.dispatch({
         effects: [setReviewModeEffect.of(false)],
       });
-      let stateVal = view.state.field(trackChangesStateField);
+      let stateVal = view.state.field(reviewStateField);
       expect(stateVal.reviewMode).toBe(false);
 
       // Toggle viewMode to hide
       view.dispatch({
         effects: [setViewModeEffect.of('hide')],
       });
-      stateVal = view.state.field(trackChangesStateField);
+      stateVal = view.state.field(reviewStateField);
       expect(stateVal.viewMode).toBe('hide');
     });
 
     it('renders insert and delete decorations accurately in "show" mode', () => {
-      const mockChanges: TrackChangeDto[] = [
+      const mockChanges: RawSuggestion[] = [
         {
           id: 'change-1',
           projectId: 'p-1',
@@ -119,13 +119,13 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       ];
 
       view.dispatch({
-        effects: [setTrackChangesDataEffect.of({ changes: mockChanges })],
+        effects: [setReviewDataEffect.of({ changes: mockChanges })],
       });
 
-      const stateVal = view.state.field(trackChangesStateField);
+      const stateVal = view.state.field(reviewStateField);
       expect(stateVal.suggestions).toHaveLength(2);
 
-      const decSet = view.state.field(trackChangesDecorationsField);
+      const decSet = view.state.field(reviewDecorationsField);
       expect(decSet.size).toBe(2);
 
       // Verify decoration attributes
@@ -139,7 +139,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
     });
 
     it('hides deleted text decorations when viewMode is switched to "hide"', () => {
-      const mockChanges: TrackChangeDto[] = [
+      const mockChanges: RawSuggestion[] = [
         {
           id: 'change-del-1',
           projectId: 'p-1',
@@ -156,15 +156,15 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
 
       view.dispatch({
         effects: [
-          setTrackChangesDataEffect.of({ changes: mockChanges }),
+          setReviewDataEffect.of({ changes: mockChanges }),
           setViewModeEffect.of('hide'),
         ],
       });
 
-      const stateVal = view.state.field(trackChangesStateField);
+      const stateVal = view.state.field(reviewStateField);
       expect(stateVal.viewMode).toBe('hide');
 
-      const decSet = view.state.field(trackChangesDecorationsField);
+      const decSet = view.state.field(reviewDecorationsField);
       let hasReplacedRange = false;
       decSet.between(0, view.state.doc.length, (from, to, value) => {
         if ((value.spec as any).inclusive === false || !value.spec.class) {
@@ -176,7 +176,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
     });
 
     it('populates comment gutter markers correctly', () => {
-      const mockComments: CommentThreadDto[] = [
+      const mockComments: RawComment[] = [
         {
           id: 'thread-1',
           projectId: 'p-1',
@@ -193,10 +193,10 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       ];
 
       view.dispatch({
-        effects: [setTrackChangesDataEffect.of({ comments: mockComments })],
+        effects: [setReviewDataEffect.of({ comments: mockComments })],
       });
 
-      const stateVal = view.state.field(trackChangesStateField);
+      const stateVal = view.state.field(reviewStateField);
       expect(stateVal.comments).toHaveLength(1);
     });
   });
@@ -214,7 +214,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
 
       const state = EditorState.create({
         doc: 'Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n',
-        extensions: [trackChangesExtension()],
+        extensions: [createReviewExtension()],
       });
 
       view = new EditorView({
@@ -256,7 +256,7 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
 
       reviewCoordinator.syncEditorDecorations(null, mockSuggestions, [], 'show', true);
 
-      const stateVal = view.state.field(trackChangesStateField);
+      const stateVal = view.state.field(reviewStateField);
       expect(stateVal.suggestions).toHaveLength(1);
       expect(stateVal.suggestions[0].id).toBe('sug-1');
       expect(stateVal.suggestions[0].suggestedText).toBe('New text');

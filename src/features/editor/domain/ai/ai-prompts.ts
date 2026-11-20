@@ -19,12 +19,6 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
       'Rewrite this text in a rigorous, concise, and formal academic style using standard LaTeX.',
   },
   {
-    id: 'fix_latex',
-    label: 'Fix LaTeX Errors',
-    prompt:
-      'Inspect the LaTeX syntax in this selection, fix any syntax or math formula issues, and briefly explain the changes.',
-  },
-  {
     id: 'explain',
     label: 'Explain Content',
     prompt:
@@ -41,5 +35,17 @@ export const QUICK_ACTIONS: readonly QuickAction[] = [
     label: 'BibTeX Suggestions',
     prompt:
       'Suggest classic references and properly formatted BibTeX citation entries appropriate for this topic.',
+  },
+  {
+    id: 'citation_review',
+    label: 'Review Citations',
+    prompt:
+      'Scan this manuscript for unsupported claims, undefined citation keys, and bibliography gaps.',
+  },
+  {
+    id: 'structure_audit',
+    label: 'Audit Structure',
+    prompt:
+      'Audit the multi-file manuscript structure, outline balance, cross-references (\\ref/\\label), \\input links, and missing LaTeX packages.',
   },
 ] as const;

@@ -15,7 +15,7 @@
  * - export: Multi-format compilation export (PDF, TeX, arXiv, DOCX, MD)
  * - structure: Project hierarchy, folders, file tree nodes, storage operations
  * - filestore: Binary file upload, streaming, signed URLs, presigned upload
- * - diagnostics: Error explanation, linter, autofix
+ * - diagnostics: Error explanation, linter
  * - citations: BibTeX entry resolution, validation, and search
  * - templates: Project and gallery template scaffolding
  * - updater: Batch document update buffering and buffer flushing
@@ -36,7 +36,7 @@ import { citations } from './pages/citations.client';
 import { templates } from './pages/templates.client';
 import { spelling } from './pages/spelling.client';
 import { gitApi } from './pages/git.client';
-import { ai, AiClient, suggestLatexFix } from './pages/ai.client';
+import { ai, suggestLatexFix } from './pages/ai.client';
 
 export * from './pages/base';
 export * from './pages/types';
@@ -78,7 +78,6 @@ export const pagesService = {
   updater,
   spelling,
   ai,
-  AiClient,
   suggestLatexFix,
   git: gitApi,
   linkedFiles,

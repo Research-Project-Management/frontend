@@ -42,6 +42,8 @@ export function CompilerLogs({
   onClearCacheAndCompile,
   onStopCompilation,
   onCompile,
+  focusTarget,
+  onFocusTargetHandled,
 }: CompilerLogsProps & { onStopCompilation?: () => void }) {
   const s = useCompilerLogsState({
     log,
@@ -49,6 +51,8 @@ export function CompilerLogs({
     onJumpToError,
     onClearCacheAndCompile,
     onCompile,
+    focusTarget,
+    onFocusTargetHandled,
   });
 
   const renderDiagnosticRow = (row: CompilerLogVisibleRow) => {

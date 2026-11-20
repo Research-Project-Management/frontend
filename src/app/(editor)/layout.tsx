@@ -1,13 +1,11 @@
 'use client';
 
-import React, { Suspense, useCallback, useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import EditorSkeleton from '@/features/editor/core/shell/EditorSkeleton';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
   ssr: false,
@@ -23,16 +21,6 @@ export default function EditorLayout({
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [mounted, setMounted] = React.useState(() => hasHydratedEditor);
-  const isEditorAiActive = useWorkspaceStore(
-    (s) => s.sidebarLeftOpen && s.activeSidebarTab === 'ai',
-  );
-
-  const handleOpenEditorAi = useCallback(() => {
-    const store = useWorkspaceStore.getState();
-    store.setActiveSidebarTab('ai');
-    store.setSidebarLeftOpen(true);
-    editorCommandBus.dispatch({ type: 'sidebar:open-ai-panel' });
-  }, []);
 
   useEffect(() => {
     hasHydratedEditor = true;
@@ -63,12 +51,7 @@ export default function EditorLayout({
           </Suspense>
         </div>
         <ErrorBoundary fallback={null} featureName="Quick Tools Hub">
-          <StickyDock
-            mode="floating"
-            onAiClick={handleOpenEditorAi}
-            isAiActive={isEditorAiActive}
-            aiTooltip="AI Assistant"
-          />
+          <StickyDock mode="floating" hideAi />
         </ErrorBoundary>
       </div>
     </ErrorBoundary>

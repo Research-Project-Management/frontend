@@ -463,48 +463,59 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
     it('U9.3 & U9.6: Reviewer creates a comment thread, replies, resolves it, and accepts tracked changes via Review API', async () => {
       vi.spyOn(api, 'apiPost')
         .mockResolvedValueOnce({
-          id: 'thread-101',
-          docId: 'doc-1',
-          resolved: false,
-          replies: [],
+          comment: {
+            id: 'thread-101',
+            page: 'doc-1',
+            status: 'open',
+            replies: [],
+          },
         } as never)
         .mockResolvedValueOnce({
-          id: 'm-2',
-          content: 'Fixed in Equation 4.',
-          authorName: 'Author',
+          comment: {
+            id: 'thread-101',
+            replies: [
+              {
+                id: 'm-2',
+                content: 'Fixed in Equation 4.',
+                author: { id: 'u-1', name: 'Author' },
+              },
+            ],
+          },
         } as never)
         .mockResolvedValueOnce({
-          id: 'chg-55',
-          status: 'accepted',
+          ok: true,
+          suggestion: {
+            id: 'chg-55',
+            status: 'accepted',
+          },
+          page: {},
         } as never);
       vi.spyOn(api, 'apiPatch').mockResolvedValueOnce({
-        id: 'thread-101',
-        resolved: true,
+        comment: {
+          id: 'thread-101',
+          status: 'resolved',
+        },
       } as never);
 
-      const createdThread = await pagesService.review.createCommentThread('proj-1', 'doc-1', {
-        startLine: 10,
-        startCol: 0,
-        endLine: 10,
-        endCol: 15,
-        quote: '\\begin{lemma}',
+      const createdThread = await pagesService.comments.createComment('doc-1', {
+        line: 10,
+        lineEnd: 10,
         content: 'Clarify Lemma 2',
       });
       expect(createdThread.id).toBe('thread-101');
 
-      const reply = await pagesService.review.addCommentReply(
-        'proj-1',
+      const withReply = await pagesService.comments.addReply(
         'doc-1',
         'thread-101',
         'Fixed in Equation 4.',
       );
-      expect(reply.content).toBe('Fixed in Equation 4.');
+      expect(withReply.replies[0]?.content).toBe('Fixed in Equation 4.');
 
-      const resolved = await pagesService.review.resolveCommentThread('proj-1', 'doc-1', 'thread-101', true);
-      expect(resolved.resolved).toBe(true);
+      const resolved = await pagesService.comments.resolveComment('doc-1', 'thread-101', true);
+      expect(resolved.status).toBe('resolved');
 
-      const acceptedChange = await pagesService.review.acceptChange('proj-1', 'doc-1', 'chg-55');
-      expect(acceptedChange.status).toBe('accepted');
+      const acceptedChange = await pagesService.suggestions.acceptSuggestion('doc-1', 'chg-55');
+      expect(acceptedChange.suggestion.status).toBe('accepted');
     });
   });
 

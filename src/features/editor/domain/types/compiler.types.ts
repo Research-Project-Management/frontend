@@ -256,6 +256,14 @@ export interface CompileReport {
   mainFile: string;
 }
 
+export interface CompilerLogFocusTarget {
+  file?: string;
+  line?: number;
+  severity?: 'error' | 'warning' | 'info';
+  message?: string;
+  nonce: number;
+}
+
 export interface CompilerLogsProps {
   log: string;
   parsedLog?: ParsedLog;
@@ -263,6 +271,8 @@ export interface CompilerLogsProps {
   onJumpToError?: (file: string | undefined, line: number) => void;
   onClearCacheAndCompile?: () => void;
   onCompile?: () => void;
+  focusTarget?: CompilerLogFocusTarget | null;
+  onFocusTargetHandled?: () => void;
 }
 
 export type LogsProps = CompilerLogsProps;

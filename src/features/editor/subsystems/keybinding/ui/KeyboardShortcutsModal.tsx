@@ -132,13 +132,6 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     description: 'Open Citation Picker modal',
   },
   {
-    id: 'format-code',
-    label: 'Format Document',
-    category: 'Editing',
-    keys: ['Shift', 'Alt', 'F'],
-    description: 'Format indentation & spacing',
-  },
-  {
     id: 'add-comment',
     label: 'Add Comment',
     category: 'Editing',
@@ -288,6 +281,13 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
     category: 'Layout',
     keys: ['Ctrl', '\\'],
     description: 'Split editor panes side by side',
+  },
+  {
+    id: 'toggle-ai-panel',
+    label: 'Toggle AI Assistant',
+    category: 'Layout',
+    keys: ['Ctrl', 'J'],
+    description: 'Open or close AI Assistant sidebar',
   },
 ];
 

@@ -18,7 +18,17 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { editorCommandBus, getEditorEngineForFile, usePageStore } from '@/features/editor/core';
+import type { EditorPatchItem } from '@/features/ai';
+import {
+  editorCommandBus,
+  getActiveEditorEngine,
+  getEditorEngineForFile,
+  usePageStore,
+} from '@/features/editor/core';
+import {
+  computePreambleInsertion,
+  isPreambleOnlySnippet,
+} from '@/features/editor/domain/latex/latex-preamble-patch';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { aiCoordinator } from '../coordinator/ai.coordinator';
 
@@ -32,9 +42,29 @@ export interface UseAiChatActionsOptions {
 export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOptions = {}) {
   const insertAtCursor = useCallback(
     (text: string) => {
-      if (engine?.isReadOnly?.()) {
+      const targetEngine = engine ?? getActiveEditorEngine();
+      if (targetEngine?.isReadOnly?.()) {
         toast.info('Editor is in read-only mode', { id: 'ai-insert-readonly' });
         return;
+      }
+      if (isPreambleOnlySnippet(text) && typeof targetEngine?.getContent === 'function') {
+        const patch = computePreambleInsertion(targetEngine.getContent(), text);
+        if (patch) {
+          if (!patch.changed) {
+            toast.info('Package(s) already present in preamble', { id: 'ai-insert-code' });
+            return;
+          }
+          if (typeof targetEngine.replaceRange === 'function') {
+            targetEngine.replaceRange(patch.insertText, patch.from, patch.to);
+          } else if (typeof targetEngine.setContent === 'function') {
+            targetEngine.setContent(patch.updated);
+          } else {
+            editorCommandBus.dispatch({ type: 'editor:set-content', content: patch.updated });
+          }
+          editorCommandBus.dispatch({ type: 'editor:focus' });
+          toast.success('Added package(s) to preamble', { id: 'ai-insert-code' });
+          return;
+        }
       }
       editorCommandBus.dispatch({ type: 'editor:insert-text', text });
       editorCommandBus.dispatch({ type: 'editor:focus' });
@@ -93,6 +123,28 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
     [engine, selectionFileId],
   );
 
+  const reviewEditorPatch = useCallback((patch: EditorPatchItem) => {
+    aiCoordinator.proposePatch(patch);
+  }, []);
+
+  const applyAllEditorPatches = useCallback((patches: EditorPatchItem[]) => {
+    const result = aiCoordinator.applyAllPatches(patches);
+    if (result.applied > 0 && result.failed === 0) {
+      toast.success(`Applied ${result.applied} verified patch(es)`, {
+        id: 'ai-diff-status',
+      });
+    } else if (result.applied > 0) {
+      toast.info(
+        `Applied ${result.applied} patch(es); ${result.failed} skipped for manual review`,
+        { id: 'ai-diff-status' },
+      );
+    } else if (result.failed > 0) {
+      toast.error('Could not apply patches directly; click Review Diff per hunk.', {
+        id: 'ai-diff-status',
+      });
+    }
+  }, []);
+
   const copyCode = useCallback(async (code: string, onSuccess?: () => void) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -137,6 +189,8 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
     insertAtCursor,
     replaceSelection,
     proposeDiff,
+    reviewEditorPatch,
+    applyAllEditorPatches,
     copyCode,
     notifyItemsAttached,
     notifyFileAttached,

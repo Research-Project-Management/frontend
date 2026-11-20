@@ -178,7 +178,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       lineHeight: 1.6,
       autoCloseBrackets: true,
       linterEnabled: true,
-      errorLensEnabled: true,
+      errorLensEnabled: false,
       autoComplete: true,
       nonBlinkingCursor: false,
       previewEditorTabs: false,
@@ -282,10 +282,10 @@ export const useSettingsStore = create<DocumentSettingsState>()(
     }),
     {
       name: EDITOR_STORAGE_KEYS.SETTINGS,
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
-          return version < 3 ? { wordWrap: true } : persistedState;
+          return version < 3 ? { wordWrap: true, errorLensEnabled: false } : persistedState;
         }
         const next = { ...(persistedState as Record<string, unknown>) };
         if (version < 3) {
@@ -298,6 +298,9 @@ export const useSettingsStore = create<DocumentSettingsState>()(
           if (next.settingsActiveTab === 'notifications') {
             next.settingsActiveTab = 'editor';
           }
+        }
+        if (version < 5) {
+          next.errorLensEnabled = false;
         }
         return next;
       },

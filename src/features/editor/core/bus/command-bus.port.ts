@@ -61,12 +61,10 @@ export type EditorCommand =
   | { type: 'editor:close-split' }
   | { type: 'editor:focus-pane'; paneId: 'primary' | 'secondary' }
   | { type: 'editor:swap-panes' }
-  | { type: 'editor:autofix' }
   | { type: 'editor:lint-project'; projectId?: string }
   | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: Record<string, unknown> }
   | { type: 'editor:rename-citekey'; oldKey: string; newKey: string }
   | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
-  | { type: 'editor:suggest-fix'; error: { message: string; line?: number; file?: string; context?: string } }
   | { type: 'editor:error-stepped'; errorIndex?: number; file?: string; line?: number; message?: string }
   | { type: 'editor:visual-command'; command: string; level?: 0 | 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
   | { type: 'editor:review-event'; pageId: string; event: string; payload?: unknown }
@@ -93,6 +91,13 @@ export type EditorCommand =
   | { type: 'compiler:started' }
   | { type: 'compiler:progress'; status?: string; logs?: string[] }
   | { type: 'compiler:finished'; success: boolean; aborted?: boolean }
+  | {
+      type: 'compiler:open-logs';
+      file?: string;
+      line?: number;
+      severity?: 'error' | 'warning' | 'info';
+      message?: string;
+    }
   | { type: 'viewer:goto-page'; page: number }
   | { type: 'viewer:jump-to-line'; line: number }
   | { type: 'viewer:scroll-to-coords'; page: number; y: number; x?: number; behavior?: ScrollBehavior }
@@ -110,7 +115,7 @@ export type EditorCommand =
   | { type: 'preview:attach' }
   | { type: 'sidebar:toggle-panel'; panel: SidebarPanelName; forceOpen?: boolean }
   | { type: 'sidebar:open-panel'; panel: SidebarPanelName; query?: string; showReplace?: boolean; commentId?: string; suggestionId?: string; forceOpen?: boolean }
-  | { type: 'sidebar:open-ai-panel'; initialPrompt?: string; selectedText?: string; forceOpen?: boolean }
+  | { type: 'sidebar:open-ai-panel'; initialPrompt?: string; selectedText?: string; autoSend?: boolean; forceOpen?: boolean }
   | { type: 'sidebar:toggle-ai-panel'; forceOpen?: boolean }
   | {
       type: 'dialog:open';
@@ -156,7 +161,6 @@ export type EditorCommand =
   | { type: 'ai:propose-diff'; proposal: DiffProposal }
   | { type: 'ai:accept-diff'; diffId?: string }
   | { type: 'ai:reject-diff'; diffId?: string }
-  | { type: 'ai:autofix-diagnostic'; diagnostic: EditorDiagnosticItem }
   | {
       type: 'ai:diff-resolved';
       action: 'accept' | 'reject';
@@ -168,7 +172,7 @@ export type EditorCommand =
   | { type: 'review:navigate-to-change'; suggestionId: string; line?: number }
   | { type: 'review:accept-suggestion'; suggestionId: string }
   | { type: 'review:reject-suggestion'; suggestionId: string }
-  | { type: 'review:create-comment'; line?: number; selectedText?: string }
+  | { type: 'review:create-comment'; line?: number; endLine?: number; selectedText?: string }
   | { type: 'history:open'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number }
   | { type: 'history:open-modal'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number }
   | { type: 'citation:open-picker'; initialQuery?: string }

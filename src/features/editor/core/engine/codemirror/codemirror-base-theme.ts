@@ -193,6 +193,11 @@ export const editorBaseTheme = EditorView.theme({
     backgroundColor: 'rgba(255, 170, 0, 0.65)',
     outline: '1px solid #d97706',
   },
+  '.cm-selectionMatch': {
+    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+    outline: '1px solid rgba(99, 102, 241, 0.35)',
+    borderRadius: '2px',
+  },
 });
 
 const FONT_STACK_MAP: Record<string, string> = {

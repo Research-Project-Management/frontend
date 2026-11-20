@@ -12,7 +12,6 @@ import {
 } from '@/features/editor/core/engine/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/core';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { setActiveEditorEngine } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
@@ -244,43 +243,20 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
     });
   });
 
-  describe('3. aiCoordinator 1-Click AutoFix & Compiler Error Integration', () => {
-    it('executes autoFixDiagnostic, calls AI service, and mounts inline diff', async () => {
-      const suggestSpy = vi.spyOn(pagesService.ai, 'suggestLatexFix').mockResolvedValue({
-        originalSnippet: '\\undefinedMacro',
-        fixedSnippet: '\\textbf{Fixed Macro}',
-        explanation: 'Replaced unknown macro with textbf',
-        confidence: 'high',
-        startLine: 3,
-        endLine: 3,
-      });
-
-      const jumpSpy = vi.spyOn(editorCommandBus, 'dispatch');
-
-      const success = await aiCoordinator.autoFixDiagnostic({
-        id: 'err-1',
-        message: 'Undefined control sequence \\undefinedMacro',
+  describe('3. aiCoordinator Diff Proposal & Compiler Integration', () => {
+    it('proposes an inline diff on target line and triggers inline diff decoration', () => {
+      const success = aiCoordinator.proposeDiff('doc-1', '\\textbf{Fixed Macro}', {
         line: 3,
-        file: 'main.tex',
-        severity: 'error',
-        source: 'LaTeX Compiler',
+        title: 'Replaced unknown macro with textbf',
       });
 
       expect(success).toBe(true);
-      expect(suggestSpy).toHaveBeenCalledTimes(1);
-
-      // Must have jumped to line 3
-      expect(jumpSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'navigation:jump-to-line',
-          line: 3,
-        }),
-      );
 
       // Proposal must be mounted in CodeMirror view
       const currentProposal = view.state.field(diffProposalField).proposal;
       expect(currentProposal).not.toBeNull();
       expect(currentProposal?.replacementText).toBe('\\textbf{Fixed Macro}');
+      expect(currentProposal?.originalText).toBe('\\undefinedMacro');
     });
 
     it('auto-triggers compilation after accepting an AI diff', () => {

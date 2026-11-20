@@ -23,7 +23,6 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { Bot } from 'lucide-react';
 import {
   MenubarMenu,
   MenubarTrigger,
@@ -210,21 +209,6 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
           className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground"
         >
           <span className="whitespace-nowrap">Subparagraph</span>
-        </MenubarItem>
-
-        <MenubarSeparator />
-
-        <MenubarItem
-          onClick={() => editorCommandBus.dispatch({ type: 'editor:autofix' })}
-          className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2 whitespace-nowrap">
-            <Bot className="size-3.5 text-foreground shrink-0" />
-            <span>Format Document</span>
-          </span>
-          <MenubarShortcut className="text-11 text-muted-foreground/80 font-mono tracking-tight ml-auto whitespace-nowrap shrink-0">
-            Alt Shift F
-          </MenubarShortcut>
         </MenubarItem>
       </MenubarContent>
     </MenubarMenu>

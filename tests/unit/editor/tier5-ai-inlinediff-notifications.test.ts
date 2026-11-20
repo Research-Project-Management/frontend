@@ -9,14 +9,13 @@ import {
 import { createCodeMirrorPreset, reconfigureVisualMode } from '@/features/editor/core/engine/codemirror/codemirror-preset';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import {
-  trackChangesStateField,
-  setTrackChangesSuggestionsEffect,
-  createTrackChangesExtension,
-} from '@/features/editor/subsystems/review/extensions/track-changes.extension';
+  reviewStateField,
+  setSuggestionsEffect,
+  createReviewExtension,
+} from '@/features/editor/subsystems/review';
 import { VISUAL_COMMAND_STRATEGIES, editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { setActiveEditorEngine } from '@/features/editor/core';
 import { fluxTransport, getPageChat } from '@/features/ai';
@@ -163,7 +162,7 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
     it('Track Changes reviewMode records accepted AI inline diff as delete+insert while clearing diffProposalField', () => {
       const view = mountEditor('Alpha beta', [
         createInlineDiffExtension(),
-        createTrackChangesExtension({ pageId: 'doc-1', reviewMode: true, viewMode: 'changes' }),
+        createReviewExtension({ pageId: 'doc-1', reviewMode: true, viewMode: 'changes' }),
       ]);
       const adapter = new CodeMirrorEngineAdapter(view);
 
@@ -183,20 +182,20 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       adapter.acceptDiff('diff-tc');
 
       expect(view.state.field(diffProposalField).proposal).toBeNull();
-      const tcState = view.state.field(trackChangesStateField);
+      const tcState = view.state.field(reviewStateField);
       expect(tcState.suggestions.length).toBeGreaterThanOrEqual(2);
       expect(tcState.suggestions.some((s) => s.type === 'delete' && s.originalText === 'beta')).toBe(true);
       expect(tcState.suggestions.some((s) => s.type === 'insert' && s.suggestedText === 'gamma')).toBe(true);
     });
 
-    it('trackChangesStateField remaps existing suggestion offsets across remote document insertions', () => {
+    it('reviewStateField remaps existing suggestion offsets across remote document insertions', () => {
       const view = mountEditor('Alpha target word', [
-        createTrackChangesExtension({ pageId: 'doc-1', reviewMode: false }),
+        createReviewExtension({ pageId: 'doc-1', reviewMode: false }),
       ]);
 
       view.dispatch({
         effects: [
-          setTrackChangesSuggestionsEffect.of([
+          setSuggestionsEffect.of([
             {
               id: 'sug-1',
               pageId: 'doc-1',
@@ -219,7 +218,7 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       });
 
       view.dispatch({ changes: { from: 0, to: 0, insert: '12345' } });
-      const sug = view.state.field(trackChangesStateField).suggestions[0];
+      const sug = view.state.field(reviewStateField).suggestions[0];
       expect(sug.fromIndex).toBe(11);
       expect(sug.toIndex).toBe(17);
     });
@@ -244,44 +243,6 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       expect(pending?.replacementText).toBe('\\usepackage{booktabs}\n');
       expect(pending?.from).toBe(doc.indexOf('\\begin{document}'));
       expect(pending?.to).toBe(doc.indexOf('\\begin{document}'));
-    });
-
-    it('autoFixDiagnostic forwards spaceId and canonical rootPageId without projectId', async () => {
-      const doc = '\\documentclass{article}\n\\begin{document}\n\\unknownCmd\n\\end{document}';
-      const view = mountEditor(doc, [createInlineDiffExtension()]);
-      setActiveEditorEngine(new CodeMirrorEngineAdapter(view));
-
-      usePageStore.setState({
-        spaceId: 'sp-personal-1',
-        rootPageId: 'page-root-1',
-        activeFilePage: { id: 'doc-child-1', title: 'chapter1.tex' } as any,
-      });
-
-      const spy = vi.spyOn(pagesService.ai, 'suggestLatexFix').mockResolvedValue({
-        explanation: 'Fix cmd',
-        originalSnippet: '\\unknownCmd',
-        fixedSnippet: '\\textbf{cmd}',
-        startLine: 3,
-        endLine: 3,
-        confidence: 'high',
-      });
-
-      await aiCoordinator.autoFixDiagnostic({
-        id: 'd-1',
-        message: 'Undefined control sequence \\unknownCmd',
-        line: 3,
-        file: 'chapter1.tex',
-        severity: 'error',
-        source: 'LaTeX',
-      });
-
-      expect(spy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          spaceId: 'sp-personal-1',
-          pageId: 'page-root-1',
-        }),
-      );
-      expect((spy.mock.calls[0][0] as Record<string, unknown>).projectId).toBeUndefined();
     });
 
     it('queues and consumes cross-file DiffProposal when target file engine is not yet active', () => {

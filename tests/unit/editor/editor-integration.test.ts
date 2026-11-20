@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk/pages.service';
+import * as pagesServiceModule from '@/features/editor/sdk/pages.service';
+import * as reviewClientModule from '@/features/editor/sdk/pages/review.client';
 import { useSettingsStore, usePageStore } from '@/features/editor/core';
 import { parseSyncTeX, resolveForward } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
+import { fromPartial } from '@/shared/lib/type-utilities';
 
 describe('Editor & Document End-to-End Integration Tests', () => {
   beforeEach(() => {
@@ -14,95 +15,10 @@ describe('Editor & Document End-to-End Integration Tests', () => {
     usePageStore.getState().resetPageState();
   });
 
-  describe('1. Real-Time Collaboration SSE Stream & Event Bus', () => {
-    it('should construct direct page stream URL when projectId is null/omitted', () => {
-      let createdUrl = '';
-      class MockEventSource {
-        url: string;
-        onmessage: unknown = null;
-        onerror: unknown = null;
-        constructor(url: string) {
-          this.url = url;
-          createdUrl = url;
-        }
-        close() {}
-      }
-      const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = fromAny(MockEventSource);
-
-      const cleanup = collaborationService.createCollaborationStream(
-        null,
-        'page-123',
-        () => {},
-      );
-
-      expect(createdUrl).toContain('/docs/page-123/collaboration/stream');
-      cleanup();
-      globalThis.EventSource = origEventSource;
-    });
-
-    it('should construct project-scoped stream URL when projectId is provided', () => {
-      let createdUrl = '';
-      class MockEventSource {
-        url: string;
-        onmessage: unknown = null;
-        onerror: unknown = null;
-        constructor(url: string) {
-          this.url = url;
-          createdUrl = url;
-        }
-        close() {}
-      }
-      const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = fromAny(MockEventSource);
-
-      const cleanup = collaborationService.createCollaborationStream(
-        'proj-456',
-        'page-123',
-        () => {},
-      );
-
-      expect(createdUrl).toContain('/spaces/proj-456/docs/page-123/collaboration/stream');
-      cleanup();
-      globalThis.EventSource = origEventSource;
-    });
-
-    it('should parse incoming SSE message and dispatch collaboration events', () => {
-      let messageHandler: ((e: { data: string }) => void) | null = null;
-      class MockEventSource {
-        url: string = '';
-        onerror: unknown = null;
-        set onmessage(fn: (e: { data: string }) => void) {
-          messageHandler = fn;
-        }
-        close() {}
-      }
-      const origEventSource = globalThis.EventSource;
-      globalThis.EventSource = fromAny(MockEventSource);
-
-      const receivedEvents: CollaborationEvent[] = [];
-      const cleanup = collaborationService.createCollaborationStream(
-        'proj-456',
-        'page-123',
-        (ev) => receivedEvents.push(ev),
-      );
-
-      const mockEventPayload: CollaborationEvent = {
-        pageId: 'page-123',
-        type: 'suggestion-created',
-        timestamp: Date.now(),
-        suggestion: fromPartial({ id: 'sugg-1' } as any),
-      };
-
-      expect(messageHandler).toBeDefined();
-      messageHandler!({ data: JSON.stringify(mockEventPayload) });
-
-      expect(receivedEvents).toHaveLength(1);
-      expect(receivedEvents[0].type).toBe('suggestion-created');
-      expect(receivedEvents[0].suggestion?.id).toBe('sugg-1');
-
-      cleanup();
-      globalThis.EventSource = origEventSource;
+  describe('1. Real-Time Collaboration Transport (Socket.IO /pages)', () => {
+    it('removes legacy SSE collaborationService stream in favor of Socket.IO /pages', () => {
+      expect('collaborationService' in pagesServiceModule).toBe(false);
+      expect('collaborationService' in reviewClientModule).toBe(false);
     });
   });
 

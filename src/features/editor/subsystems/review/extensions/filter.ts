@@ -1,26 +1,30 @@
-/**
- * track-changes-review-filter.ts
- *
- * CodeMirror 6 transactionFilter forSuggesting/Review Mode: intercepts user edits
- * (insertions, deletions, replacements) and converts them into coalesced local
- * track-change suggestion records.
- */
-
 import { EditorState, Transaction } from '@codemirror/state';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import {
-  trackChangesStateField,
-  setTrackChangesSuggestionsEffect,
+  createLocalSuggestionId,
   resolveSuggestionRange,
-} from './track-changes-state';
+  reviewStateField,
+  setSuggestionsEffect,
+} from './state';
 
-export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr: Transaction) => {
+function emitLocalRecorded(pageId: string, suggestion: PageSuggestion): void {
+  queueMicrotask(() => {
+    editorCommandBus.dispatch({
+      type: 'editor:review-event',
+      pageId,
+      event: 'suggestion:local-recorded',
+      payload: { suggestion },
+    });
+  });
+}
+
+export const reviewModeFilter = EditorState.transactionFilter.of((tr: Transaction) => {
   if (!tr.docChanged) return tr;
-  const config = tr.startState.field(trackChangesStateField, false);
+  const config = tr.startState.field(reviewStateField, false);
   if (!config || !config.reviewMode) return tr;
-  const currentScopePageId = config.pageId || '';
+  const pageId = config.pageId || '';
 
   const userEvt = tr.annotation(Transaction.userEvent);
   if (
@@ -54,37 +58,30 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
   const existing = [...config.suggestions];
   const nowIso = new Date().toISOString();
 
-  let cachedFullText: string | null = null;
-  const getFullText = () => {
-    if (cachedFullText === null) {
-      cachedFullText = startDoc.toString();
-    }
-    return cachedFullText;
-  };
   const cachedUser = getCachedUser();
   const localAuthorId = cachedUser?.id || 'current-user';
   const localAuthorName = cachedUser?.name || cachedUser?.email || 'You';
-  const isLocalSuggestionAuthor = (s: PageSuggestion) =>
+  const isLocalAuthor = (s: PageSuggestion) =>
     s.authorId === localAuthorId ||
     s.author?.id === localAuthorId ||
     s.authorId === 'current-user' ||
     s.author?.id === 'current-user';
 
-  // Case 1: Pure insertion in Suggesting Mode
+  // Case 1: Pure insertion in Reviewing Mode
   if (fromA === toA && insertedText.length > 0) {
     const newDoc = tr.newDoc;
     const startLineObj = newDoc.lineAt(fromB);
     const endLineObj = newDoc.lineAt(toB);
     const delta = insertedText.length;
 
-    let coalescedSug: PageSuggestion | null = null;
+    let coalesced: PageSuggestion | null = null;
     const nextSuggestions: PageSuggestion[] = existing.map((s) => {
-      const range = resolveSuggestionRange(startDoc, s, getFullText);
+      const range = resolveSuggestionRange(startDoc, s);
       if (
-        !coalescedSug &&
+        !coalesced &&
         s.status === 'pending' &&
         s.type === 'insert' &&
-        isLocalSuggestionAuthor(s) &&
+        isLocalAuthor(s) &&
         range.to === fromA
       ) {
         const updated: PageSuggestion = {
@@ -96,7 +93,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
           toColumn: toB - endLineObj.from + 1,
           updatedAt: nowIso,
         };
-        coalescedSug = updated;
+        coalesced = updated;
         return updated;
       }
       if (range.from >= fromA) {
@@ -109,10 +106,10 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
       return s;
     });
 
-    if (!coalescedSug) {
-      coalescedSug = {
-        id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        pageId: currentScopePageId,
+    if (!coalesced) {
+      coalesced = {
+        id: createLocalSuggestionId(),
+        pageId,
         type: 'insert',
         originalText: '',
         suggestedText: insertedText,
@@ -128,41 +125,30 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      nextSuggestions.push(coalescedSug);
+      nextSuggestions.push(coalesced);
     }
 
-    const recorded = coalescedSug;
-    queueMicrotask(() => {
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId: currentScopePageId,
-        event: 'suggestion:local-recorded',
-        payload: { suggestion: recorded },
-      });
-    });
-
+    emitLocalRecorded(pageId, coalesced);
     return [
       tr,
-      {
-        effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
-      },
+      { effects: [...tr.effects, setSuggestionsEffect.of(nextSuggestions)] },
     ];
   }
 
-  // Case 2: Deletion in Suggesting Mode -> keep text in buffer and mark as pending delete
+  // Case 2: Deletion in Reviewing Mode -> keep text in buffer and mark pending delete
   if (fromA < toA && insertedText.length === 0) {
     const deletedText = startDoc.sliceString(fromA, toA);
     const startLineObj = startDoc.lineAt(fromA);
     const endLineObj = startDoc.lineAt(toA);
 
-    let coalescedSug: PageSuggestion | null = null;
+    let coalesced: PageSuggestion | null = null;
     const nextSuggestions: PageSuggestion[] = existing.map((s) => {
-      const range = resolveSuggestionRange(startDoc, s, getFullText);
+      const range = resolveSuggestionRange(startDoc, s);
       if (
-        !coalescedSug &&
+        !coalesced &&
         s.status === 'pending' &&
         s.type === 'delete' &&
-        isLocalSuggestionAuthor(s) &&
+        isLocalAuthor(s) &&
         (range.from === toA || range.to === fromA)
       ) {
         const mergedFrom = Math.min(range.from, fromA);
@@ -180,16 +166,16 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
           toColumn: mergedTo - mEndLine.from + 1,
           updatedAt: nowIso,
         };
-        coalescedSug = updated;
+        coalesced = updated;
         return updated;
       }
       return s;
     });
 
-    if (!coalescedSug) {
-      coalescedSug = {
-        id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        pageId: currentScopePageId,
+    if (!coalesced) {
+      coalesced = {
+        id: createLocalSuggestionId(),
+        pageId,
         type: 'delete',
         originalText: deletedText,
         suggestedText: '',
@@ -205,27 +191,17 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      nextSuggestions.push(coalescedSug);
+      nextSuggestions.push(coalesced);
     }
 
-    const recorded = coalescedSug;
-    queueMicrotask(() => {
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId: currentScopePageId,
-        event: 'suggestion:local-recorded',
-        payload: { suggestion: recorded },
-      });
-    });
-
+    emitLocalRecorded(pageId, coalesced);
     return {
       selection: { anchor: fromA },
-      effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
+      effects: [...tr.effects, setSuggestionsEffect.of(nextSuggestions)],
     };
   }
 
-  // Case 3: Selection replacement in Suggesting Mode -> keep originalText as pending 'delete'
-  // and insert new text right after it as a pending 'insert' so buffer and backend model stay 1:1
+  // Case 3: Selection replacement -> pending delete + pending insert
   if (fromA < toA && insertedText.length > 0) {
     const originalText = startDoc.sliceString(fromA, toA);
     const startLineObj = startDoc.lineAt(fromA);
@@ -237,11 +213,10 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
       insertedLines.length === 1
         ? insertFromColumn + insertedText.length
         : insertedLines[insertedLines.length - 1].length + 1;
-    const baseToken = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     const deleteSug: PageSuggestion = {
-      id: `sug-local-${baseToken}-del`,
-      pageId: currentScopePageId,
+      id: createLocalSuggestionId('del'),
+      pageId,
       type: 'delete',
       originalText,
       suggestedText: '',
@@ -259,8 +234,8 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     };
 
     const insertSug: PageSuggestion = {
-      id: `sug-local-${baseToken}-ins`,
-      pageId: currentScopePageId,
+      id: createLocalSuggestionId('ins'),
+      pageId,
       type: 'insert',
       originalText: '',
       suggestedText: insertedText,
@@ -288,25 +263,13 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     });
 
     const nextSuggestions = [...mappedExisting, deleteSug, insertSug];
-    queueMicrotask(() => {
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId: currentScopePageId,
-        event: 'suggestion:local-recorded',
-        payload: { suggestion: deleteSug },
-      });
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId: currentScopePageId,
-        event: 'suggestion:local-recorded',
-        payload: { suggestion: insertSug },
-      });
-    });
+    emitLocalRecorded(pageId, deleteSug);
+    emitLocalRecorded(pageId, insertSug);
 
     return {
       changes: { from: toA, to: toA, insert: insertedText },
       selection: { anchor: toA + insertedText.length },
-      effects: [...tr.effects, setTrackChangesSuggestionsEffect.of(nextSuggestions)],
+      effects: [...tr.effects, setSuggestionsEffect.of(nextSuggestions)],
     };
   }
 

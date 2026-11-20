@@ -40,11 +40,11 @@ import {
 } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
 import {
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
-} from '@/features/editor/subsystems/review/extensions/track-changes-state';
-import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
-import { useEditorReviewSync } from '@/features/editor/subsystems/review/ui/hooks/useEditorReviewSync';
+  reviewCoordinator,
+  setReviewModeEffect,
+  setViewModeEffect,
+  useReviewSync,
+} from '@/features/editor/subsystems/review';
 import { setErrorLensDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
 import { setCompilerDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/diagnostics-gutter';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
@@ -139,7 +139,7 @@ export function CodeMirrorView({
   const linterEnabled = useSettingsStore((s) => s.linterEnabled);
 
   // Synchronize suggestions & comments to active CodeMirror view independently of Review sidebar
-  useEditorReviewSync(fileId, activeEditorView);
+  useReviewSync(fileId, activeEditorView);
 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -423,7 +423,10 @@ export function CodeMirrorView({
     view.dom.addEventListener('mousedown', handleFocus, true);
 
     restoreViewState(view, fileId, state.doc.length);
-    const initialPendingDiff = aiCoordinator.consumePendingDiffForFile(fileId);
+    const initialPendingDiff = aiCoordinator.consumePendingDiffForFile(
+      fileId,
+      state.doc.toString(),
+    );
     if (initialPendingDiff) {
       const docLen = state.doc.length;
       const from = Math.max(0, Math.min(initialPendingDiff.from, docLen));
@@ -492,7 +495,10 @@ export function CodeMirrorView({
 
     // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
     view.setState(nextState);
-    const nextPendingDiff = aiCoordinator.consumePendingDiffForFile(fileId);
+    const nextPendingDiff = aiCoordinator.consumePendingDiffForFile(
+      fileId,
+      nextState.doc.toString(),
+    );
     if (nextPendingDiff) {
       const docLen = nextState.doc.length;
       const from = Math.max(0, Math.min(nextPendingDiff.from, docLen));
@@ -561,10 +567,10 @@ export function CodeMirrorView({
 
     const additionalEffects: StateEffect<unknown>[] = [];
     if (prev.trackChangesViewMode !== trackChangesViewMode) {
-      additionalEffects.push(setTrackChangesViewModeEffect.of(trackChangesViewMode));
+      additionalEffects.push(setViewModeEffect.of(trackChangesViewMode));
     }
     if (prev.reviewMode !== Boolean(reviewMode)) {
-      additionalEffects.push(setTrackChangesReviewModeEffect.of(Boolean(reviewMode)));
+      additionalEffects.push(setReviewModeEffect.of(Boolean(reviewMode)));
     }
 
     const errorLensActivated =

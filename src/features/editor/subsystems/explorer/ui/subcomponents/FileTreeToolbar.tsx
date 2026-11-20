@@ -3,13 +3,12 @@
 /**
  * FileTreeToolbar.tsx
  *
- * Overleaf-parity File Tree Header & Toolbar (Block 6: UI Features Layer).
+ * Canonical File Tree Header & Actions Toolbar.
  * Location: `features/editor/subsystems/explorer/ui/subcomponents/FileTreeToolbar.tsx`
  *
  * Layout:
  * - Header: Chevron accordion toggle + "File Tree" title.
- * - Actions: New File, New Folder, Upload File.
- * - Colors: bg-surface, text-foreground (100% design system & Overleaf alignment).
+ * - Actions: Unified Plus dropdown menu (New File, New Folder, Upload Files).
  */
 
 import React from 'react';
@@ -17,10 +16,17 @@ import {
   ChevronRight,
   FilePlus,
   FolderPlus,
+  ListFilter,
+  Plus,
   Upload,
-  Search,
-  X,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -35,8 +41,9 @@ export interface FileTreeToolbarProps {
   onStartCreateFolder: () => void;
   onOpenUploadModal: () => void;
   onClose?: () => void;
-  fileFilter?: string;
-  onFileFilterChange?: (val: string) => void;
+  sortBy?: 'name' | 'type';
+  sortDirection?: 'asc' | 'desc';
+  onSortChange?: (by: 'name' | 'type') => void;
 }
 
 export const FileTreeToolbar = React.memo(function FileTreeToolbar({
@@ -45,167 +52,141 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   onOpenFileModal,
   onStartCreateFolder,
   onOpenUploadModal,
-  fileFilter,
-  onFileFilterChange,
+  sortBy = 'name',
+  sortDirection = 'asc',
+  onSortChange,
 }: FileTreeToolbarProps) {
-  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
-  const filterInputRef = React.useRef<HTMLInputElement>(null);
-  const showFilterInput =
-    isFileTreeOpen && Boolean(onFileFilterChange) && (isFilterOpen || Boolean(fileFilter));
-
-  const handleToggleFilter = () => {
-    if (!onFileFilterChange) return;
-    if (showFilterInput) {
-      if (fileFilter) onFileFilterChange('');
-      setIsFilterOpen(false);
-    } else {
-      setIsFilterOpen(true);
-      requestAnimationFrame(() => {
-        filterInputRef.current?.focus();
-      });
-    }
-  };
-
   return (
-    <div className="flex flex-col shrink-0 select-none border-b border-border">
-      {/* ── Top Bar ── */}
-      <div className="flex h-9 shrink-0 items-center justify-between px-3">
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={onToggleFileTree}
-              aria-expanded={isFileTreeOpen}
-              className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5 motion-reduce:transition-none"
-              aria-label={isFileTreeOpen ? 'Collapse File Tree' : 'Expand File Tree'}
-            >
-              <ChevronRight
-                className={cn(
-                  'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
-                  isFileTreeOpen && 'rotate-90',
-                )}
-                strokeWidth={1.75}
-              />
-              <span>File Tree</span>
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-11">
-            {isFileTreeOpen ? 'Collapse file tree' : 'Expand file tree'}
-          </TooltipContent>
-        </Tooltip>
+    <div className="relative flex h-9 shrink-0 items-center justify-between px-3 select-none">
+      {/* ── Title / Collapse Button ── */}
+      <Tooltip delayDuration={300}>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onToggleFileTree}
+            aria-expanded={isFileTreeOpen}
+            className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5 motion-reduce:transition-none"
+            aria-label={isFileTreeOpen ? 'Collapse File Tree' : 'Expand File Tree'}
+          >
+            <ChevronRight
+              className={cn(
+                'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
+                isFileTreeOpen && 'rotate-90',
+              )}
+              strokeWidth={1.75}
+            />
+            <span>File Tree</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-11">
+          {isFileTreeOpen ? 'Collapse file tree' : 'Expand file tree'}
+        </TooltipContent>
+      </Tooltip>
 
-        <div className="flex items-center gap-0.5">
-          {isFileTreeOpen && (
-            <>
-              {/* 1. New File */}
+      {/* ── Actions: Plus (New/Upload) & Filter (Sort by) ── */}
+      <div className="flex items-center gap-0.5">
+        {isFileTreeOpen && (
+          <>
+            <DropdownMenu>
               <Tooltip delayDuration={300}>
                 <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onOpenFileModal}
-                    aria-label="New File"
-                    className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <FilePlus className="size-4 shrink-0" strokeWidth={1.5} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">New file</TooltipContent>
-              </Tooltip>
-
-              {/* 2. New Folder */}
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={() => onStartCreateFolder()}
-                    aria-label="New Folder"
-                    className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <FolderPlus className="size-4 shrink-0" strokeWidth={1.5} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">New folder</TooltipContent>
-              </Tooltip>
-
-              {/* 3. Upload File */}
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onOpenUploadModal}
-                    aria-label="Upload files"
-                    className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <Upload className="size-4 shrink-0" strokeWidth={1.5} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
-              </Tooltip>
-
-              {/* 4. Filter Files */}
-              {onFileFilterChange && (
-                <Tooltip delayDuration={300}>
-                  <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      onClick={handleToggleFilter}
-                      aria-label="Filter files"
-                      aria-pressed={showFilterInput}
+                      aria-label="New file, folder, or upload"
+                      className="flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+                    >
+                      <Plus className="size-4 shrink-0" strokeWidth={1.75} />
+                    </button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  New file, folder or upload
+                </TooltipContent>
+              </Tooltip>
+
+              <DropdownMenuContent align="end" className="w-44 select-none">
+                <DropdownMenuItem
+                  onClick={onOpenFileModal}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <FilePlus className="size-3.5 text-foreground" strokeWidth={1.5} />
+                  <span>New File</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => onStartCreateFolder()}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <FolderPlus className="size-3.5 text-foreground" strokeWidth={1.5} />
+                  <span>New Folder</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={onOpenUploadModal}
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <Upload className="size-3.5 text-foreground" strokeWidth={1.5} />
+                  <span>Upload Files</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Filter / Sort by */}
+            <DropdownMenu>
+              <Tooltip delayDuration={300}>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Sort files"
                       className={cn(
-                        "relative flex size-7 items-center justify-center rounded-md transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']",
-                        showFilterInput ? 'bg-muted text-foreground' : 'text-foreground',
+                        'flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground',
+                        sortBy !== 'name' && 'bg-muted/80',
                       )}
                     >
-                      <Search className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      <ListFilter className="size-4 shrink-0" strokeWidth={1.5} />
                     </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-11">Filter files</TooltipContent>
-                </Tooltip>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-11">
+                  Sort files
+                </TooltipContent>
+              </Tooltip>
 
-      {showFilterInput && (
-        <div className="px-2.5 pb-2 pt-0.5">
-          <div className="relative flex items-center">
-            <Search
-              className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
-              strokeWidth={1.5}
-            />
-            <input
-              ref={filterInputRef}
-              type="text"
-              value={fileFilter ?? ''}
-              onChange={(e) => onFileFilterChange?.(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  onFileFilterChange?.('');
-                  setIsFilterOpen(false);
-                }
-              }}
-              aria-label="Filter files by name"
-              placeholder="Filter files..."
-              className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-6 text-12 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-            />
-            {Boolean(fileFilter) && (
-              <button
-                type="button"
-                aria-label="Clear file filter"
-                onClick={() => {
-                  onFileFilterChange?.('');
-                  filterInputRef.current?.focus();
-                }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
-              >
-                <X className="size-3 shrink-0" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+              <DropdownMenuContent align="end" className="w-36 select-none p-1">
+                <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                  Sort by
+                </DropdownMenuLabel>
+
+                <DropdownMenuItem
+                  onClick={() => onSortChange?.('name')}
+                  className="flex items-center justify-between cursor-pointer text-xs px-2 py-1.5"
+                >
+                  <span>Name</span>
+                  {sortBy === 'name' && (
+                    <span className="text-xs text-muted-foreground font-sans">
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => onSortChange?.('type')}
+                  className="flex items-center justify-between cursor-pointer text-xs px-2 py-1.5"
+                >
+                  <span>File type</span>
+                  {sortBy === 'type' && (
+                    <span className="text-xs text-muted-foreground font-sans">
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+      </div>
     </div>
   );
 });

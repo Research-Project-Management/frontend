@@ -347,6 +347,43 @@ No pages of output.`;
     expect(renderedRows.length).toBeGreaterThan(0);
     expect(renderedRows.length).toBeLessThan(300);
   });
+
+  it('switches tab and scrolls matching log entry into view when focusTarget is passed', () => {
+    const scrollIntoViewMock = vi.fn();
+    const origScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoViewMock;
+
+    try {
+      const { rerender } = render(
+        <CompilerLogs
+          log={sampleLog}
+          onClose={vi.fn()}
+        />,
+      );
+
+      // Start on Warnings tab so focusTarget has to switch back to Errors
+      fireEvent.click(screen.getByRole('tab', { name: /warnings/i }));
+      expect(document.getElementById('log-entry-err-1')).toBeNull();
+
+      rerender(
+        <CompilerLogs
+          log={sampleLog}
+          onClose={vi.fn()}
+          focusTarget={{
+            file: 'sections/intro.tex',
+            line: 18,
+            severity: 'error',
+            message: "File 'algorithm.sty' not found.",
+            nonce: 1,
+          }}
+        />,
+      );
+
+      expect(document.getElementById('log-entry-err-1')).not.toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = origScrollIntoView;
+    }
+  });
 });
 
 

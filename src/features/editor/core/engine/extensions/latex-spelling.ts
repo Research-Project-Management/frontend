@@ -251,7 +251,6 @@ export function createLatexSpellingExtension(options: LatexSpellingOptions = {})
   const extensions: Extension[] = [
     spellingStateField,
     spellingTheme,
-    createSpellingHoverTooltip(options.projectId, ports),
     createSpellingContextMenu(options.projectId, ports),
     createSpellingViewPlugin(options),
   ];

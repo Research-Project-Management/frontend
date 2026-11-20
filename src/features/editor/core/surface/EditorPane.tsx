@@ -63,7 +63,6 @@ export interface EditorPaneProps {
   isSplitActive: boolean;
   availableFiles?: EditorPaneFileItem[];
   onFocusPane?: () => void;
-  onSplitRight?: () => void;
   onCloseSplit?: () => void;
   onSwapPanes?: () => void;
   onSelectFile?: (fileId: string) => void;
@@ -78,7 +77,6 @@ export function EditorPane({
   isSplitActive,
   availableFiles = [],
   onFocusPane,
-  onSplitRight,
   onCloseSplit,
   onSwapPanes,
   onSelectFile,
@@ -275,7 +273,7 @@ export function EditorPane({
           />
         ) : fileId ? (
           <div onMouseDown={handleSyncFocus} className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
-            <EditorToolbar readOnly={isLocked} onSplitRight={onSplitRight} />
+            <EditorToolbar readOnly={isLocked} />
             <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col overflow-hidden">
               <EditorContextMenu>
                 <CodeMirrorView

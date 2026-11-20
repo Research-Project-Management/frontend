@@ -17,17 +17,161 @@ import {
   documentFacade,
   editorCommandBus,
   usePageStore,
-  useWorkspaceStore,
   sessionCoordinator,
 } from '@/features/editor/core';
-import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
-import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
-import { pagesService } from '@/features/editor/sdk/pages.service';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { EditorPatchItem } from '@/features/ai';
+import type { DiffProposal, IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
+import {
+  computePreambleInsertion,
+  isPreambleOnlySnippet,
+} from '@/features/editor/domain/latex/latex-preamble-patch';
 import { toast } from 'sonner';
+
+export interface ResolvedAnchorRange {
+  from: number;
+  to: number;
+  originalText: string;
+  replacementText: string;
+}
+
+function normalizeEol(text: string): string {
+  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function findAllExactRanges(haystack: string, needle: string): Array<{ from: number; to: number }> {
+  const ranges: Array<{ from: number; to: number }> = [];
+  if (!needle) return ranges;
+  let pos = 0;
+  while (pos <= haystack.length) {
+    const idx = haystack.indexOf(needle, pos);
+    if (idx === -1) break;
+    ranges.push({ from: idx, to: idx + needle.length });
+    pos = idx + 1;
+  }
+  return ranges;
+}
+
+function findTrimmedLineRanges(content: string, searchText: string): Array<{ from: number; to: number }> {
+  const searchLines = normalizeEol(searchText)
+    .split('\n')
+    .map((line) => line.trim());
+  while (searchLines.length > 0 && searchLines[0] === '') searchLines.shift();
+  while (searchLines.length > 0 && searchLines[searchLines.length - 1] === '') searchLines.pop();
+  if (searchLines.length === 0) return [];
+
+  const docLines = content.split('\n');
+  if (docLines.length < searchLines.length) return [];
+
+  const lineStarts: number[] = [];
+  let offset = 0;
+  for (const line of docLines) {
+    lineStarts.push(offset);
+    offset += line.length + 1;
+  }
+
+  const trimmedDoc = docLines.map((line) => line.replace(/\r$/, '').trim());
+  const window = searchLines.length;
+  const ranges: Array<{ from: number; to: number }> = [];
+
+  for (let i = 0; i <= docLines.length - window; i++) {
+    let allEqual = true;
+    for (let j = 0; j < window; j++) {
+      if (trimmedDoc[i + j] !== searchLines[j]) {
+        allEqual = false;
+        break;
+      }
+    }
+    if (allEqual) {
+      const from = lineStarts[i];
+      const lastRaw = docLines[i + window - 1].replace(/\r$/, '');
+      const to = lineStarts[i + window - 1] + lastRaw.length;
+      ranges.push({ from, to });
+    }
+  }
+  return ranges;
+}
+
+function pickDisambiguatedRange(
+  content: string,
+  ranges: Array<{ from: number; to: number }>,
+  fromLine?: number,
+): { from: number; to: number } | null {
+  if (ranges.length === 0) return null;
+  if (ranges.length === 1) return ranges[0];
+  if (typeof fromLine !== 'number' || fromLine < 1) return null;
+
+  let best: { range: { from: number; to: number }; dist: number } | null = null;
+  let tied = false;
+
+  for (const r of ranges) {
+    const lineNum = content.slice(0, r.from).split('\n').length;
+    const dist = Math.abs(lineNum - fromLine);
+    if (dist > 5) continue;
+    if (!best || dist < best.dist) {
+      best = { range: r, dist };
+      tied = false;
+    } else if (dist === best.dist) {
+      tied = true;
+    }
+  }
+
+  return best && !tied ? best.range : null;
+}
+
+export function resolveAnchorInContent(
+  content: string,
+  patch: Pick<EditorPatchItem, 'kind' | 'searchText' | 'replaceText' | 'fromLine' | 'toLine'>,
+): ResolvedAnchorRange | null {
+  if (typeof content !== 'string') return null;
+  const search = normalizeEol(patch.searchText || '');
+  const replacement = normalizeEol(patch.replaceText || '');
+
+  if (search.length > 0) {
+    const exact = findAllExactRanges(content, search);
+    const chosen = pickDisambiguatedRange(content, exact, patch.fromLine);
+    if (chosen) {
+      return {
+        from: chosen.from,
+        to: chosen.to,
+        originalText: content.slice(chosen.from, chosen.to),
+        replacementText: replacement,
+      };
+    }
+
+    const trimmed = findTrimmedLineRanges(content, search);
+    const chosenTrimmed = pickDisambiguatedRange(content, trimmed, patch.fromLine);
+    if (chosenTrimmed) {
+      return {
+        from: chosenTrimmed.from,
+        to: chosenTrimmed.to,
+        originalText: content.slice(chosenTrimmed.from, chosenTrimmed.to),
+        replacementText: replacement,
+      };
+    }
+  }
+
+  if (patch.kind === 'insert_preamble') {
+    const beginIdx = content.indexOf('\\begin{document}');
+    if (beginIdx !== -1) {
+      const lineStart = content.lastIndexOf('\n', beginIdx) + 1;
+      const addedLines = replacement
+        .split('\n')
+        .filter((ln) => ln.trim() !== '\\begin{document}' && ln.trim().length > 0);
+      if (addedLines.length === 0) return null;
+      return {
+        from: lineStart,
+        to: lineStart,
+        originalText: '',
+        replacementText: `${addedLines.join('\n')}\n`,
+      };
+    }
+  }
+
+  return null;
+}
 
 export interface AiContextPayload {
   activeFile: string;
@@ -40,6 +184,7 @@ export interface AiContextPayload {
 export class AiCoordinator {
   private initialized = false;
   private readonly pendingDiffsByFile = new Map<string, DiffProposal>();
+  private readonly pendingPatchByFile = new Map<string, EditorPatchItem>();
 
   constructor() {
     this.initCommandSubscriptions();
@@ -55,36 +200,217 @@ export class AiCoordinator {
     return this.pendingDiffsByFile.get(fileId) ?? null;
   }
 
-  public consumePendingDiffForFile(fileId: string): DiffProposal | null {
+  public consumePendingDiffForFile(fileId: string, docText?: string): DiffProposal | null {
     if (!fileId) return null;
     const proposal = this.pendingDiffsByFile.get(fileId) ?? null;
     if (proposal) {
       this.pendingDiffsByFile.delete(fileId);
+      return proposal;
     }
-    return proposal;
+
+    const pendingPatch = this.pendingPatchByFile.get(fileId);
+    if (pendingPatch && typeof docText === 'string') {
+      this.pendingPatchByFile.delete(fileId);
+      const resolved = resolveAnchorInContent(docText, pendingPatch);
+      if (!resolved) {
+        toast.error(
+          `Could not locate patch anchor in ${pendingPatch.filePath} — file may have changed.`,
+          { id: 'ai-diff-proposal' },
+        );
+        return null;
+      }
+      return {
+        id: pendingPatch.id || `diff-${Date.now()}`,
+        from: resolved.from,
+        to: resolved.to,
+        originalText: resolved.originalText,
+        replacementText: resolved.replacementText,
+        title: pendingPatch.title,
+        createdAt: Date.now(),
+      };
+    }
+
+    return null;
   }
 
   public clearPendingDiffForFile(fileId: string): void {
     if (!fileId) return;
     this.pendingDiffsByFile.delete(fileId);
+    this.pendingPatchByFile.delete(fileId);
+  }
+
+  private resolveTargetFile(patch: Pick<EditorPatchItem, 'fileId' | 'filePath'>): {
+    targetFileId: string;
+    engine: IEditorEngine | null;
+    isActive: boolean;
+  } {
+    const pageStore = usePageStore.getState();
+    const activeDoc = pageStore.activeFilePage || pageStore.getActiveDocument?.();
+    const activeFileId =
+      pageStore.activeFilePage?.id ||
+      pageStore.activeDocId ||
+      pageStore.currentPage?.id ||
+      '';
+    const activePath = (activeDoc?.path || activeDoc?.title || '').replace(/^\/+/, '');
+    const cleanPatchPath = (patch.filePath || '').replace(/^\/+/, '');
+
+    const resolvedId =
+      (patch.fileId && patch.fileId.trim()) ||
+      (cleanPatchPath && activePath && cleanPatchPath === activePath ? activeFileId : '') ||
+      (!cleanPatchPath ? activeFileId : '') ||
+      '';
+
+    const exactEngine = resolvedId ? getEditorEngineForFile(resolvedId) : null;
+    const isActive =
+      Boolean(resolvedId && resolvedId === activeFileId) ||
+      (!resolvedId && Boolean(cleanPatchPath && cleanPatchPath === activePath));
+    const engine = exactEngine || (isActive ? getActiveEditorEngine() : null);
+
+    return { targetFileId: resolvedId || activeFileId, engine, isActive };
+  }
+
+  public proposePatch(patch: EditorPatchItem): boolean {
+    const { targetFileId, engine, isActive } = this.resolveTargetFile(patch);
+
+    if (engine?.isReadOnly?.()) {
+      toast.info('Editor is in read-only mode', { id: 'ai-diff-readonly' });
+      return false;
+    }
+
+    if (engine?.proposeDiff) {
+      const content = engine.getContent();
+      const resolved = resolveAnchorInContent(content, patch);
+      if (!resolved) {
+        toast.error(
+          `Could not locate patch anchor in ${patch.filePath} — file may have changed.`,
+          { id: 'ai-diff-proposal' },
+        );
+        return false;
+      }
+
+      if (targetFileId) {
+        this.clearPendingDiffForFile(targetFileId);
+      }
+      engine.proposeDiff({
+        id: patch.id || `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        from: resolved.from,
+        to: resolved.to,
+        originalText: resolved.originalText,
+        replacementText: resolved.replacementText,
+        title: patch.title,
+        createdAt: Date.now(),
+      });
+      engine.focus();
+      toast.info(`Review diff for ${patch.filePath} (Tab or ⌘⏎ to Accept, Esc to Reject)`, {
+        id: 'ai-diff-proposal',
+      });
+      return true;
+    }
+
+    if (targetFileId && !isActive) {
+      this.pendingDiffsByFile.delete(targetFileId);
+      this.pendingPatchByFile.set(targetFileId, patch);
+      editorCommandBus.dispatch({
+        type: 'workspace:open-file',
+        fileId: targetFileId,
+        filePath: patch.filePath,
+      });
+      toast.info(`Opening ${patch.filePath} to review diff...`, {
+        id: 'ai-diff-proposal',
+      });
+      return true;
+    }
+
+    toast.error(`Cannot review diff: target file "${patch.filePath}" is not open.`, {
+      id: 'ai-diff-proposal',
+    });
+    return false;
+  }
+
+  public applyAllPatches(patches: readonly EditorPatchItem[]): {
+    applied: number;
+    failed: number;
+  } {
+    let applied = 0;
+    let failed = 0;
+    let openedDeferred = false;
+
+    const byTarget = new Map<string, { engine: IEditorEngine | null; isActive: boolean; items: EditorPatchItem[] }>();
+    for (const patch of patches) {
+      const target = this.resolveTargetFile(patch);
+      const bucketKey = target.targetFileId || patch.filePath;
+      const existing = byTarget.get(bucketKey);
+      if (existing) {
+        existing.items.push(patch);
+      } else {
+        byTarget.set(bucketKey, {
+          engine: target.engine,
+          isActive: target.isActive,
+          items: [patch],
+        });
+      }
+    }
+
+    for (const [targetKey, group] of byTarget) {
+      const { engine, isActive, items } = group;
+      if (!engine || engine.isReadOnly?.()) {
+        if (!engine && targetKey && !isActive && !openedDeferred && items.length > 0) {
+          this.pendingPatchByFile.set(targetKey, items[0]);
+          editorCommandBus.dispatch({
+            type: 'workspace:open-file',
+            fileId: targetKey,
+            filePath: items[0].filePath,
+          });
+          openedDeferred = true;
+        }
+        failed += items.length;
+        continue;
+      }
+
+      const content = engine.getContent();
+      const resolvedItems: Array<{ patch: EditorPatchItem; resolved: ResolvedAnchorRange }> = [];
+      for (const patch of items) {
+        const resolved = resolveAnchorInContent(content, patch);
+        if (!resolved) {
+          failed += 1;
+        } else {
+          resolvedItems.push({ patch, resolved });
+        }
+      }
+
+      // Apply bottom-to-top so earlier offsets remain exact across hunks
+      resolvedItems.sort((a, b) => b.resolved.from - a.resolved.from);
+      for (const { patch, resolved } of resolvedItems) {
+        const diffId = patch.id || `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+        if (engine.proposeDiff && engine.acceptDiff) {
+          engine.proposeDiff({
+            id: diffId,
+            from: resolved.from,
+            to: resolved.to,
+            originalText: resolved.originalText,
+            replacementText: resolved.replacementText,
+            title: patch.title,
+            createdAt: Date.now(),
+          });
+          engine.acceptDiff(diffId);
+          applied += 1;
+        } else if (engine.replaceRange) {
+          engine.replaceRange(resolved.replacementText, resolved.from, resolved.to);
+          applied += 1;
+        } else {
+          failed += 1;
+        }
+      }
+      engine.focus();
+    }
+
+    return { applied, failed };
   }
 
   public initCommandSubscriptions(force = false): void {
     if (typeof window === 'undefined') return;
     if (this.initialized && !force) return;
     this.initialized = true;
-
-    editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
-      this.openAiForError(cmd.error);
-    });
-
-    editorCommandBus.subscribe('ai:autofix-diagnostic', (cmd) => {
-      void this.autoFixDiagnostic(cmd.diagnostic);
-    });
-
-    editorCommandBus.subscribe('editor:autofix', () => {
-      void this.autoFixCurrentFile();
-    });
 
     editorCommandBus.registerExecutor('ai:apply-fix', async (cmd) => {
       return this.applyReplacement(cmd.fileId, cmd.line, cmd.replacement);
@@ -152,176 +478,6 @@ export class AiCoordinator {
   }
 
   /**
-   * Opens Left Sidebar AI tab and auto-fills error context
-   */
-  public openAiForError(error: { message: string; line?: number; file?: string; context?: string }): void {
-    // 1. Switch Primary Sidebar to AI tab (Left Sidebar)
-    const layoutStore = useWorkspaceStore.getState();
-    layoutStore.setActiveSidebarTab('ai');
-    layoutStore.setSidebarLeftOpen(true);
-
-    // 2. Dispatch prompt initialization
-    editorCommandBus.dispatch({
-      type: 'sidebar:open-ai-panel',
-      initialPrompt: `Please explain and fix this LaTeX error on line ${error.line || 'unknown'}:\n"${error.message}"\n\nContext:\n${error.context || ''}`,
-    });
-  }
-
-  /**
-   * 1-Click AutoFix for active document: finds the most critical diagnostic
-   * and runs AI AutoFix with interactive inline diff.
-   */
-  public async autoFixCurrentFile(): Promise<boolean> {
-    const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.getActiveDocument();
-    const fileId = activeDoc?.id || 'main.tex';
-    const filePath = activeDoc?.path || activeDoc?.title || fileId;
-
-    const diags = diagnosticsCoordinator.getDiagnosticsForFile(filePath);
-    const firstIssue = diags.find((d) => d.severity === 'error') || diags[0];
-
-    if (!firstIssue) {
-      toast.info('No syntax or compile errors found in this file.', { id: 'ai-autofix' });
-      return false;
-    }
-
-    return this.autoFixDiagnostic(firstIssue);
-  }
-
-  /**
-   * 1-Click AI AutoFix for compiler/linter diagnostics.
-   * Calls LLM assist and immediately mounts an interactive inline diff for user review.
-   */
-  public async autoFixDiagnostic(diagnostic: EditorDiagnosticItem | IndexedDiagnosticItem): Promise<boolean> {
-    const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.getActiveDocument();
-    const fileId = activeDoc?.id || 'main.tex';
-    const fileName = activeDoc?.title || fileId;
-
-    const engine = getActiveEditorEngine();
-    const content =
-      documentFacade.getDocumentContent(fileId) ||
-      engine?.getContent() ||
-      extractDocumentContentString(activeDoc?.content);
-
-    // Extract surrounding code context (5 lines)
-    const lines = content.split('\n');
-    const errLine = Math.max(1, Math.min(diagnostic.line, lines.length));
-    const startContext = Math.max(1, errLine - 2);
-    const endContext = Math.min(lines.length, errLine + 2);
-    const surroundingCode = lines.slice(startContext - 1, endContext).join('\n');
-
-    // 1. Instant 0ms precomputed fix (if already resolved by heuristic rule)
-    if (diagnostic.fixedSnippet) {
-      editorCommandBus.dispatch({
-        type: 'navigation:jump-to-line',
-        filePath: fileName,
-        fileId,
-        line: diagnostic.line,
-        highlight: 'error',
-      });
-
-      const success = this.proposeDiff(fileId, diagnostic.fixedSnippet, {
-        line: diagnostic.line,
-        title: `Quick-Fix: ${diagnostic.suggestion || diagnostic.message}`,
-      });
-      if (success) {
-        toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
-          id: 'ai-diff-proposal',
-          duration: 6000,
-        });
-        return true;
-      }
-    }
-
-    const toastId = typeof toast.loading === 'function'
-      ? toast.loading(`Analyzing fix for line ${diagnostic.line}...`, { id: 'ai-diff-analyzing' })
-      : null;
-
-    try {
-      const fixResult = await pagesService.ai.suggestLatexFix({
-        errorMessage: diagnostic.message,
-        errorLine: diagnostic.line,
-        errorFile: fileName,
-        detail: diagnostic.context,
-        surroundingCode,
-        fullCode: content.length < 50000 ? content : undefined,
-        pageId: pageStore.rootPageId || pageStore.parentPageId || activeDoc?.id,
-        spaceId: pageStore.spaceId || pageStore.projectId || undefined,
-      });
-
-      if (toastId && typeof toast.dismiss === 'function') {
-        toast.dismiss(toastId);
-      }
-
-      if (fixResult && fixResult.fixedSnippet) {
-        editorCommandBus.dispatch({
-          type: 'navigation:jump-to-line',
-          filePath: fileName,
-          fileId,
-          line: diagnostic.line,
-          highlight: 'error',
-        });
-
-        const success = this.proposeDiff(fileId, fixResult.fixedSnippet, {
-          line: fixResult.startLine || diagnostic.line,
-          endLine: fixResult.endLine,
-          title: `AI Fix: ${fixResult.explanation || diagnostic.message}`,
-        });
-        if (success) {
-          toast.success(`AI Diff ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
-            id: 'ai-diff-proposal',
-            duration: 6000,
-          });
-        }
-        return success;
-      }
-    } catch {
-      // Remote call failed or offline — fall through to heuristic rule
-    }
-
-    if (toastId && typeof toast.dismiss === 'function') {
-      toast.dismiss(toastId);
-    }
-
-    // 2. Offline Heuristic Fallback rule
-    const fallbackFix = fixLatexError({
-      errorMessage: diagnostic.message,
-      errorLine: diagnostic.line,
-      errorFile: fileName,
-      detail: diagnostic.context,
-      surroundingCode,
-    });
-
-    if (fallbackFix && fallbackFix.fixedSnippet) {
-      editorCommandBus.dispatch({
-        type: 'navigation:jump-to-line',
-        filePath: fileName,
-        fileId,
-        line: diagnostic.line,
-        highlight: 'error',
-      });
-
-      const success = this.proposeDiff(fileId, fallbackFix.fixedSnippet, {
-        line: fallbackFix.startLine || diagnostic.line,
-        endLine: fallbackFix.endLine,
-        title: `Quick-Fix: ${fallbackFix.explanation || diagnostic.message}`,
-      });
-      if (success) {
-        toast.success(`Quick-Fix ready for line ${diagnostic.line} — Press Tab to Accept, Esc to Reject`, {
-          id: 'ai-diff-proposal',
-          duration: 6000,
-        });
-        return true;
-      }
-    }
-
-    toast.error('Could not generate an automated fix. Opening AI Assistant...', { id: 'ai-diff-proposal' });
-    this.openAiForError(diagnostic);
-    return false;
-  }
-
-  /**
    * Proposes an AI code diff interactively with Accept/Reject overlay
    */
   public proposeDiff(
@@ -364,28 +520,35 @@ export class AiCoordinator {
       return false;
     };
 
-    // 0. Preamble \usepackage{...} fix: insert cleanly before \begin{document}
-    const cleanPreambleMatch = replacement
-      .trim()
-      .match(/^(?:%[^\n]*\n\s*)*(\\usepackage(?:\[[^\]]*\])?\{([^}]+)\})\s*$/);
-    if (cleanPreambleMatch && content.includes('\\begin{document}')) {
-      const pkgStatement = cleanPreambleMatch[1].trim();
-      const beginDocIdx = content.indexOf('\\begin{document}');
-      const lineStart = content.lastIndexOf('\n', beginDocIdx) + 1;
-      const proposal: DiffProposal = {
-        id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        from: lineStart,
-        to: lineStart,
-        originalText: '',
-        replacementText: `${pkgStatement}\n`,
-        title: options?.title || `Add ${pkgStatement} to preamble`,
-        createdAt: Date.now(),
-      };
-      if (buildAndDispatchProposal(proposal)) {
-        toast.info('Review preamble package diff in editor (Tab to Accept, Esc to Reject)', {
-          id: 'ai-diff-proposal',
-        });
-        return true;
+    // 0. Preamble \usepackage{...} fix: insert cleanly after \documentclass and before \begin{document}
+    if (isPreambleOnlySnippet(replacement)) {
+      const preamblePatch = computePreambleInsertion(content, replacement);
+      if (preamblePatch) {
+        if (!preamblePatch.changed) {
+          toast.info('Package(s) already present in preamble', {
+            id: 'ai-diff-proposal',
+          });
+          return true;
+        }
+        const defaultTitle =
+          preamblePatch.addedLines.length === 1
+            ? `Add ${preamblePatch.addedLines[0]} to preamble`
+            : `Add ${preamblePatch.addedLines.length} packages to preamble`;
+        const proposal: DiffProposal = {
+          id: `diff-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          from: preamblePatch.from,
+          to: preamblePatch.to,
+          originalText: preamblePatch.originalText,
+          replacementText: preamblePatch.insertText,
+          title: options?.title || defaultTitle,
+          createdAt: Date.now(),
+        };
+        if (buildAndDispatchProposal(proposal)) {
+          toast.info('Review preamble package diff in editor (Tab or ⌘⏎ to Accept, Esc to Reject)', {
+            id: 'ai-diff-proposal',
+          });
+          return true;
+        }
       }
     }
 
@@ -421,7 +584,7 @@ export class AiCoordinator {
         };
 
         if (buildAndDispatchProposal(proposal)) {
-          toast.info(`Review AI diff for line ${startLine} (Tab to Accept, Esc to Reject)`, {
+          toast.info(`Review AI diff for line ${startLine} (Tab or ⌘⏎ to Accept, Esc to Reject)`, {
             id: 'ai-diff-proposal',
           });
           return true;
@@ -463,7 +626,7 @@ export class AiCoordinator {
       };
 
       if (buildAndDispatchProposal(proposal)) {
-        toast.info('Review AI diff in editor (Tab to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
+        toast.info('Review AI diff in editor (Tab or ⌘⏎ to Accept, Esc to Reject)', { id: 'ai-diff-proposal' });
         return true;
       }
     }
@@ -481,7 +644,7 @@ export class AiCoordinator {
       };
 
       if (buildAndDispatchProposal(proposal)) {
-        toast.info('Review AI insertion in editor (Tab to Accept, Esc to Reject)', {
+        toast.info('Review AI insertion in editor (Tab or ⌘⏎ to Accept, Esc to Reject)', {
           id: 'ai-diff-proposal',
         });
         return true;

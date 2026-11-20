@@ -1,11 +1,11 @@
 /**
  * review.client.ts
  *
- * Review & track changes, inline comment threads, suggestions, and SSE collaboration stream sub-APIs.
+ * Review & track changes, inline comment threads, and suggestions sub-APIs.
  */
 
-import { apiGet, apiPost, apiPatch, apiDelete, getAuthToken } from '@/shared/lib/api';
-import { PAGES_API_BASE, getPagesBaseUrl } from './base';
+import { apiGet, apiPost, apiPatch, apiDelete } from '@/shared/lib/api';
+import { PAGES_API_BASE } from './base';
 import type {
   ReviewStatus,
   ReviewRoundInfo,
@@ -13,7 +13,6 @@ import type {
   ProjectReviewOverviewResponseDto,
   ProjectReviewFileOverviewDto,
   CreateSuggestionPayload,
-  CollaborationEvent,
 } from './types';
 import type { Page } from '@/features/editor/domain/types/core.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
@@ -190,104 +189,9 @@ export const suggestions = {
 };
 
 export const review = {
-  getReviews: async (projectId: string, docId: string) => {
-    return await apiGet<{ changes: unknown[]; threads: unknown[] }>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review`,
-    );
-  },
-
-  getThreads: async (projectId: string, docId: string) => {
-    return await apiGet<unknown[]>(`${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads`);
-  },
-
-  getChanges: async (projectId: string, docId: string) => {
-    return await apiGet<unknown[]>(`${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes`);
-  },
-
-  recordChange: async (
-    projectId: string,
-    docId: string,
-    payload: {
-      type: 'insert' | 'delete';
-      text: string;
-      startLine?: number;
-      startCol?: number;
-      endLine?: number;
-      endCol?: number;
-      range?: { startLine: number; startCol: number; endLine: number; endCol: number };
-    },
-  ) => {
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes`,
-      payload,
-    );
-  },
-
-  batchResolveChanges: async (
-    projectId: string,
-    docId: string,
-    payload: {
-      action: 'accept_all' | 'reject_all' | 'accept_selected' | 'reject_selected';
-      changeIds?: string[];
-    },
-  ) => {
-    return await apiPost<{ resolvedCount: number; action: string }>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/batch`,
-      payload,
-    );
-  },
-
-  createCommentThread: async (
-    projectId: string,
-    docId: string,
-    payload: {
-      startLine?: number;
-      startCol?: number;
-      endLine?: number;
-      endCol?: number;
-      quote?: string;
-      content: string;
-      range?: { startLine: number; startCol: number; endLine: number; endCol: number };
-      [key: string]: unknown;
-    },
-  ) => {
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads`,
-      payload,
-    );
-  },
-
-  addCommentReply: async (projectId: string, docId: string, threadId: string, content: string) => {
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
-      { content },
-    );
-  },
-
-  resolveCommentThread: async (projectId: string, docId: string, threadId: string, resolved: boolean) => {
-    return await apiPatch<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
-      { resolve: Boolean(resolved) },
-    );
-  },
-
-  acceptChange: async (projectId: string, docId: string, changeId: string) => {
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
-      {},
-    );
-  },
-
-  rejectChange: async (projectId: string, docId: string, changeId: string) => {
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
-      {},
-    );
-  },
-
-  getReviewStatus: async (projectId: string, docId: string): Promise<ReviewStatusResponse> => {
-    const endpoint = projectId
-      ? `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review-status`
+  getReviewStatus: async (spaceId: string, docId: string): Promise<ReviewStatusResponse> => {
+    const endpoint = spaceId
+      ? `${PAGES_API_BASE}/spaces/${spaceId}/docs/${docId}/review-status`
       : `${PAGES_API_BASE}/pages/${docId}/review-status`;
     return await apiGet<ReviewStatusResponse>(endpoint);
   },
@@ -309,91 +213,13 @@ export const review = {
   },
 
   updateReviewStatus: async (
-    projectId: string,
+    spaceId: string,
     docId: string,
     payload: { status: ReviewStatus; notes?: string; deadline?: string },
   ): Promise<ReviewStatusResponse> => {
-    const endpoint = projectId
-      ? `${PAGES_API_BASE}/spaces/${projectId}/docs/${docId}/review-status`
+    const endpoint = spaceId
+      ? `${PAGES_API_BASE}/spaces/${spaceId}/docs/${docId}/review-status`
       : `${PAGES_API_BASE}/pages/${docId}/review-status`;
     return await apiPost<ReviewStatusResponse>(endpoint, payload);
-  },
-};
-
-export const collaborationService = {
-  createCollaborationStream: (
-    projectId: string | null | undefined,
-    pageId: string,
-    onEvent: (event: CollaborationEvent) => void,
-  ): (() => void) => {
-    const base = getPagesBaseUrl().replace(/\/$/, '');
-    const url = projectId
-      ? `${base}/spaces/${encodeURIComponent(projectId)}/docs/${encodeURIComponent(pageId)}/collaboration/stream`
-      : `${base}/docs/${encodeURIComponent(pageId)}/collaboration/stream`;
-
-    const token = getAuthToken();
-
-    if (typeof EventSource !== 'undefined') {
-      const streamUrl = token
-        ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
-        : url;
-      const eventSource = new EventSource(streamUrl, { withCredentials: true });
-      eventSource.onmessage = (e: { data: string }) => {
-        try {
-          onEvent(JSON.parse(e.data) as CollaborationEvent);
-        } catch (err) {
-          console.error('Failed to parse SSE collaboration event', err);
-        }
-      };
-      return () => {
-        eventSource.close();
-      };
-    }
-
-    const controller = new AbortController();
-    void (async () => {
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            Accept: 'text/event-stream',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          credentials: 'include',
-          signal: controller.signal,
-        });
-        if (!res.ok || !res.body) return;
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (!controller.signal.aborted) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const frames = buffer.split(/\r?\n\r?\n/);
-          buffer = frames.pop() ?? '';
-          for (const frame of frames) {
-            const dataLines = frame
-              .split(/\r?\n/)
-              .filter((line) => line.startsWith('data:'))
-              .map((line) => line.slice(5).trimStart());
-            if (dataLines.length === 0) continue;
-            try {
-              onEvent(JSON.parse(dataLines.join('\n')) as CollaborationEvent);
-            } catch (err) {
-              console.error('Failed to parse SSE collaboration event', err);
-            }
-          }
-        }
-      } catch (err: unknown) {
-        if ((err as { name?: string })?.name !== 'AbortError') {
-          console.debug('Collaboration SSE stream closed', err);
-        }
-      }
-    })();
-
-    return () => {
-      controller.abort();
-    };
   },
 };

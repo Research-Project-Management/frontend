@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReviewComments.tsx
+ * Comments.tsx
  *
  * Cohesive comment interactions for the Review sidebar:
  * - CommentCard: displays thread, author, line link, status resolve/reopen, options menu
@@ -36,12 +36,12 @@ import {
   useAddReply,
   useCreateComment,
   useUpdateComment,
-} from '@/features/editor/subsystems/review/ui/hooks/useComment';
+} from '../hooks/useComments';
 import type { PageComment, CommentReply, CreateReplyInput, CreateCommentInput } from '@/features/editor/domain/types/comment.types';
 import { createReplySchema, createCommentSchema } from '@/features/editor/domain/types/comment.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
-import { MentionRenderer } from './ReviewBadges';
-import { MentionTextarea } from './MentionTextarea';
+import { MentionRenderer } from './Badges';
+import { MentionTextarea } from './MentionInput';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
 // ── Reply Row ───────────────────────────────────────────────────────────────
@@ -385,7 +385,7 @@ export const CommentCard = React.memo(function CommentCard({
                   { pageId, commentId: comment.id, content: trimmed },
                   {
                     onSuccess: () => setIsEditing(false),
-                  }
+                  },
                 );
               }}
               className="h-6 min-h-[26px] px-3 text-11 rounded-sm bg-primary text-primary-foreground font-medium hover:bg-primary/90 cursor-pointer disabled:opacity-50 relative after:absolute after:-inset-1 after:content-['']"

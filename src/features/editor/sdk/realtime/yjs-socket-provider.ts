@@ -2,7 +2,7 @@
  * yjs-socket-provider.ts
  *
  * Real-Time Socket.IO & Yjs Collaboration Provider for Flux (Overleaf Parity).
- * Connects CodeMirror 6 (via y-codemirror.next) to Backend ManuscriptRealtimeGateway (/manuscripts)
+ * Connects CodeMirror 6 (via y-codemirror.next) to Backend PagesGateway (/pages)
  * backed by Redis horizontal room fan-out.
  */
 

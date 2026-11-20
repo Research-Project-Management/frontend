@@ -17,19 +17,12 @@
 
 'use client';
 
-import React, { useRef, useCallback, Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import React, { useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { ResizeHandle } from './ResizeHandle';
 import { OfflineBanner } from './OfflineBanner';
-import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { cn } from '@/shared/lib/utils';
-
-const CompanionDrawer = dynamic(
-  () => import('@/features/ai').then((m) => m.CompanionDrawer),
-  { ssr: false, loading: () => null }
-);
 
 export interface WorkbenchShellProps {
   topBar?: React.ReactNode;
@@ -258,13 +251,6 @@ export function WorkbenchShell({
             )}
           </div>
         </div>
-
-        {/* ── Slot 7: AI Companion Sidebar (Below Global Topbar) ───────────── */}
-        <ErrorBoundary fallback={null} featureName="AI Companion">
-          <Suspense fallback={null}>
-            <CompanionDrawer />
-          </Suspense>
-        </ErrorBoundary>
       </main>
     </div>
   );

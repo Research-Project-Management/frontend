@@ -12,12 +12,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   ReviewCoordinator,
   reviewCoordinator,
+  type ReviewServicePort,
+  type ReviewNotificationPort,
+  type ReviewStorePort,
 } from '@/features/editor/subsystems/review';
-import type {
-  ReviewServicePort,
-  ReviewNotificationPort,
-  ReviewStorePort,
-} from '@/features/editor/subsystems/review/model/review-service-port';
 import { editorCommandBus } from '@/features/editor/core';
 
 describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {

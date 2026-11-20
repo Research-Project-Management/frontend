@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * ReviewNav.tsx
+ * Nav.tsx
  *
  * Cohesive navigation and panel chrome for the Review sidebar:
  * - Review panel header with resolved comments toggle
@@ -19,8 +19,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { SidebarPanelHeader } from '@/features/editor/core';
-import { ResolvedCommentsIcon } from './ReviewBadges';
-import type { ReviewStatus } from '@/features/editor/sdk/pages.service';
+import { ResolvedCommentsIcon } from './Badges';
 
 // ── Review Header ───────────────────────────────────────────────────────────
 
@@ -28,10 +27,6 @@ export interface ReviewHeaderProps {
   showResolved: boolean;
   onToggleResolved: () => void;
   activeResolvedCount: number;
-  reviewStatus?: ReviewStatus;
-  roundNumber?: number;
-  onUpdateReviewStatus?: (status: ReviewStatus) => void;
-  isUpdatingReviewStatus?: boolean;
   onClose?: () => void;
 }
 
@@ -39,10 +34,6 @@ export function ReviewHeader({
   showResolved,
   onToggleResolved,
   activeResolvedCount,
-  reviewStatus = 'draft',
-  roundNumber = 1,
-  onUpdateReviewStatus,
-  isUpdatingReviewStatus = false,
   onClose,
 }: ReviewHeaderProps) {
   const handleToggle = () => {

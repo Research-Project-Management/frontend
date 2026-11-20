@@ -1,22 +1,22 @@
-/**
- * track-changes-state.ts
- *
- * StateEffects, StateField, configuration types, and offset/range resolution helpers
- * for the CodeMirror 6 Track Changes extension.
- */
-
-import {
-  StateField,
-  StateEffect,
-  Transaction,
-} from '@codemirror/state';
-import { type EditorView } from '@codemirror/view';
+import { StateEffect, StateField, Transaction } from '@codemirror/state';
+import type { EditorView } from '@codemirror/view';
 import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 
 export type { TrackChangesViewMode };
 
-export interface RawTrackChangeItem {
+const LOCAL_SUGGESTION_PREFIX = 'sug-local-';
+
+export function isLocalSuggestionId(id?: string | null): boolean {
+  return Boolean(id && id.startsWith(LOCAL_SUGGESTION_PREFIX));
+}
+
+export function createLocalSuggestionId(suffix = ''): string {
+  const token = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  return suffix ? `${LOCAL_SUGGESTION_PREFIX}${token}-${suffix}` : `${LOCAL_SUGGESTION_PREFIX}${token}`;
+}
+
+export interface RawSuggestion {
   id: string;
   docId?: string;
   pageId?: string;
@@ -39,7 +39,7 @@ export interface RawTrackChangeItem {
   toColumn?: number;
 }
 
-export interface RawCommentItem {
+export interface RawComment {
   id: string;
   docId?: string;
   pageId?: string;
@@ -58,25 +58,19 @@ export interface RawCommentItem {
   updatedAt?: string;
 }
 
-// ─── STATE EFFECTS ───────────────────────────────────────────────────────────
-
-export const setTrackChangesSuggestionsEffect = StateEffect.define<PageSuggestion[]>();
-export const setTrackChangesViewModeEffect = StateEffect.define<TrackChangesViewMode>();
-export const setTrackChangesReviewModeEffect = StateEffect.define<boolean>();
-export const setTrackChangesCommentsEffect = StateEffect.define<PageComment[]>();
-export const setTrackChangesDataEffect = StateEffect.define<{
+export const setSuggestionsEffect = StateEffect.define<PageSuggestion[]>();
+export const setViewModeEffect = StateEffect.define<TrackChangesViewMode>();
+export const setReviewModeEffect = StateEffect.define<boolean>();
+export const setCommentsEffect = StateEffect.define<PageComment[]>();
+export const setReviewDataEffect = StateEffect.define<{
   suggestions?: PageSuggestion[];
-  comments?: Array<PageComment | RawCommentItem>;
-  changes?: Array<PageSuggestion | RawTrackChangeItem>;
+  comments?: Array<PageComment | RawComment>;
+  changes?: Array<PageSuggestion | RawSuggestion>;
   viewMode?: TrackChangesViewMode;
   reviewMode?: boolean;
 }>();
 
-// Aliases for intuitive API usage
-export const setReviewModeEffect = setTrackChangesReviewModeEffect;
-export const setViewModeEffect = setTrackChangesViewModeEffect;
-
-export interface TrackChangesConfig {
+export interface ReviewExtensionConfig {
   pageId?: string;
   suggestions: PageSuggestion[];
   comments: PageComment[];
@@ -84,7 +78,7 @@ export interface TrackChangesConfig {
   reviewMode: boolean;
 }
 
-export interface TrackChangesExtensionOptions {
+export interface ReviewExtensionOptions {
   pageId?: string;
   initialSuggestions?: PageSuggestion[];
   initialComments?: PageComment[];
@@ -93,8 +87,6 @@ export interface TrackChangesExtensionOptions {
   reviewMode?: 'on' | 'off' | boolean;
   viewMode?: TrackChangesViewMode;
 }
-
-// ─── HELPER: MAP LINE/COL OR OFFSET ──────────────────────────────────────────
 
 export function getSafeOffset(
   doc: EditorView['state']['doc'],
@@ -115,7 +107,6 @@ export function getSafeOffset(
 export function resolveSuggestionRange(
   doc: EditorView['state']['doc'],
   s: PageSuggestion,
-  _getFullText?: () => string,
 ): { from: number; to: number } {
   const cand = s as typeof s & {
     fromIndex?: number;
@@ -164,8 +155,6 @@ export function resolveSuggestionRange(
       }
     }
 
-    // Bounded local window search around [anchorFromLine - 5, anchorToLine + 5]
-    // Only search neighboring lines when candidate text is at least 3 characters to prevent matching stray punctuation
     const safeEndLineNum = Math.max(safeLineNum, Math.min(anchorToLine ?? safeLineNum, doc.lines));
     const minWindowLine = Math.max(1, safeLineNum - 5);
     const maxWindowLine = Math.min(doc.lines, safeEndLineNum + 5);
@@ -198,9 +187,7 @@ export function resolveSuggestionRange(
   return { from, to };
 }
 
-// ─── STATE FIELD: TRACK CHANGES & COMMENTS CONFIG ────────────────────────────
-
-export const trackChangesStateField = StateField.define<TrackChangesConfig>({
+export const reviewStateField = StateField.define<ReviewExtensionConfig>({
   create() {
     return {
       suggestions: [],
@@ -211,28 +198,28 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
   },
   update(value, tr: Transaction) {
     let next = value;
-    let suggestionsReplacedByEffect = false;
+    let suggestionsReplaced = false;
 
     for (const effect of tr.effects) {
-      if (effect.is(setTrackChangesSuggestionsEffect)) {
+      if (effect.is(setSuggestionsEffect)) {
         next = { ...next, suggestions: effect.value };
-        suggestionsReplacedByEffect = true;
-      } else if (effect.is(setTrackChangesViewModeEffect)) {
+        suggestionsReplaced = true;
+      } else if (effect.is(setViewModeEffect)) {
         next = { ...next, viewMode: effect.value };
-      } else if (effect.is(setTrackChangesReviewModeEffect)) {
+      } else if (effect.is(setReviewModeEffect)) {
         next = { ...next, reviewMode: effect.value };
-      } else if (effect.is(setTrackChangesCommentsEffect)) {
+      } else if (effect.is(setCommentsEffect)) {
         next = { ...next, comments: effect.value };
-      } else if (effect.is(setTrackChangesDataEffect)) {
+      } else if (effect.is(setReviewDataEffect)) {
         if (effect.value.suggestions || effect.value.changes) {
-          suggestionsReplacedByEffect = true;
+          suggestionsReplaced = true;
         }
         let newSuggestions = next.suggestions;
         if (effect.value.suggestions) {
           newSuggestions = effect.value.suggestions;
         } else if (effect.value.changes) {
           newSuggestions = effect.value.changes.map((raw) => {
-            const c = raw as RawTrackChangeItem;
+            const c = raw as RawSuggestion;
             return {
               id: c.id,
               pageId: c.docId || c.pageId || '',
@@ -258,7 +245,7 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
         let newComments = next.comments;
         if (effect.value.comments) {
           newComments = effect.value.comments.map((raw) => {
-            const c = raw as RawCommentItem;
+            const c = raw as RawComment;
             const hasIndex = typeof c.fromIndex === 'number';
             const calcLine = hasIndex && tr.state.doc.length > 0
               ? tr.state.doc.lineAt(Math.min(c.fromIndex!, tr.state.doc.length)).number
@@ -295,7 +282,7 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
       }
     }
 
-    if (tr.docChanged && !suggestionsReplacedByEffect && next.suggestions.length > 0) {
+    if (tr.docChanged && !suggestionsReplaced && next.suggestions.length > 0) {
       const docLen = tr.newDoc.length;
       next = {
         ...next,
@@ -305,12 +292,10 @@ export const trackChangesStateField = StateField.define<TrackChangesConfig>({
           }
           const rawFrom = tr.changes.mapPos(Math.max(0, Math.min(s.fromIndex, tr.startState.doc.length)), 1);
           const rawTo = tr.changes.mapPos(Math.max(0, Math.min(s.toIndex, tr.startState.doc.length)), -1);
-          const mappedFrom = Math.max(0, Math.min(rawFrom, docLen));
-          const mappedTo = Math.max(mappedFrom, Math.min(rawTo, docLen));
           return {
             ...s,
-            fromIndex: mappedFrom,
-            toIndex: mappedTo,
+            fromIndex: Math.max(0, Math.min(rawFrom, docLen)),
+            toIndex: Math.max(Math.max(0, Math.min(rawFrom, docLen)), Math.min(rawTo, docLen)),
           };
         }),
       };

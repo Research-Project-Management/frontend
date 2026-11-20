@@ -1,95 +1,77 @@
-/**
- * track-changes.extension.ts
- *
- * CodeMirror 6 Review Mode & Track Changes Extension (Overleaf Parity).
- * Location: `features/editor/subsystems/review/extensions/track-changes.extension.ts`
- *
- * Capabilities:
- * 1. Track Changes Visual Decorations ('changes' | 'clean' | 'original').
- * 2. Interactive In-Editor Inline Suggestion Widget / Popover.
- * 3. Review Gutter Markers.
- */
-
+import { RangeSetBuilder, StateField, type Extension } from '@codemirror/state';
 import {
-  StateField,
-  RangeSetBuilder,
-  type Extension,
-} from '@codemirror/state';
-import {
-  EditorView,
   Decoration,
-  type DecorationSet,
-  gutter,
+  EditorView,
   GutterMarker,
+  gutter,
   hoverTooltip,
+  type DecorationSet,
   type Tooltip,
 } from '@codemirror/view';
 import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import { reviewModeFilter } from './filter';
 import {
-  CleanReplacePreviewWidget,
+  createLocalSuggestionId,
+  getSafeOffset,
+  isLocalSuggestionId,
+  resolveSuggestionRange,
+  reviewStateField,
+  setCommentsEffect,
+  setReviewDataEffect,
+  setReviewModeEffect,
+  setSuggestionsEffect,
+  setViewModeEffect,
+  type RawComment,
+  type RawSuggestion,
+  type ReviewExtensionConfig,
+  type ReviewExtensionOptions,
+} from './state';
+import {
+  CleanReplaceWidget,
+  CombinedReviewGutterMarker,
   CommentGutterMarker,
   SuggestionGutterMarker,
-  CombinedReviewGutterMarker,
-  createTrackChangesTooltipDOM,
-  trackChangesTheme,
-} from './track-changes-widgets';
-import {
-  type RawTrackChangeItem,
-  type RawCommentItem,
-  type TrackChangesConfig,
-  type TrackChangesExtensionOptions,
-  setTrackChangesSuggestionsEffect,
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
-  setTrackChangesCommentsEffect,
-  setTrackChangesDataEffect,
-  setReviewModeEffect,
-  setViewModeEffect,
-  getSafeOffset,
-  resolveSuggestionRange,
-  trackChangesStateField,
-} from './track-changes-state';
-import { trackChangesReviewModeFilter } from './track-changes-review-filter';
+  createSuggestionTooltipDom,
+  reviewTheme,
+} from './widgets';
 
 export {
-  trackChangesTheme,
-  setTrackChangesSuggestionsEffect,
-  setTrackChangesViewModeEffect,
-  setTrackChangesReviewModeEffect,
-  setTrackChangesCommentsEffect,
-  setTrackChangesDataEffect,
-  setReviewModeEffect,
-  setViewModeEffect,
+  createLocalSuggestionId,
   getSafeOffset,
+  isLocalSuggestionId,
   resolveSuggestionRange,
-  trackChangesStateField,
-  trackChangesReviewModeFilter,
+  reviewModeFilter,
+  reviewStateField,
+  reviewTheme,
+  setCommentsEffect,
+  setReviewDataEffect,
+  setReviewModeEffect,
+  setSuggestionsEffect,
+  setViewModeEffect,
 };
 export type {
+  RawComment,
+  RawSuggestion,
+  ReviewExtensionConfig,
+  ReviewExtensionOptions,
   TrackChangesViewMode,
-  RawTrackChangeItem,
-  RawCommentItem,
-  TrackChangesConfig,
-  TrackChangesExtensionOptions,
 };
-
-// ─── DECORATIONS FIELD: INLINE MARKS FOR SUGGESTIONS & COMMENTS ─────────────
 
 const DECO_EMPTY_REPLACE = Decoration.replace({ inclusive: false });
 
-export const trackChangesDecorationsField = StateField.define<DecorationSet>({
+export const reviewDecorationsField = StateField.define<DecorationSet>({
   create(state) {
     return buildDecorations(state);
   },
   update(decorations, tr) {
     const configChanged = tr.effects.some(
       (e) =>
-        e.is(setTrackChangesSuggestionsEffect) ||
-        e.is(setTrackChangesViewModeEffect) ||
-        e.is(setTrackChangesReviewModeEffect) ||
-        e.is(setTrackChangesCommentsEffect) ||
-        e.is(setTrackChangesDataEffect),
+        e.is(setSuggestionsEffect) ||
+        e.is(setViewModeEffect) ||
+        e.is(setReviewModeEffect) ||
+        e.is(setCommentsEffect) ||
+        e.is(setReviewDataEffect),
     );
 
     if (configChanged) {
@@ -97,14 +79,11 @@ export const trackChangesDecorationsField = StateField.define<DecorationSet>({
     }
 
     if (tr.docChanged) {
-      const config = tr.state.field(trackChangesStateField);
-      const hasPendingOrOpen =
+      const config = tr.state.field(reviewStateField);
+      const hasActive =
         config.suggestions.some((s) => s.status === 'pending') ||
         config.comments.some((c) => c.status === 'open');
-      if (!hasPendingOrOpen) {
-        return Decoration.none;
-      }
-      return buildDecorations(tr.state);
+      return hasActive ? buildDecorations(tr.state) : Decoration.none;
     }
 
     return decorations;
@@ -113,10 +92,8 @@ export const trackChangesDecorationsField = StateField.define<DecorationSet>({
 });
 
 function buildDecorations(state: EditorView['state']): DecorationSet {
-  const config = state.field(trackChangesStateField);
-  const pendingSuggestions = config.suggestions.filter(
-    (s) => s.status === 'pending',
-  );
+  const config = state.field(reviewStateField);
+  const pendingSuggestions = config.suggestions.filter((s) => s.status === 'pending');
   const openComments = config.comments.filter((c) => c.status === 'open');
 
   if (pendingSuggestions.length === 0 && openComments.length === 0) {
@@ -125,14 +102,6 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
 
   const doc = state.doc;
   const builder = new RangeSetBuilder<Decoration>();
-
-  let cachedFullText: string | null = null;
-  const getFullText = () => {
-    if (cachedFullText === null) {
-      cachedFullText = doc.toString();
-    }
-    return cachedFullText;
-  };
 
   interface RangeItem {
     from: number;
@@ -146,9 +115,8 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   const isOriginal = config.viewMode === 'original';
   const isChanges = !isClean && !isOriginal;
 
-  // 1. Pending Suggestions (Insertions / Deletions / Replacements)
   for (const s of pendingSuggestions) {
-    const { from, to } = resolveSuggestionRange(doc, s, getFullText);
+    const { from, to } = resolveSuggestionRange(doc, s);
     if (from >= to) continue;
 
     const authorName = s.author?.name || 'Collaborator';
@@ -169,12 +137,7 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
           isReplace: false,
         });
       } else if (isOriginal) {
-        items.push({
-          from,
-          to,
-          decoration: DECO_EMPTY_REPLACE,
-          isReplace: true,
-        });
+        items.push({ from, to, decoration: DECO_EMPTY_REPLACE, isReplace: true });
       }
     } else if (s.type === 'delete') {
       if (isChanges) {
@@ -192,12 +155,7 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
           isReplace: false,
         });
       } else if (isClean) {
-        items.push({
-          from,
-          to,
-          decoration: DECO_EMPTY_REPLACE,
-          isReplace: true,
-        });
+        items.push({ from, to, decoration: DECO_EMPTY_REPLACE, isReplace: true });
       }
     } else if (s.type === 'replace') {
       if (isChanges) {
@@ -219,7 +177,7 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
           from,
           to,
           decoration: Decoration.replace({
-            widget: new CleanReplacePreviewWidget(s.suggestedText),
+            widget: new CleanReplaceWidget(s.suggestedText),
             inclusive: false,
           }),
           isReplace: true,
@@ -228,7 +186,6 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
     }
   }
 
-  // 2. Open Comment Threads
   for (const c of openComments) {
     if (!c.line) continue;
     const startLine = Math.max(1, Math.min(c.line, doc.lines));
@@ -259,9 +216,7 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   for (const item of items) {
     if (item.from < item.to && item.to <= doc.length) {
       if (item.isReplace) {
-        if (item.from < lastReplaceEnd) {
-          continue;
-        }
+        if (item.from < lastReplaceEnd) continue;
         lastReplaceEnd = item.to;
       }
       builder.add(item.from, item.to, item.decoration);
@@ -271,10 +226,10 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   return builder.finish();
 }
 
-export const trackChangesGutter = gutter({
+export const reviewGutter = gutter({
   class: 'cm-review-gutter',
   markers: (view: EditorView) => {
-    const config = view.state.field(trackChangesStateField);
+    const config = view.state.field(reviewStateField);
     const doc = view.state.doc;
     const builder = new RangeSetBuilder<GutterMarker>();
 
@@ -312,11 +267,9 @@ export const trackChangesGutter = gutter({
       }
     }
 
-    const allLines = new Set<number>([
-      ...commentsByLine.keys(),
-      ...suggestionsByLine.keys(),
-    ]);
-    const sortedLines = Array.from(allLines).sort((a, b) => a - b);
+    const sortedLines = Array.from(
+      new Set<number>([...commentsByLine.keys(), ...suggestionsByLine.keys()]),
+    ).sort((a, b) => a - b);
 
     for (const lineNum of sortedLines) {
       const linePos = doc.line(lineNum).from;
@@ -363,37 +316,26 @@ export const trackChangesGutter = gutter({
   initialSpacer: () => new CommentGutterMarker(1, '', 1),
 });
 
-// ─── INTERACTIVE HOVER ACTION TOOLTIP (OVERLEAF PARITY) ─────────────────────
-
-export function getTrackChangesTooltip(view: EditorView, pos: number): Tooltip | null {
-  const config = view.state.field(trackChangesStateField);
+export function getSuggestionTooltip(view: EditorView, pos: number): Tooltip | null {
+  const config = view.state.field(reviewStateField);
   const doc = view.state.doc;
 
   const isClean = config.viewMode === 'clean' || config.viewMode === 'hide';
   const isOriginal = config.viewMode === 'original';
 
-  const pendingSuggestions = config.suggestions.filter((s) => s.status === 'pending');
-  let cachedFullText: string | null = null;
-  const getFullText = () => {
-    if (cachedFullText === null) {
-      cachedFullText = doc.toString();
-    }
-    return cachedFullText;
-  };
-
-  for (const s of pendingSuggestions) {
+  for (const s of config.suggestions) {
+    if (s.status !== 'pending') continue;
     if (isClean && s.type === 'delete') continue;
     if (isOriginal && s.type === 'insert') continue;
 
-    const { from, to } = resolveSuggestionRange(doc, s, getFullText);
-
+    const { from, to } = resolveSuggestionRange(doc, s);
     if (pos >= from && pos <= to) {
       return {
         pos: from,
         end: to,
         above: true,
         create() {
-          return { dom: createTrackChangesTooltipDOM(s) };
+          return { dom: createSuggestionTooltipDom(s) };
         },
       };
     }
@@ -402,13 +344,9 @@ export function getTrackChangesTooltip(view: EditorView, pos: number): Tooltip |
   return null;
 }
 
-export const trackChangesHoverTooltip = hoverTooltip(getTrackChangesTooltip, { hoverTime: 120 });
+export const reviewHoverTooltip = hoverTooltip(getSuggestionTooltip, { hoverTime: 120 });
 
-// ─── MASTER EXTENSION FACTORY ────────────────────────────────────────────────
-
-export function createTrackChangesExtension(
-  options: TrackChangesExtensionOptions = {},
-): Extension {
+export function createReviewExtension(options: ReviewExtensionOptions = {}): Extension {
   const reviewMode =
     typeof options.reviewMode === 'string'
       ? options.reviewMode === 'on'
@@ -416,18 +354,16 @@ export function createTrackChangesExtension(
   const viewMode = options.viewMode || options.initialViewMode || 'changes';
 
   return [
-    trackChangesStateField.init(() => ({
+    reviewStateField.init(() => ({
       pageId: options.pageId || '',
       suggestions: options.initialSuggestions || [],
       comments: options.initialComments || [],
       viewMode,
       reviewMode,
     })),
-    trackChangesReviewModeFilter,
-    trackChangesDecorationsField,
-    trackChangesHoverTooltip,
-    trackChangesTheme,
+    reviewModeFilter,
+    reviewDecorationsField,
+    reviewHoverTooltip,
+    reviewTheme,
   ];
 }
-
-export const trackChangesExtension = createTrackChangesExtension;

@@ -1,17 +1,14 @@
 /**
  * latex-error-lens.ts
  *
- * VS Code-style Inline Error Lens & 1-Click AI AutoFix Extension (Block 4: Engines Layer).
+ * VS Code-style Inline Error Lens Extension (Block 4: Engines Layer).
  * Location: `features/editor/engines/extensions/latex-error-lens.ts`
  *
  * Capabilities:
  * - Projects compiler and linter diagnostics directly at the end of the erroneous code line.
  * - Color-coded indicators (Red for error, Amber for warning, Blue for info).
  * - Soft line highlight tinting to guide the user's focus without distraction.
- * - Interactive "Fix with AI" button embedded in the Error Lens widget:
- *   Calls `aiCoordinator.autoFixDiagnostic` to generate and mount an interactive Inline Diff
- *   at the exact line, allowing instant 1-click review and accept (Mod-Enter).
- * - "Ask AI" button to open the Primary Sidebar with full contextual diagnostic prompt.
+ * - Opt-in via Settings while compile error Fix with AI stays consolidated in Logs and output files.
  */
 
 import {
@@ -28,7 +25,6 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 export type IndexedDiagnosticItem = EditorDiagnosticItem;
 
@@ -68,6 +64,7 @@ export class ErrorLensWidget extends WidgetType {
   }
 
   toDOM(view?: EditorView): HTMLElement {
+    void view;
     const wrap = document.createElement('span');
     const severity = this.diagnostic.severity || 'error';
     const isStale = Boolean(this.diagnostic.stale);
@@ -81,19 +78,6 @@ export class ErrorLensWidget extends WidgetType {
       wrap.setAttribute('data-stale', 'true');
       wrap.title = 'Line modified — recompile to verify';
     }
-
-    const resolveLiveLine = (): number => {
-      if (view && typeof view.posAtDOM === 'function' && wrap.isConnected) {
-        try {
-          const pos = view.posAtDOM(wrap);
-          const clampedPos = Math.max(0, Math.min(pos, view.state.doc.length));
-          return view.state.doc.lineAt(clampedPos).number;
-        } catch {
-          // Fall back to diagnostic line when detached from document
-        }
-      }
-      return this.diagnostic.line;
-    };
 
     // 1. Icon Indicator
     const iconSpan = document.createElement('span');
@@ -134,70 +118,6 @@ export class ErrorLensWidget extends WidgetType {
       .replace(/^Error on line \d+:\s*/i, '');
     msgSpan.textContent = displayMessage;
     wrap.appendChild(msgSpan);
-
-    // Hairline Divider
-    const divider = document.createElement('span');
-    divider.className = 'cm-error-lens-divider';
-    wrap.appendChild(divider);
-
-    // 3. Single Action Button: Quick Fix or Fix with AI (if diagnostic has a resolved line)
-    if (this.diagnostic.line && this.diagnostic.line >= 1) {
-      const fixBtn = document.createElement('button');
-      fixBtn.type = 'button';
-      fixBtn.className = 'cm-error-lens-btn cm-error-lens-btn-fix';
-      fixBtn.setAttribute('data-testid', 'error-lens-fix-btn');
-      fixBtn.title = 'AI AutoFix: Generate instant inline diff for this line (Tab to accept, Esc to reject)';
-      fixBtn.innerHTML = `
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 8V4H8"/>
-          <rect width="16" height="12" x="4" y="8" rx="2"/>
-          <path d="M2 14h2"/>
-          <path d="M20 14h2"/>
-          <path d="M15 13v2"/>
-          <path d="M9 13v2"/>
-        </svg>
-        <span>Fix with AI</span>
-      `;
-      const triggerFix = (e: Event) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const liveLine = resolveLiveLine();
-        editorCommandBus.dispatch({
-          type: 'ai:autofix-diagnostic',
-          diagnostic: {
-            ...this.diagnostic,
-            line: liveLine,
-          },
-        });
-      };
-      fixBtn.onmousedown = (e) => e.stopPropagation();
-      fixBtn.onclick = triggerFix;
-      wrap.appendChild(fixBtn);
-
-      const askBtn = document.createElement('button');
-      askBtn.type = 'button';
-      askBtn.className = 'cm-error-lens-btn cm-error-lens-btn-ask';
-      askBtn.setAttribute('data-testid', 'error-lens-ask-btn');
-      askBtn.title = 'Ask AI about this error in sidebar';
-      askBtn.innerHTML = `<span>Ask AI</span>`;
-      const triggerAsk = (e: Event) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const liveLine = resolveLiveLine();
-        editorCommandBus.dispatch({
-          type: 'editor:suggest-fix',
-          error: {
-            line: liveLine,
-            file: this.diagnostic.file || this.filePath,
-            message: this.diagnostic.message,
-            context: this.diagnostic.context,
-          },
-        });
-      };
-      askBtn.onmousedown = (e) => e.stopPropagation();
-      askBtn.onclick = triggerAsk;
-      wrap.appendChild(askBtn);
-    }
 
     return wrap;
   }
@@ -355,53 +275,6 @@ export const errorLensTheme = EditorView.baseTheme({
     textOverflow: 'ellipsis',
     maxWidth: '460px',
     letterSpacing: '-0.01em',
-  },
-  '.cm-error-lens-divider': {
-    width: '1px',
-    height: '11px',
-    backgroundColor: 'color-mix(in srgb, currentColor 20%, transparent)',
-    margin: '0 2px',
-    flexShrink: '0',
-  },
-  '.cm-error-lens-btn': {
-    display: 'inline-flex',
-    alignItems: 'center',
-    border: 'none',
-    cursor: 'pointer',
-    outline: 'none',
-    lineHeight: '1.35',
-  },
-  '.cm-error-lens-btn-fix': {
-    gap: '3.5px',
-    padding: '1px 7px',
-    borderRadius: '4px',
-    fontSize: 'var(--text-12, 12px)',
-    lineHeight: '1.35',
-    fontWeight: '600',
-    letterSpacing: '0.01em',
-    border: '1px solid color-mix(in srgb, var(--ai, #8250DF) 30%, transparent)',
-    backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 12%, var(--canvas, #FCFCFB))',
-    color: 'var(--ai, #8250DF)',
-    '&:hover': {
-      backgroundColor: 'var(--ai, #8250DF)',
-      color: '#FFFFFF',
-      borderColor: 'var(--ai, #8250DF)',
-    },
-  },
-  '.cm-error-lens-btn-ask': {
-    justifyContent: 'center',
-    width: '18px',
-    height: '18px',
-    padding: '0',
-    borderRadius: '4px',
-    border: '1px solid transparent',
-    backgroundColor: 'transparent',
-    color: 'var(--text-secondary, #595959)',
-    '&:hover': {
-      backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 15%, transparent)',
-      borderColor: 'color-mix(in srgb, var(--ai, #8250DF) 30%, transparent)',
-      color: 'var(--ai, #8250DF)',
-    },
   },
   // Line highlighting with subtle 1px hairline indicator (Craft Floor compliant)
   '.cm-error-lens-line-error': {

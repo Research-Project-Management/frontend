@@ -42,6 +42,7 @@ import { useFileTree } from './useFileTree';
 import {
   flattenVisibleTree,
   findAncestorFolderPaths,
+  type FileTreeNode,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
 import { useFileExplorerActions } from './useFileExplorerActions';
 import type { AddFilesTab } from '@/features/editor/subsystems/explorer/ui/modals/add-files.types';
@@ -85,6 +86,49 @@ export function resolveExplorerItemById(
     };
   }
   return null;
+}
+
+export type FileSortBy = 'name' | 'type';
+export type FileSortDirection = 'asc' | 'desc';
+
+function sortTreeNodes(nodes: FileTreeNode[], by: FileSortBy, dir: FileSortDirection): FileTreeNode[] {
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+  const mult = dir === 'asc' ? 1 : -1;
+
+  const sortItems = (items: FileTreeNode[]): FileTreeNode[] => {
+    const cloned = [...items];
+    cloned.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      if (a.type === 'folder' && b.type === 'folder') {
+        return mult * collator.compare(a.name, b.name);
+      }
+      if (a.type === 'file' && b.type === 'file') {
+        if (by === 'type') {
+          const extA = a.displayLabel.split('.').pop()?.toLowerCase() ?? '';
+          const extB = b.displayLabel.split('.').pop()?.toLowerCase() ?? '';
+          if (extA !== extB) {
+            return mult * collator.compare(extA, extB);
+          }
+        }
+        return mult * collator.compare(a.displayLabel, b.displayLabel);
+      }
+      return 0;
+    });
+
+    return cloned.map((node) => {
+      if (node.type === 'folder') {
+        return {
+          ...node,
+          children: sortItems(node.children),
+        };
+      }
+      return node;
+    });
+  };
+
+  return sortItems(nodes);
 }
 
 export function useFilesTabController() {
@@ -533,8 +577,24 @@ export function useFilesTabController() {
     }
   }, [effectiveActiveId, treeItems, expandPaths]);
 
+  const [sortBy, setSortBy] = useState<FileSortBy>('name');
+  const [sortDirection, setSortDirection] = useState<FileSortDirection>('asc');
+
+  const handleSortChange = useCallback((by: FileSortBy) => {
+    if (sortBy === by) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(by);
+      setSortDirection('asc');
+    }
+  }, [sortBy]);
+
+  const sortedDisplayTree = useMemo(() => {
+    return sortTreeNodes(displayTree, sortBy, sortDirection);
+  }, [displayTree, sortBy, sortDirection]);
+
   const flattenedTree = useMemo(() => {
-    const base = flattenVisibleTree(displayTree, isFolderExpanded);
+    const base = flattenVisibleTree(sortedDisplayTree, isFolderExpanded);
     if ((isCreatingFile || isCreatingFolder) && createParentFolderPath) {
       const parentIdx = base.findIndex(
         (item) =>
@@ -559,7 +619,7 @@ export function useFilesTabController() {
       }
     }
     return base;
-  }, [displayTree, isFolderExpanded, isCreatingFile, isCreatingFolder, createParentFolderPath]);
+  }, [sortedDisplayTree, isFolderExpanded, isCreatingFile, isCreatingFolder, createParentFolderPath]);
 
   const inlineCreateFlatIndex = useMemo(
     () => flattenedTree.findIndex((item) => item.inlineCreateKind !== undefined),
@@ -629,7 +689,10 @@ export function useFilesTabController() {
     isCreateFolderPending: createFolder.isPending,
     isDeletePending: deletePageMutation.isPending,
     treeItems,
-    displayTree,
+    displayTree: sortedDisplayTree,
+    sortBy,
+    sortDirection,
+    handleSortChange,
     toggleFolder,
     expandPaths,
     isFolderExpanded,

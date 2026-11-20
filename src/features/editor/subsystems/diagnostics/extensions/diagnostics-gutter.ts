@@ -19,9 +19,9 @@ import {
   EditorView,
   GutterMarker,
   gutter,
-  hoverTooltip,
   type DecorationSet,
 } from '@codemirror/view';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 
@@ -239,28 +239,36 @@ class CompilerGutterMarker extends GutterMarker {
     const dot = document.createElement('span');
     dot.className = `cm-compiler-gutter-marker cm-compiler-gutter-${this.severity}${this.stale ? ' cm-compiler-gutter-stale' : ''}`;
     dot.textContent = this.count > 1 ? String(Math.min(this.count, 99)) : '';
-    dot.title = this.stale ? `${this.summary} (Line modified — recompile to verify)` : this.summary;
+    dot.title = this.stale
+      ? `${this.summary} (Line modified — recompile to verify; click to open Logs)`
+      : `${this.summary} (Click to open Logs)`;
     dot.setAttribute('aria-label', `${this.severity}: ${this.summary}`);
     return dot;
   }
 }
 
+function getDiagnosticsForLine(
+  view: EditorView,
+  line: { from: number; to: number },
+): CompilerDiagnosticRange[] {
+  const state = view.state.field(compilerDiagnosticsField, false);
+  if (!state || state.items.length === 0) {
+    return [];
+  }
+
+  const lineNumber = view.state.doc.lineAt(line.from).number;
+  return state.items.filter((entry) => {
+    if (entry.to > entry.from) {
+      return entry.from <= line.to && entry.to >= line.from;
+    }
+    return entry.item.line === lineNumber;
+  });
+}
+
 const compilerGutterExtension = gutter({
   class: 'cm-compiler-diag-gutter',
   lineMarker(view, line) {
-    const state = view.state.field(compilerDiagnosticsField, false);
-    if (!state || state.items.length === 0) {
-      return null;
-    }
-
-    const lineNumber = view.state.doc.lineAt(line.from).number;
-    const matching = state.items.filter((entry) => {
-      if (entry.to > entry.from) {
-        return entry.from <= line.to && entry.to >= line.from;
-      }
-      return entry.item.line === lineNumber;
-    });
-
+    const matching = getDiagnosticsForLine(view, line);
     if (matching.length === 0) {
       return null;
     }
@@ -292,73 +300,30 @@ const compilerGutterExtension = gutter({
       )
     );
   },
-});
-
-const compilerHoverTooltip = hoverTooltip((view, pos) => {
-  const state = view.state.field(compilerDiagnosticsField, false);
-  if (!state || state.items.length === 0) {
-    return null;
-  }
-
-  const posLine = view.state.doc.lineAt(pos).number;
-  const matched = state.items.filter((entry) => {
-    if (entry.to > entry.from) {
-      return pos >= entry.from && pos <= entry.to;
-    }
-    return entry.item.line === posLine;
-  });
-
-  if (matched.length === 0) {
-    return null;
-  }
-
-  return {
-    pos: matched[0].from,
-    end: Math.max(matched[0].from, matched[0].to),
-    above: true,
-    create() {
-      const dom = document.createElement('div');
-      dom.className = 'cm-compiler-tooltip';
-
-      for (const entry of matched.slice(0, 5)) {
-        const row = document.createElement('div');
-        row.className = `cm-compiler-tooltip-row cm-compiler-tooltip-${entry.item.severity}`;
-
-        const header = document.createElement('div');
-        header.className = 'cm-compiler-tooltip-header';
-
-        if (entry.item.source === 'bibtex' || entry.item.source === 'biber') {
-          const badge = document.createElement('span');
-          badge.className = 'cm-compiler-tooltip-source';
-          badge.textContent = entry.item.source === 'bibtex' ? 'BibTeX' : 'Biber';
-          header.appendChild(badge);
-        }
-
-        const messageEl = document.createElement('span');
-        messageEl.textContent = entry.item.message;
-        header.appendChild(messageEl);
-        row.appendChild(header);
-
-        if (entry.item.highlightCommand) {
-          const commandEl = document.createElement('code');
-          commandEl.className = 'cm-compiler-tooltip-cmd';
-          commandEl.textContent = entry.item.highlightCommand;
-          row.appendChild(commandEl);
-        }
-
-        if (entry.item.stale) {
-          const staleNote = document.createElement('div');
-          staleNote.className = 'cm-compiler-tooltip-stale';
-          staleNote.textContent = 'Line modified — recompile to verify';
-          row.appendChild(staleNote);
-        }
-
-        dom.appendChild(row);
+  domEventHandlers: {
+    click(view, line) {
+      const matching = getDiagnosticsForLine(view, line);
+      if (matching.length === 0) {
+        return false;
       }
 
-      return { dom };
+      let topEntry = matching[0];
+      for (const entry of matching) {
+        if (severityRank(entry.item.severity) > severityRank(topEntry.item.severity)) {
+          topEntry = entry;
+        }
+      }
+
+      editorCommandBus.dispatch({
+        type: 'compiler:open-logs',
+        file: topEntry.item.file,
+        line: topEntry.item.line,
+        severity: topEntry.item.severity,
+        message: topEntry.item.message,
+      });
+      return true;
     },
-  };
+  },
 });
 
 const compilerDiagnosticsTheme = EditorView.baseTheme({
@@ -412,44 +377,6 @@ const compilerDiagnosticsTheme = EditorView.baseTheme({
   '.cm-compiler-gutter-stale': {
     opacity: '0.45',
   },
-  '.cm-compiler-tooltip': {
-    padding: '6px 8px',
-    maxWidth: '420px',
-    fontSize: '12px',
-    lineHeight: '1.4',
-  },
-  '.cm-compiler-tooltip-row + .cm-compiler-tooltip-row': {
-    marginTop: '6px',
-    paddingTop: '6px',
-    borderTop: '1px solid rgba(128, 128, 128, 0.25)',
-  },
-  '.cm-compiler-tooltip-header': {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    flexWrap: 'wrap',
-  },
-  '.cm-compiler-tooltip-source': {
-    fontSize: '10px',
-    fontWeight: '600',
-    padding: '1px 5px',
-    borderRadius: '4px',
-    backgroundColor: 'rgba(99, 102, 241, 0.16)',
-  },
-  '.cm-compiler-tooltip-cmd': {
-    display: 'inline-block',
-    marginTop: '3px',
-    fontSize: '11px',
-    padding: '1px 4px',
-    borderRadius: '3px',
-    backgroundColor: 'rgba(128, 128, 128, 0.14)',
-  },
-  '.cm-compiler-tooltip-stale': {
-    marginTop: '2px',
-    fontSize: '11px',
-    fontStyle: 'italic',
-    opacity: '0.75',
-  },
 });
 
 export function createDiagnosticsGutter(options: DiagnosticsGutterOptions = {}): Extension {
@@ -468,7 +395,6 @@ export function createDiagnosticsGutter(options: DiagnosticsGutterOptions = {}):
       buildCompilerDiagnosticsState(state.doc, getDiagnostics(filePath))
     ),
     compilerGutterExtension,
-    compilerHoverTooltip,
     compilerDiagnosticsTheme,
   ];
 }

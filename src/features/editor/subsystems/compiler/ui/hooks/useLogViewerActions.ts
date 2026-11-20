@@ -23,6 +23,10 @@ import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 import { getEditorEngineForFile } from '@/features/editor/core/bus/engine-registry';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import {
+  computePreambleInsertion,
+  isPreambleOnlySnippet,
+} from '@/features/editor/domain/latex/latex-preamble-patch';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 export interface ProjectFileCandidate {
@@ -77,35 +81,15 @@ function computeQuickFixPatch(
   const descriptionLower = quickFix.description.toLowerCase();
 
   if (isPreambleFix) {
-    if (content.includes(trimmedFix)) {
+    const patch = computePreambleInsertion(content, replacement, { fallbackToTop: true });
+    if (!patch || !patch.changed) {
       return { updated: content, changed: false };
     }
-    const beginDocIdx = content.indexOf('\\begin{document}');
-    if (beginDocIdx !== -1) {
-      return {
-        updated: content.slice(0, beginDocIdx) + `${trimmedFix}\n` + content.slice(beginDocIdx),
-        fromOffset: beginDocIdx,
-        toOffset: beginDocIdx,
-        insertStr: `${trimmedFix}\n`,
-        changed: true,
-      };
-    }
-    const docClassMatch = content.match(/^.*\\documentclass(?:\[[^\]]*\])?\{[^}]+\}.*$/m);
-    if (docClassMatch && docClassMatch.index !== undefined) {
-      const insertPos = docClassMatch.index + docClassMatch[0].length;
-      return {
-        updated: content.slice(0, insertPos) + `\n${trimmedFix}` + content.slice(insertPos),
-        fromOffset: insertPos,
-        toOffset: insertPos,
-        insertStr: `\n${trimmedFix}`,
-        changed: true,
-      };
-    }
     return {
-      updated: `${trimmedFix}\n${content}`,
-      fromOffset: 0,
-      toOffset: 0,
-      insertStr: `${trimmedFix}\n`,
+      updated: patch.updated,
+      fromOffset: patch.from,
+      toOffset: patch.to,
+      insertStr: patch.insertText,
       changed: true,
     };
   }
@@ -198,7 +182,9 @@ export function useLogViewerActions({
       const trimmedFix = replacement.trim();
       const descriptionLower = quickFix.description.toLowerCase();
       const isPreambleFix =
-        trimmedFix.startsWith('\\usepackage') || descriptionLower.includes('preamble');
+        isPreambleOnlySnippet(replacement) ||
+        trimmedFix.startsWith('\\usepackage') ||
+        descriptionLower.includes('preamble');
 
       const projectFiles = (workspaceCoordinator.getProjectFiles() || []) as ProjectFileCandidate[];
       const targetPath = isPreambleFix ? configuredMainFile : entry.file || configuredMainFile;

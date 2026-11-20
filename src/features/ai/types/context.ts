@@ -15,6 +15,8 @@ export type TurnMode = 'chat' | 'editor' | 'paper';
 
 export interface EditorTurnContext {
   pageId?: string | null;
+  activeFileId?: string | null;
+  activeFilePath?: string | null;
   filename?: string | null;
   fileContent?: string | null;
   selection?: string | null;

@@ -52,6 +52,7 @@ export interface ComposerProps {
   className?: string;
   showDisclaimer?: boolean;
   initialValue?: string;
+  draftRevision?: number;
 
   sources?: readonly SourceEntry[];
   uploadingFiles?: readonly UploadingFile[];
@@ -87,6 +88,7 @@ export function Composer({
   className,
   showDisclaimer = false,
   initialValue = '',
+  draftRevision = 0,
 
   sources = [],
   uploadingFiles = [],
@@ -130,7 +132,7 @@ export function Composer({
       setText(initialValue);
       textareaRef.current?.focus();
     }
-  }, [initialValue]);
+  }, [initialValue, draftRevision]);
 
   useEffect(() => {
     if (quotedPassage) {
@@ -442,7 +444,7 @@ export function Composer({
           <div className="flex items-start justify-between gap-2 mb-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border text-11">
             <div className="flex flex-col min-w-0 flex-1 border-l border-border pl-2">
               <span className="text-10 text-muted-foreground font-medium truncate">
-                Selected passage
+                {quotedPassage.label || 'Selected passage'}
                 {quotedPassage.pageNumber ? ` • p. ${quotedPassage.pageNumber}` : ''}
               </span>
               <p className="text-11 text-foreground line-clamp-2 italic leading-snug mt-0.5 select-text">

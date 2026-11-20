@@ -13,6 +13,7 @@ export interface MessageAttachment {
 }
 
 export interface SourceItem {
+  index?: number;
   id?: string;
   source?: string;
   title?: string;
@@ -78,7 +79,32 @@ export interface MetricSummaryWidget {
   }>;
 }
 
-export type ResponseWidget = WorkItemOverviewWidget | MetricSummaryWidget;
+export interface EditorPatchItem {
+  id: string;
+  fileId?: string | null;
+  filePath: string;
+  kind?: 'replace' | 'insert_preamble' | 'insert_after' | 'insert_before';
+  title: string;
+  rationale?: string;
+  searchText: string;
+  replaceText: string;
+  fromLine?: number;
+  toLine?: number;
+  matchStrategy?: 'exact' | 'normalized_whitespace' | 'preamble';
+  warnings?: string[];
+}
+
+export interface EditorPatchesWidget {
+  type: 'editor_patches';
+  title: string;
+  patches: EditorPatchItem[];
+  streaming?: boolean;
+}
+
+export type ResponseWidget =
+  | WorkItemOverviewWidget
+  | MetricSummaryWidget
+  | EditorPatchesWidget;
 
 export interface AgentAction {
   type:

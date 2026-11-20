@@ -186,4 +186,166 @@ describe('HitlApprovalPart', () => {
       screen.getByText('Review and confirm this action before continuing.'),
     ).toBeInTheDocument();
   });
+
+  it('renders Phase 2 editor HITL headings, tailored CTA labels, and dispatches approve/reject', () => {
+    const onResume = vi.fn();
+    const { rerender } = render(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-resolve-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-resolve-1',
+              tool: 'resolve_citation',
+              description: 'Resolve DOI/arXiv 1706.03762 and append to references.bib',
+              args: { identifier: '1706.03762', target_bib_file: 'references.bib' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+
+    expect(screen.getByText('Resolve & Add Citation')).toBeInTheDocument();
+    const resolveBtn = screen.getByRole('button', { name: 'Resolve & Add' });
+    expect(screen.getByRole('button', { name: 'Reject' })).toBeInTheDocument();
+    fireEvent.click(resolveBtn);
+    expect(onResume).toHaveBeenCalledWith([
+      { interruptId: 'intr-resolve-1', decision: 'approve' },
+    ]);
+
+    onResume.mockClear();
+    rerender(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-bibtex-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-bibtex-1',
+              tool: 'add_bibtex_entries',
+              description: 'Append 1 BibTeX entry into references.bib',
+              args: { target_bib_file: 'references.bib' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+    expect(screen.getByText('Add BibTeX Entries')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add to .bib' })).toBeInTheDocument();
+
+    rerender(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-sync-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-sync-1',
+              tool: 'sync_library_citations',
+              description: 'Sync Library collection col-1 into references.bib',
+              args: { collection_id: 'col-1', target_bib_file: 'references.bib' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+    expect(screen.getByText('Sync Library Citations')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sync Collection' })).toBeInTheDocument();
+
+    rerender(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-sug-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-sug-1',
+              tool: 'create_review_suggestion',
+              description: 'Create Track Changes insert suggestion in sections/method.tex',
+              args: { file_path: 'sections/method.tex', change_type: 'insert' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+    expect(screen.getByText('Create Track Changes Suggestion')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create Suggestion' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+    expect(onResume).toHaveBeenCalledWith([
+      { interruptId: 'intr-sug-1', decision: 'reject' },
+    ]);
+  });
+
+  it('renders Phase 1 project HITL destructive headings, CTAs, and dispatches approve/reject', () => {
+    const onResume = vi.fn();
+    const { rerender } = render(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-del-wi-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-del-wi-1',
+              tool: 'delete_work_item',
+              description: 'Delete work item `FLUX-1`',
+              args: { work_item_id: 'wi-1', mode: 'delete' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+
+    expect(screen.getByText('Delete Work Item')).toBeInTheDocument();
+    const deleteBtn = screen.getByRole('button', { name: 'Delete Item' });
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    fireEvent.click(deleteBtn);
+    expect(onResume).toHaveBeenCalledWith([
+      { interruptId: 'intr-del-wi-1', decision: 'approve' },
+    ]);
+
+    onResume.mockClear();
+    rerender(
+      <HitlApprovalPart
+        part={{
+          type: 'hitl',
+          interruptId: 'intr-rem-mem-1',
+          status: 'pending',
+          interrupts: [
+            {
+              id: 'intr-rem-mem-1',
+              tool: 'remove_project_member',
+              description: 'Remove member `An Tran` from project',
+              args: { member: 'An Tran' },
+              allowedDecisions: ['approve', 'reject'],
+            },
+          ],
+        }}
+        onResume={onResume}
+      />,
+    );
+
+    expect(screen.getByText('Remove Project Member')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove Member' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onResume).toHaveBeenCalledWith([
+      { interruptId: 'intr-rem-mem-1', decision: 'reject' },
+    ]);
+  });
 });

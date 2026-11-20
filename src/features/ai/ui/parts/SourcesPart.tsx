@@ -8,141 +8,19 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
 import type { SourceItem } from '../../types/message';
+import {
+  cleanSourceSnippet,
+  groupRagSources,
+  type GroupedExcerpt,
+  type GroupedRagSource,
+} from './citations';
 
-export interface GroupedExcerpt {
-  page?: number;
-  snippet: string;
-}
-
-export interface GroupedRagSource {
-  key: string;
-  label: string;
-  pages: number[];
-  excerpts: GroupedExcerpt[];
-}
-
-const TRAILING_OPEN_TAG_RE = /<[a-zA-Z/][^>]*$/;
-const BR_TAG_RE = /<br\s*\/?>/gi;
-const INLINE_HTML_RE = /<\/?(?:b|i|em|strong|sup|sub|span|p|div|code)\b[^>]*>/gi;
-const TABLE_SEP_RE = /^\s*\|?(?:\s*:?-{2,}:?\s*\|)+\s*(?::?-{2,}:?\s*\|?)?\s*$/;
-const COL_PLACEHOLDER_RE = /^col\d+$/i;
-const HEADING_PREFIX_RE = /^#{1,6}\s+/;
-const MULTI_SPACE_RE = /[ \t]{2,}/g;
-const SOURCE_PAGE_SUFFIX_RE = /\s*\(p\.\s*(\d+)\)\s*$/i;
-
-export function cleanSourceSnippet(raw: string): string {
-  let text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-  if (!text) return '';
-
-  text = text.replace(TRAILING_OPEN_TAG_RE, '');
-  text = text.replace(BR_TAG_RE, '; ');
-  text = text.replace(INLINE_HTML_RE, '');
-
-  const cleanedLines: string[] = [];
-  for (const rawLine of text.split('\n')) {
-    const stripped = rawLine.trim();
-    if (!stripped || TABLE_SEP_RE.test(stripped)) continue;
-
-    if (
-      stripped.includes('|') &&
-      (stripped.startsWith('|') || stripped.endsWith('|'))
-    ) {
-      const cells: string[] = [];
-      for (const cell of stripped.split('|')) {
-        const normalizedCell = cell.trim().replace(MULTI_SPACE_RE, ' ');
-        if (!normalizedCell || COL_PLACEHOLDER_RE.test(normalizedCell)) {
-          continue;
-        }
-        if (cells.length > 0 && cells[cells.length - 1] === normalizedCell) {
-          continue;
-        }
-        cells.push(normalizedCell);
-      }
-      if (cells.length > 0) {
-        cleanedLines.push(cells.join(' · '));
-      }
-      continue;
-    }
-
-    const noHeading = stripped.replace(HEADING_PREFIX_RE, '');
-    const normalizedLine = noHeading.replace(MULTI_SPACE_RE, ' ').trim();
-    if (normalizedLine) {
-      cleanedLines.push(normalizedLine);
-    }
-  }
-
-  return cleanedLines.join('\n').trim();
-}
-
-export function groupRagSources(
-  ragSources: readonly SourceItem[],
-): GroupedRagSource[] {
-  const groups = new Map<
-    string,
-    {
-      key: string;
-      label: string;
-      pageSet: Set<number>;
-      excerptSeen: Set<string>;
-      excerpts: GroupedExcerpt[];
-    }
-  >();
-
-  for (const s of ragSources) {
-    const rawTitle = (s.title || '').trim();
-    const rawSource = (s.source || '').trim();
-    const strippedSource = rawSource.replace(SOURCE_PAGE_SUFFIX_RE, '').trim();
-    const label = rawTitle || strippedSource || 'Source';
-    const key = label.toLowerCase();
-
-    let page: number | undefined =
-      typeof s.page === 'number' && Number.isFinite(s.page)
-        ? s.page
-        : undefined;
-    if (page === undefined && rawSource) {
-      const match = rawSource.match(SOURCE_PAGE_SUFFIX_RE);
-      if (match) {
-        page = Number(match[1]);
-      }
-    }
-
-    let group = groups.get(key);
-    if (!group) {
-      group = {
-        key,
-        label,
-        pageSet: new Set<number>(),
-        excerptSeen: new Set<string>(),
-        excerpts: [],
-      };
-      groups.set(key, group);
-    }
-
-    if (page !== undefined) {
-      group.pageSet.add(page);
-    }
-
-    const cleanedSnippet = s.snippet ? cleanSourceSnippet(s.snippet) : '';
-    if (cleanedSnippet) {
-      const dedupeKey = `${page ?? ''}::${cleanedSnippet}`;
-      if (!group.excerptSeen.has(dedupeKey)) {
-        group.excerptSeen.add(dedupeKey);
-        group.excerpts.push({ page, snippet: cleanedSnippet });
-      }
-    }
-  }
-
-  return Array.from(groups.values()).map((g) => {
-    const pages = Array.from(g.pageSet).sort((a, b) => a - b);
-    const excerpts = [...g.excerpts].sort((a, b) => {
-      if (a.page !== undefined && b.page !== undefined) return a.page - b.page;
-      if (a.page !== undefined) return -1;
-      if (b.page !== undefined) return 1;
-      return 0;
-    });
-    return { key: g.key, label: g.label, pages, excerpts };
-  });
-}
+export {
+  cleanSourceSnippet,
+  groupRagSources,
+  type GroupedExcerpt,
+  type GroupedRagSource,
+};
 
 function formatPageSuffix(pages: readonly number[]): string {
   if (pages.length === 0) return '';
@@ -177,7 +55,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
             target="_blank"
             rel="noopener noreferrer"
             title={[s.authors, s.snippet].filter(Boolean).join('\n')}
-            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-ai/10 text-ai hover:bg-ai/20 transition-colors max-w-55 truncate outline-none focus-visible:ring-1 focus-visible:ring-ai"
+            className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-secondary/75 text-foreground/80 border border-border/70 hover:bg-ai/10 hover:text-ai hover:border-ai/30 transition-colors max-w-55 truncate outline-none focus-visible:ring-1 focus-visible:ring-ai"
           >
             <ExternalLink className="size-2.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{s.title || s.url}</span>
@@ -196,12 +74,12 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-ai/10 text-ai max-w-72 truncate cursor-pointer hover:bg-ai/20 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                  className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-secondary/75 text-foreground/80 border border-border/70 max-w-72 truncate cursor-pointer hover:bg-ai/10 hover:text-ai hover:border-ai/30 data-[state=open]:bg-ai/12 data-[state=open]:text-ai data-[state=open]:border-ai/35 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
                 >
                   <FileText className="size-2.5 shrink-0" aria-hidden="true" />
                   <span className="truncate">{group.label}</span>
                   {pageSuffix && (
-                    <span className="shrink-0 font-mono tabular-nums text-[11px] opacity-75">
+                    <span className="shrink-0 tabular-nums text-[11px] opacity-75">
                       {pageSuffix}
                     </span>
                   )}
@@ -244,12 +122,12 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
           ) : (
             <span
               key={group.key}
-              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-ai/10 text-ai max-w-72 truncate cursor-default"
+              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-sm bg-secondary/75 text-foreground/80 border border-border/70 max-w-72 truncate cursor-default"
             >
               <FileText className="size-2.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{group.label}</span>
               {pageSuffix && (
-                <span className="shrink-0 font-mono tabular-nums text-[11px] opacity-75">
+                <span className="shrink-0 tabular-nums text-[11px] opacity-75">
                   {pageSuffix}
                 </span>
               )}

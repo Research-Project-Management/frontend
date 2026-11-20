@@ -15,6 +15,7 @@ export interface PendingPromptData {
 
 export interface QuotedPassageData {
   text: string;
+  label?: string;
   pageNumber?: number;
   paperId?: string;
   paperTitle?: string;

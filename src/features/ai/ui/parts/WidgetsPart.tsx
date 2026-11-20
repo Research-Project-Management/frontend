@@ -3,15 +3,22 @@
 import React from 'react';
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   CircleDot,
   Clock3,
+  FileCode2,
+  GitCompare,
   ListTodo,
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { ResponseWidget } from '../../types/message';
+import type {
+  EditorPatchesWidget,
+  EditorPatchItem,
+  ResponseWidget,
+} from '../../types/message';
 
 function normalizePriority(priority?: string) {
   const value = (priority || 'none').toLowerCase();
@@ -213,7 +220,188 @@ function WorkItemOverviewCard({
   );
 }
 
-export function WidgetsPart({ widgets }: { widgets?: ResponseWidget[] }) {
+function PatchDiffPreview({
+  searchText,
+  replaceText,
+  kind,
+}: {
+  searchText: string;
+  replaceText: string;
+  kind?: EditorPatchItem['kind'];
+}) {
+  const removedLines =
+    kind === 'insert_preamble'
+      ? []
+      : searchText
+          ? searchText.split('\n')
+          : [];
+  const addedLines =
+    kind === 'insert_preamble'
+      ? replaceText
+          .split('\n')
+          .filter((ln) => ln.trim() !== '\\begin{document}')
+      : replaceText
+        ? replaceText.split('\n')
+        : [];
+
+  const maxLines = 8;
+  const shownRemoved = removedLines.slice(0, maxLines);
+  const shownAdded = addedLines.slice(0, maxLines);
+
+  if (shownRemoved.length === 0 && shownAdded.length === 0) return null;
+
+  return (
+    <div className="mt-1.5 rounded-sm border border-border/80 bg-background font-mono text-[11px] leading-snug overflow-x-auto">
+      {shownRemoved.map((line, i) => (
+        <div
+          key={`del-${i}`}
+          className="px-2 py-0.5 bg-destructive/8 text-destructive whitespace-pre"
+        >
+          {`- ${line}`}
+        </div>
+      ))}
+      {removedLines.length > maxLines && (
+        <div className="px-2 py-0.5 text-muted-foreground text-10">
+          {`... ${removedLines.length - maxLines} more removed line(s)`}
+        </div>
+      )}
+      {shownAdded.map((line, i) => (
+        <div
+          key={`add-${i}`}
+          className="px-2 py-0.5 bg-success/8 text-success whitespace-pre"
+        >
+          {`+ ${line}`}
+        </div>
+      ))}
+      {addedLines.length > maxLines && (
+        <div className="px-2 py-0.5 text-muted-foreground text-10">
+          {`... ${addedLines.length - maxLines} more added line(s)`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditorPatchesCard({
+  widget,
+  onReviewEditorPatch,
+  onApplyAllEditorPatches,
+}: {
+  widget: EditorPatchesWidget;
+  onReviewEditorPatch?: (patch: EditorPatchItem) => void;
+  onApplyAllEditorPatches?: (patches: EditorPatchItem[]) => void;
+}) {
+  const patches = widget.patches || [];
+  if (patches.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-card overflow-hidden">
+      <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <FileCode2 className="size-3.5 text-ai shrink-0" aria-hidden="true" />
+          <h4 className="text-12 font-semibold text-foreground truncate">
+            {widget.title}
+          </h4>
+          <span className="inline-flex items-center justify-center rounded-full bg-muted px-1.5 py-px text-10 font-mono tabular-nums text-muted-foreground">
+            {patches.length}
+          </span>
+          {widget.streaming && (
+            <span className="inline-flex items-center rounded-sm bg-ai/10 px-1.5 py-px text-10 font-medium text-ai shrink-0">
+              Live preview
+            </span>
+          )}
+        </div>
+        {patches.length > 1 && onApplyAllEditorPatches && (
+          <button
+            type="button"
+            onClick={() => onApplyAllEditorPatches(patches)}
+            className="inline-flex items-center gap-1 rounded-sm border border-border bg-background px-2 py-0.5 text-11 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+          >
+            <Check className="size-3 text-success" aria-hidden="true" />
+            <span>Apply All</span>
+          </button>
+        )}
+      </div>
+
+      <div className="divide-y divide-border">
+        {patches.map((patch, idx) => {
+          const lineLabel =
+            typeof patch.fromLine === 'number'
+              ? typeof patch.toLine === 'number' && patch.toLine > patch.fromLine
+                ? `L${patch.fromLine}-${patch.toLine}`
+                : `L${patch.fromLine}`
+              : null;
+
+          return (
+            <div key={patch.id || idx} className="p-2.5 space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className="font-mono text-11 font-medium text-foreground truncate"
+                    title={patch.filePath}
+                  >
+                    {patch.filePath}
+                  </span>
+                  {lineLabel && (
+                    <span className="rounded-sm bg-muted px-1.5 py-px font-mono text-10 tabular-nums text-muted-foreground shrink-0">
+                      {lineLabel}
+                    </span>
+                  )}
+                </div>
+
+                {onReviewEditorPatch && (
+                  <button
+                    type="button"
+                    onClick={() => onReviewEditorPatch(patch)}
+                    className="inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-11 font-medium text-ai bg-ai/10 hover:bg-ai/15 transition-colors cursor-pointer shrink-0"
+                    title="Inspect hunk interactively in CodeMirror"
+                  >
+                    <GitCompare className="size-3" aria-hidden="true" />
+                    <span>Review Diff</span>
+                  </button>
+                )}
+              </div>
+
+              <p className="text-12 font-medium text-foreground">
+                {patch.title}
+              </p>
+              {patch.rationale && (
+                <p className="text-11 text-muted-foreground leading-snug">
+                  {patch.rationale}
+                </p>
+              )}
+
+              {patch.warnings && patch.warnings.length > 0 && (
+                <div className="flex items-start gap-1.5 rounded-sm bg-warning/10 px-2 py-1 text-11 text-warning">
+                  <AlertTriangle className="size-3 mt-0.5 shrink-0" aria-hidden="true" />
+                  <span>{patch.warnings.join(' ')}</span>
+                </div>
+              )}
+
+              <PatchDiffPreview
+                searchText={patch.searchText}
+                replaceText={patch.replaceText}
+                kind={patch.kind}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export interface WidgetsPartProps {
+  widgets?: ResponseWidget[];
+  onReviewEditorPatch?: (patch: EditorPatchItem) => void;
+  onApplyAllEditorPatches?: (patches: EditorPatchItem[]) => void;
+}
+
+export function WidgetsPart({
+  widgets,
+  onReviewEditorPatch,
+  onApplyAllEditorPatches,
+}: WidgetsPartProps) {
   if (!widgets || widgets.length === 0) return null;
 
   return (
@@ -221,6 +409,13 @@ export function WidgetsPart({ widgets }: { widgets?: ResponseWidget[] }) {
       {widgets.map((widget, index) =>
         widget.type === 'work_item_overview' ? (
           <WorkItemOverviewCard key={index} widget={widget} />
+        ) : widget.type === 'editor_patches' ? (
+          <EditorPatchesCard
+            key={index}
+            widget={widget}
+            onReviewEditorPatch={onReviewEditorPatch}
+            onApplyAllEditorPatches={onApplyAllEditorPatches}
+          />
         ) : (
           <MetricSummaryCard key={index} widget={widget} />
         ),

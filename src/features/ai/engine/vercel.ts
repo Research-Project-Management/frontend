@@ -5,6 +5,8 @@ import type { AiTransportPort } from '../transport/transport.port';
 import type { TurnContext, TurnMode } from '../types/context';
 import type { AiStreamEvent } from '../types/event';
 import type {
+  EditorPatchItem,
+  EditorPatchesWidget,
   FluxMessage,
   HitlDecision,
   HitlInterrupt,
@@ -281,6 +283,8 @@ function toReadableUiChunkStream(
       let openTextId: string | null = null;
       const openToolsByName = new Map<string, string[]>();
       const activeHandoffs = new Map<string, { to: string; parallel?: boolean }>();
+      const streamedEditorPatches: EditorPatchItem[] = [];
+      let finalizedMetaWidgets = false;
       let finishedByInterrupt = false;
       let hasErrored = false;
 
@@ -335,6 +339,14 @@ function toReadableUiChunkStream(
                   type: 'data-sources',
                   id: 'sources',
                   data: { sources: ev.sources },
+                });
+              }
+              if (ev.widgets && ev.widgets.length > 0) {
+                finalizedMetaWidgets = true;
+                controller.enqueue({
+                  type: 'data-widgets',
+                  id: 'widgets-meta',
+                  data: { widgets: ev.widgets },
                 });
               }
               break;
@@ -485,6 +497,32 @@ function toReadableUiChunkStream(
               break;
             }
 
+            case 'editor-patch-preview': {
+              const existingIdx = streamedEditorPatches.findIndex(
+                (p) => p.id === ev.patch.id,
+              );
+              if (existingIdx >= 0) {
+                streamedEditorPatches[existingIdx] = ev.patch;
+              } else {
+                streamedEditorPatches.push(ev.patch);
+              }
+              const liveWidget: EditorPatchesWidget = {
+                type: 'editor_patches',
+                title:
+                  streamedEditorPatches.length === 1
+                    ? 'Proposed LaTeX Edit'
+                    : `Proposed LaTeX Edits (${streamedEditorPatches.length})`,
+                patches: [...streamedEditorPatches],
+                streaming: true,
+              };
+              controller.enqueue({
+                type: 'data-widgets',
+                id: 'widgets-meta',
+                data: { widgets: [liveWidget] },
+              });
+              break;
+            }
+
             case 'error': {
               closeBlocks();
               hasErrored = true;
@@ -507,6 +545,24 @@ function toReadableUiChunkStream(
 
         if (!hasErrored) {
           closeBlocks();
+          if (streamedEditorPatches.length > 0 && !finalizedMetaWidgets) {
+            controller.enqueue({
+              type: 'data-widgets',
+              id: 'widgets-meta',
+              data: {
+                widgets: [
+                  {
+                    type: 'editor_patches',
+                    title:
+                      streamedEditorPatches.length === 1
+                        ? 'Proposed LaTeX Edit'
+                        : `Proposed LaTeX Edits (${streamedEditorPatches.length})`,
+                    patches: [...streamedEditorPatches],
+                  },
+                ],
+              },
+            });
+          }
           for (const [handoffId, info] of activeHandoffs) {
             controller.enqueue({
               type: 'data-handoff',

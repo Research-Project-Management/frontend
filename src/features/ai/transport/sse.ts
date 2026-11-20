@@ -1,5 +1,10 @@
 import type { AiStreamEvent } from '../types/event';
-import type { HitlInterrupt, ResponseWidget, SourceItem } from '../types/message';
+import type {
+  EditorPatchItem,
+  HitlInterrupt,
+  ResponseWidget,
+  SourceItem,
+} from '../types/message';
 import { logger } from '@/shared/lib/logger';
 
 export interface RawSseFrame {
@@ -185,6 +190,27 @@ function decodeActionPayload(rawAction: Record<string, unknown>): AiStreamEvent[
         },
       ];
 
+    case 'editor_patch_preview': {
+      const patchRec = asRecord(rawAction.patch);
+      if (
+        !patchRec ||
+        typeof patchRec.filePath !== 'string' ||
+        !patchRec.filePath.trim()
+      ) {
+        return [];
+      }
+      return [
+        {
+          type: 'editor-patch-preview',
+          agent,
+          patch: patchRec as unknown as EditorPatchItem,
+          ...(typeof rawAction.totalPatches === 'number'
+            ? { totalPatches: rawAction.totalPatches }
+            : {}),
+        },
+      ];
+    }
+
     case 'tool_call':
     default: {
       if (rawAction.status === 'done' || rawAction.status === 'error') {
@@ -265,6 +291,9 @@ export function decodeFluxSseFrame(
           sources: Array.isArray(meta.sources)
             ? (meta.sources as SourceItem[])
             : undefined,
+          widgets: Array.isArray(meta.widgets)
+            ? (meta.widgets as ResponseWidget[])
+            : undefined,
         },
       ];
     } catch (err) {
@@ -303,6 +332,9 @@ export function decodeFluxSseFrame(
                 typeof metaObj.intent === 'string' ? metaObj.intent : undefined,
               sources: Array.isArray(metaObj.sources)
                 ? (metaObj.sources as SourceItem[])
+                : undefined,
+              widgets: Array.isArray(metaObj.widgets)
+                ? (metaObj.widgets as ResponseWidget[])
                 : undefined,
             },
           ];

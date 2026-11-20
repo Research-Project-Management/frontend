@@ -215,6 +215,115 @@ function resolveActionMeta(interrupts: readonly HitlInterrupt[]): ActionMeta {
       };
     }
 
+    if (tool === 'add_bibtex_entries') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Add BibTeX Entries',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Add to .bib',
+        submittingLabel: 'Adding…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'resolve_citation') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Resolve & Add Citation',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Resolve & Add',
+        submittingLabel: 'Resolving…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'sync_library_citations') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Sync Library Citations',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Sync Collection',
+        submittingLabel: 'Syncing…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'create_review_suggestion') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Create Track Changes Suggestion',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Create Suggestion',
+        submittingLabel: 'Creating…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'delete_work_item') {
+      const mode = intr?.args?.mode === 'delete' ? 'delete' : 'archive';
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: true,
+        headerTitle: mode === 'delete' ? 'Delete Work Item' : 'Archive Work Item',
+        HeaderIcon: meta.icon,
+        confirmLabel: mode === 'delete' ? 'Delete Item' : 'Archive Item',
+        submittingLabel: 'Updating…',
+        cancelLabel: 'Cancel',
+      };
+    }
+
+    if (tool === 'remove_project_member') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: true,
+        headerTitle: 'Remove Project Member',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Remove Member',
+        submittingLabel: 'Removing…',
+        cancelLabel: 'Cancel',
+      };
+    }
+
+    if (tool === 'update_member_role') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Update Member Role',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Update Role',
+        submittingLabel: 'Updating…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'update_project') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: false,
+        headerTitle: 'Update Project Settings',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Save Changes',
+        submittingLabel: 'Saving…',
+        cancelLabel: 'Reject',
+      };
+    }
+
+    if (tool === 'delete_label') {
+      const meta = getToolMeta(tool);
+      return {
+        isDestructive: true,
+        headerTitle: 'Delete Project Label',
+        HeaderIcon: meta.icon,
+        confirmLabel: 'Delete Label',
+        submittingLabel: 'Deleting…',
+        cancelLabel: 'Cancel',
+      };
+    }
+
     const meta = tool ? getToolMeta(tool) : null;
     return {
       isDestructive,

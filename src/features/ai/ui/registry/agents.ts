@@ -24,6 +24,12 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Search, organize, cite, and manage library items',
   },
+  editor_agent: {
+    id: 'editor_agent',
+    label: 'LaTeX Editor',
+    badgeClass: 'bg-ai/10 text-ai',
+    description: 'Read, debug, polish, and propose verified LaTeX patches',
+  },
   library: {
     id: 'library',
     label: 'Library',

@@ -1,10 +1,19 @@
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
+import {
+  ArrowDownToLine,
+  Check,
+  Copy,
+  GitCompare,
+  Replace,
+} from 'lucide-react';
+import type { Components } from 'react-markdown';
 import { cn } from '@/shared/lib/utils';
 import { renderMarkdown } from '@/shared/components/markdown/render-markdown';
 import { getFileCategoryMeta } from '../../context/source.port';
 import type {
+  EditorPatchItem,
   FluxMessage,
   HitlDecision,
   MessageAttachment,
@@ -12,7 +21,13 @@ import type {
 } from '../../types/message';
 import { getAgentMeta, shouldShowAgentBadge } from '../registry/agents';
 import { getPartRenderer } from '../registry/parts';
+import {
+  buildCitationLookup,
+  parseCitationHref,
+  preprocessCitationMarkdown,
+} from './citations';
 import { HitlApprovalPart } from './HitlApprovalPart';
+import { InlineCitation } from './InlineCitation';
 import { SourcesPart } from './SourcesPart';
 import { ThinkingPart, parseThinkingContent } from './ThinkingPart';
 import { ToolTraceGroup, type TracePartData } from './ToolPart';
@@ -109,11 +124,37 @@ function groupPartsChronologically(
   return segments;
 }
 
+export interface MessageCodeActions {
+  hasSelection?: boolean;
+  copiedBlockId?: string | null;
+  onCopyCode?: (code: string, blockId: string) => void;
+  onInsertAtCursor?: (code: string) => void;
+  onProposeDiff?: (code: string) => void;
+  onReplaceSelection?: (code: string) => void;
+}
+
+function extractReactText(node: React.ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractReactText).join('');
+  }
+  if (React.isValidElement(node)) {
+    const props = node.props as { children?: React.ReactNode };
+    return extractReactText(props.children);
+  }
+  return '';
+}
+
 export interface MessagePartsProps {
   message: FluxMessage;
   isStreaming?: boolean;
   compact?: boolean;
   onResumeHitl?: (decisions: HitlDecision[]) => void | Promise<void>;
+  onReviewEditorPatch?: (patch: EditorPatchItem) => void;
+  onApplyAllEditorPatches?: (patches: EditorPatchItem[]) => void;
+  codeActions?: MessageCodeActions;
 }
 
 export const MessageParts = memo(function MessageParts({
@@ -121,8 +162,168 @@ export const MessageParts = memo(function MessageParts({
   isStreaming = false,
   compact = false,
   onResumeHitl,
+  onReviewEditorPatch,
+  onApplyAllEditorPatches,
+  codeActions,
 }: MessagePartsProps) {
   const isUser = message.role === 'user';
+
+  const effectiveParts: MessagePart[] = useMemo(() => {
+    if (isUser) return [];
+    if (message.parts.length > 0) return message.parts;
+
+    const fallback: MessagePart[] = [];
+    const { thinking, answer, isThinkingOpen } = parseThinkingContent(
+      message.content || '',
+    );
+    if (thinking !== null) {
+      fallback.push({
+        type: 'reasoning',
+        text: thinking,
+        streaming: isThinkingOpen && isStreaming,
+      });
+    }
+    if (answer) {
+      fallback.push({ type: 'text', text: answer, streaming: isStreaming });
+    }
+    if (message.widgets && message.widgets.length > 0) {
+      fallback.push({ type: 'widgets', widgets: message.widgets });
+    }
+    if (message.sources && message.sources.length > 0) {
+      fallback.push({ type: 'sources', sources: message.sources });
+    }
+    return fallback;
+  }, [
+    isUser,
+    message.parts,
+    message.content,
+    message.widgets,
+    message.sources,
+    isStreaming,
+  ]);
+
+  const messageSources = useMemo(() => {
+    if (message.sources && message.sources.length > 0) {
+      return message.sources;
+    }
+    const sourcesPart = effectiveParts.find((p) => p.type === 'sources');
+    return sourcesPart && sourcesPart.type === 'sources'
+      ? sourcesPart.sources
+      : undefined;
+  }, [message.sources, effectiveParts]);
+
+  const citationLookup = useMemo(
+    () => buildCitationLookup(messageSources),
+    [messageSources],
+  );
+
+  const citationMarkdownComponents = useMemo<Partial<Components>>(() => {
+    const components: Partial<Components> = {
+      a({ href, children }) {
+        const citeIdx = parseCitationHref(href);
+        if (citeIdx !== null) {
+          return (
+            <InlineCitation
+              index={citeIdx}
+              source={citationLookup.byIndex.get(citeIdx)}
+              isMultiDocument={citationLookup.isMultiDocument}
+              isStreaming={isStreaming}
+            />
+          );
+        }
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline-offset-3 hover:underline"
+          >
+            {children}
+          </a>
+        );
+      },
+    };
+
+    if (codeActions) {
+      components.pre = ({ children }) => {
+        const childNodes = React.Children.toArray(children);
+        const firstElement = childNodes.find((child): child is React.ReactElement =>
+          React.isValidElement(child),
+        );
+        const codeProps = firstElement
+          ? (firstElement.props as { className?: string; children?: React.ReactNode })
+          : undefined;
+        const match = /language-([\w-]+)/.exec(codeProps?.className || '');
+        const lang = match ? match[1] : 'latex';
+        const codeString = extractReactText(codeProps?.children ?? children).replace(/\n$/, '');
+        const blockId = `${lang}-${codeString.slice(0, 16)}`;
+        const isCopied = codeActions.copiedBlockId === blockId;
+
+        return (
+          <div className="my-2 overflow-hidden rounded-md border border-border bg-background/90 text-foreground not-prose">
+            <div className="flex items-center justify-between border-b border-border/80 bg-muted/50 px-2.5 py-1 text-10">
+              <span className="font-mono text-muted-foreground">{lang}</span>
+              <div className="flex items-center gap-1">
+                {codeActions.onCopyCode && (
+                  <button
+                    type="button"
+                    onClick={() => codeActions.onCopyCode?.(codeString, blockId)}
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                    title="Copy code"
+                  >
+                    {isCopied ? (
+                      <Check className="size-3 text-success" />
+                    ) : (
+                      <Copy className="size-3" />
+                    )}
+                    <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                  </button>
+                )}
+                {codeActions.onInsertAtCursor && (
+                  <button
+                    type="button"
+                    onClick={() => codeActions.onInsertAtCursor?.(codeString)}
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-ai hover:bg-ai-subtle transition-colors cursor-pointer font-medium"
+                    title="Insert code at cursor"
+                  >
+                    <ArrowDownToLine className="size-3" />
+                    <span>Insert</span>
+                  </button>
+                )}
+                {codeActions.onProposeDiff && (
+                  <button
+                    type="button"
+                    onClick={() => codeActions.onProposeDiff?.(codeString)}
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-ai hover:bg-ai-subtle transition-colors cursor-pointer font-medium"
+                    title="Review diff interactively in editor"
+                  >
+                    <GitCompare className="size-3" />
+                    <span>Diff</span>
+                  </button>
+                )}
+                {codeActions.hasSelection && codeActions.onReplaceSelection && (
+                  <button
+                    type="button"
+                    onClick={() => codeActions.onReplaceSelection?.(codeString)}
+                    className="flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-warning hover:bg-warning/15 transition-colors cursor-pointer font-medium"
+                    title="Replace selection with this code"
+                  >
+                    <Replace className="size-3" />
+                    <span>Replace</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            <pre className="m-0 overflow-x-auto border-0 bg-transparent p-2.5 font-mono text-xs leading-relaxed text-foreground">
+              <code>{codeString}</code>
+            </pre>
+          </div>
+        );
+      };
+    }
+
+    return components;
+  }, [citationLookup, isStreaming, codeActions]);
 
   if (isUser) {
     const hasAttachments = Boolean(
@@ -161,33 +362,6 @@ export const MessageParts = memo(function MessageParts({
       </div>
     );
   }
-
-  const effectiveParts: MessagePart[] =
-    message.parts.length > 0
-      ? message.parts
-      : (() => {
-          const fallback: MessagePart[] = [];
-          const { thinking, answer, isThinkingOpen } = parseThinkingContent(
-            message.content || '',
-          );
-          if (thinking !== null) {
-            fallback.push({
-              type: 'reasoning',
-              text: thinking,
-              streaming: isThinkingOpen && isStreaming,
-            });
-          }
-          if (answer) {
-            fallback.push({ type: 'text', text: answer, streaming: isStreaming });
-          }
-          if (message.widgets && message.widgets.length > 0) {
-            fallback.push({ type: 'widgets', widgets: message.widgets });
-          }
-          if (message.sources && message.sources.length > 0) {
-            fallback.push({ type: 'sources', sources: message.sources });
-          }
-          return fallback;
-        })();
 
   const segments = groupPartsChronologically(effectiveParts);
 
@@ -256,7 +430,13 @@ export const MessageParts = memo(function MessageParts({
                       : 'space-y-2.5 break-words',
                   )}
                 >
-                  {renderMarkdown(part.text)}
+                  {renderMarkdown(
+                    preprocessCitationMarkdown(part.text, {
+                      byIndex: citationLookup.byIndex,
+                      isStreaming: Boolean(part.streaming && isStreaming),
+                    }),
+                    { components: citationMarkdownComponents },
+                  )}
                   {part.streaming && isStreaming && (
                     <span
                       className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse motion-reduce:animate-none align-text-bottom"
@@ -277,7 +457,14 @@ export const MessageParts = memo(function MessageParts({
               );
 
             case 'widgets':
-              return <WidgetsPart key={`widgets-${idx}`} widgets={part.widgets} />;
+              return (
+                <WidgetsPart
+                  key={`widgets-${idx}`}
+                  widgets={part.widgets}
+                  onReviewEditorPatch={onReviewEditorPatch}
+                  onApplyAllEditorPatches={onApplyAllEditorPatches}
+                />
+              );
 
             case 'sources':
               return (

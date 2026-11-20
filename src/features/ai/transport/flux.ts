@@ -138,6 +138,8 @@ export class FluxHttpTransport implements AiTransportPort {
 
     if (ed) {
       if (ed.pageId) body.pageId = ed.pageId;
+      if (ed.activeFileId) body.activeFileId = ed.activeFileId;
+      if (ed.activeFilePath) body.activeFilePath = ed.activeFilePath;
       if (ed.filename) body.filename = ed.filename;
       if (ed.fileContent != null) body.fileContent = ed.fileContent;
       if (ed.selection != null) body.selection = ed.selection;

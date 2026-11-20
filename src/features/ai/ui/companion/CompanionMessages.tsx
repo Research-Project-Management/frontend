@@ -9,12 +9,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import type { FluxMessage, HitlDecision } from '../../types/message';
+import type { EditorPatchItem, FluxMessage, HitlDecision } from '../../types/message';
 import { CompanionHero } from '../parts/CompanionHero';
-import { MessageParts } from '../parts/MessageParts';
+import { MessageParts, type MessageCodeActions } from '../parts/MessageParts';
 import { getAgentMeta, shouldShowAgentBadge } from '../registry/agents';
 
-const SUGGESTIONS = [
+export interface CompanionSuggestionItem {
+  id: string;
+  label?: string;
+  text: string;
+  prompt: string;
+}
+
+const SUGGESTIONS: readonly CompanionSuggestionItem[] = [
   {
     id: '1',
     text: 'Create a Page in the Wiki with work logs for each member in the last month',
@@ -41,7 +48,7 @@ const SUGGESTIONS = [
   },
 ];
 
-const READER_SUGGESTIONS = [
+const READER_SUGGESTIONS: readonly CompanionSuggestionItem[] = [
   {
     id: 'r1',
     text: 'Summarize the core methodology, architecture, and key contributions of this paper',
@@ -80,6 +87,11 @@ export interface CompanionMessagesProps {
   onResumeHitl: (decisions: HitlDecision[]) => void;
   onRetry: () => void;
   isReaderContext?: boolean;
+  suggestions?: readonly CompanionSuggestionItem[];
+  suggestionsTitle?: string;
+  onReviewEditorPatch?: (patch: EditorPatchItem) => void;
+  onApplyAllEditorPatches?: (patches: EditorPatchItem[]) => void;
+  codeActions?: MessageCodeActions;
 }
 
 export const CompanionMessages = React.memo(function CompanionMessages({
@@ -94,6 +106,11 @@ export const CompanionMessages = React.memo(function CompanionMessages({
   onResumeHitl,
   onRetry,
   isReaderContext = false,
+  suggestions,
+  suggestionsTitle,
+  onReviewEditorPatch,
+  onApplyAllEditorPatches,
+  codeActions,
 }: CompanionMessagesProps) {
   if (isLoadingHistory) {
     return (
@@ -112,7 +129,11 @@ export const CompanionMessages = React.memo(function CompanionMessages({
   }
 
   const isEmpty = messages.length === 0 && !isStreaming;
-  const activeSuggestions = isReaderContext ? READER_SUGGESTIONS : SUGGESTIONS;
+  const activeSuggestions =
+    suggestions ?? (isReaderContext ? READER_SUGGESTIONS : SUGGESTIONS);
+  const resolvedSuggestionsTitle =
+    suggestionsTitle ??
+    (isReaderContext ? 'Paper actions & analysis' : 'Suggestions');
   const lastMsg = messages[messages.length - 1];
   const isWaitingFirstChunk =
     isStreaming && (!lastMsg || lastMsg.role === 'user');
@@ -140,7 +161,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
           <div className="mt-0.5">
             <div className="mb-1 px-2 flex items-center justify-between">
               <span className="text-11 font-medium text-muted-foreground">
-                {isReaderContext ? 'Paper actions & analysis' : 'Suggestions'}
+                {resolvedSuggestionsTitle}
               </span>
             </div>
 
@@ -164,14 +185,30 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                     )}
                     aria-hidden="true"
                   />
-                  <span
-                    className={cn(
-                      'leading-snug font-normal text-foreground',
-                      isReaderContext ? 'text-12' : 'text-13',
-                    )}
-                  >
-                    {item.text}
-                  </span>
+                  {item.label ? (
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span
+                        className={cn(
+                          'leading-snug font-normal text-foreground',
+                          isReaderContext ? 'text-12' : 'text-13',
+                        )}
+                      >
+                        {item.label}
+                      </span>
+                      <span className="text-11 text-muted-foreground line-clamp-1">
+                        {item.text}
+                      </span>
+                    </div>
+                  ) : (
+                    <span
+                      className={cn(
+                        'leading-snug font-normal text-foreground',
+                        isReaderContext ? 'text-12' : 'text-13',
+                      )}
+                    >
+                      {item.text}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -188,6 +225,9 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                 compact
                 isStreaming={isLast && isStreaming && msg.role === 'assistant'}
                 onResumeHitl={onResumeHitl}
+                onReviewEditorPatch={onReviewEditorPatch}
+                onApplyAllEditorPatches={onApplyAllEditorPatches}
+                codeActions={codeActions}
               />
             );
           })}

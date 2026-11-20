@@ -4,6 +4,8 @@
 
 export type {
   AgentAction,
+  EditorPatchesWidget,
+  EditorPatchItem,
   FluxMessage,
   FluxMessageRole,
   HitlDecision,
@@ -126,13 +128,23 @@ export {
 } from './ui/registry/tools';
 export { getPartRenderer, registerPartRenderer } from './ui/registry/parts';
 
+export {
+  buildCitationLookup,
+  parseCitationHref,
+  preprocessCitationMarkdown,
+} from './ui/parts/citations';
 export { CompanionHero } from './ui/parts/CompanionHero';
 export { HitlApprovalPart } from './ui/parts/HitlApprovalPart';
-export { AgentBadge, MessageParts } from './ui/parts/MessageParts';
+export { InlineCitation } from './ui/parts/InlineCitation';
+export {
+  AgentBadge,
+  MessageParts,
+  type MessageCodeActions,
+} from './ui/parts/MessageParts';
 export { SourcesPart } from './ui/parts/SourcesPart';
 export { ThinkingPart, parseThinkingContent } from './ui/parts/ThinkingPart';
 export { ToolPart, ToolTraceGroup } from './ui/parts/ToolPart';
-export { WidgetsPart } from './ui/parts/WidgetsPart';
+export { WidgetsPart, type WidgetsPartProps } from './ui/parts/WidgetsPart';
 
 export { Composer, type ComposerProps } from './ui/composer/Composer';
 export { AttachmentBar } from './ui/composer/AttachmentBar';
@@ -145,4 +157,7 @@ export { ChatPage } from './ui/workspace/ChatPage';
 export { ChatSidebar } from './ui/workspace/ChatSidebar';
 export { CompanionDrawer } from './ui/companion/CompanionDrawer';
 export { CompanionHistory } from './ui/companion/CompanionHistory';
-export { CompanionMessages } from './ui/companion/CompanionMessages';
+export {
+  CompanionMessages,
+  type CompanionSuggestionItem,
+} from './ui/companion/CompanionMessages';

@@ -61,12 +61,35 @@ export const TOOL_META: Record<string, ToolMeta> = {
   trash_items: { label: 'Moving to Trash', icon: Trash2, category: 'delete' },
   merge_duplicates: { label: 'Merging Duplicates', icon: FolderKanban, category: 'delete' },
 
+  // Editor Agent (LaTeX IDE)
+  list_files: { label: 'Listing Project Files', icon: FileText, category: 'read' },
+  read_file: { label: 'Reading LaTeX File', icon: BookOpen, category: 'read' },
+  get_outline_and_symbols: { label: 'Inspecting Manuscript Symbols', icon: FileText, category: 'analyze' },
+  search_manuscript: { label: 'Searching Manuscript', icon: Search, category: 'read' },
+  inspect_citations: { label: 'Inspecting .bib Citations', icon: BookOpen, category: 'read' },
+  validate_citations: { label: 'Validating Bibliography', icon: AlertTriangle, category: 'analyze' },
+  lint_manuscript: { label: 'Checking LaTeX Syntax', icon: Settings2, category: 'analyze' },
+  list_review_comments: { label: 'Reading Review Comments', icon: MessageSquare, category: 'read' },
+  scan_citation_gaps: { label: 'Auditing Citation Gaps', icon: BookOpen, category: 'analyze' },
+  audit_manuscript_structure: {
+    label: 'Auditing Manuscript Structure',
+    icon: FolderKanban,
+    category: 'analyze',
+  },
+  propose_edit: { label: 'Preparing Verified Diff', icon: Pencil, category: 'update' },
+  add_bibtex_entries: { label: 'Adding BibTeX Entries', icon: FilePlus, category: 'create' },
+  resolve_citation: { label: 'Resolving Citation DOI/arXiv', icon: BookOpen, category: 'create' },
+  sync_library_citations: { label: 'Syncing Library Bibliography', icon: FolderKanban, category: 'update' },
+  create_review_suggestion: { label: 'Creating Track Changes Suggestion', icon: Pencil, category: 'update' },
+
   // Work items
   list_work_items: { label: 'Listing Work Items', icon: ListTodo, category: 'read' },
   get_my_work_items: { label: 'Getting My Work Items', icon: ListTodo, category: 'read' },
+  get_work_item: { label: 'Inspecting Work Item', icon: ListTodo, category: 'read' },
   summarize_member_work_items: { label: 'Summarizing Workload', icon: BarChart3, category: 'analyze' },
   create_work_item: { label: 'Creating Work Item', icon: Plus, category: 'create' },
   update_work_item: { label: 'Updating Work Item', icon: Pencil, category: 'update' },
+  assign_work_item: { label: 'Assigning Work Item', icon: User, category: 'update' },
   delete_work_item: { label: 'Deleting Work Item', icon: Trash2, category: 'delete' },
   list_tasks: { label: 'Listing Work Items', icon: ListTodo, category: 'read' },
   get_my_tasks: { label: 'Getting My Work Items', icon: ListTodo, category: 'read' },
@@ -112,6 +135,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   search_users: { label: 'Searching Users', icon: Search, category: 'read' },
   get_workload_distribution: { label: 'Workload Analysis', icon: BarChart3, category: 'analyze' },
   get_overdue_report: { label: 'Overdue Report', icon: AlertTriangle, category: 'analyze' },
+  audit_project_health: { label: 'Auditing Project Health', icon: Shield, category: 'analyze' },
   get_project_velocity: { label: 'Project Velocity', icon: TrendingUp, category: 'analyze' },
   generate_team_summary: { label: 'Team Summary', icon: Users, category: 'analyze' },
 };

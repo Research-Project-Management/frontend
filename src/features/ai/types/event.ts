@@ -1,4 +1,5 @@
 import type {
+  EditorPatchItem,
   HitlInterrupt,
   ResponseWidget,
   SourceItem,
@@ -12,6 +13,7 @@ export type AiStreamEvent =
       agent?: string;
       intent?: string;
       sources?: SourceItem[];
+      widgets?: ResponseWidget[];
     }
   | {
       type: 'text-delta';
@@ -60,6 +62,12 @@ export type AiStreamEvent =
       interruptId: string;
       interrupts: HitlInterrupt[];
       raw?: unknown;
+    }
+  | {
+      type: 'editor-patch-preview';
+      agent?: string;
+      patch: EditorPatchItem;
+      totalPatches?: number;
     }
   | {
       type: 'error';

@@ -316,7 +316,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
 
       expect(ok).toBe(true);
       expect(mockService.setRootDoc).toHaveBeenCalledWith('proj-test', 'file-new-1');
-      expect(mockStore.setMainFile).toHaveBeenCalledWith('file-new-1');
+      expect(mockStore.setMainFile).toHaveBeenCalledWith('file-new-1', 'file-new-1');
       expect(mockNotification.notifySuccess).toHaveBeenCalledWith('Set as main document', 'set-main-file');
     });
   });
@@ -431,6 +431,74 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
       expect(deleted).toBe(true);
       expect(diagnosticsCoordinator.getFileSummary('chapters/intro.tex').total).toBe(0);
       expect(diagnosticsCoordinator.getFolderSummary('chapters').total).toBe(0);
+    });
+
+    it('updates usePageStore.mainFilePath and serverRootDoc when renaming root file or its ancestor folder, and preserves serverRootDoc across initProjectSymbols', async () => {
+      usePageStore.getState().setMainDocument({
+        rootDocId: 'doc-root-1',
+        mainFilePath: 'src/thesis.tex',
+      });
+      latexDependencyGraph.setServerRootDoc('src/thesis.tex', 'doc-root-1');
+      coordinator.syncStructureItems(
+        [
+          {
+            id: 'folder-src',
+            filename: 'src',
+            path: 'src',
+            isFolder: true,
+            nodeType: 'FOLDER',
+          },
+          {
+            id: 'node-root-1',
+            docId: 'doc-root-1',
+            filename: 'thesis.tex',
+            path: 'src/thesis.tex',
+            isFolder: false,
+            nodeType: 'DOC',
+            isRootDoc: true,
+          },
+        ],
+        'proj-test',
+      );
+      latexDependencyGraph.parseAndRegister('src/thesis.tex', '\\documentclass{article}\\begin{document}Hi\\end{document}', 'doc-root-1');
+
+      await coordinator.renameItem({
+        itemId: 'folder-src',
+        oldName: 'src',
+        newName: 'paper',
+      });
+      expect(usePageStore.getState().mainFilePath).toBe('paper/thesis.tex');
+      expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+        rootDocPath: 'paper/thesis.tex',
+        rootFileId: 'doc-root-1',
+      });
+
+      await coordinator.renameItem({
+        itemId: 'doc-root-1',
+        oldName: 'paper/thesis.tex',
+        newName: 'dissertation.tex',
+      });
+      expect(usePageStore.getState().mainFilePath).toBe('paper/dissertation.tex');
+      expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+        rootDocPath: 'paper/dissertation.tex',
+        rootFileId: 'doc-root-1',
+      });
+
+      coordinator.initProjectSymbols(
+        [
+          {
+            id: 'doc-root-1',
+            title: 'paper/dissertation.tex',
+            content: '\\documentclass{article}\\begin{document}Hi\\end{document}',
+            isRootDoc: true,
+          },
+        ],
+        'proj-test',
+      );
+      expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+        rootDocPath: 'paper/dissertation.tex',
+        rootFileId: 'doc-root-1',
+      });
     });
   });
 });

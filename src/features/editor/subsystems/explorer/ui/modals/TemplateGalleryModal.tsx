@@ -449,7 +449,7 @@ export default function TemplateGalleryModal() {
                       const toastId = toast.loading('Saving current project as template...');
                       try {
                         const mainContent = engine?.getContent() || selectedTemplate.mainTex;
-                        const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+                        const targetMainFile = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
                         await pagesService.templates.createCustom({
                           projectId,
                           name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,

@@ -23,7 +23,6 @@ import {
   getActiveEditorEngine,
   editorCommandBus,
 } from '../bus/command-bus';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useConnectivityStore } from '../store/connectivity.store';
 import { useWorkspaceStore } from '../store/workspace.store';
 import type { UnsyncedEditsCoordinator } from './unsynced-edits.coordinator';
@@ -254,7 +253,6 @@ export function clearDeletedFileSessionResources(params: {
   warmEditorStatePool.delete(fileId);
   lruDocumentCache.markClean(fileId);
   lruDocumentCache.evictModel(fileId, { skipPersistence: true });
-  useCompileStore.getState().clearDirty(fileId);
   clearUnsyncedEdit(fileId);
   void syncedDocCacheStore.delete(fileId);
   void pendingOutboxStore.removeByDocId(fileId).catch(() => {});
@@ -341,7 +339,6 @@ export function executeSwitchTabDeactivate(params: {
     const fromModel = lruDocumentCache.getModel(fromFileId);
     if (fromContent !== undefined && fromModel && fromModel.content !== fromContent) {
       lruDocumentCache.updateContent(fromFileId, fromContent, true);
-      useCompileStore.getState().markDirty(fromFileId, fromContent);
     }
 
     transitionDeactivate(fromFileId);
@@ -379,7 +376,6 @@ export function executeRemoteContentUpdatedHelper(params: {
   if (!model?.isDirty) {
     lruDocumentCache.updateContent(fileId, remoteContent, false);
     lruDocumentCache.markClean(fileId);
-    useCompileStore.getState().clearDirty(fileId);
     const v = lruDocumentCache.getContentVersion(fileId) || 0;
     transitionRemoteEdit(fileId, v);
     reindex(fileId, remoteContent);

@@ -12,7 +12,7 @@ import {
 } from '@/features/editor/domain/offline-storage';
 import { sessionCoordinator } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { useCompileStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useConnectivityStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 

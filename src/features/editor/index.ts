@@ -7,3 +7,7 @@
 
 export * from './core';
 export { default as ClientEditor } from './core/shell/ClientEditor';
+export {
+  resetEditorWorkspace,
+  type ResetEditorWorkspaceOptions,
+} from './editor-workspace-lifecycle';

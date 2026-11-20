@@ -2,6 +2,8 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { CompilerLogs, parseLatexLog, type LogEntry } from '@/features/editor/subsystems/compiler';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { editorCommandBus } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 import { toast } from 'sonner';
@@ -46,7 +48,9 @@ No pages of output.`;
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
+    useCompileStore.getState().resetCompiler();
     useSettingsStore.setState({
       suppressBadBoxes: false,
       suppressFontWarnings: false,
@@ -289,6 +293,59 @@ No pages of output.`;
     // Click toggle again to re-hide
     fireEvent.click(toggleBtn);
     expect(toggleBtn.textContent).toContain('Suppressed (1)');
+  });
+
+  it('skips backend parseLog while compileStatus is compiling or log only contains [CLSI] progress lines', () => {
+    vi.useFakeTimers();
+
+    useCompileStore.getState().dispatchCompileEvent({ type: 'START_FLUSH' });
+    useCompileStore.getState().dispatchCompileEvent({ type: 'FLUSH_COMPLETE', runId: useCompileStore.getState().compilerFsm.runId });
+
+    render(
+      <CompilerLogs
+        log={'! Undefined control sequence.\nl.3 \\foo'}
+        onClose={vi.fn()}
+      />
+    );
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(pagesService.diagnostics.parseLog).not.toHaveBeenCalled();
+
+    cleanup();
+    useCompileStore.getState().resetCompiler();
+
+    render(
+      <CompilerLogs
+        log={'[CLSI Queue] Compilation started...\n[CLSI] Compilation succeeded in 120ms'}
+        onClose={vi.fn()}
+      />
+    );
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(pagesService.diagnostics.parseLog).not.toHaveBeenCalled();
+  });
+
+  it('virtualizes large Raw logs (>= 150 lines) instead of mounting all DOM lines at once', () => {
+    const hugeLog = Array.from({ length: 300 }, (_, i) => `Line ${i + 1}: TeX trace output`).join('\n');
+
+    render(
+      <CompilerLogs
+        log={hugeLog}
+        onClose={vi.fn()}
+      />
+    );
+
+    const rawToggle = screen.getByRole('button', { name: /raw logs/i });
+    fireEvent.click(rawToggle);
+
+    const rawContainer = document.getElementById('raw-latex-logs-content');
+    expect(rawContainer).not.toBeNull();
+    expect(rawContainer).toHaveAttribute('data-virtualized', 'true');
+    const renderedRows = rawContainer?.querySelectorAll('[data-index]') ?? [];
+    expect(renderedRows.length).toBeGreaterThan(0);
+    expect(renderedRows.length).toBeLessThan(300);
   });
 });
 

@@ -39,7 +39,7 @@ export function LogAiFixPanel({
         {fixResult && (
           <span
             className={cn(
-              'text-xs px-2 py-0.5 rounded-md font-medium capitalize border',
+              'text-11 h-5 px-1.5 py-0 rounded-sm font-medium capitalize border inline-flex items-center',
               fixResult.confidence === 'high'
                 ? 'border-success/30 bg-success/10 text-success'
                 : fixResult.confidence === 'medium'

@@ -129,6 +129,7 @@ export interface CompileExecutionOptions {
   useCache?: boolean;
   forceClean?: boolean;
   stopOnFirstError?: boolean;
+  priority?: 'manual' | 'auto';
   timeoutMs?: number;
   signal?: AbortSignal;
   dirtyFiles?: DirtyFileItem[];
@@ -147,6 +148,8 @@ export interface CompileExecutionResult {
   logs?: string;
   logMeta?: CompileLogMeta;
   error?: string | null;
+  errorCode?: string;
+  statusCode?: number;
   errors?: ParsedCompileError[];
   diagnostics?: CompilerDiagnostic[];
   diagnosticsSummary?: DiagnosticsSummary;
@@ -324,6 +327,7 @@ export const CompilePipeline = {
         useCache: useCache ?? true,
         forceClean: opts.forceClean,
         stopOnFirstError: opts.stopOnFirstError,
+        ...(opts.priority ? { priority: opts.priority } : {}),
         responseMode: 'artifact',
         ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
       };
@@ -372,6 +376,7 @@ export const CompilePipeline = {
         useCache: useCache ?? true,
         forceClean: opts.forceClean,
         stopOnFirstError: opts.stopOnFirstError,
+        ...(opts.priority ? { priority: opts.priority } : {}),
         responseMode: 'inline',
         ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
       };
@@ -423,6 +428,8 @@ export const CompilePipeline = {
         resolvedPdf = await pagesService.compiler.fetchArtifactBlob(artifactUrl, currentSignal);
       }
 
+      const isBuildSuccess = data?.success !== false;
+
       if (resolvedPdf?.url) {
         const url = resolvedPdf.url;
         const blob = resolvedPdf.blob;
@@ -464,7 +471,7 @@ export const CompilePipeline = {
               })()
             : Promise.resolve<SyncTeXMap | null>(null);
 
-        if (blob && onThumbnailGenerated) {
+        if (isBuildSuccess && blob && onThumbnailGenerated) {
           const runGen = () => {
             generateThumbnail(blob).then((base64) => {
               if (base64) onThumbnailGenerated(base64);
@@ -475,6 +482,35 @@ export const CompilePipeline = {
           } else {
             setTimeout(runGen, 150);
           }
+        }
+
+        if (!isBuildSuccess) {
+          const log = data?.logs || data?.error || '';
+          const parsedErrors = parseCompileErrors(log, data?.diagnostics);
+          const partialOutcome: CompileOutcome =
+            data?.outcome ||
+            (opts.stopOnFirstError ? 'stopped-on-first-error' : 'failure');
+          return {
+            status: 'error',
+            outcome: partialOutcome,
+            success: false,
+            pdfUrl: url,
+            pdfBlob: blob || undefined,
+            synctexMap: initialSyncMap,
+            synctexPromise,
+            rawSynctex: data.synctex || null,
+            error: data?.error || 'LaTeX compilation completed with errors',
+            errorCode: data?.errorCode,
+            statusCode: data?.statusCode,
+            logs: log,
+            logMeta: data.logMeta,
+            errors: parsedErrors,
+            diagnostics: data.diagnostics,
+            diagnosticsSummary: data.diagnosticsSummary,
+            validationIssues: data.validationIssues,
+            flushedFileIds,
+            flushErrors,
+          };
         }
 
         return {
@@ -497,20 +533,28 @@ export const CompilePipeline = {
       }
 
       const log = data?.logs || data?.error || 'Compilation finished without generating a PDF.';
-      const parsedErrors = parseCompileErrors(log, data?.diagnostics);
       const outcome: CompileOutcome =
         data?.outcome ||
         (opts.stopOnFirstError ? 'stopped-on-first-error' : 'failure');
+      const isNonCodeOutcome =
+        outcome === 'rate-limited' ||
+        outcome === 'clsi-unavailable' ||
+        outcome === 'validation-problems';
+      const parsedErrors = isNonCodeOutcome
+        ? []
+        : parseCompileErrors(log, data?.diagnostics);
 
       return {
         status: 'error',
         outcome,
         success: false,
         error: data?.error || 'LaTeX compilation failed to produce a PDF.',
+        errorCode: data?.errorCode,
+        statusCode: data?.statusCode,
         logs: log,
         logMeta: data?.logMeta,
         errors: parsedErrors,
-        diagnostics: data?.diagnostics,
+        diagnostics: isNonCodeOutcome ? [] : data?.diagnostics,
         diagnosticsSummary: data?.diagnosticsSummary,
         validationIssues: data?.validationIssues,
         flushedFileIds,

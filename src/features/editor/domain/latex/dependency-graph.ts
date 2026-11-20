@@ -469,7 +469,25 @@ export class LatexDependencyGraph {
           return { rootPath: node.path, rootFileId: node.id, inferredBy: 'explicit', hasCycleWarning };
         }
       }
-      return { rootPath: normalizedExplicit, rootFileId: this.pathToIdMap.get(normalizedExplicit), inferredBy: 'explicit', hasCycleWarning };
+      if (this.nodes.size === 0) {
+        return { rootPath: normalizedExplicit, rootFileId: this.pathToIdMap.get(normalizedExplicit), inferredBy: 'explicit', hasCycleWarning };
+      }
+      if (
+        this.serverRootDocPath &&
+        (this.serverRootDocPath === normalizedExplicit ||
+          this.serverRootDocPath.endsWith(`/${normalizedExplicit}`))
+      ) {
+        return {
+          rootPath: this.serverRootDocPath,
+          rootFileId:
+            this.pathToIdMap.get(this.serverRootDocPath) ||
+            this.pathToIdMap.get(normalizedExplicit) ||
+            this.serverRootFileId ||
+            undefined,
+          inferredBy: 'explicit',
+          hasCycleWarning,
+        };
+      }
     }
 
     const normalizedActive = activeFileIdOrPath ? this.resolveNormalizedPath(activeFileIdOrPath) : null;

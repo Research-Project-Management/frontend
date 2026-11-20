@@ -4,11 +4,11 @@ import {
   compilerCoordinator,
   compilerSubsystem,
   FlushBarrier,
+  useCompileStore,
   type CompilerPort,
 } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator, editorCommandBus } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useConnectivityStore } from '@/features/editor/core';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
@@ -17,7 +17,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
   beforeEach(() => {
     vi.useFakeTimers();
     useConnectivityStore.setState({ isOnline: true, syncStatus: 'synced', pendingSaveCount: 0 });
-    useCompileStore.setState({ compileStatus: 'idle', compileLog: '', compileErrors: [] });
+    useCompileStore.getState().resetCompiler();
     usePageStore.setState({
       projectId: 'proj-123',
       currentPage: { id: 'main-doc', title: 'main.tex' } as any,
@@ -77,7 +77,9 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     expect(success).toBe(true);
     expect(compileCalled).toBe(true);
     expect(useCompileStore.getState().pdfUrl).toBe('blob:http://localhost/test-uuid');
-    expect(useCompileStore.getState().compileStatus).toBe('idle');
+    expect(useCompileStore.getState().compileStatus).toBe('done');
+    expect(useCompileStore.getState().compilePhase).toBe('done');
+    expect(useCompileStore.getState().compileOutcome).toBe('success');
     expect(useCompileStore.getState().lastCompiledAt).toBeDefined();
 
     // Deep diagnostics access via compiler interface

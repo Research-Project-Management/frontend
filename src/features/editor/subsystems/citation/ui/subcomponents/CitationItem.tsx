@@ -33,7 +33,7 @@ export const CitationItem = memo(function CitationItem({
           onSelect(item.key);
         }
       }}
-      className="group relative flex flex-col gap-1 p-2.5 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border text-left select-none border border-transparent hover:border-border/60"
+      className="group relative flex flex-col gap-1 p-2.5 rounded-md hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border text-left select-none border border-transparent hover:border-border/60"
     >
       {/* 1. Header line: Citation Key + Type badge + Year */}
       <div className="flex items-center justify-between gap-1.5 min-w-0 pr-16 sm:pr-0">

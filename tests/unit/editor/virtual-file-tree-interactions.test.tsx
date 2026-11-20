@@ -118,12 +118,14 @@ describe('Virtual File Tree Interactions (Auto-Reveal, Filter, Inline Subfolder 
       this.dispatchEvent(new Event('scroll'));
     };
 
-    useSettingsStore.setState({ mainFile: 'main.tex', mainBibFile: 'references.bib' });
+    useSettingsStore.setState({ mainBibFile: 'references.bib' });
     useWorkspaceStore.getState().resetLayout();
     usePageStore.setState({
       projectId: 'proj-123',
       spaceId: 'proj-123',
       rootPageId: 'doc-1',
+      rootDocId: 'doc-1',
+      mainFilePath: 'main.tex',
       parentPageId: 'doc-1',
       activePageId: 'doc-1',
       currentPage: {

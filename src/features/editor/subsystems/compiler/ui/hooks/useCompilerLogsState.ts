@@ -78,30 +78,43 @@ export function useCompilerLogsState({
   const [remoteParsedLog, setRemoteParsedLog] = useState<ParsedLog | null>(null);
 
   useEffect(() => {
+    const trimmedLog = log?.trim() ?? '';
+    const isProgressStatusOnly =
+      trimmedLog.length > 0 &&
+      trimmedLog
+        .split('\n')
+        .every((line) => !line.trim() || /^\[CLSI[^\]]*\]/.test(line.trim()));
+
     if (
       externalParsedLog ||
       compileReport ||
       (storeDiagnostics && storeDiagnostics.length > 0) ||
-      !log ||
-      !log.trim()
+      compileStatus === 'compiling' ||
+      compileStatus === 'flushing' ||
+      compileStatus === 'syncing' ||
+      !trimmedLog ||
+      isProgressStatusOnly
     ) {
       setRemoteParsedLog(null);
       return;
     }
     let active = true;
-    pagesService.diagnostics
-      .parseLog(log)
-      .then((report) => {
-        if (!active || !report?.items) return;
-        const converted = diagnosticsToParsedLog(report.items);
-        cacheBackendParsedLog(log, converted);
-        setRemoteParsedLog(converted);
-      })
-      .catch(() => {});
+    const timer = setTimeout(() => {
+      pagesService.diagnostics
+        .parseLog(log!)
+        .then((report) => {
+          if (!active || !report?.items) return;
+          const converted = diagnosticsToParsedLog(report.items);
+          cacheBackendParsedLog(log!, converted);
+          setRemoteParsedLog(converted);
+        })
+        .catch(() => {});
+    }, 250);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [externalParsedLog, compileReport, storeDiagnostics, log]);
+  }, [externalParsedLog, compileReport, storeDiagnostics, compileStatus, log]);
 
   const parsed = useMemo(() => {
     if (externalParsedLog) return externalParsedLog;
@@ -281,6 +294,10 @@ export function useCompilerLogsState({
   const [fixState, setFixState] = useState<
     Record<string, { loading: boolean; result?: AiErrorFixResult; proposed?: boolean; applied?: boolean }>
   >({});
+  const fixStateRef = useRef(fixState);
+  useEffect(() => {
+    fixStateRef.current = fixState;
+  }, [fixState]);
 
   useEffect(() => {
     return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
@@ -310,7 +327,8 @@ export function useCompilerLogsState({
   const handleSuggestFix = useCallback(
     async (entry: LogEntry, index: number) => {
       const key = getEntryKey(entry, index);
-      if (fixState[key]?.result && !fixState[key].loading) {
+      const currentFixState = fixStateRef.current[key];
+      if (currentFixState?.result && !currentFixState.loading) {
         setFixState((prev) => {
           const next = { ...prev };
           delete next[key];
@@ -380,7 +398,7 @@ export function useCompilerLogsState({
         }));
       }
     },
-    [engine, fixState, getEntryKey],
+    [engine, getEntryKey],
   );
 
   const handleApplyFix = useCallback(
@@ -404,6 +422,10 @@ export function useCompilerLogsState({
   const [explainState, setExplainState] = useState<
     Record<string, { open: boolean; loading: boolean; explanation?: ErrorExplanationDto | null }>
   >({});
+  const explainStateRef = useRef(explainState);
+  useEffect(() => {
+    explainStateRef.current = explainState;
+  }, [explainState]);
 
   const getExplainKey = useCallback(
     (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) =>
@@ -414,7 +436,7 @@ export function useCompilerLogsState({
   const handleToggleExplain = useCallback(
     async (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) => {
       const explainKey = getExplainKey(type, entry, index);
-      const current = explainState[explainKey];
+      const current = explainStateRef.current[explainKey];
       if (current?.open) {
         setExplainState((prev) => ({
           ...prev,
@@ -425,7 +447,7 @@ export function useCompilerLogsState({
 
       if (type === 'error') {
         const aiKey = getEntryKey(entry, index);
-        if (fixState[aiKey]?.result) {
+        if (fixStateRef.current[aiKey]?.result) {
           void handleSuggestFix(entry, index);
         }
       }
@@ -461,7 +483,28 @@ export function useCompilerLogsState({
         }));
       }
     },
-    [explainState, fixState, getEntryKey, getExplainKey, handleSuggestFix],
+    [getEntryKey, getExplainKey, handleSuggestFix],
+  );
+
+  const handleSuggestFixRow = useCallback(
+    (entry: LogEntry, index = 0) => {
+      void handleSuggestFix(entry, index);
+    },
+    [handleSuggestFix],
+  );
+
+  const handleApplyFixRow = useCallback(
+    (entry: LogEntry, fix: AiErrorFixResult, index = 0) => {
+      handleApplyFix(entry, fix, index);
+    },
+    [handleApplyFix],
+  );
+
+  const handleToggleExplainRow = useCallback(
+    (entry: LogEntry, type: 'error' | 'warning' | 'badbox' = 'error', index = 0) => {
+      void handleToggleExplain(type, entry, index);
+    },
+    [handleToggleExplain],
   );
 
   const visibleRows = useMemo<CompilerLogVisibleRow[]>(() => {
@@ -569,7 +612,7 @@ export function useCompilerLogsState({
   const handleEntryClick = useCallback(
     (entry: LogEntry) => {
       if (entry.line) {
-        const targetFile = entry.file || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+        const targetFile = entry.file || usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
         if (onJumpToError) {
           onJumpToError(targetFile, entry.line);
           toast.info(`Jumped to ${targetFile} line ${entry.line}`);
@@ -662,6 +705,9 @@ export function useCompilerLogsState({
     handleApplyFix,
     handleApplyQuickFix,
     handleToggleExplain,
+    handleSuggestFixRow,
+    handleApplyFixRow,
+    handleToggleExplainRow,
     handleNextError,
     handlePrevError,
     handleClearCacheAndCompile,

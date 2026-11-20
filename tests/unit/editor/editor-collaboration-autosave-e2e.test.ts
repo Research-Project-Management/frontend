@@ -35,7 +35,7 @@ import {
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import { sessionCoordinator } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useConnectivityStore } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 

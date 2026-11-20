@@ -47,7 +47,6 @@ export interface DocumentSettingsState {
   stopOnValidationError: boolean;
   settingsPanelOpen: boolean;
   settingsActiveTab: SettingsTab;
-  mainFile: string;
   fontSize: number;
   wordWrap: boolean;
   lineNumbers: boolean;
@@ -107,7 +106,6 @@ export interface DocumentSettingsState {
   toggleHistory: () => void;
   setIsTemplateModalOpen: (open: boolean) => void;
   toggleTemplateModal: () => void;
-  setMainFile: (mainFile: string) => void;
   setFontSize: (fontSize: number) => void;
   setFontFamily: (fontFamily: string) => void;
   setLineHeight: (lineHeight: number) => void;
@@ -164,7 +162,6 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       useCache: true,
       settingsPanelOpen: false,
       settingsActiveTab: 'editor',
-      mainFile: 'main.tex',
       fontSize: 15,
       wordWrap: true,
       lineNumbers: true,
@@ -225,7 +222,6 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       toggleShortcuts: () => set((s) => ({ isShortcutsOpen: !s.isShortcutsOpen })),
       setIsTemplateModalOpen: (isTemplateModalOpen) => set({ isTemplateModalOpen }),
       toggleTemplateModal: () => set((s) => ({ isTemplateModalOpen: !s.isTemplateModalOpen })),
-      setMainFile: (mainFile) => set({ mainFile }),
       setFontSize: (fontSize) => set({ fontSize }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
       setLineHeight: (lineHeight) => set({ lineHeight }),
@@ -296,6 +292,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
           next.wordWrap = true;
         }
         if (version < 4) {
+          delete next.mainFile;
           delete next.notifyComments;
           delete next.notifyUpdates;
           if (next.settingsActiveTab === 'notifications') {

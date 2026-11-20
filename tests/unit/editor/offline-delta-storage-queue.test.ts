@@ -11,7 +11,7 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { sessionCoordinator } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useConnectivityStore } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 
 describe('Direction 3: Offline-First Persistence (Synced Doc Cache & Pending Outbox)', () => {
   beforeEach(() => {

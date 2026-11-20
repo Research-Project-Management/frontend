@@ -70,7 +70,6 @@ export interface BuildFileTreeParams {
   parentPageId?: string | null;
   mainFileId?: string | null;
   configuredMainFile?: string | null;
-  mainFile?: string | null;
   mainBibFile?: string | null;
 }
 
@@ -128,7 +127,6 @@ export function getRootFilePriority(
   mainFileId?: string | null,
   configuredMainFile?: string | null,
   parentPageId?: string | null,
-  mainFile = 'main.tex',
   mainBibFile = 'references.bib',
 ): number {
   const lower = item.displayLabel.toLowerCase();
@@ -139,9 +137,8 @@ export function getRootFilePriority(
     if (item.id === mainFileId || item.docId === mainFileId || item.nodeId === mainFileId) return 1;
   } else if (configuredMainFile) {
     if (matchesFileTarget(item, configuredMainFile)) return 1;
-  } else {
-    if (matchesFileTarget(item, mainFile)) return 1;
-    if ((parentPageId && item.id === parentPageId) || fullLower === 'main.tex') return 1;
+  } else if ((parentPageId && item.id === parentPageId) || fullLower === 'main.tex') {
+    return 1;
   }
 
   if (lower === 'preamble.tex') return 2;
@@ -166,7 +163,6 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     parentPageId,
     mainFileId,
     configuredMainFile,
-    mainFile = 'main.tex',
     mainBibFile = 'references.bib',
   } = params;
 
@@ -397,9 +393,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   }
 
   // 3. Ensure root document fallback when parentPage is supplied without matching child doc
-  const resolvedRootTitle = normalizeVirtualPath(configuredMainFile || mainFile || 'main.tex') || 'main.tex';
+  const resolvedRootTitle = normalizeVirtualPath(configuredMainFile || 'main.tex') || 'main.tex';
   const resolvedRootTitleLower = resolvedRootTitle.toLowerCase();
-  const storeMainFileLower = mainFile ? normalizeVirtualPath(mainFile).toLowerCase() : null;
 
   const hasRootDocument = allFileNodes.some((rf) => {
     const rfFullLower = normalizeVirtualPath(rf.title || rf.displayLabel).toLowerCase();
@@ -408,7 +403,6 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
       rf.id === mainFileId ||
       Boolean(rf.isRootDoc) ||
       rfFullLower === resolvedRootTitleLower ||
-      (storeMainFileLower !== null && rfFullLower === storeMainFileLower) ||
       rfFullLower === 'main.tex'
     );
   });
@@ -438,7 +432,6 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     allFileNodes.find((n) => Boolean(n.isRootDoc)) ||
     (mainFileId ? allFileNodes.find((n) => n.id === mainFileId || n.nodeId === mainFileId) : undefined) ||
     (configuredMainFile ? allFileNodes.find((n) => matchesFileTarget(n, configuredMainFile)) : undefined) ||
-    (mainFile ? allFileNodes.find((n) => matchesFileTarget(n, mainFile)) : undefined) ||
     (parentPage?.id ? allFileNodes.find((n) => n.id === parentPage.id) : undefined) ||
     allFileNodes.find((n) => matchesFileTarget(n, 'main.tex'));
 
@@ -450,8 +443,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
 
   // 5. Sort root files and folder hierarchy naturally
   rootFiles.sort((a, b) => {
-    const prioA = getRootFilePriority(a, mainFileId, configuredMainFile, parentPageId, mainFile || 'main.tex', mainBibFile || 'references.bib');
-    const prioB = getRootFilePriority(b, mainFileId, configuredMainFile, parentPageId, mainFile || 'main.tex', mainBibFile || 'references.bib');
+    const prioA = getRootFilePriority(a, mainFileId, configuredMainFile, parentPageId, mainBibFile || 'references.bib');
+    const prioB = getRootFilePriority(b, mainFileId, configuredMainFile, parentPageId, mainBibFile || 'references.bib');
     if (prioA !== prioB) return prioA - prioB;
     return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
   });

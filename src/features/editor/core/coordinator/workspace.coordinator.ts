@@ -13,7 +13,6 @@ import {
   isUnderVirtualFolder,
   parseVirtualFolderId,
 } from '@/features/editor/domain/document/document-naming';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import type {
   WorkspaceCoordinatorPorts,
@@ -160,10 +159,6 @@ export class WorkspaceCoordinator {
       });
     });
 
-    editorCommandBus.subscribe('diagnostics:clear', () => {
-      diagnosticsCoordinator.clearDiagnostics();
-    });
-
     editorCommandBus.subscribe('filetree:updated', (cmd) => {
       this.reconcileRemoteFileTreeEvent(
         cmd.payload && typeof cmd.payload === 'object'
@@ -184,7 +179,7 @@ export class WorkspaceCoordinator {
       findProjectItem: (id, scope) => this.findProjectItem(id, scope),
       evictDeletedFileResources: (id, pid) => this.evictDeletedFileResources(id, pid),
       cascadePathChange: (pid, id, oldP, newP) => this.cascadePathChange(pid, id, oldP, newP),
-      setMainFileInStore: (p) => this.storePort.setMainFile(p),
+      setMainFileInStore: (p, rootDocId) => this.storePort.setMainFile(p, rootDocId),
     });
   }
 
@@ -544,7 +539,36 @@ export class WorkspaceCoordinator {
           matchedProjectFile?.name ||
           fileId,
       );
-      this.storePort.setMainFile(resolvedFileName || fileId);
+      const resolvedDocId = matchedProjectFile?.docId || matchedProjectFile?.id || fileId;
+      this.storePort.setMainFile(resolvedFileName || fileId, resolvedDocId);
+
+      const isMatchingRootItem = (pf: {
+        id: string;
+        nodeId?: string;
+        docId?: string | null;
+      }) =>
+        pf.id === fileId ||
+        pf.nodeId === fileId ||
+        pf.docId === fileId ||
+        pf.id === resolvedDocId ||
+        pf.docId === resolvedDocId;
+
+      if (this.projectFiles.length > 0) {
+        this.projectFiles = this.projectFiles.map((pf) => ({
+          ...pf,
+          isRootDoc: isMatchingRootItem(pf),
+        }));
+      }
+      const scopedFiles = this.projectFilesByScope.get(effectiveProjectId);
+      if (scopedFiles && scopedFiles.length > 0) {
+        this.projectFilesByScope.set(
+          effectiveProjectId,
+          scopedFiles.map((pf) => ({
+            ...pf,
+            isRootDoc: isMatchingRootItem(pf),
+          })),
+        );
+      }
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
@@ -645,22 +669,21 @@ export class WorkspaceCoordinator {
     }
   }
 
-  public resetAllState(): void {
+  public resetAllState(options: { skipFlush?: boolean; scopeId?: string } = {}): void {
     this.projectFiles = [];
     this.projectFilesByScope.clear();
     this.lastIndexedProjectKey = '';
     this.lastIndexedFingerprint = '';
     sessionCoordinator.resetSession();
-    clearYjsProviderPool({ skipFlush: true });
+    clearYjsProviderPool({ skipFlush: options.skipFlush ?? true });
     lruDocumentCache.discardAll();
     if (typeof usePageStore?.getState === 'function') {
       usePageStore.getState().resetPageState();
     }
-    void import('@/features/editor/subsystems/review/coordinator/review.coordinator')
-      .then(({ reviewCoordinator }) => {
-        reviewCoordinator?.reset?.();
-      })
-      .catch(() => {});
+    editorCommandBus.dispatch({
+      type: 'workspace:reset',
+      ...(options.scopeId ? { scopeId: options.scopeId } : {}),
+    });
   }
 }
 

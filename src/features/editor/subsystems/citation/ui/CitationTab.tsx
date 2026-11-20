@@ -7,10 +7,11 @@
  * Location: `features/editor/subsystems/citation/ui/CitationTab.tsx`
  */
 
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Search as SearchIcon, Plus, X } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
+import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useCitationTabState } from './hooks/useCitationTabState';
@@ -50,6 +51,23 @@ export default function CitationTab({ onClose }: CitationTabProps) {
     refreshContent,
   } = useCitationTabState();
 
+  const [isSearchOpen, setIsSearchOpen] = useState(Boolean(searchQuery));
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const showSearchInput = isSearchOpen || Boolean(searchQuery);
+
+  const handleToggleSearch = useCallback(() => {
+    if (showSearchInput) {
+      if (searchQuery) setSearchQuery('');
+      setIsSearchOpen(false);
+    } else {
+      setIsSearchOpen(true);
+      requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+      });
+    }
+  }, [showSearchInput, searchQuery, setSearchQuery]);
+
   return (
     <div className="h-full flex flex-col bg-background text-foreground select-none">
       {/* ── Header Toolbar (h-9) ── */}
@@ -58,6 +76,26 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         onClose={onClose}
         closeAriaLabel="Close citations panel"
       >
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleToggleSearch}
+              className={cn(
+                'size-7 flex items-center justify-center rounded-md transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+                showSearchInput ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted',
+              )}
+              aria-label={showSearchInput ? 'Hide citation search' : 'Search citations'}
+              aria-pressed={showSearchInput}
+            >
+              <SearchIcon className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-11">
+            {showSearchInput ? 'Hide search' : 'Search citations'}
+          </TooltipContent>
+        </Tooltip>
+
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <button
@@ -75,32 +113,45 @@ export default function CitationTab({ onClose }: CitationTabProps) {
         </Tooltip>
       </SidebarPanelHeader>
 
-      {/* ── Search Bar ── */}
-      <div className="px-2 pt-1 pb-1 shrink-0 bg-background">
-        <div className="relative">
-          <SearchIcon
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none shrink-0"
-            strokeWidth={1.5}
-          />
-          <Input
-            type="text"
-            placeholder="Search citations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border focus-visible:border-primary w-full transition-colors"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-foreground hover:opacity-80 transition-opacity cursor-pointer"
-              aria-label="Clear search"
-            >
-              <X className="size-3 text-foreground" strokeWidth={1.5} />
-            </button>
-          )}
+      {/* ── Search Bar (Collapsible, no border divider) ── */}
+      {showSearchInput && (
+        <div className="px-2 pb-1.5 pt-0.5 shrink-0 bg-background animate-in fade-in duration-100">
+          <div className="relative">
+            <SearchIcon
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+              strokeWidth={1.5}
+            />
+            <Input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search citations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setSearchQuery('');
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="h-7 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border focus-visible:border-primary w-full transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-opacity cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="size-3 text-foreground" strokeWidth={1.5} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Content List ── */}
       <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-4 space-y-1 bg-background sidebar-scrollbar">

@@ -31,15 +31,9 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import type { FileTreeFolderNode } from '@/features/editor/subsystems/explorer/model/document-tree';
-import { useFolderDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics/ui/hooks/useDiagnosticsSummary';
 
 export interface FileTreeFolderRowProps {
   node: FileTreeFolderNode;
@@ -81,7 +75,6 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
   children,
 }: FileTreeFolderRowProps) {
   const folderKey = node.fullPath || node.path || node.name;
-  const folderDiag = useFolderDiagnosticsSummary(folderKey);
   const isPersistedFolder = !node.id.startsWith('folder:');
 
   if (isRenaming && onRenameChange && onCommitRename && onCancelRename) {
@@ -190,40 +183,6 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
       <span className="flex-1 min-w-0 truncate text-12 font-medium tracking-tight text-foreground">
         {node.name}
       </span>
-
-      {/* Aggregated Folder Diagnostics Badge (Overleaf & VS Code Parity) */}
-      {!isExpanded && folderDiag.errorCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="folder-error-badge"
-              data-count={folderDiag.errorCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-destructive text-destructive-foreground cursor-default select-none shadow-none"
-            >
-              {folderDiag.errorCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {folderDiag.errorCount} error{folderDiag.errorCount > 1 ? 's' : ''} in {node.name}
-            {folderDiag.warningCount > 0 ? `, ${folderDiag.warningCount} warning${folderDiag.warningCount > 1 ? 's' : ''}` : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : !isExpanded && folderDiag.warningCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="folder-warning-badge"
-              data-count={folderDiag.warningCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-warning/20 text-warning border border-warning/30 cursor-default select-none shadow-none"
-            >
-              {folderDiag.warningCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {folderDiag.warningCount} warning{folderDiag.warningCount > 1 ? 's' : ''} in {node.name}
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
 
       <RowActions>
         <DropdownMenuItem

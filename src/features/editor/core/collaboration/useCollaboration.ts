@@ -27,7 +27,7 @@ import {
   type ConnectionStatus,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { getCachedUser } from '@/features/auth/services/auth.service';
-import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
+import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 
 export type { CollaboratorPresenceInfo };
 

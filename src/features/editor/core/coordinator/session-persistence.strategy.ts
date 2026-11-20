@@ -16,7 +16,6 @@ import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
 import { editorCommandBus } from '../bus/command-bus';
@@ -174,7 +173,7 @@ export async function finalizeSuccessfulSave(
   if (!model) {
     const edit = await unsyncedEditsStore.get(fileId).catch(() => null);
     if (!edit || edit.content === sentContent) {
-      useCompileStore.getState().clearDirty(fileId);
+      lruDocumentCache.markClean(fileId);
       clearWorkspaceTabDirty(fileId);
       host.clearUnsyncedEdit(fileId);
       return true;
@@ -182,7 +181,7 @@ export async function finalizeSuccessfulSave(
     return false;
   }
   if (lruDocumentCache.markCleanIfUnchanged(fileId, sentContent, sentVersion)) {
-    useCompileStore.getState().clearDirty(fileId);
+    lruDocumentCache.markClean(fileId);
     clearWorkspaceTabDirty(fileId, model.projectId);
     host.clearUnsyncedEdit(fileId);
     const effectiveProjectId = host.resolveEffectiveProjectId(model.projectId);
@@ -305,7 +304,7 @@ export function flushViaRealtimeYjsStrategy(
     host.saveUnsyncedEdit(fileId, model.content, effectiveProjectId);
   }
   lruDocumentCache.markSaved(fileId);
-  useCompileStore.getState().clearDirty(fileId);
+  lruDocumentCache.markClean(fileId);
   clearWorkspaceTabDirty(fileId, effectiveProjectId);
   const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
   host.transitionFsm(fileId, {
@@ -373,7 +372,6 @@ export function executeResolveConflictHelper(params: {
     }
     lruDocumentCache.updateContent(fileId, conflict.remoteContent, false);
     lruDocumentCache.markClean(fileId);
-    useCompileStore.getState().clearDirty(fileId);
     reindex(fileId, conflict.remoteContent);
     editorCommandBus.dispatch({
       type: 'editor:set-content',
@@ -387,7 +385,6 @@ export function executeResolveConflictHelper(params: {
       lruDocumentCache.getModel(fileId)?.projectId,
     );
     lruDocumentCache.updateContent(fileId, mergedContent, true);
-    useCompileStore.getState().markDirty(fileId, mergedContent);
     reindex(fileId, mergedContent);
     editorCommandBus.dispatch({
       type: 'editor:set-content',

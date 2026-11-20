@@ -31,7 +31,6 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
-import { useFileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics/ui/hooks/useDiagnosticsSummary';
 
 const ICON_TEX = { icon: FileCode2, color: 'text-foreground' };
 const ICON_BIB = { icon: BookText, color: 'text-foreground' };
@@ -118,10 +117,6 @@ export const TexFileRow = React.memo(function TexFileRow({
   const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
   const fullName = displayName(file.title);
   const label = displayLabel || fullName;
-  const lookupKey = file.title || displayLabel || file.id;
-  const fileSummary = useFileDiagnosticsSummary(lookupKey);
-  const idSummary = useFileDiagnosticsSummary(file.id);
-  const diagSummary = fileSummary.total > 0 ? fileSummary : idSummary;
 
   const handleCopyInput = useCallback(
     (e?: React.MouseEvent) => {
@@ -214,46 +209,6 @@ export const TexFileRow = React.memo(function TexFileRow({
           {label}
         </TooltipContent>
       </Tooltip>
-
-      {isMain && (
-        <span className="shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-10 font-medium text-muted-foreground border border-border/60">
-          Main
-        </span>
-      )}
-
-      {/* Diagnostics Badge (Errors / Warnings) */}
-      {diagSummary.errorCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-error-badge"
-              data-count={diagSummary.errorCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-destructive text-destructive-foreground cursor-default select-none shadow-none"
-            >
-              {diagSummary.errorCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.errorCount} error{diagSummary.errorCount > 1 ? 's' : ''}
-            {diagSummary.warningCount > 0 ? `, ${diagSummary.warningCount} warning${diagSummary.warningCount > 1 ? 's' : ''}` : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : diagSummary.warningCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-warning-badge"
-              data-count={diagSummary.warningCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-warning/20 text-warning border border-warning/30 cursor-default select-none shadow-none"
-            >
-              {diagSummary.warningCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.warningCount} warning{diagSummary.warningCount > 1 ? 's' : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
 
       {/* Row action dropdown trigger (⋮) */}
       <RowActions>

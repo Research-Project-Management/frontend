@@ -12,8 +12,32 @@
  *   stale or duplicate cursor tags representing their own inactive tabs on the same document.
  */
 
-import type { CollaboratorPresenceInfo } from '@/features/editor/core/store/collaboration.store';
 import { getAuthorColor } from './author-display';
+
+export interface CollaboratorPresenceInfo {
+  id: string;
+  userId?: string;
+  socketId?: string;
+  name: string;
+  email?: string;
+  avatar?: string | null;
+  color: string;
+  isOnline: boolean;
+  activeFile?: string;
+  activeFileId?: string;
+  cursor?: {
+    line: number;
+    column: number;
+    selection?: {
+      startLineNumber: number;
+      startColumn?: number;
+      endLineNumber: number;
+      endColumn?: number;
+    };
+  };
+  tabCount?: number;
+  lastActiveAt?: number;
+}
 
 export interface AggregatedCollaboratorUser extends CollaboratorPresenceInfo {
   /** Canonical userId representing this collaborator */

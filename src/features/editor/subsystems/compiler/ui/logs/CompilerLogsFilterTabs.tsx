@@ -40,14 +40,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'all'}
         onClick={() => onSelectTab('all')}
         className={cn(
-          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
           activeTab === 'all'
             ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>All logs</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
+        <span className="px-1.5 py-0.5 rounded-sm text-11 font-mono font-medium bg-muted text-muted-foreground">
           {totalLogsCount}
         </span>
       </button>
@@ -58,14 +58,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'errors'}
         onClick={() => onSelectTab('errors')}
         className={cn(
-          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
           activeTab === 'errors'
             ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Errors</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
+        <span className="px-1.5 py-0.5 rounded-sm text-11 font-mono font-medium bg-muted text-muted-foreground">
           {errorsCount}
         </span>
       </button>
@@ -76,14 +76,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'warnings'}
         onClick={() => onSelectTab('warnings')}
         className={cn(
-          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
           activeTab === 'warnings'
             ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Warnings</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
+        <span className="px-1.5 py-0.5 rounded-sm text-11 font-mono font-medium bg-muted text-muted-foreground">
           {warningsCount}
         </span>
       </button>
@@ -94,14 +94,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'info'}
         onClick={() => onSelectTab('info')}
         className={cn(
-          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
           activeTab === 'info'
             ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Info</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
+        <span className="px-1.5 py-0.5 rounded-sm text-11 font-mono font-medium bg-muted text-muted-foreground">
           {badBoxesCount}
         </span>
       </button>

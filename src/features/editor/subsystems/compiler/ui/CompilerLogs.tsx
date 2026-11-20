@@ -25,6 +25,7 @@ import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
 import { CompilerLogsFilterTabs } from './logs/CompilerLogsFilterTabs';
 import { CompilerLogsFooter } from './logs/CompilerLogsFooter';
 import { CompileOutcomeCard } from './logs/CompileOutcomeCard';
+import { RawLatexLogsViewer } from './logs/RawLatexLogsViewer';
 import {
   useCompilerLogsState,
   type CompilerLogVisibleRow,
@@ -63,19 +64,20 @@ export function CompilerLogs({
           key={rowKey}
           id={domId}
           type="error"
+          categoryIndex={categoryIndex}
           entry={entry}
-          onClick={() => s.handleEntryClick(entry)}
-          onSuggestFix={() => s.handleSuggestFix(entry, categoryIndex)}
+          onClick={s.handleEntryClick}
+          onSuggestFix={s.handleSuggestFixRow}
           isFixLoading={aiState?.loading}
           fixResult={aiState?.result}
           isFixProposed={aiState?.proposed}
           isFixApplied={aiState?.applied}
-          onApplyFix={(_entry, fix) => s.handleApplyFix(entry, fix, categoryIndex)}
+          onApplyFix={s.handleApplyFixRow}
           onApplyQuickFix={s.handleApplyQuickFix}
           isExplainOpen={Boolean(expState?.open)}
           fetchedExplanation={expState?.explanation ?? null}
           isExplaining={Boolean(expState?.loading)}
-          onToggleExplain={() => void s.handleToggleExplain('error', entry, categoryIndex)}
+          onToggleExplain={s.handleToggleExplainRow}
         />
       );
     }
@@ -85,13 +87,14 @@ export function CompilerLogs({
         key={rowKey}
         id={domId}
         type={type}
+        categoryIndex={categoryIndex}
         entry={entry}
-        onClick={() => s.handleEntryClick(entry)}
+        onClick={s.handleEntryClick}
         onApplyQuickFix={s.handleApplyQuickFix}
         isExplainOpen={Boolean(expState?.open)}
         fetchedExplanation={expState?.explanation ?? null}
         isExplaining={Boolean(expState?.loading)}
-        onToggleExplain={() => void s.handleToggleExplain(type, entry, categoryIndex)}
+        onToggleExplain={s.handleToggleExplainRow}
       />
     );
   };
@@ -279,11 +282,7 @@ export function CompilerLogs({
                 </button>
               )}
             </div>
-            {s.isRawLogsOpen && (
-              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-12 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
-                {log || 'No compilation logs recorded yet.'}
-              </pre>
-            )}
+            {s.isRawLogsOpen && <RawLatexLogsViewer log={log} />}
           </div>
         </div>
       )}

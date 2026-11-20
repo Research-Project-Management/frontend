@@ -103,8 +103,9 @@ export function useFilesTabController() {
   const activeFileId = usePageStore((s) => s.activeFilePage?.id);
   const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
-  const setMainFile = useSettingsStore((s) => s.setMainFile);
-  const configuredMainFile = useSettingsStore((s) => s.mainFile);
+  const setMainDocument = usePageStore((s) => s.setMainDocument);
+  const configuredMainFile = usePageStore((s) => s.mainFilePath);
+  const storeRootDocId = usePageStore((s) => s.rootDocId);
   const openTab = useWorkspaceStore((s) => s.openTab);
 
   const parentPageId: string | null = pageId || storeParentPageId || currentPageId || null;
@@ -148,9 +149,10 @@ export function useFilesTabController() {
   } | null>(null);
 
   const mainFileId =
-    parentPage?.mainFile && typeof parentPage.mainFile === 'object'
+    storeRootDocId ||
+    (parentPage?.mainFile && typeof parentPage.mainFile === 'object'
       ? parentPage.mainFile.id
-      : ((parentPage?.mainFile as string | null | undefined) ?? null);
+      : ((parentPage?.mainFile as string | null | undefined) ?? null));
 
   const {
     data: files,
@@ -496,17 +498,26 @@ export function useFilesTabController() {
       if (targetFile) {
         const cleanTitle = normalizeVirtualPath(targetFile.title) || 'main.tex';
         if (!VALID_MAIN_TEX_EXT_REGEX.test(cleanTitle)) return;
-        const prevMainFile = useSettingsStore.getState().mainFile;
-        setMainFile(cleanTitle);
+        const { mainFilePath: prevMainFilePath, rootDocId: prevRootDocId } =
+          usePageStore.getState();
+        const matchedStorage = projectFiles?.find(
+          (pf) => pf.id === fileId || pf.docId === fileId || pf.fileId === fileId,
+        );
+        const nextRootDocId =
+          matchedStorage?.docId || fileId || targetFile.id || prevRootDocId;
+        setMainDocument({ rootDocId: nextRootDocId, mainFilePath: cleanTitle });
         setMainFileMutation.mutate(
           { pageId: parentPageId, fileId, projectId: effectiveProjectId },
-          { onError: () => setMainFile(prevMainFile) },
+          {
+            onError: () =>
+              setMainDocument({ rootDocId: prevRootDocId, mainFilePath: prevMainFilePath }),
+          },
         );
         return;
       }
       setMainFileMutation.mutate({ pageId: parentPageId, fileId, projectId: effectiveProjectId });
     },
-    [parentPageId, files, projectFiles, parentPage, mainFileId, setMainFile, projectId, setMainFileMutation],
+    [parentPageId, files, projectFiles, parentPage, mainFileId, setMainDocument, projectId, setMainFileMutation],
   );
 
   const effectiveActiveId = activeTabId || activeFileId || fileParam || pageId || null;

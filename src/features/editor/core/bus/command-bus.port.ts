@@ -141,6 +141,7 @@ export type EditorCommand =
   | { type: 'workspace:restore-file'; fileId: string; projectId?: string }
   | { type: 'workspace:set-main-file'; fileId: string; projectId?: string }
   | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
+  | { type: 'workspace:reset'; scopeId?: string }
   | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string; preview?: boolean }
   | { type: 'navigation:pin-tab'; fileId: string }
   | { type: 'navigation:close-tab'; fileId: string }
@@ -175,6 +176,8 @@ export type EditorCommand =
   | { type: 'citation:validate'; bibKey?: string }
   | { type: 'diagnostics:run-linter'; documentId?: string; content?: string }
   | { type: 'diagnostics:clear'; documentId?: string }
+  | { type: 'diagnostics:rename-path'; oldPath: string; newPath: string }
+  | { type: 'diagnostics:remove-path'; filePath: string }
   | { type: 'diagnostics:set-items'; items: EditorDiagnosticItem[] }
   | { type: 'compiler:compile-draft'; reason?: string };
 

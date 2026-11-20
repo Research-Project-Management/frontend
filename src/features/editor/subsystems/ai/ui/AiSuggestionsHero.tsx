@@ -21,9 +21,6 @@ export function AiSuggestionsHero({ onSelectSuggestion }: AiSuggestionsHeroProps
           <span className="text-12 font-medium text-muted-foreground">
             Suggestions
           </span>
-          <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
-            RAG Verified
-          </span>
         </div>
         <div className="space-y-0.5">
           {QUICK_ACTIONS.map((act) => (

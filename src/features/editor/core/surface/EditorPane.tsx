@@ -43,7 +43,7 @@ import {
   getEditorEngineForFile,
 } from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/core/collaboration/useCollaboration';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 

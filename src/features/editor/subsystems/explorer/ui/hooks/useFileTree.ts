@@ -18,6 +18,7 @@ import {
   type BuildFileTreeParams,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { rewritePathPrefix, normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
@@ -66,7 +67,7 @@ export function useFileTree({
   configuredMainFile,
   fileFilter = '',
 }: UseFileTreeParams) {
-  const mainFile = useSettingsStore((s) => s.mainFile);
+  const storeMainFilePath = usePageStore((s) => s.mainFilePath);
   const mainBibFile = useSettingsStore((s) => s.mainBibFile);
 
   const storageKey = useMemo(() => {
@@ -138,6 +139,8 @@ export function useFileTree({
     });
   }, [projectFiles]);
 
+  const effectiveConfiguredMainFile = configuredMainFile ?? storeMainFilePath;
+
   const treeItems = useMemo<FileTreeNode[]>(() => {
     return buildFileTree({
       projectFiles,
@@ -146,8 +149,7 @@ export function useFileTree({
       projectId,
       parentPageId,
       mainFileId,
-      configuredMainFile,
-      mainFile,
+      configuredMainFile: effectiveConfiguredMainFile,
       mainBibFile,
     });
   }, [
@@ -157,8 +159,7 @@ export function useFileTree({
     projectId,
     parentPageId,
     mainFileId,
-    configuredMainFile,
-    mainFile,
+    effectiveConfiguredMainFile,
     mainBibFile,
   ]);
 

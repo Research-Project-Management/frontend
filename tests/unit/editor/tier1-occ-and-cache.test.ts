@@ -11,11 +11,11 @@ import {
 import {
   SessionCoordinator,
   sessionCoordinator,
-  useCompileStore,
   useConnectivityStore,
   usePageStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { hydrateEditorBootstrap } from '@/features/editor/core/queries/document.queries';
 import { PageFileMapper } from '@/features/editor/sdk/pages/doc-mapper';
 import type { EditorBootstrapResponseDto } from '@/features/editor/sdk/pages/types';

@@ -202,4 +202,32 @@ Not a comment: \\% still here
       expect(ancestors.size).toBe(2);
     });
   });
+
+  describe('5. Stale Explicit Main File Protection (SSOT Guard)', () => {
+    it('ignores missing ghost explicitMainFile when real TeX nodes exist in graph', () => {
+      dag.setServerRootDoc('personal-notes.tex', 'doc-personal');
+      dag.updateFileNode(
+        'doc-personal',
+        'personal-notes.tex',
+        '\\documentclass{article}\n\\begin{document}\nHello notes\n\\end{document}',
+      );
+
+      const inferred = dag.inferRootDocument('doc-personal', 'flux.tex');
+      expect(inferred.rootPath).toBe('personal-notes.tex');
+      expect(inferred.rootFileId).toBe('doc-personal');
+    });
+
+    it('still honors unloaded explicitMainFile when it matches serverRootDocPath', () => {
+      dag.setServerRootDoc('paper.tex', 'doc-paper');
+      dag.updateFileNode('doc-ch1', 'sections/ch1.tex', '\\section{Chapter 1}\nBody.');
+
+      const inferred = dag.inferRootDocument('doc-ch1', 'paper.tex');
+      expect(inferred).toEqual({
+        rootPath: 'paper.tex',
+        rootFileId: 'doc-paper',
+        inferredBy: 'explicit',
+        hasCycleWarning: false,
+      });
+    });
+  });
 });

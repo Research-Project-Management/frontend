@@ -39,6 +39,7 @@ import {
   useConnectivityStore,
 } from '@/features/editor/core/store/connectivity.store';
 import { useCompileStore } from './compiler.store';
+import { isCompilerFsmRunning } from '@/features/editor/domain/document/compiler-fsm';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import type {
   CompileError,
@@ -152,7 +153,7 @@ export interface CompilerCoordinatorOptions {
 }
 
 export class CompilerCoordinator {
-  private isCompiling = false;
+  private activeRunId: number | null = null;
   private compileAbortController: AbortController | null = null;
   private pendingCompileOptions: CompileOptions | undefined = undefined;
   private synctexMap: SyncTeXMap | null = null;
@@ -169,19 +170,22 @@ export class CompilerCoordinator {
     this.initCommandSubscriptions();
   }
 
-  private scheduleNextPendingCompile(completedController: AbortController): void {
+  private finalizeRun(runId: number, completedController: AbortController): void {
     if (this.compileAbortController === completedController) {
       this.compileAbortController = null;
     }
-    this.isCompiling = false;
+    if (this.activeRunId === runId) {
+      this.activeRunId = null;
+    }
 
-    if (!useCompileStore.getState().pendingCompile) {
+    const compileStore = useCompileStore.getState();
+    if (!compileStore.compilerFsm.hasPendingRun) {
       return;
     }
 
     const nextOpts = this.pendingCompileOptions;
     this.pendingCompileOptions = undefined;
-    useCompileStore.getState().setPendingCompile(false);
+    compileStore.dispatchCompileEvent({ type: 'CONSUME_PENDING' });
 
     queueMicrotask(() => {
       void this.compile(nextOpts);
@@ -204,7 +208,7 @@ export class CompilerCoordinator {
       void this.compile({
         forceClean: cmd.forceClean ?? cmd.forceSync,
         draft: cmd.draft,
-        reason: 'shortcut',
+        reason: (cmd.reason as CompileOptions['reason']) ?? 'shortcut',
       });
     });
 
@@ -225,11 +229,8 @@ export class CompilerCoordinator {
       }
     });
 
-    editorCommandBus.subscribe('compiler:started', () => {
-      useCompileStore.getState().setCompileStatus('compiling');
-    });
-
     editorCommandBus.subscribe('compiler:progress', (cmd) => {
+      const compileStore = useCompileStore.getState();
       if (cmd.status) {
         const mappedStatus =
           cmd.status === 'failed'
@@ -240,16 +241,20 @@ export class CompilerCoordinator {
                 ? 'compiling'
                 : cmd.status;
         if (VALID_COMPILE_STATUSES.has(mappedStatus as CompileStatus)) {
-          useCompileStore.getState().setCompileStatus(mappedStatus as CompileStatus);
+          compileStore.dispatchCompileEvent({
+            type: 'REMOTE_PROGRESS',
+            status: mappedStatus as CompileStatus,
+          });
         }
       }
       if (cmd.logs && cmd.logs.length > 0) {
-        useCompileStore.getState().setCompileLog(cmd.logs.join('\n'));
+        const chunk = cmd.logs.join('\n');
+        if (cmd.status === 'compiling' || cmd.status === 'queued') {
+          compileStore.appendCompileLog(chunk);
+        } else if (!this.activeRunId && !compileStore.compileReport?.logText) {
+          compileStore.setCompileLog(chunk);
+        }
       }
-    });
-
-    editorCommandBus.subscribe('compiler:finished', (cmd) => {
-      useCompileStore.getState().setCompileStatus(cmd.success || cmd.aborted ? 'idle' : 'error');
     });
 
     multiTabBus.subscribe((msg) => {
@@ -260,10 +265,10 @@ export class CompilerCoordinator {
           pageStore.spaceId ||
           extractProjectId(pageStore.getActiveDocument());
         if (activeProjectId && activeProjectId === msg.projectId) {
-          if (!this.isCompiling && msg.status === 'success' && msg.pdfUrl) {
+          if (!this.getIsCompiling() && msg.status === 'success' && msg.pdfUrl) {
             const compileStore = useCompileStore.getState();
             compileStore.setPdfUrl(msg.pdfUrl);
-            compileStore.setCompileStatus('done');
+            compileStore.dispatchCompileEvent({ type: 'REMOTE_COMPLETED' });
             compileStore.setLastCompiledAt(new Date(msg.timestamp));
           }
         }
@@ -272,7 +277,10 @@ export class CompilerCoordinator {
   }
 
   public getIsCompiling(): boolean {
-    return this.isCompiling || useCompileStore.getState().compileStatus === 'compiling';
+    return (
+      this.activeRunId !== null ||
+      isCompilerFsmRunning(useCompileStore.getState().compilerFsm)
+    );
   }
 
   public getSynctexMap(): SyncTeXMap | null {
@@ -320,17 +328,20 @@ export class CompilerCoordinator {
       return false;
     }
 
+    const fallbackMainFile =
+      activeDoc?.path || activeDoc?.title || pageStore.mainFilePath || 'main.tex';
+
     const isOnline = useConnectivityStore.getState().checkIsOnline();
     if (!isOnline) {
       useConnectivityStore.getState().setOfflinePendingCompile(true);
       sessionCoordinator.flushPendingUnsyncedEdits();
-      compileStore.setCompilePhase('idle');
-      compileStore.setCompileOutcome('offline-queued');
-      compileStore.setCompileStatus('idle');
-      compileStore.setCompileLog(
-        '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
-        'Compilation has been queued and will start automatically when connection is restored.',
-      );
+      compileStore.dispatchCompileEvent({
+        type: 'BLOCKED_OFFLINE',
+        mainFile: fallbackMainFile,
+        logText:
+          '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
+          'Compilation has been queued and will start automatically when connection is restored.',
+      });
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       return false;
     }
@@ -346,16 +357,17 @@ export class CompilerCoordinator {
           (d) => d.source === 'LaTeX Linter' || d.source === 'linter',
         );
         if (hasHardSyntaxErrors(linterItems)) {
-          compileStore.setCompilePhase('idle');
-          compileStore.setCompileOutcome('code-check-blocked');
-          compileStore.setCompileStatus('idle');
+          compileStore.dispatchCompileEvent({
+            type: 'BLOCKED_CODE_CHECK',
+            mainFile: activeFilePathOrId,
+          });
           return false;
         }
       }
     }
 
-    if (this.isCompiling || compileStore.compileStatus === 'compiling') {
-      compileStore.setPendingCompile(true);
+    if (this.getIsCompiling()) {
+      compileStore.dispatchCompileEvent({ type: 'QUEUE_SUPERSEDE' });
       this.pendingCompileOptions = {
         ...this.pendingCompileOptions,
         ...options,
@@ -374,7 +386,12 @@ export class CompilerCoordinator {
       return false;
     }
 
-    this.isCompiling = true;
+    const startedFsm = compileStore.dispatchCompileEvent({ type: 'START_FLUSH' });
+    if (startedFsm.activeRunId === null) {
+      return false;
+    }
+    const runId = startedFsm.activeRunId;
+    this.activeRunId = runId;
     const currentController = new AbortController();
     this.compileAbortController = currentController;
     const effectiveActiveFileId = activeDoc?.id || rootPageId;
@@ -391,19 +408,26 @@ export class CompilerCoordinator {
 
     await FlushBarrier.execute(effectiveActiveFileId, currentVal);
 
-    if (currentController.signal.aborted) {
-      compileStore.setCompileStatus('idle');
-      editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
-      this.scheduleNextPendingCompile(currentController);
+    if (currentController.signal.aborted || this.activeRunId !== runId) {
+      const stillActiveInFsm = useCompileStore.getState().compilerFsm.activeRunId === runId;
+      compileStore.dispatchCompileEvent({
+        type: 'RUN_ABORTED',
+        runId,
+        mainFile: fallbackMainFile,
+      });
+      if (stillActiveInFsm) {
+        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+      }
+      this.finalizeRun(runId, currentController);
       return false;
     }
 
+    compileStore.dispatchCompileEvent({ type: 'FLUSH_COMPLETE', runId });
     editorCommandBus.dispatch({ type: 'compiler:started' });
-    compileStore.setCompileStatus('compiling');
 
     const preferredMainFile = this.options.getMainFile
       ? this.options.getMainFile()
-      : settingsStore.mainFile;
+      : (pageStore.mainFilePath ?? undefined);
 
     const { allFilePathsById, resolvedMainFile, rootFileId, hasCycleWarning } =
       updateDagNodesAndAliases({
@@ -452,6 +476,7 @@ export class CompilerCoordinator {
         useCache: options?.forceClean ? false : settingsStore.useCache,
         forceClean: options?.forceClean,
         stopOnFirstError: settingsStore.stopOnFirstError,
+        priority: isAutoCompileReason ? 'auto' : 'manual',
         dirtyFiles: buildCompileDirtyFilesPayload(
           snapshot.dirtyFileIds,
           allFilePathsById,
@@ -460,7 +485,12 @@ export class CompilerCoordinator {
         ),
         signal: currentController.signal,
         onPhaseChange: (phase: string) => {
-          compileStore.setCompileStatus(phase as CompileStatus);
+          if (this.activeRunId === runId && VALID_COMPILE_STATUSES.has(phase as CompileStatus)) {
+            compileStore.dispatchCompileEvent({
+              type: 'REMOTE_PROGRESS',
+              status: phase as CompileStatus,
+            });
+          }
           editorCommandBus.dispatch({ type: 'compiler:progress', status: phase });
         },
         onThumbnailGenerated: (base64: string) => {
@@ -468,6 +498,22 @@ export class CompilerCoordinator {
           options?.onThumbnailGenerated?.(dataUrl);
         },
       });
+
+      if (currentController.signal.aborted || this.activeRunId !== runId) {
+        const stillActiveInFsm = useCompileStore.getState().compilerFsm.activeRunId === runId;
+        compileStore.dispatchCompileEvent({
+          type: 'RUN_ABORTED',
+          runId,
+          mainFile: resolvedMainFile,
+          logText: (res.logs ?? res.rawLog ?? '') || null,
+          serverTerminated: res.outcome === 'terminated',
+        });
+        if (stillActiveInFsm) {
+          editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+        }
+        this.finalizeRun(runId, currentController);
+        return false;
+      }
 
       if (res.success) {
         compileStore.setPdfUrl(res.pdfUrl ?? null);
@@ -500,7 +546,11 @@ export class CompilerCoordinator {
           compiledAt,
           mainFile: resolvedMainFile,
         };
-        compileStore.applyCompileResult(report);
+        compileStore.dispatchCompileEvent({
+          type: 'RUN_SETTLED',
+          runId,
+          report,
+        });
 
         if (res.synctexPromise) {
           res.synctexPromise
@@ -545,7 +595,7 @@ export class CompilerCoordinator {
             timestamp: Date.now(),
           });
         }
-        this.scheduleNextPendingCompile(currentController);
+        this.finalizeRun(runId, currentController);
         return true;
       }
 
@@ -561,18 +611,44 @@ export class CompilerCoordinator {
         rawLog.toLowerCase().includes('signal is aborted');
 
       if (isAborted) {
-        compileStore.setCompilePhase('idle');
-        compileStore.setCompileStatus('idle');
-        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
-        this.scheduleNextPendingCompile(currentController);
+        const stillActiveInFsm = useCompileStore.getState().compilerFsm.activeRunId === runId;
+        compileStore.dispatchCompileEvent({
+          type: 'RUN_ABORTED',
+          runId,
+          mainFile: resolvedMainFile,
+          logText: rawLog || null,
+          serverTerminated: res.outcome === 'terminated',
+        });
+        if (stillActiveInFsm) {
+          editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+        }
+        this.finalizeRun(runId, currentController);
         return false;
+      }
+
+      if (res.pdfUrl) {
+        compileStore.setPdfUrl(res.pdfUrl);
+        this.synctexMap = res.synctexMap ?? null;
+        this.rawSynctex = res.rawSynctex ?? res.synctexData ?? null;
+        if (res.synctexPromise) {
+          res.synctexPromise
+            .then((map: SyncTeXMap | null) => {
+              if (map && !currentController.signal.aborted) {
+                this.synctexMap = map;
+                editorCommandBus.dispatch({ type: 'synctex:map-updated', map });
+              }
+            })
+            .catch(() => {});
+        }
       }
 
       const failOutcome: CompileOutcome =
         res.outcome ||
         (settingsStore.stopOnFirstError ? 'stopped-on-first-error' : 'failure');
       const isNonCodeOutcome =
-        failOutcome === 'validation-problems' || failOutcome === 'clsi-unavailable';
+        failOutcome === 'validation-problems' ||
+        failOutcome === 'clsi-unavailable' ||
+        failOutcome === 'rate-limited';
       const { diagnostics: effectiveFailureDiags, summary: failSummary } = isNonCodeOutcome
         ? {
             diagnostics: [] as CompilerDiagnostic[],
@@ -592,21 +668,28 @@ export class CompilerCoordinator {
             backendSummary: res.diagnosticsSummary,
           });
 
-      compileStore.applyCompileResult({
-        outcome: failOutcome,
-        errorMessage: res.error || 'LaTeX compilation failed.',
-        diagnostics: effectiveFailureDiags,
-        summary: failSummary,
-        validationIssues: res.validationIssues ?? [],
-        logText: rawLog || null,
-        logMeta: res.logMeta ?? null,
-        compiledAt: null,
-        mainFile: resolvedMainFile,
+      compileStore.dispatchCompileEvent({
+        type: 'RUN_SETTLED',
+        runId,
+        report: {
+          outcome: failOutcome,
+          errorMessage: res.error || 'LaTeX compilation failed.',
+          diagnostics: effectiveFailureDiags,
+          summary: failSummary,
+          validationIssues: res.validationIssues ?? [],
+          logText: rawLog || null,
+          logMeta: res.logMeta ?? null,
+          compiledAt: null,
+          mainFile: resolvedMainFile,
+        },
       });
 
       if (failOutcome === 'validation-problems') {
         diagnosticsCoordinator.ingestCompilerErrors([], resolvedMainFile);
-      } else if (failOutcome !== 'clsi-unavailable') {
+      } else if (
+        failOutcome !== 'clsi-unavailable' &&
+        failOutcome !== 'rate-limited'
+      ) {
         const formattedErrors = normalizeEditorDiagnostics(effectiveFailureDiags, true);
         diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
       }
@@ -616,53 +699,78 @@ export class CompilerCoordinator {
       }
 
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
-      this.scheduleNextPendingCompile(currentController);
+      this.finalizeRun(runId, currentController);
       return false;
     } catch (err) {
+      if (currentController.signal.aborted || this.activeRunId !== runId) {
+        const stillActiveInFsm = useCompileStore.getState().compilerFsm.activeRunId === runId;
+        compileStore.dispatchCompileEvent({
+          type: 'RUN_ABORTED',
+          runId,
+          mainFile: resolvedMainFile,
+        });
+        if (stillActiveInFsm) {
+          editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+        }
+        this.finalizeRun(runId, currentController);
+        return false;
+      }
+
       if (isNetworkError(err)) {
         useConnectivityStore.getState().recordOffline();
         useConnectivityStore.getState().setOfflinePendingCompile(true);
         sessionCoordinator.flushPendingUnsyncedEdits();
         this.pendingCompileOptions = undefined;
-        compileStore.setPendingCompile(false);
-        compileStore.setCompilePhase('idle');
-        compileStore.setCompileOutcome('offline-queued');
-        compileStore.setCompileStatus('idle');
-        compileStore.setCompileLog(
-          '[Offline Mode] Network connection lost during compilation request.\n' +
-          'Your draft is saved locally and will automatically recompile when reconnected.',
-        );
+        compileStore.dispatchCompileEvent({
+          type: 'BLOCKED_OFFLINE',
+          runId,
+          mainFile: resolvedMainFile,
+          logText:
+            '[Offline Mode] Network connection lost during compilation request.\n' +
+            'Your draft is saved locally and will automatically recompile when reconnected.',
+        });
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+        this.finalizeRun(runId, currentController);
       } else {
         const msg = err instanceof Error ? err.message : String(err);
-        compileStore.applyCompileResult({
-          outcome: 'clsi-unavailable',
-          errorMessage: msg || 'Compilation service unavailable',
-          diagnostics: [],
-          summary: {
-            totalErrors: 0,
-            totalWarnings: 0,
-            totalBadboxes: 0,
-            suppressedCascadeCount: 0,
-            truncated: false,
+        compileStore.dispatchCompileEvent({
+          type: 'RUN_SETTLED',
+          runId,
+          report: {
+            outcome: 'clsi-unavailable',
+            errorMessage: msg || 'Compilation service unavailable',
+            diagnostics: [],
+            summary: {
+              totalErrors: 0,
+              totalWarnings: 0,
+              totalBadboxes: 0,
+              suppressedCascadeCount: 0,
+              truncated: false,
+            },
+            validationIssues: [],
+            logText: msg || null,
+            logMeta: null,
+            compiledAt: null,
+            mainFile: resolvedMainFile,
           },
-          validationIssues: [],
-          logText: msg || null,
-          logMeta: null,
-          compiledAt: null,
-          mainFile: resolvedMainFile,
         });
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
-        this.scheduleNextPendingCompile(currentController);
+        this.finalizeRun(runId, currentController);
       }
       return false;
     } finally {
       if (this.compileAbortController === currentController) {
         this.compileAbortController = null;
-        this.isCompiling = false;
-        if (useCompileStore.getState().compileStatus === 'compiling') {
-          useCompileStore.getState().setCompileStatus('idle');
-        }
+      }
+      if (this.activeRunId === runId) {
+        this.activeRunId = null;
+      }
+      if (useCompileStore.getState().compilerFsm.activeRunId === runId) {
+        useCompileStore.getState().dispatchCompileEvent({
+          type: 'RUN_ABORTED',
+          runId,
+          mainFile: resolvedMainFile,
+        });
       }
     }
   }
@@ -676,15 +784,21 @@ export class CompilerCoordinator {
       '';
     if (!targetId) return { synced: [] };
 
-    useCompileStore.getState().setCompileStatus('syncing');
+    const compileStore = useCompileStore.getState();
+    compileStore.dispatchCompileEvent({ type: 'SYNC_START' });
     try {
       const res = this.compilerEngine.forceSync
         ? await this.compilerEngine.forceSync(targetId)
         : await CompilePipeline.forceSync(targetId);
+      compileStore.dispatchCompileEvent({ type: 'SYNC_END' });
       await this.compile();
       return res;
     } catch (err) {
-      useCompileStore.getState().setCompileStatus('error');
+      const msg = err instanceof Error ? err.message : String(err);
+      compileStore.dispatchCompileEvent({
+        type: 'SYNC_FAILED',
+        errorMessage: msg || 'Sync failed before compilation.',
+      });
       throw err;
     }
   }
@@ -702,15 +816,32 @@ export class CompilerCoordinator {
       pageStore.currentPage?.id ||
       pageStore.spaceId ||
       undefined;
+    const activeTitle = pageStore.getActiveDocumentTitle();
+    const mainFile =
+      activeDoc?.path || activeDoc?.title || activeTitle || 'main.tex';
+
+    const wasRunning = this.getIsCompiling();
     this.pendingCompileOptions = undefined;
-    compileStore.setPendingCompile(false);
     this.compileAbortController?.abort();
     this.compileAbortController = null;
+    this.activeRunId = null;
+
     if (targetProjectId) {
       this.compilerEngine.cancelInFlightCompile(targetProjectId);
     }
-    this.isCompiling = false;
-    compileStore.setCompileStatus('idle');
+
+    compileStore.dispatchCompileEvent({
+      type: 'USER_STOP',
+      mainFile,
+    });
+
+    if (wasRunning) {
+      editorCommandBus.dispatch({
+        type: 'compiler:finished',
+        success: false,
+        aborted: true,
+      });
+    }
   }
 
   public resolveForwardDetail(

@@ -78,7 +78,7 @@ describe('Activity Bar & Left Sidebar Overleaf 1:1 Parity', () => {
     expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
   });
 
-  it('renders TexFileRow with Main document badge when isMain is true', () => {
+  it('marks TexFileRow as main document via aria-label without rendering a Main badge', () => {
     renderWithProviders(
       <TexFileRow
         file={{ id: 'main-doc', title: 'main.tex' }}
@@ -98,7 +98,8 @@ describe('Activity Bar & Left Sidebar Overleaf 1:1 Parity', () => {
       />
     );
 
-    expect(screen.getByText(/^main$/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /file main\.tex, main document/i })).toBeInTheDocument();
+    expect(screen.queryByText(/^main$/i)).toBeNull();
   });
 
   it('triggers scrollIntoView when TexFileRow becomes active', () => {

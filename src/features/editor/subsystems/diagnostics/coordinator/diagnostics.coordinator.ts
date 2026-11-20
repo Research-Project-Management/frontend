@@ -16,6 +16,7 @@ import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-gr
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { useSettingsStore, type DocumentSettingsState } from '@/features/editor/core/store/settings.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   type IndexedDiagnosticItem,
   type FileDiagnosticsSummary,
@@ -623,3 +624,13 @@ const syncFilterOptions = (state: DocumentSettingsState) => {
 
 syncFilterOptions(useSettingsStore.getState());
 useSettingsStore.subscribe(syncFilterOptions);
+
+editorCommandBus.subscribe('diagnostics:clear', () => {
+  diagnosticsCoordinator.clearDiagnostics();
+});
+editorCommandBus.subscribe('diagnostics:rename-path', (cmd) => {
+  diagnosticsCoordinator.renamePath(cmd.oldPath, cmd.newPath);
+});
+editorCommandBus.subscribe('diagnostics:remove-path', (cmd) => {
+  diagnosticsCoordinator.removePath(cmd.filePath);
+});

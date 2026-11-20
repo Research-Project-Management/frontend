@@ -46,6 +46,15 @@ export type {
   CompileValidationIssue,
 } from '@/features/editor/domain/types/compiler.types';
 export {
+  createInitialCompilerFsmContext,
+  compilerFsmTransition,
+  deriveCompileStatus,
+  isCompilerFsmRunning,
+  type CompilerFsmContext,
+  type CompilerFsmEvent,
+  type CompilerFsmPhase,
+} from '@/features/editor/domain/document/compiler-fsm';
+export {
   useViewerStore,
   type DocumentViewerState,
   type PdfFitMode,
@@ -191,7 +200,7 @@ export const compilerSubsystem: CompilerSubsystemPort = {
     const status: 'success' | 'error' | 'aborted' =
       success
         ? 'success'
-        : compileStatus === 'idle'
+        : compileStatus === 'idle' || compileStatus === 'aborted'
           ? 'aborted'
           : 'error';
 

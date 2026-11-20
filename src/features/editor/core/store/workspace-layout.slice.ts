@@ -7,7 +7,7 @@
 import type { StateCreator } from 'zustand';
 import { saveEditorWindowSplitState } from './editor-tabs-storage.adapter';
 
-export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'chat' | 'ai';
+export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'ai';
 export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
 export type ActiveEditorPane = 'primary' | 'secondary';
 

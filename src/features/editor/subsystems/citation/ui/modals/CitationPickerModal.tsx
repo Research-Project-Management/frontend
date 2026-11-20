@@ -70,7 +70,7 @@ export default function CitationPickerModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[94vw] sm:max-w-5xl md:max-w-6xl h-[660px] max-h-[88vh] min-h-0 sm:min-h-[520px] p-0 gap-0 overflow-hidden rounded-xl border border-border shadow-raised-500 bg-background flex flex-col"
+        className="w-[94vw] sm:max-w-5xl md:max-w-6xl h-[660px] max-h-[88vh] min-h-0 sm:min-h-[520px] p-0 gap-0 overflow-hidden rounded-md border border-border shadow-raised-500 bg-background flex flex-col"
       >
         <div className="h-12 px-4 sm:px-6 flex items-center justify-between shrink-0 bg-background border-b border-border/40 md:border-b-0">
           <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export default function CitationPickerModal({
               Insert Citation
             </DialogTitle>
 
-            <div className="flex md:hidden items-center bg-muted/60 p-0.5 rounded-lg border border-border/60 select-none">
+            <div className="flex md:hidden items-center bg-muted/60 p-0.5 rounded-md border border-border/60 select-none">
               <button
                 type="button"
                 onClick={() => s.setActiveView('tree')}

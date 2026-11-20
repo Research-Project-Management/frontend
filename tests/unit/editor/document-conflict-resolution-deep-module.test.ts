@@ -3,10 +3,10 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import {
   sessionCoordinator,
-  useCompileStore,
   editorCommandBus,
   type DocumentConflict,
 } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
 let seq = 0;

@@ -44,6 +44,7 @@ import {
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 import {
+  usePageStore,
   useWorkspaceStore,
   useSettingsStore,
   type EditorTab,
@@ -180,7 +181,7 @@ const TabItem = React.memo(function TabItem({
           onKeyDown={handleKeyDown}
           onMouseEnter={handleMouseEnter}
           className={cn(
-            'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
+            'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring',
             'min-w-0 max-w-[220px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
             isDragging && 'opacity-60 z-30 bg-muted/60',
             isActive
@@ -234,7 +235,7 @@ const TabItem = React.memo(function TabItem({
               }}
               onAuxClick={(e) => e.preventDefault()}
               className={cn(
-                "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer hover:bg-muted text-foreground",
+                "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer hover:bg-muted text-foreground",
                 "size-4 p-0.5 after:absolute after:-inset-2 after:content-['']",
                 isActive
                   ? 'opacity-70 hover:opacity-100'
@@ -303,6 +304,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   const tabListRef = useRef<HTMLDivElement>(null);
 
   const rawTabs = useWorkspaceStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
+  const configuredMain = usePageStore((s) => s.mainFilePath) || 'main.tex';
 
   // Deduplicate strictly by canonical id, prune ghost tabs, and ensure root tab is normalized
   const tabs = useMemo(() => {
@@ -311,7 +313,6 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
     const availableIds = availableFiles ? new Set(availableFiles.map((f) => f.id)) : null;
 
-    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
     const seen = new Set<string>();
     const result: EditorTab[] = [];
     for (const t of rawTabs) {
@@ -338,7 +339,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
       });
     }
     return result;
-  }, [rawTabs, rootPageId, availableFiles]);
+  }, [rawTabs, rootPageId, availableFiles, configuredMain]);
 
   const displayLabels = useMemo(() => computeEditorTabDisplayLabels(tabs), [tabs]);
 
@@ -380,14 +381,13 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     );
     if (rootTab) return rootTab.id;
 
-    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
     const fallbackRoot = tabs.find(
       (t) => t.title === configuredMain || t.title.toLowerCase() === 'main.tex',
     );
     if (fallbackRoot) return fallbackRoot.id;
 
     return tabs[0]?.id ?? null;
-  }, [tabs, currentParam, activeFileId, rootPageId]);
+  }, [tabs, currentParam, activeFileId, rootPageId, configuredMain]);
 
   const resolvedActiveTabIdRef = useRef(resolvedActiveTabId);
   resolvedActiveTabIdRef.current = resolvedActiveTabId;

@@ -13,13 +13,11 @@
 'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
 import {
   Files,
   Search,
   BookMarked,
   MessageSquareText,
-  MessageSquare,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -36,10 +34,6 @@ import { useSettingsStore } from '../store/settings.store';
 import { usePageStore } from '../store/editor.store';
 import { useReviewPendingCount } from '@/features/editor/subsystems/review';
 
-const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
-  ssr: false,
-});
-
 interface ActivityItem {
   id: ActivityBarTab;
   label: string;
@@ -51,7 +45,6 @@ const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: 'search', label: 'Search in Project', icon: Search },
   { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
   { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
-  { id: 'chat', label: 'Project Chat', icon: MessageSquare },
   { id: 'ai', label: 'AI Assistant', icon: Bot },
 ];
 
@@ -72,7 +65,12 @@ export function ActivityBar() {
     >
       <TooltipProvider delayDuration={150}>
         {/* Top Section: Primary Viewlets */}
-        <div className="flex flex-col items-center gap-1.5 w-full">
+        <div
+          role="tablist"
+          aria-orientation="vertical"
+          aria-label="Primary Viewlets"
+          className="flex flex-col items-center gap-1.5 w-full"
+        >
           {PRIMARY_ACTIVITIES.map((item) => {
             const isActive = sidebarLeftOpen && activeSidebarTab === item.id;
             const Icon = item.icon;
@@ -94,14 +92,10 @@ export function ActivityBar() {
                     aria-label={item.label}
                     onClick={handleClick}
                     className={cn(
-                      'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                      item.id === 'ai'
-                        ? isActive
-                          ? 'bg-ai-subtle text-ai font-medium'
-                          : 'text-ai hover:text-ai hover:bg-ai-subtle/50 font-normal'
-                        : isActive
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
+                      'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                      isActive
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
                     )}
                   >
                     <Icon
@@ -111,7 +105,7 @@ export function ActivityBar() {
 
                     {/* Unread / Pending badge */}
                     {showBadge && (
-                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-11 font-mono font-semibold bg-primary text-primary-foreground leading-none">
+                      <span className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-sm text-11 font-mono font-semibold bg-primary text-primary-foreground leading-none">
                         {badgeCount > 99 ? '99+' : badgeCount}
                       </span>
                     )}
@@ -125,13 +119,8 @@ export function ActivityBar() {
           })}
         </div>
 
-        {/* Bottom Section: Stickies + Global Settings */}
+        {/* Bottom Section: Global Settings */}
         <div className="flex flex-col items-center gap-1.5 w-full mt-auto">
-          <StickyDock
-            className="size-9"
-            buttonClassName="size-9 text-muted-foreground hover:text-foreground"
-          />
-
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -139,7 +128,7 @@ export function ActivityBar() {
                 aria-label="Project settings"
                 onClick={toggleSettingsPanel}
                 className={cn(
-                  'relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+                  'relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
                   settingsPanelOpen
                     ? 'bg-muted text-foreground font-medium'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'

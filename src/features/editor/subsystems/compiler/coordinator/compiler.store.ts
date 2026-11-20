@@ -27,6 +27,78 @@ import {
   filterDiagnostics,
   type WarningFilterOptions,
 } from '@/features/editor/domain/latex/warning-filter';
+import {
+  compilerFsmTransition,
+  createInitialCompilerFsmContext,
+  deriveCompileStatus,
+  type CompilerFsmContext,
+  type CompilerFsmEvent,
+} from '@/features/editor/domain/document/compiler-fsm';
+
+const MAX_LOG_LENGTH = 500_000;
+
+function buildStorePatchFromFsm(
+  prevFsm: CompilerFsmContext,
+  nextFsm: CompilerFsmContext,
+): Partial<DocumentCompilerState> {
+  const patch: Partial<DocumentCompilerState> = {
+    compilerFsm: nextFsm,
+    compilePhase: nextFsm.phase,
+    compileOutcome: nextFsm.outcome,
+    compileStatus: deriveCompileStatus(nextFsm),
+    pendingCompile: nextFsm.hasPendingRun,
+  };
+
+  if (nextFsm.report !== prevFsm.report) {
+    if (nextFsm.report === null) {
+      patch.compileReport = null;
+      patch.compileLog = null;
+      patch.compileDiagnostics = [];
+      patch.parsedLog = null;
+      patch.compileErrors = [];
+    } else {
+      const rawLog = nextFsm.report.logText;
+      const trimmedLog = !rawLog
+        ? null
+        : rawLog.length > MAX_LOG_LENGTH
+          ? '... [truncated previous logs]\n' + rawLog.slice(rawLog.length - MAX_LOG_LENGTH)
+          : rawLog;
+
+      const structuredParsedLog = diagnosticsToParsedLog(nextFsm.report.diagnostics);
+      if (trimmedLog && nextFsm.report.diagnostics.length > 0) {
+        cacheBackendParsedLog(trimmedLog, structuredParsedLog);
+      }
+
+      const legacyErrors: CompileError[] = nextFsm.report.diagnostics
+        .filter((d) => d.severity !== 'info' && d.severity !== 'badbox')
+        .map((d) => ({
+          line: d.line,
+          message: d.message,
+          context: d.context,
+          file: d.file,
+          severity: d.severity,
+          source: d.source,
+          highlightCommand: d.highlightCommand,
+          code: d.code,
+          suggestion: d.suggestion,
+        }));
+
+      patch.compileReport = {
+        ...nextFsm.report,
+        logText: trimmedLog,
+      };
+      patch.compileLog = trimmedLog;
+      patch.compileDiagnostics = nextFsm.report.diagnostics;
+      patch.parsedLog = structuredParsedLog;
+      patch.compileErrors = legacyErrors;
+      if (nextFsm.report.compiledAt !== null) {
+        patch.lastCompiledAt = nextFsm.report.compiledAt;
+      }
+    }
+  }
+
+  return patch;
+}
 
 /**
  * Zero-copy live read-through view of dirty document contents backed directly by `lruDocumentCache`.
@@ -97,7 +169,8 @@ export interface DocumentCompilerState {
   markSynced: (fileId: string) => void;
   clearSyncTracker: () => void;
 
-  // ── Compile state (background, non-blocking) ───────────────────────────
+  // ── Compile state (FSM-backed single source of truth) ─────────────────
+  compilerFsm: CompilerFsmContext;
   compileStatus: CompileStatus;
   compilePhase: CompilePhase;
   compileOutcome: CompileOutcome | null;
@@ -114,11 +187,13 @@ export interface DocumentCompilerState {
   pendingCompile: boolean;
   isViewerPoppedOut: boolean;
 
+  dispatchCompileEvent: (event: CompilerFsmEvent) => CompilerFsmContext;
   setCompileStatus: (status: CompileStatus) => void;
   setCompilePhase: (phase: CompilePhase) => void;
   setCompileOutcome: (outcome: CompileOutcome | null) => void;
   applyCompileResult: (report: CompileReport) => void;
   setCompileLog: (log: string | null) => void;
+  appendCompileLog: (chunk: string) => void;
   setCompileErrors: (errors: CompileError[]) => void;
   setCompileDiagnostics: (diagnostics: CompilerDiagnostic[]) => void;
   setParsedLog: (parsedLog: ParsedLog | null) => void;
@@ -174,7 +249,8 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     set({ lastSyncedAt: new Map() });
   },
 
-  // ── Compile state ─────────────────────────────────────────────────────
+  // ── Compile state (FSM-backed SSOT) ──────────────────────────────────
+  compilerFsm: createInitialCompilerFsmContext(),
   compileStatus: 'idle',
   compilePhase: 'idle',
   compileOutcome: null,
@@ -188,77 +264,36 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   pendingCompile: false,
   isViewerPoppedOut: false,
 
+  dispatchCompileEvent(event) {
+    const prevFsm = get().compilerFsm;
+    const nextFsm = compilerFsmTransition(prevFsm, event);
+    if (nextFsm === prevFsm) {
+      return prevFsm;
+    }
+    set(buildStorePatchFromFsm(prevFsm, nextFsm));
+    return nextFsm;
+  },
+
   setCompileStatus(status) {
-    const nextPhase: CompilePhase =
-      status === 'compiling' || status === 'syncing'
-        ? 'compiling'
-        : status === 'flushing'
-          ? 'flushing'
-          : status === 'idle'
-            ? 'idle'
-            : 'done';
-    set({ compileStatus: status, compilePhase: nextPhase });
+    get().dispatchCompileEvent({ type: 'FORCE_STATUS', status });
   },
 
   setCompilePhase(phase) {
-    set({ compilePhase: phase });
+    set((s) => ({
+      compilerFsm: { ...s.compilerFsm, phase },
+      compilePhase: phase,
+    }));
   },
 
   setCompileOutcome(outcome) {
-    set({ compileOutcome: outcome });
+    set((s) => ({
+      compilerFsm: { ...s.compilerFsm, outcome },
+      compileOutcome: outcome,
+    }));
   },
 
   applyCompileResult(report) {
-    const MAX_LOG_LENGTH = 500_000;
-    const rawLog = report.logText;
-    const trimmedLog = !rawLog
-      ? null
-      : rawLog.length > MAX_LOG_LENGTH
-        ? '... [truncated previous logs]\n' + rawLog.slice(rawLog.length - MAX_LOG_LENGTH)
-        : rawLog;
-
-    const structuredParsedLog = diagnosticsToParsedLog(report.diagnostics);
-    if (trimmedLog && report.diagnostics.length > 0) {
-      cacheBackendParsedLog(trimmedLog, structuredParsedLog);
-    }
-
-    const legacyErrors: CompileError[] = report.diagnostics
-      .filter((d) => d.severity !== 'info' && d.severity !== 'badbox')
-      .map((d) => ({
-        line: d.line,
-        message: d.message,
-        context: d.context,
-        file: d.file,
-        severity: d.severity,
-        source: d.source,
-        highlightCommand: d.highlightCommand,
-        code: d.code,
-        suggestion: d.suggestion,
-      }));
-
-    const derivedStatus: CompileStatus =
-      report.outcome === 'success'
-        ? 'done'
-        : report.outcome === 'terminated'
-          ? 'aborted'
-          : report.outcome === 'offline-queued' || report.outcome === 'code-check-blocked'
-            ? 'idle'
-            : 'error';
-
-    set({
-      compilePhase: 'done',
-      compileOutcome: report.outcome,
-      compileStatus: derivedStatus,
-      compileReport: {
-        ...report,
-        logText: trimmedLog,
-      },
-      compileLog: trimmedLog,
-      compileDiagnostics: report.diagnostics,
-      parsedLog: structuredParsedLog,
-      compileErrors: legacyErrors,
-      ...(report.compiledAt !== null ? { lastCompiledAt: report.compiledAt } : {}),
-    });
+    get().dispatchCompileEvent({ type: 'RUN_SETTLED', report });
   },
 
   setCompileLog(log) {
@@ -266,8 +301,21 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
       set({ compileLog: null });
       return;
     }
-    const MAX_LOG_LENGTH = 500_000;
-    const trimmed = log.length > MAX_LOG_LENGTH ? '... [truncated previous logs]\n' + log.slice(log.length - MAX_LOG_LENGTH) : log;
+    const trimmed =
+      log.length > MAX_LOG_LENGTH
+        ? '... [truncated previous logs]\n' + log.slice(log.length - MAX_LOG_LENGTH)
+        : log;
+    set({ compileLog: trimmed });
+  },
+
+  appendCompileLog(chunk) {
+    if (!chunk) return;
+    const prev = get().compileLog;
+    const combined = prev ? `${prev}\n${chunk}` : chunk;
+    const trimmed =
+      combined.length > MAX_LOG_LENGTH
+        ? '... [truncated previous logs]\n' + combined.slice(combined.length - MAX_LOG_LENGTH)
+        : combined;
     set({ compileLog: trimmed });
   },
 
@@ -302,14 +350,7 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   },
 
   clearLogs() {
-    set({
-      compileReport: null,
-      compileOutcome: null,
-      compileLog: null,
-      compileErrors: [],
-      compileDiagnostics: [],
-      parsedLog: null,
-    });
+    get().dispatchCompileEvent({ type: 'CLEAR_LOGS' });
   },
 
   resetCompiler() {
@@ -321,22 +362,24 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
         // Ignore revocation errors
       }
     }
+    const prevFsm = get().compilerFsm;
     set({
-      pdfUrl: null,
+      ...buildStorePatchFromFsm(prevFsm, createInitialCompilerFsmContext()),
       compileReport: null,
-      compileOutcome: null,
-      compilePhase: 'idle',
       compileLog: null,
-      compileErrors: [],
       compileDiagnostics: [],
       parsedLog: null,
-      compileStatus: 'idle',
-      pendingCompile: false,
+      compileErrors: [],
+      lastCompiledAt: null,
+      lastSyncedAt: new Map(),
+      pdfUrl: null,
     });
   },
 
   setPendingCompile(pending) {
-    set({ pendingCompile: pending });
+    get().dispatchCompileEvent({
+      type: pending ? 'QUEUE_SUPERSEDE' : 'CONSUME_PENDING',
+    });
   },
 
   setIsViewerPoppedOut(poppedOut) {

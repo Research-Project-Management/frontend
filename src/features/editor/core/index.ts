@@ -115,9 +115,10 @@ export {
 } from './store/search.store';
 
 export {
-  useViewerStore,
-  useCompileStore,
-} from '@/features/editor/subsystems/compiler';
+  fallbackQueryClient,
+  useSafeQueryClient,
+} from './queries/safe-query-client';
+
 export type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 // 3. Shell Presentation Layer

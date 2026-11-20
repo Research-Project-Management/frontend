@@ -71,7 +71,7 @@ interface ConnectedWordCountModalProps {
 
 function ConnectedWordCountModal({ open, projectId, rootPageId, engine }: ConnectedWordCountModalProps) {
   const currentDoc = usePageStore((s) => s.activeFilePage || s.currentPage);
-  const configuredMainFile = useSettingsStore((s) => s.mainFile) || DEFAULT_MAIN_FILE;
+  const configuredMainFile = usePageStore((s) => s.mainFilePath) || DEFAULT_MAIN_FILE;
   const { data: serverFiles = [] } = useQuery({
     ...filesQuery(rootPageId || ''),
     enabled: Boolean(rootPageId) && open,
@@ -260,7 +260,7 @@ export function WorkbenchLayout() {
         useWorkspaceStore.getState().setFileOutlineOpen(true);
         return 'files';
       }
-      if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'chat' || lower === 'ai') {
+      if (lower === 'files' || lower === 'search' || lower === 'citations' || lower === 'review' || lower === 'ai') {
         return lower as ActivityBarTab;
       }
       return 'files';

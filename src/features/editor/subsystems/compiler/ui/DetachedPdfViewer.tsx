@@ -15,11 +15,11 @@ import dynamic from 'next/dynamic';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   editorCommandBus,
-  useCompileStore,
   useWorkspaceStore,
   getSyncTexChannelName,
 } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
+import { useCompileStore } from '../coordinator/compiler.store';
 
 const PdfViewer = dynamic(
   () => import('./PdfViewer'),

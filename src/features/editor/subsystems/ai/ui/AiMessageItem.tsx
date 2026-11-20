@@ -156,9 +156,6 @@ export function AiMessageItem({
               <Loader2 className="size-2.5 animate-spin motion-reduce:animate-none" />
               <span>Flux AI Assistant</span>
             </div>
-            <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
-              RAG Verified
-            </span>
           </div>
           {thinkingText && (
             <ThinkingPart content={thinkingText} isStreaming={isThinkingActive} compact />
@@ -204,9 +201,6 @@ export function AiMessageItem({
         {!isUser && (
           <div className="mb-1.5 flex items-center justify-between gap-2 select-none">
             <span className="text-10 font-medium text-ai">Flux AI Assistant</span>
-            <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
-              RAG Verified
-            </span>
           </div>
         )}
         {thinkingText && (

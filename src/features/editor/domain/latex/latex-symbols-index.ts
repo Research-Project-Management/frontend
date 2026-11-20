@@ -85,7 +85,7 @@ export class LatexSymbolsIndex {
     if (projectId && projectId !== 'default' && projectId !== 'workspace-local') {
       this.hydratedProjectIds.add(projectId);
     }
-    if (dto.rootDocPath) {
+    if (dto.rootDocPath && !latexDependencyGraph.getServerRootDoc().rootDocPath) {
       latexDependencyGraph.setServerRootDoc(dto.rootDocPath);
     }
 

@@ -76,4 +76,24 @@ describe('CompilationErrorBanner (Overleaf 1:1 Parity)', () => {
     fireEvent.click(textEl);
     expect(openLogsSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('renders amber rate-limited banner and invokes onRetry when Retry compile is clicked', () => {
+    const retrySpy = vi.fn();
+    const { getByTestId, getByText, getByRole } = render(
+      <CompilationErrorBanner
+        outcome="rate-limited"
+        errorCount={0}
+        errorMessage="Rate limit exceeded (10 runs/min)"
+        onJumpToFirstError={vi.fn()}
+        onRetry={retrySpy}
+      />
+    );
+
+    const banner = getByTestId('compilation-error-banner');
+    expect(banner).toHaveAttribute('data-banner-mode', 'rate-limited');
+    expect(getByText(/Rate limit exceeded \(10 runs\/min\)/i)).toBeInTheDocument();
+
+    fireEvent.click(getByRole('button', { name: /retry compile/i }));
+    expect(retrySpy).toHaveBeenCalledTimes(1);
+  });
 });

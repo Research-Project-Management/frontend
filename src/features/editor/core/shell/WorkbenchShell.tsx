@@ -51,6 +51,7 @@ export function WorkbenchShell({
   const {
     sidebarLeftOpen,
     sidebarLeftWidth,
+    setSidebarLeftOpen,
     setSidebarLeftWidth,
     toggleSidebarLeft,
     splitRatio,
@@ -59,6 +60,7 @@ export function WorkbenchShell({
     useShallow((s) => ({
       sidebarLeftOpen: s.sidebarLeftOpen,
       sidebarLeftWidth: s.sidebarLeftWidth,
+      setSidebarLeftOpen: s.setSidebarLeftOpen,
       setSidebarLeftWidth: s.setSidebarLeftWidth,
       toggleSidebarLeft: s.toggleSidebarLeft,
       splitRatio: s.splitRatio,
@@ -72,14 +74,54 @@ export function WorkbenchShell({
   }, []);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const startWidthRef = useRef(sidebarLeftWidth);
-  startWidthRef.current = sidebarLeftWidth;
+  const dragStartWidthRef = useRef(sidebarLeftWidth);
+
+  const handleLeftSidebarDragStart = useCallback(() => {
+    dragStartWidthRef.current = useWorkspaceStore.getState().sidebarLeftWidth;
+  }, []);
 
   const handleLeftSidebarDrag = useCallback(
     (clientX: number, startX: number) => {
-      setSidebarLeftWidth(startWidthRef.current + (clientX - startX));
+      setSidebarLeftWidth(dragStartWidthRef.current + (clientX - startX));
     },
     [setSidebarLeftWidth],
+  );
+
+  const handleLeftSidebarDoubleClick = useCallback(() => {
+    setSidebarLeftOpen(true);
+    setSidebarLeftWidth(260);
+  }, [setSidebarLeftOpen, setSidebarLeftWidth]);
+
+  const handleLeftSidebarKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const step = e.shiftKey ? 48 : 16;
+      const current = useWorkspaceStore.getState();
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (!current.sidebarLeftOpen) {
+          setSidebarLeftOpen(true);
+        } else {
+          setSidebarLeftWidth(current.sidebarLeftWidth + step);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (current.sidebarLeftOpen) {
+          setSidebarLeftWidth(current.sidebarLeftWidth - step);
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setSidebarLeftOpen(true);
+        setSidebarLeftWidth(180);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setSidebarLeftOpen(true);
+        setSidebarLeftWidth(480);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        toggleSidebarLeft();
+      }
+    },
+    [setSidebarLeftOpen, setSidebarLeftWidth, toggleSidebarLeft],
   );
 
   const handleCenterSplitDrag = useCallback(
@@ -92,6 +134,37 @@ export function WorkbenchShell({
       }
     },
     [setSplitRatio],
+  );
+
+  const handleCenterSplitKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const step = e.shiftKey ? 0.08 : 0.03;
+      const currentRatio = useWorkspaceStore.getState().splitRatio;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (isPreviewCollapsed) return;
+        setSplitRatio(currentRatio + step);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (isPreviewCollapsed) {
+          setIsPreviewCollapsed(false);
+        } else {
+          setSplitRatio(currentRatio - step);
+        }
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setIsPreviewCollapsed(false);
+        setSplitRatio(0.15);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        setIsPreviewCollapsed(false);
+        setSplitRatio(0.85);
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        togglePreviewCollapse();
+      }
+    },
+    [isPreviewCollapsed, setSplitRatio, togglePreviewCollapse],
   );
 
   return (
@@ -123,8 +196,14 @@ export function WorkbenchShell({
               </aside>
             )}
             <ResizeHandle
+              onDragStart={handleLeftSidebarDragStart}
               onDragX={sidebarLeftOpen ? handleLeftSidebarDrag : undefined}
+              onDoubleClick={handleLeftSidebarDoubleClick}
+              onKeyDown={handleLeftSidebarKeyDown}
               label={sidebarLeftOpen ? 'Resize or collapse left sidebar' : 'Expand left sidebar'}
+              valueNow={sidebarLeftOpen ? Math.round(sidebarLeftWidth) : 0}
+              valueMin={180}
+              valueMax={480}
               showCollapseButton
               isCollapsed={!sidebarLeftOpen}
               onToggleCollapse={toggleSidebarLeft}
@@ -155,7 +234,11 @@ export function WorkbenchShell({
                   setIsPreviewCollapsed(false);
                   setSplitRatio(0.5);
                 }}
+                onKeyDown={handleCenterSplitKeyDown}
                 label={isPreviewCollapsed ? 'Expand PDF preview' : 'Resize or collapse PDF preview'}
+                valueNow={isPreviewCollapsed ? 100 : Math.round(splitRatio * 100)}
+                valueMin={15}
+                valueMax={85}
                 showCollapseButton
                 isCollapsed={isPreviewCollapsed}
                 onToggleCollapse={togglePreviewCollapse}

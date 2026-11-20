@@ -60,7 +60,7 @@ function ToolbarSeparator({ className }: { className?: string }) {
 }
 
 const iconButtonClass =
-  'size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:bg-muted shrink-0';
+  'size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-muted shrink-0';
 
 export function EditorToolbar({ className, readOnly = false, onSplitRight }: EditorToolbarProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
@@ -82,6 +82,8 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   return (
     <div
       ref={containerRef}
+      role="toolbar"
+      aria-label="Editor formatting tools"
       className={cn(
         'h-9 min-h-[36px] px-2 flex items-center gap-0.5 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none w-full max-w-full',
         className,

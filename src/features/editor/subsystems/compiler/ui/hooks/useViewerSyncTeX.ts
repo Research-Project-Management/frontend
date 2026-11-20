@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { usePageStore, useSettingsStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import {
@@ -123,7 +123,7 @@ export function useViewerSyncTeX({
       // 3. Match root document from currentPage
       const currentPage = usePageStore.getState().currentPage;
       if (currentPage) {
-        const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+        const configuredMainFile = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
         const rootTitle = (currentPage.title || configuredMainFile).replace(/\\/g, '/').toLowerCase();
         const rootBase = rootTitle.split('/').pop() || rootTitle;
         if (
@@ -262,7 +262,7 @@ export function useViewerSyncTeX({
 
       const rootId = pageId || projectId;
       if (!rootId) return;
-      const filename = overrideFilePath || activeFilePath || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      const filename = overrideFilePath || activeFilePath || usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
 
       const effectiveScale =
         scale > 0

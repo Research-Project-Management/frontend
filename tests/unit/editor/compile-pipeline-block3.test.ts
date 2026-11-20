@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as zlib from 'zlib';
+import * as api from '@/shared/lib/api';
+import { ApiError } from '@/shared/types/api.types';
 import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
 import {
   CompilerCoordinator,
@@ -193,6 +195,143 @@ describe('Block 3 Frontend Compile Pipeline Regression Tests', () => {
     expect(payload.source).toBeUndefined();
     expect(payload.files).toEqual({
       'chapters/ch1.tex': '\\section{Unsaved Dirty}',
+    });
+  });
+
+  it('CompilerCoordinator forwards priority="auto" for auto-compile and priority="manual" for manual trigger', async () => {
+    const priorities: Array<'manual' | 'auto' | undefined> = [];
+    const testCompiler: CompilerPort = {
+      compile: async (opts) => {
+        priorities.push(opts.priority);
+        return {
+          success: true,
+          pdfUrl: 'blob:http://localhost/prio-pdf',
+          logs: 'ok',
+        };
+      },
+      cancelInFlightCompile: vi.fn(),
+    };
+
+    usePageStore.setState({
+      spaceId: 'space-prio',
+      projectId: 'proj-prio',
+      rootPageId: 'root-prio',
+      parentPageId: 'root-prio',
+      currentPage: {
+        id: 'root-prio',
+        title: 'main.tex',
+        path: 'main.tex',
+        content: '\\documentclass{article}',
+      } as any,
+      activeFilePage: {
+        id: 'root-prio',
+        title: 'main.tex',
+        path: 'main.tex',
+        content: '\\documentclass{article}',
+      } as any,
+    });
+
+    const coordinator = new CompilerCoordinator({
+      compilerEngine: testCompiler,
+      getProjectId: () => 'proj-prio',
+      getMainFile: () => 'main.tex',
+    });
+
+    await coordinator.compile({ reason: 'auto-compile' });
+    await coordinator.compile({ reason: 'manual-button' });
+
+    expect(priorities).toEqual(['auto', 'manual']);
+  });
+
+  it('CompilePipeline keeps partial PDF visible while preserving success=false and outcome="failure" on nonzero TeX errors', async () => {
+    vi.spyOn(sessionCoordinator, 'isRealtimeConnected').mockReturnValue(false);
+    vi.spyOn(pagesService.compiler, 'compile').mockResolvedValue({
+      success: false,
+      outcome: 'failure',
+      pdf: Buffer.from('%PDF-1.5 partial').toString('base64'),
+      logs: './main.tex:3: Undefined control sequence.',
+      error: 'Undefined control sequence.',
+      diagnostics: [
+        {
+          file: 'main.tex',
+          line: 3,
+          message: 'Undefined control sequence.',
+          severity: 'error',
+          code: 'UNDEFINED_CONTROL_SEQUENCE',
+        },
+      ],
+    });
+
+    const res = await CompilePipeline.compile({
+      projectId: 'proj-partial',
+      pageId: 'root-partial',
+      mainFile: 'main.tex',
+      engine: 'pdflatex',
+      priority: 'manual',
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.status).toBe('error');
+    expect(res.outcome).toBe('failure');
+    expect(res.pdfUrl).toBeTruthy();
+    expect(res.diagnostics).toHaveLength(1);
+    expect(res.diagnostics?.[0]?.code).toBe('UNDEFINED_CONTROL_SEQUENCE');
+  });
+
+  it('pagesService.compiler.compile classifies ApiError 429, 503 queue full, 504 timeout, and 409 superseded cleanly', async () => {
+    const apiPostSpy = vi.spyOn(api, 'apiPost');
+    const basePayload = {
+      spaceId: 'proj-err',
+      mainFile: 'main.tex',
+      engine: 'pdflatex',
+      draft: false,
+      useCache: true,
+    };
+
+    apiPostSpy.mockRejectedValueOnce(
+      new ApiError({
+        statusCode: 429,
+        code: 'AUTO_COMPILE_SHED',
+        message: 'Auto-compilation shed under load',
+      }),
+    );
+    const rateRes = await pagesService.compiler.compile(basePayload);
+    expect(rateRes.success).toBe(false);
+    expect(rateRes.outcome).toBe('rate-limited');
+    expect(rateRes.errorCode).toBe('AUTO_COMPILE_SHED');
+
+    apiPostSpy.mockRejectedValueOnce(
+      new ApiError({
+        statusCode: 503,
+        code: 'COMPILE_QUEUE_FULL',
+        message: 'Compile queue full',
+      }),
+    );
+    const queueFullRes = await pagesService.compiler.compile(basePayload);
+    expect(queueFullRes.success).toBe(false);
+    expect(queueFullRes.outcome).toBe('clsi-unavailable');
+    expect(queueFullRes.errorCode).toBe('COMPILE_QUEUE_FULL');
+
+    apiPostSpy.mockRejectedValueOnce(
+      new ApiError({
+        statusCode: 504,
+        code: 'COMPILE_QUEUE_TIMEOUT',
+        message: 'Timed out waiting in queue',
+      }),
+    );
+    const timeoutRes = await pagesService.compiler.compile(basePayload);
+    expect(timeoutRes.success).toBe(false);
+    expect(timeoutRes.outcome).toBe('timedout');
+
+    apiPostSpy.mockRejectedValueOnce(
+      new ApiError({
+        statusCode: 409,
+        code: 'COMPILE_SUPERSEDED',
+        message: 'Compilation superseded by a newer request',
+      }),
+    );
+    await expect(pagesService.compiler.compile(basePayload)).rejects.toMatchObject({
+      name: 'AbortError',
     });
   });
 });

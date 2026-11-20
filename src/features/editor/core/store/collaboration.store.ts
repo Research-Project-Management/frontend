@@ -7,36 +7,14 @@
 
 import { create } from 'zustand';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
+import type { CollaboratorPresenceInfo } from '@/features/editor/domain/collaboration/presence-aggregation';
+
+export type { CollaboratorPresenceInfo };
 
 export interface PendingComment {
   startLine: number;
   endLine: number;
   selectedText: string;
-}
-
-export interface CollaboratorPresenceInfo {
-  id: string;
-  userId?: string;
-  socketId?: string;
-  name: string;
-  email?: string;
-  avatar?: string | null;
-  color: string;
-  isOnline: boolean;
-  activeFile?: string;
-  activeFileId?: string;
-  cursor?: {
-    line: number;
-    column: number;
-    selection?: {
-      startLineNumber: number;
-      startColumn?: number;
-      endLineNumber: number;
-      endColumn?: number;
-    };
-  };
-  tabCount?: number;
-  lastActiveAt?: number;
 }
 
 export interface DocumentCollaborationState {

@@ -6,11 +6,13 @@
  */
 
 import { apiGet, apiPost, rawFetch } from '@/shared/lib/api';
+import { isApiError } from '@/shared/types/api.types';
 import { PAGES_API_BASE, getPagesBaseUrl } from './base';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import type {
   CompileLatexPayload,
   CompileLatexResponse,
+  CompileOutcome,
   WordCountResponse,
   PreviewCompileResult,
   AuxFileItem,
@@ -72,20 +74,55 @@ export const compiler = {
         timeout: effectiveTimeout,
       });
     } catch (err: unknown) {
-      const isAborted =
+      const isClientAborted =
         Boolean(effectiveSignal?.aborted) ||
         (err as { name?: string })?.name === 'AbortError' ||
         (err as Error)?.message?.toLowerCase().includes('aborted');
+      const isServerSuperseded =
+        isApiError(err) &&
+        err.statusCode === 409 &&
+        (['COMPILE_SUPERSEDED', 'COMPILE_ABORTED', 'PROJECT_LOCK_ABORTED'].includes(err.code ?? '') ||
+          /superseded|cancelled/i.test(err.message));
 
-      if (isAborted) {
-        const abortErr = (err as Error) || new Error('Compilation superseded');
+      if (isClientAborted || isServerSuperseded) {
+        const abortErr = err instanceof Error ? err : new Error('Compilation superseded');
         abortErr.name = 'AbortError';
         throw abortErr;
       }
 
-      const errorMessage = (err as Error)?.message || 'Failed to reach compiler service';
+      const errorMessage =
+        err instanceof Error && err.message ? err.message : 'Failed to reach compiler service';
+
+      if (isApiError(err)) {
+        const outcome: CompileOutcome =
+          err.statusCode === 429 ||
+          err.code === 'COMPILE_RATE_LIMITED' ||
+          err.code === 'AUTO_COMPILE_SHED' ||
+          err.code === 'RATE_LIMIT_EXCEEDED'
+            ? 'rate-limited'
+            : err.statusCode === 504 || err.code === 'COMPILE_QUEUE_TIMEOUT'
+              ? 'timedout'
+              : err.statusCode === 503 ||
+                  err.statusCode >= 500 ||
+                  err.statusCode === 0 ||
+                  err.code === 'PROJECT_LOCK_TIMEOUT'
+                ? 'clsi-unavailable'
+                : 'validation-problems';
+
+        return {
+          success: false,
+          outcome,
+          statusCode: err.statusCode,
+          errorCode: err.code,
+          pdf: '',
+          logs: errorMessage,
+          error: errorMessage,
+        };
+      }
+
       return {
         success: false,
+        outcome: 'clsi-unavailable',
         pdf: '',
         logs: errorMessage,
         error: errorMessage,

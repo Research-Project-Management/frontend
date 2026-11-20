@@ -18,6 +18,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
+  usePageStore,
   useSettingsStore,
   type CompilerEngine,
   type KeybindingMode,
@@ -49,7 +50,7 @@ export function ProjectCompilerSection({
   const setEngine = useSettingsStore((s) => s.setEngine);
   const texLiveVersion = useSettingsStore((s) => s.texLiveVersion || '2024');
   const setTexLiveVersion = useSettingsStore((s) => s.setTexLiveVersion);
-  const mainFile = useSettingsStore((s) => s.mainFile);
+  const mainFilePath = usePageStore((s) => s.mainFilePath);
   const autoCompile = useSettingsStore((s) => s.autoCompile);
   const setAutoCompile = useSettingsStore((s) => s.setAutoCompile);
   const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);
@@ -172,7 +173,7 @@ export function ProjectCompilerSection({
         description="The root .tex document passed to the compiler"
       >
         <Select
-          value={mainFile || texFiles[0] || 'main.tex'}
+          value={(mainFilePath && texFiles.includes(mainFilePath) ? mainFilePath : null) || texFiles[0] || 'main.tex'}
           onValueChange={onMainFileChange}
         >
           <SelectTrigger

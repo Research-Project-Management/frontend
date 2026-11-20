@@ -7,7 +7,7 @@
  * Isolates file-system lifecycle orchestration from:
  * 1. Backend HTTP SDK (`pagesService`)
  * 2. UI Toast Notifications (`sonner`)
- * 3. Zustand Store singletons (`useWorkspaceStore`, `usePageStore`, `useSettingsStore`)
+ * 3. Zustand Store singletons (`useWorkspaceStore`, `usePageStore`)
  */
 
 export interface WorkspaceFileNodeDto {
@@ -54,7 +54,7 @@ export interface WorkspaceStorePort {
   getActiveProjectId(): string | null;
   closeTab(fileId: string): void;
   updateTabTitle(projectId: string, itemId: string, newTitle: string): void;
-  setMainFile(fileNameOrId: string): void;
+  setMainFile(filePath: string, rootDocId?: string | null): void;
   getActiveDocumentId(): string | null;
 }
 

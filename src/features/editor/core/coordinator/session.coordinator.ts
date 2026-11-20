@@ -21,7 +21,6 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useConnectivityStore } from '../store/connectivity.store';
@@ -284,7 +283,7 @@ export class SessionCoordinator {
       await this.replayPendingMutations();
       if (useConnectivityStore.getState().offlinePendingCompile) {
         useConnectivityStore.getState().setOfflinePendingCompile(false);
-        editorCommandBus.dispatch({ type: 'compiler:trigger' });
+        editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'external-trigger' });
       }
     } finally {
       useConnectivityStore.getState().setIsSyncingOfflineQueue(false);
@@ -499,8 +498,7 @@ export class SessionCoordinator {
 
   public hasDirtyDocuments(): boolean {
     if (this.saveTimers.size > 0 || this.inFlightFileFlushes.size > 0) return true;
-    if (lruDocumentCache.getDirtyModels().length > 0) return true;
-    return useCompileStore.getState().getDirtyFiles().length > 0;
+    return lruDocumentCache.getDirtyFileIds().length > 0;
   }
 
   public async flushDocument(fileId: string): Promise<boolean> {
@@ -600,7 +598,7 @@ export class SessionCoordinator {
     if (!model) return;
     const expectedText = syncedContent ?? model.content;
     if (lruDocumentCache.markCleanIfUnchanged(fileId, expectedText)) {
-      useCompileStore.getState().clearDirty(fileId);
+      lruDocumentCache.markClean(fileId);
       clearWorkspaceTabDirty(fileId, model.projectId);
       this.clearUnsyncedEdit(fileId);
       const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
@@ -701,7 +699,7 @@ export class SessionCoordinator {
       if (!model) return;
       if (model.content === this.lastCompiledContentMap.get(fileId)) return;
       this.lastCompiledContentMap.set(fileId, model.content);
-      editorCommandBus.dispatch({ type: 'compiler:trigger' });
+      editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'auto' });
     }, this.options.autoCompileDelay ?? DEFAULT_AUTOCOMPILE_DELAY);
   }
 }

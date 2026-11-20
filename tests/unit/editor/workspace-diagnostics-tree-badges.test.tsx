@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { render, screen, act, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   diagnosticsCoordinator,
@@ -170,7 +170,7 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
     expect(summary.errorCount).toBe(1);
   });
 
-  it('renders red error badge and count in TexFileRow when file has errors', () => {
+  it('does not render numeric error badge in TexFileRow when file has errors', () => {
     diagnosticsCoordinator.ingestCompilerErrors(
       [
         { line: 5, message: 'Syntax error', file: 'main.tex', severity: 'error' },
@@ -178,6 +178,8 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
       ],
       'main.tex'
     );
+
+    expect(diagnosticsCoordinator.getFileSummary('main.tex').errorCount).toBe(2);
 
     act(() => {
       renderWithProviders(
@@ -200,17 +202,18 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
       );
     });
 
-    const badge = screen.getByTestId('file-error-badge');
-    expect(badge).toBeDefined();
-    expect(badge.textContent).toBe('2');
-    expect(badge.getAttribute('data-count')).toBe('2');
+    expect(screen.queryByTestId('file-error-badge')).toBeNull();
+    expect(screen.queryByTestId('file-warning-badge')).toBeNull();
+    expect(screen.queryByText(/^main$/i)).toBeNull();
   });
 
-  it('renders amber warning badge in TexFileRow when file has only warnings', () => {
+  it('does not render warning badge in TexFileRow when file has only warnings', () => {
     diagnosticsCoordinator.ingestCompilerErrors(
       [{ line: 12, message: 'Citation `foo` undefined', file: 'main.tex', severity: 'warning' }],
       'main.tex'
     );
+
+    expect(diagnosticsCoordinator.getFileSummary('main.tex').warningCount).toBe(1);
 
     act(() => {
       renderWithProviders(
@@ -233,13 +236,11 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
       );
     });
 
-    const badge = screen.getByTestId('file-warning-badge');
-    expect(badge).toBeDefined();
-    expect(badge.textContent).toBe('1');
+    expect(screen.queryByTestId('file-warning-badge')).toBeNull();
     expect(screen.queryByTestId('file-error-badge')).toBeNull();
   });
 
-  it('renders aggregated folder badge in FileTreeFolderRow when collapsed and contains errors', () => {
+  it('does not render aggregated folder badge in FileTreeFolderRow when collapsed or expanded', () => {
     diagnosticsCoordinator.ingestCompilerErrors(
       [
         { line: 10, message: 'Error in ch1', file: 'chapters/ch1.tex', severity: 'error' },
@@ -247,6 +248,8 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
       ],
       'main.tex'
     );
+
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').errorCount).toBe(2);
 
     let rerenderFn: any;
     act(() => {
@@ -263,11 +266,9 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
       rerenderFn = res.rerender;
     });
 
-    const folderBadge = screen.getByTestId('folder-error-badge');
-    expect(folderBadge).toBeDefined();
-    expect(folderBadge.textContent).toBe('2');
+    expect(screen.queryByTestId('folder-error-badge')).toBeNull();
+    expect(screen.queryByTestId('folder-warning-badge')).toBeNull();
 
-    // When folder is expanded, folder badge is hidden to avoid visual duplication
     act(() => {
       rerenderFn(
         <QueryClientProvider client={queryClient}>
@@ -286,6 +287,7 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
     });
 
     expect(screen.queryByTestId('folder-error-badge')).toBeNull();
+    expect(screen.queryByTestId('folder-warning-badge')).toBeNull();
   });
 
   it('syncs settings store warning suppression to diagnostics coordinator in real time', () => {

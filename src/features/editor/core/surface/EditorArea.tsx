@@ -54,7 +54,7 @@ import {
   type UnsyncedDocEdit,
   type DocumentConflict,
 } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
 interface EmptyEditorStateProps {

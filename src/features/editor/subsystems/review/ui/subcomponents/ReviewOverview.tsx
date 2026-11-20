@@ -116,7 +116,7 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
           <FileText className="size-3.5 text-muted-foreground shrink-0" />
           <span className="text-xs font-mono font-semibold text-foreground truncate">{file.title}</span>
         </div>
-        <span className="text-11 font-mono font-semibold px-2 py-0.5 rounded-full bg-background text-foreground border border-border">
+        <span className="text-11 font-mono font-semibold px-2 py-0.5 rounded-sm bg-background text-foreground border border-border">
           {totalVisibleCount}
         </span>
       </div>

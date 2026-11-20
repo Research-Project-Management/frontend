@@ -11,7 +11,8 @@
 import React from 'react';
 import { ExternalLink, Minimize2, CheckCircle2, AlertCircle, Loader2, Maximize2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { editorCommandBus, useCompileStore, useSettingsStore } from '@/features/editor/core';
+import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
+import { useCompileStore } from '../coordinator/compiler.store';
 
 export function DetachedPdfPlaceholder() {
   const compileStatus = useCompileStore((s) => s.compileStatus);
@@ -56,8 +57,10 @@ export function DetachedPdfPlaceholder() {
         </div>
 
         {/* Sync / Compilation Status Indicator */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border border-border/40 text-[11px] font-medium">
-          {compileStatus === 'compiling' ? (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/60 border border-border/40 text-[11px] font-medium">
+          {compileStatus === 'compiling' ||
+          compileStatus === 'flushing' ||
+          compileStatus === 'syncing' ? (
             <>
               <Loader2 className="size-3.5 text-warning animate-spin motion-reduce:animate-none" />
               <span className="text-muted-foreground">Compiling document…</span>

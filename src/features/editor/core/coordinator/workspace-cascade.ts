@@ -17,7 +17,6 @@ import {
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { evictYjsProviderByDocId } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { editorCommandBus } from '../bus/command-bus';
 import { sessionCoordinator } from './session.coordinator';
@@ -122,6 +121,29 @@ export function executeCascadePathChange(params: {
   if (pageStore.currentPage?.id === itemId) {
     pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newPath, path: newPath } : prev));
   }
+  const matchedRootItem = findWorkspaceProjectItem(
+    projectFiles,
+    projectFilesByScope,
+    itemId,
+    effectiveProjectId || undefined,
+  );
+  const currentMainPath = pageStore.mainFilePath ? normalizeVirtualPath(pageStore.mainFilePath) : '';
+  const isRootItem =
+    Boolean(pageStore.rootDocId && (pageStore.rootDocId === itemId || matchedRootItem?.docId === pageStore.rootDocId)) ||
+    Boolean(oldPrefix && currentMainPath && currentMainPath === oldPrefix);
+  if (isRootItem) {
+    const nextMainPath = newPrefix || normalizeVirtualPath(newPath) || newPath;
+    if (nextMainPath) {
+      pageStore.setMainFilePath(nextMainPath);
+      latexDependencyGraph.setServerRootDoc(nextMainPath, pageStore.rootDocId);
+    }
+  } else if (oldPrefix && currentMainPath) {
+    const rewrittenMain = rewritePathPrefix(currentMainPath, oldPrefix, newPrefix);
+    if (rewrittenMain !== null) {
+      pageStore.setMainFilePath(rewrittenMain);
+      latexDependencyGraph.setServerRootDoc(rewrittenMain, pageStore.rootDocId);
+    }
+  }
   if (pageStore.selectedAsset) {
     const asset = pageStore.selectedAsset;
     const rewrittenAssetPath = oldPrefix
@@ -186,12 +208,20 @@ export function executeCascadePathChange(params: {
     documentFacade.hydrateServerProjectFiles(effectiveProjectId, updatedProjectFiles);
   }
 
-  diagnosticsCoordinator.renamePath(oldPath, newPath);
+  editorCommandBus.dispatch({ type: 'diagnostics:rename-path', oldPath, newPath });
   for (const desc of cascadedDescendants) {
-    diagnosticsCoordinator.renamePath(desc.oldPath, desc.newPath);
+    editorCommandBus.dispatch({
+      type: 'diagnostics:rename-path',
+      oldPath: desc.oldPath,
+      newPath: desc.newPath,
+    });
   }
   for (const desc of unopenedDescendants) {
-    diagnosticsCoordinator.renamePath(desc.oldPath, desc.newPath);
+    editorCommandBus.dispatch({
+      type: 'diagnostics:rename-path',
+      oldPath: desc.oldPath,
+      newPath: desc.newPath,
+    });
   }
 
   latexDependencyGraph.removeFileNode(oldPath);
@@ -314,7 +344,7 @@ export function executeEvictDeletedFileResources(params: {
   }
 
   if (filePath) {
-    diagnosticsCoordinator.removePath(filePath);
+    editorCommandBus.dispatch({ type: 'diagnostics:remove-path', filePath });
   }
   latexDependencyGraph.removeFileNode(filePath || fileId);
   for (const id of candidateIds) {
@@ -374,7 +404,7 @@ export function executeReconcileRemoteFileTreeEvent(params: {
   findProjectItem: (itemId: string, scopeKey?: string) => WorkspaceProjectItem | undefined;
   evictDeletedFileResources: (fileId: string, optProjectId?: string) => void;
   cascadePathChange: (effectiveProjectId: string, itemId: string, oldPath: string, newPath: string) => void;
-  setMainFileInStore: (fileNameOrId: string) => void;
+  setMainFileInStore: (filePath: string, rootDocId?: string | null) => void;
 }): void {
   const {
     payload,
@@ -433,6 +463,7 @@ export function executeReconcileRemoteFileTreeEvent(params: {
 
   if (action === 'set-root' && node) {
     const rootPath = normalizeVirtualPath(node.path || node.title || node.name || '');
-    if (rootPath) setMainFileInStore(rootPath);
+    const rootDocId = node.docId || node.id || null;
+    if (rootPath) setMainFileInStore(rootPath, rootDocId);
   }
 }

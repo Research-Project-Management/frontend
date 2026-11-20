@@ -292,6 +292,8 @@ export function FileTreeContainer({
   return (
     <div
       ref={parentRef}
+      role="tree"
+      aria-label="Project files"
       onKeyDown={handleTreeKeyDown}
       className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border bg-surface"
       onDragEnter={(e) => {

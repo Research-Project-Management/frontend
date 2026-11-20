@@ -7,12 +7,6 @@
  */
 
 import React from 'react';
-import { X } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
 export interface SidebarPanelHeaderProps {
@@ -21,17 +15,20 @@ export interface SidebarPanelHeaderProps {
   onClose?: () => void;
   className?: string;
   closeAriaLabel?: string;
+  bordered?: boolean;
 }
 
 export function SidebarPanelHeader({
   title,
   children,
   className,
+  bordered = false,
 }: SidebarPanelHeaderProps) {
   return (
     <div
       className={cn(
-        'flex h-9 shrink-0 items-center justify-between border-b border-border px-3 select-none',
+        'flex h-9 shrink-0 items-center justify-between px-3 select-none',
+        bordered && 'border-b border-border',
         className,
       )}
     >

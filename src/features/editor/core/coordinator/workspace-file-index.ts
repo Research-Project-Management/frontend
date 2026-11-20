@@ -17,10 +17,9 @@ import { normalizeVirtualPath } from '@/features/editor/domain/document/document
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { editorCommandBus } from '../bus/command-bus';
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
-import { useSettingsStore } from '../store/settings.store';
 import { documentFacade } from './document.facade';
 
 export const defaultWorkspaceServicePort: WorkspaceServicePort = {
@@ -81,8 +80,16 @@ export const defaultWorkspaceStorePort: WorkspaceStorePort = {
       wsStore.updateTabTitle(projectId, itemId, newTitle);
     }
   },
-  setMainFile: (fileNameOrId: string) => {
-    useSettingsStore.getState().setMainFile(fileNameOrId);
+  setMainFile: (filePath: string, rootDocId?: string | null) => {
+    const cleanPath = normalizeVirtualPath(filePath) || filePath;
+    const pageStore = usePageStore.getState();
+    pageStore.setMainDocument({
+      mainFilePath: cleanPath || null,
+      ...(rootDocId !== undefined ? { rootDocId } : {}),
+    });
+    const effectiveRootDocId =
+      rootDocId !== undefined ? rootDocId : usePageStore.getState().rootDocId;
+    latexDependencyGraph.setServerRootDoc(cleanPath || null, effectiveRootDocId);
   },
   getActiveDocumentId: () => usePageStore.getState().getActiveDocument()?.id ?? null,
 };
@@ -259,8 +266,21 @@ export function runInitProjectSymbols(state: {
 
   latexSymbolsIndex.clear();
   latexDependencyGraph.clear();
+  const pageState = typeof usePageStore?.getState === 'function' ? usePageStore.getState() : null;
+  const fallbackRootItem = nextProjectFiles.find((f) => f.isRootDoc);
+  const serverRootPath =
+    pageState?.mainFilePath ||
+    normalizeVirtualPath(
+      fallbackRootItem?.path || fallbackRootItem?.title || fallbackRootItem?.name || '',
+    ) ||
+    null;
+  const serverRootId =
+    pageState?.rootDocId || fallbackRootItem?.docId || fallbackRootItem?.id || null;
+  if (serverRootPath || serverRootId) {
+    latexDependencyGraph.setServerRootDoc(serverRootPath, serverRootId);
+  }
   if (projectChanged) {
-    diagnosticsCoordinator.clearDiagnostics();
+    editorCommandBus.dispatch({ type: 'diagnostics:clear' });
   }
   documentFacade.hydrateServerProjectFiles(projectKey, nextProjectFiles);
 

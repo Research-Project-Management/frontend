@@ -26,7 +26,7 @@ import {
   type ExportSingleDocOptions,
 } from '@/features/editor/sdk/archive/document-download';
 import { getExportFilename } from '@/features/editor/domain/document/document-naming';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 
 export type { ArchiveExportOptions, ExportZipOptions, ExportVersionZipOptions };
 
@@ -84,7 +84,7 @@ export function useProjectExport() {
     const toastId = toast.loading('Packaging project into ZIP...');
     setIsExporting(true);
     try {
-      const mainFile = options.mainFile || useSettingsStore.getState().mainFile || 'main.tex';
+      const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
       const filename = await exportProjectAsZip({ ...options, mainFile });
       toast.success(`Exported ${filename} successfully!`, { id: toastId });
       return filename;
@@ -100,7 +100,7 @@ export function useProjectExport() {
     const toastId = toast.loading('Generating arXiv submission bundle...');
     setIsExporting(true);
     try {
-      const mainFile = options.mainFile || useSettingsStore.getState().mainFile || 'main.tex';
+      const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
       const filename = await exportArxivSubmissionZip({ ...options, mainFile });
       toast.success(`Exported ${filename} successfully for arXiv!`, { id: toastId });
       return filename;

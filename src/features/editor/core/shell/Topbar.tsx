@@ -107,7 +107,7 @@ export function Topbar() {
             onClick={() => editorCommandBus.dispatch({ type: 'sidebar:toggle-panel', panel: 'Files' })}
             title="Open Explorer & Tools"
             aria-label="Open Explorer & Tools"
-            className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
+            className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring after:absolute after:-inset-1.5 after:content-['']"
           >
             <PanelLeft className="size-4 shrink-0" />
           </button>
@@ -118,10 +118,12 @@ export function Topbar() {
               <Link
                 href={homeHref}
                 aria-label="Back to Projects"
-                className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 cursor-pointer"
+                className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 cursor-pointer"
               >
                 <img
                   src="/Flux.svg"
+                  width={18}
+                  height={18}
                   className="size-4.5 shrink-0 transition-opacity duration-150 group-hover:opacity-0"
                   alt="Flux"
                 />
@@ -198,7 +200,7 @@ export function Topbar() {
                     useSettingsStore.getState().setSettingsPanelOpen(true);
                   }}
                   aria-label={`GitHub: ${githubLink.repoFullName} (${githubLink.branch})`}
-                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none mr-0.5"
+                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none mr-0.5"
                 >
                   <GitHubIcon className="size-3.5 shrink-0 text-foreground/70" />
                   <span className="max-w-[110px] truncate text-11 font-mono">
@@ -226,7 +228,7 @@ export function Topbar() {
                 onClick={handleToggleHistory}
                 aria-label="History (revisions)"
                 className={cn(
-                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none",
+                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none",
                   isHistoryOpen
                     ? "bg-background text-foreground font-semibold"
                     : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
@@ -249,7 +251,7 @@ export function Topbar() {
                   type="button"
                   onClick={() => editorCommandBus.dispatch({ type: 'preview:attach' })}
                   aria-label="Re-attach PDF to editor"
-                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none animate-in fade-in duration-200"
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none animate-in fade-in duration-200"
                 >
                   <ExternalLink className="size-3.5 shrink-0" />
                   <span className="hidden md:inline">Re-attach PDF</span>

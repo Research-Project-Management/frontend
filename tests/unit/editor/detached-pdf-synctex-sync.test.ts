@@ -3,7 +3,7 @@ import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 
 // In-memory BroadcastChannel simulator for cross-window testing
 class MockBroadcastChannel {

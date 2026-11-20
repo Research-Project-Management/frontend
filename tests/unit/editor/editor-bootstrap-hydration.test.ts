@@ -20,8 +20,11 @@ import {
   clearAllOfflineMemory,
 } from '@/features/editor/domain/offline-storage';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { resetEditorWorkspace } from '@/features/editor/editor-workspace-lifecycle';
 
 function createSampleBootstrapPayload(
   overrides?: Partial<EditorBootstrapResponseDto>,
@@ -610,5 +613,69 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     expect(offlineResult?.tree.find((n) => n.id === 'node-empty-folder')?.type).toBe('FOLDER');
     expect(offlineResult?.tree.find((n) => n.id === 'node-binary-asset')?.type).toBe('FILE');
     expect(lruDocumentCache.getContent(rootDocId)).toContain('Multi-page offline content');
+  });
+
+  it('switches projects without leaking prior mainFilePath and syncs latexDependencyGraph SSOT', () => {
+    const projectAPayload = createSampleBootstrapPayload({
+      workspace: {
+        spaceId: '11111111-1111-4111-8111-111111111111',
+        spaceType: 'project',
+        pageId: '22222222-2222-4222-8222-222222222222',
+        rootDocId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        projectName: 'Flux Monograph',
+        title: 'Flux Monograph',
+        mainFilePath: 'flux.tex',
+        permissions: { role: 'owner', canEdit: true, canCompile: true },
+        githubLink: null,
+      },
+    });
+    vi.spyOn(pagesService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
+    hydrateEditorBootstrap(queryClient, projectAPayload, projectAPayload.workspace.pageId);
+    expect(usePageStore.getState().mainFilePath).toBe('flux.tex');
+    expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+      rootDocPath: 'flux.tex',
+      rootFileId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    });
+
+    resetEditorWorkspace();
+    expect(usePageStore.getState().mainFilePath).toBeNull();
+    expect(usePageStore.getState().rootDocId).toBeNull();
+    expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+      rootDocPath: null,
+      rootFileId: null,
+    });
+
+    const personalPayload = createSampleBootstrapPayload({
+      workspace: {
+        spaceId: '99999999-9999-4999-8999-999999999999',
+        spaceType: 'personal',
+        pageId: '88888888-8888-4888-8888-888888888888',
+        rootDocId: '77777777-7777-4777-8777-777777777777',
+        projectName: null,
+        title: 'Personal Research Notes',
+        mainFilePath: 'personal-notes.tex',
+        permissions: { role: 'owner', canEdit: true, canCompile: true },
+        githubLink: null,
+      },
+    });
+    hydrateEditorBootstrap(queryClient, personalPayload, personalPayload.workspace.pageId);
+    expect(usePageStore.getState().mainFilePath).toBe('personal-notes.tex');
+    expect(usePageStore.getState().rootDocId).toBe('77777777-7777-4777-8777-777777777777');
+    expect(latexDependencyGraph.getServerRootDoc()).toEqual({
+      rootDocPath: 'personal-notes.tex',
+      rootFileId: '77777777-7777-4777-8777-777777777777',
+    });
+  });
+
+  it('strips legacy persisted mainFile during settings store v4 migration', () => {
+    const migrate = useSettingsStore.persist.getOptions().migrate;
+    expect(migrate).toBeTypeOf('function');
+    const migrated = migrate!(
+      { engine: 'xelatex', wordWrap: false, mainFile: 'flux.tex' },
+      3,
+    ) as Record<string, unknown>;
+    expect(migrated).not.toHaveProperty('mainFile');
+    expect(migrated.engine).toBe('xelatex');
+    expect(migrated.wordWrap).toBe(false);
   });
 });

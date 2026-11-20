@@ -18,7 +18,6 @@ import {
   workspaceCoordinator,
   usePageStore,
   useWorkspaceStore,
-  useSettingsStore,
   DEFAULT_MAIN_FILE,
   syncShallowFileUrlParam,
 } from '@/features/editor/core';
@@ -26,6 +25,8 @@ import { editorBootstrapQuery, pageQuery, filesQuery } from './document.queries'
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
@@ -142,21 +143,27 @@ export function useActiveDocument() {
     projectDocs[0]?.id ||
     '';
 
+  const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId);
+  const isStoreScopedToCurrentPage = Boolean(pageId && storeRootPageId === pageId);
   const storeActiveFilePage = usePageStore((s) => s.activeFilePage);
   const storeActiveFileId = storeActiveFilePage?.id ?? null;
+  const scopedStoreActiveFileId = isStoreScopedToCurrentPage ? storeActiveFileId : null;
   const activeTabId = useWorkspaceStore((s) => {
-    for (const key of [pageId, projectId]) {
-      if (key && s.activeByProject[key]) {
-        return s.activeByProject[key];
-      }
+    if (pageId) {
+      return s.activeByProject[pageId] ?? null;
+    }
+    if (projectId) {
+      return s.activeByProject[projectId] ?? null;
     }
     return null;
   });
 
-  // Synchronously resolve active file ID: in-memory active tab or pageStore.activeFilePage takes precedence
+  // Synchronously resolve active file ID: in-memory active tab or scoped pageStore.activeFilePage takes precedence
   const rawResolvedFileId =
     activeTabId ||
-    (storeActiveFileId && storeActiveFileId !== pageId ? storeActiveFileId : null) ||
+    (scopedStoreActiveFileId && scopedStoreActiveFileId !== pageId
+      ? scopedStoreActiveFileId
+      : null) ||
     fileId;
   const resolvedFileId =
     bootstrapData?.activeDoc.fallbackToRoot && rawResolvedFileId === fileId
@@ -264,11 +271,15 @@ export function useActiveDocument() {
     }
     const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
-    if (storeActiveFilePage && storeActiveFilePage.id === resolvedFileId) {
+    if (
+      isStoreScopedToCurrentPage &&
+      storeActiveFilePage &&
+      storeActiveFilePage.id === resolvedFileId
+    ) {
       return storeActiveFilePage;
     }
     return undefined;
-  }, [resolvedFileId, isResolvedMain, activeFileDoc, childFiles, storeActiveFilePage]);
+  }, [resolvedFileId, isResolvedMain, activeFileDoc, childFiles, isStoreScopedToCurrentPage, storeActiveFilePage]);
 
   // Keep LRU cache synchronized when active documents are loaded from server
   useEffect(() => {
@@ -307,7 +318,7 @@ export function useActiveDocument() {
   const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
   const setActivePageId = usePageStore((s) => s.setActivePageId);
   const setParentPageId = usePageStore((s) => s.setParentPageId);
-  const setRootDocId = usePageStore((s) => s.setRootDocId);
+  const setMainDocument = usePageStore((s) => s.setMainDocument);
   const setSpaceId = usePageStore((s) => s.setSpaceId);
   const setProjectId = usePageStore((s) => s.setProjectId);
   const activePageId = usePageStore((s) => s.activePageId);
@@ -324,8 +335,40 @@ export function useActiveDocument() {
     if (effectiveProjectId) setProjectId(effectiveProjectId);
     const canonicalPageId = bootstrapData?.workspace?.pageId || pageId;
     if (canonicalPageId) setParentPageId(canonicalPageId);
-    if (bootstrapData?.workspace?.rootDocId) setRootDocId(bootstrapData.workspace.rootDocId);
-  }, [effectiveProjectId, pageId, bootstrapData?.workspace?.spaceId, bootstrapData?.workspace?.pageId, bootstrapData?.workspace?.rootDocId, setSpaceId, setProjectId, setParentPageId, setRootDocId]);
+    if (bootstrapData?.workspace) {
+      const ws = bootstrapData.workspace;
+      const normalizedWsMain = normalizeVirtualPath(ws.mainFilePath || '') || null;
+      setMainDocument({
+        rootDocId: ws.rootDocId ?? null,
+        mainFilePath: normalizedWsMain,
+      });
+      latexDependencyGraph.setServerRootDoc(normalizedWsMain, ws.rootDocId ?? null);
+    } else if (parentPage && !usePageStore.getState().mainFilePath) {
+      const rawMainTitle =
+        typeof parentPage.mainFile === 'object' && parentPage.mainFile
+          ? (parentPage.mainFile as { title?: string }).title
+          : parentPage.path || parentPage.title;
+      const normalizedFallback = normalizeVirtualPath(rawMainTitle || '') || null;
+      const resolvedFallbackId = mainId || parentPage.id || null;
+      if (normalizedFallback) {
+        setMainDocument({
+          rootDocId: resolvedFallbackId,
+          mainFilePath: normalizedFallback,
+        });
+        latexDependencyGraph.setServerRootDoc(normalizedFallback, resolvedFallbackId);
+      }
+    }
+  }, [
+    effectiveProjectId,
+    pageId,
+    bootstrapData?.workspace,
+    parentPage,
+    mainId,
+    setSpaceId,
+    setProjectId,
+    setParentPageId,
+    setMainDocument,
+  ]);
 
   // Synchronize VFS file tree to workspace coordinator and initiate deferred symbols index
   useEffect(() => {
@@ -360,7 +403,7 @@ export function useActiveDocument() {
     if (hydratedPageScopeRef.current === scopeKey) return;
     hydratedPageScopeRef.current = scopeKey;
 
-    const configuredMain = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+    const configuredMain = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
     const resolvedTitle = (parentPage.title || '').trim() || configuredMain;
     hydratePageTabs(pageId, {
       rootDocId: parentPage.id,
@@ -388,7 +431,7 @@ export function useActiveDocument() {
         setActivePageId?.(parentPage.id);
       }
 
-      const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
+      const configuredMain = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
       const rawTitle = (parentPage.title || '').trim();
       const resolvedTitle = !rawTitle ? configuredMain : rawTitle;
 
@@ -437,7 +480,7 @@ export function useActiveDocument() {
       ? parentPage
       : childFiles.find((f) => f.id === targetFileId || f.title === targetFileId);
 
-    const configuredMain = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+    const configuredMain = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
     const targetTitle = targetFile?.title || (isTargetMain ? configuredMain : targetFileId);
 
     syncWorkspaceTabs(

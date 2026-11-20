@@ -306,6 +306,7 @@ export interface CompileLatexPayload {
   useCache: boolean;
   forceClean?: boolean;
   stopOnFirstError?: boolean;
+  priority?: 'manual' | 'auto';
   timeoutMs?: number;
   source?: string;
   files?: Record<string, string>;
@@ -316,6 +317,9 @@ export interface CompileLatexPayload {
 export interface CompileLatexResponse {
   success?: boolean;
   outcome?: CompileOutcome;
+  aborted?: boolean;
+  statusCode?: number;
+  errorCode?: string;
   pdf: string;
   pdfArtifactUrl?: string;
   synctexArtifactUrl?: string;

@@ -74,7 +74,7 @@ export function EditingModeDropdown() {
           type="button"
           title={getTooltip()}
           aria-label={`Editing mode: ${getLabel()}`}
-          className="flex items-center gap-1 h-7 px-1.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none"
+          className="flex items-center gap-1 h-7 px-1.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
         >
           {currentMode === 'viewing' ? (
             <Eye className="size-3.5 shrink-0 text-foreground" />

@@ -80,13 +80,15 @@ describe('Editor Tab Pool, Multi-Window Sync & CM6 Warm State Governance', () =>
       spaceId: '',
       projectId: '',
       rootPageId: '',
+      rootDocId: null,
+      mainFilePath: 'main.tex',
       parentPageId: '',
       currentPage: null,
       activeFilePage: null,
       activePageId: null,
     });
 
-    useSettingsStore.setState({ previewEditorTabs: true, mainFile: 'main.tex' });
+    useSettingsStore.setState({ previewEditorTabs: true });
   });
 
   afterEach(() => {

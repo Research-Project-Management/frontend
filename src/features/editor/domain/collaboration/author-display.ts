@@ -79,7 +79,7 @@ export const AUTHOR_COLORS = [
   '#ea580c', // Orange
   '#db2777', // Pink
   '#0d9488', // Teal
-  '#ca8a04', // Amber
+  '#b45309', // Amber 700 (accessible >= 4.5:1 on white)
   '#4f46e5', // Indigo
 ] as const;
 

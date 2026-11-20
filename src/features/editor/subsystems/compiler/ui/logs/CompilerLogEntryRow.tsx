@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ChevronRight,
   Bot,
@@ -16,24 +16,26 @@ import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assi
 export interface CompilerLogEntryRowProps {
   id?: string;
   type: 'error' | 'warning' | 'badbox';
+  categoryIndex?: number;
   entry: LogEntry;
-  onClick?: () => void;
-  onSuggestFix?: (entry: LogEntry) => void;
+  onClick?: (entry: LogEntry) => void;
+  onSuggestFix?: (entry: LogEntry, categoryIndex?: number) => void;
   isFixLoading?: boolean;
   fixResult?: AiErrorFixResult | null;
   isFixProposed?: boolean;
   isFixApplied?: boolean;
-  onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
+  onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult, categoryIndex?: number) => void;
   onApplyQuickFix?: (entry: LogEntry, fix: { description: string; replacementText: string }) => void;
   isExplainOpen?: boolean;
   fetchedExplanation?: ErrorExplanationDto | null;
   isExplaining?: boolean;
-  onToggleExplain?: (entry: LogEntry) => void;
+  onToggleExplain?: (entry: LogEntry, type?: 'error' | 'warning' | 'badbox', categoryIndex?: number) => void;
 }
 
 export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   id,
   type,
+  categoryIndex,
   entry,
   onClick,
   onSuggestFix,
@@ -59,9 +61,22 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   const effectiveIsExplaining = isExplaining ?? internalIsExplaining;
   const activeExplanation = entry.explanation || effectiveFetchedExplanation;
 
+  const handleRowClick = useCallback(() => {
+    if (isClickable) {
+      onClick?.(entry);
+    }
+  }, [isClickable, onClick, entry]);
+
+  const handleApplyFixForRow = useCallback(
+    (targetEntry: LogEntry, fix: AiErrorFixResult) => {
+      onApplyFix?.(targetEntry, fix, categoryIndex);
+    },
+    [onApplyFix, categoryIndex],
+  );
+
   const handleToggleExplain = async () => {
     if (onToggleExplain) {
-      onToggleExplain(entry);
+      onToggleExplain(entry, type, categoryIndex);
       return;
     }
     if (internalExplainOpen) {
@@ -70,7 +85,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
     }
     // Close AI fix if open
     if (fixResult && onSuggestFix) {
-      onSuggestFix(entry);
+      onSuggestFix(entry, categoryIndex);
     }
     if (activeExplanation) {
       setInternalExplainOpen(true);
@@ -102,7 +117,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   return (
     <div
       id={id}
-      onClick={isClickable ? onClick : undefined}
+      onClick={isClickable ? handleRowClick : undefined}
       className={cn(
         'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-b-0 transition-colors',
         isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-inset',
@@ -135,7 +150,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
               {(entry.source === 'bibtex' || entry.source === 'biber') && (
                 <span
                   data-testid="log-entry-source-badge"
-                  className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold align-middle"
+                  className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground border border-border/60 text-10 font-mono font-medium align-middle"
                 >
                   {entry.source === 'bibtex' ? 'BibTeX' : 'Biber'}
                 </span>
@@ -161,7 +176,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSuggestFix(entry);
+                    onSuggestFix(entry, categoryIndex);
                   }}
                   className={cn(
                     'min-h-[26px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai relative after:absolute after:-inset-1 after:content-[\'\']',
@@ -211,7 +226,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   aria-label={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onClick?.();
+                    onClick?.(entry);
                   }}
                   className={cn(
                     isClickable && 'underline underline-offset-2 decoration-primary/40 hover:text-primary cursor-pointer text-xs font-mono border-none bg-transparent p-0 text-left'
@@ -247,7 +262,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
           fixResult={fixResult}
           isFixProposed={isFixProposed}
           isFixApplied={isFixApplied}
-          onApplyFix={onApplyFix}
+          onApplyFix={onApplyFix ? handleApplyFixForRow : undefined}
         />
       )}
     </div>

@@ -44,15 +44,10 @@ class CitationBadgeWidget extends WidgetType {
     chip.className = 'cm-visual-citation-chip';
     chip.title = `Citation: ${this.keys.join(', ')} (click to edit)`;
 
-    const icon = document.createElement('span');
-    icon.className = 'cm-visual-citation-icon';
-    icon.textContent = '📚';
-
     const text = document.createElement('span');
     text.className = 'cm-visual-citation-label';
     text.textContent = this.keys.map((k) => `@${k}`).join(', ');
 
-    chip.appendChild(icon);
     chip.appendChild(text);
 
     chip.addEventListener('click', (e) => {
@@ -143,18 +138,18 @@ const visualCitationsTheme = EditorView.baseTheme({
     gap: '3px',
     padding: '1px 6px',
     margin: '0 2px',
-    borderRadius: '12px',
+    borderRadius: '4px',
     fontSize: '0.85em',
     lineHeight: '1.4',
     cursor: 'pointer',
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-    color: 'var(--primary, #4f46e5)',
-    border: '1px solid rgba(99, 102, 241, 0.2)',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    color: 'var(--primary)',
+    border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
     transition: 'all 0.15s ease',
     verticalAlign: 'baseline',
     '&:hover': {
-      backgroundColor: 'rgba(99, 102, 241, 0.16)',
-      borderColor: 'rgba(99, 102, 241, 0.4)',
+      backgroundColor: 'color-mix(in srgb, var(--primary) 20%, transparent)',
+      borderColor: 'color-mix(in srgb, var(--primary) 40%, transparent)',
     },
   },
   '.cm-visual-citation-icon': {
@@ -170,18 +165,18 @@ const visualCitationsTheme = EditorView.baseTheme({
     gap: '3px',
     padding: '1px 5px',
     margin: '0 2px',
-    borderRadius: '10px',
+    borderRadius: '4px',
     fontSize: '0.85em',
     lineHeight: '1.4',
     cursor: 'pointer',
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    color: '#059669',
-    border: '1px solid rgba(16, 185, 129, 0.2)',
+    backgroundColor: 'color-mix(in srgb, var(--success) 10%, transparent)',
+    color: 'var(--success)',
+    border: '1px solid color-mix(in srgb, var(--success) 25%, transparent)',
     transition: 'all 0.15s ease',
     verticalAlign: 'baseline',
     '&:hover': {
-      backgroundColor: 'rgba(16, 185, 129, 0.16)',
-      borderColor: 'rgba(16, 185, 129, 0.4)',
+      backgroundColor: 'color-mix(in srgb, var(--success) 20%, transparent)',
+      borderColor: 'color-mix(in srgb, var(--success) 40%, transparent)',
     },
   },
   '.cm-visual-ref-icon': {

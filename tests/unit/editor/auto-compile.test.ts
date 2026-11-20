@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useCompileStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
 import { editorCommandBus } from '@/features/editor/core';
 import { sessionCoordinator } from '@/features/editor/core';

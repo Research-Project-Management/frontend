@@ -316,7 +316,7 @@ export default function SearchTab() {
       type="button"
       onClick={() => toggleFileCollapse(file.fileId)}
       aria-expanded={!isCollapsed}
-      className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none border-b border-border/10"
+      className="flex h-8 w-full items-center gap-1.5 px-3 text-left text-xs transition-colors hover:bg-sidebar-hover cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none border-b border-border/10"
     >
       {isCollapsed ? (
         <ChevronRight className="size-3.5 text-muted-foreground shrink-0" />
@@ -416,7 +416,7 @@ export default function SearchTab() {
             }}
             aria-label="Search all project files"
             placeholder="Search all project files..."
-            className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-border rounded-md w-full placeholder:text-muted-foreground"
+            className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-ring rounded-md w-full placeholder:text-muted-foreground"
           />
           {isFetching ? (
             <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 animate-spin motion-reduce:animate-none text-muted-foreground pointer-events-none shrink-0" />
@@ -429,7 +429,7 @@ export default function SearchTab() {
                 searchInputRef.current?.focus();
               }}
               aria-label="Clear search"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground hover:opacity-80 outline-none focus-visible:ring-1 focus-visible:ring-border rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground hover:opacity-80 outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
             >
               <X className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
             </button>
@@ -445,7 +445,7 @@ export default function SearchTab() {
             aria-label="Match Case"
             aria-pressed={caseSensitive}
             className={cn(
-              "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']",
+              "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
               caseSensitive
                 ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
@@ -461,7 +461,7 @@ export default function SearchTab() {
             aria-label="Regular Expression"
             aria-pressed={useRegex}
             className={cn(
-              "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']",
+              "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
               useRegex
                 ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
@@ -477,7 +477,7 @@ export default function SearchTab() {
             aria-label="Whole Word"
             aria-pressed={wholeWord}
             className={cn(
-              "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']",
+              "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
               wholeWord
                 ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
@@ -493,7 +493,7 @@ export default function SearchTab() {
             aria-label="Toggle Replace"
             aria-pressed={showReplace}
             className={cn(
-              "ml-auto size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']",
+              "ml-auto size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
               showReplace
                 ? "bg-muted text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
@@ -517,7 +517,7 @@ export default function SearchTab() {
                 onChange={(e) => setReplaceText(e.target.value)}
                 aria-label="Replace with"
               placeholder="Replace with..."
-                className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-border rounded-md w-full placeholder:text-muted-foreground"
+                className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-ring rounded-md w-full placeholder:text-muted-foreground"
               />
               {replaceText ? (
                 <button
@@ -527,7 +527,7 @@ export default function SearchTab() {
                     replaceInputRef.current?.focus();
                   }}
                   aria-label="Clear replace"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <X className="size-3.5 shrink-0" />
                 </button>

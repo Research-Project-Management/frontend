@@ -576,3 +576,7 @@ export class ReviewCoordinator {
 }
 
 export const reviewCoordinator = new ReviewCoordinator();
+
+editorCommandBus.subscribe('workspace:reset', () => {
+  reviewCoordinator.reset();
+});

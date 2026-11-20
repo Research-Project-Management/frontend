@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { collaborationService, type CollaborationEvent } from '@/features/editor/sdk/pages.service';
-import { useSettingsStore } from '@/features/editor/core';
+import { useSettingsStore, usePageStore } from '@/features/editor/core';
 import { parseSyncTeX, resolveForward } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { fromAny, fromPartial } from '@/shared/lib/type-utilities';
 
@@ -10,8 +10,8 @@ describe('Editor & Document End-to-End Integration Tests', () => {
     useSettingsStore.setState({
       reviewMode: false,
       editorMode: 'code',
-      mainFile: 'main.tex',
     });
+    usePageStore.getState().resetPageState();
   });
 
   describe('1. Real-Time Collaboration SSE Stream & Event Bus', () => {
@@ -223,16 +223,24 @@ Input:3:chapters/experiments.tex
     });
   });
 
-  describe('4. Main File Entrypoint Configuration', () => {
-    it('should default mainFile to main.tex and allow switching entrypoints', () => {
-      const { mainFile, setMainFile } = useSettingsStore.getState();
-      expect(mainFile).toBe('main.tex');
+  describe('4. Main File Entrypoint Configuration (Page-Scoped SSOT)', () => {
+    it('stores mainFilePath strictly per-page in usePageStore and excludes it from global useSettingsStore', () => {
+      expect('mainFile' in useSettingsStore.getState()).toBe(false);
 
-      setMainFile('thesis.tex');
-      expect(useSettingsStore.getState().mainFile).toBe('thesis.tex');
+      const { mainFilePath, setMainFilePath, setMainDocument, resetPageState } =
+        usePageStore.getState();
+      expect(mainFilePath).toBeNull();
 
-      setMainFile('paper_ieee.tex');
-      expect(useSettingsStore.getState().mainFile).toBe('paper_ieee.tex');
+      setMainFilePath('/thesis.tex');
+      expect(usePageStore.getState().mainFilePath).toBe('thesis.tex');
+
+      setMainDocument({ rootDocId: 'doc-ieee', mainFilePath: './paper_ieee.tex' });
+      expect(usePageStore.getState().mainFilePath).toBe('paper_ieee.tex');
+      expect(usePageStore.getState().rootDocId).toBe('doc-ieee');
+
+      resetPageState();
+      expect(usePageStore.getState().mainFilePath).toBeNull();
+      expect(usePageStore.getState().rootDocId).toBeNull();
     });
   });
 });

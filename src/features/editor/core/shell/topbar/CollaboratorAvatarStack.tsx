@@ -133,7 +133,7 @@ export function CollaboratorAvatarStack({
                   zIndex,
                 }}
                 className={cn(
-                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-border"
+                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-ring"
                 )}
               >
                 {c.avatar ? (
@@ -166,7 +166,7 @@ export function CollaboratorAvatarStack({
                 {c.tabCount > 1 && (
                   <span
                     title={`${c.tabCount} active browser tabs`}
-                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-semibold text-primary-foreground shadow-xs ring-1 ring-background"
+                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-sm bg-primary px-0.5 text-[9px] font-semibold text-primary-foreground shadow-xs ring-1 ring-background"
                   >
                     {c.tabCount}
                   </span>
@@ -187,13 +187,13 @@ export function CollaboratorAvatarStack({
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
                   {c.tabCount > 1 && (
-                    <span className="text-[10px] px-1 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                    <span className="text-[10px] px-1 py-0.5 rounded-sm font-medium bg-muted text-muted-foreground">
                       {c.tabCount} tabs
                     </span>
                   )}
                   <span
                     className={cn(
-                      "text-11 px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                      "text-11 px-1.5 py-0.5 rounded-sm font-medium shrink-0",
                       c.isOnline
                         ? "bg-success/15 text-success"
                         : "bg-muted text-muted-foreground"
@@ -233,7 +233,7 @@ export function CollaboratorAvatarStack({
             <button
               type="button"
               aria-label={`+${remainingCount} more collaborators`}
-              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-11 flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-border select-none"
+              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-11 flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-ring select-none"
             >
               +{remainingCount}
             </button>

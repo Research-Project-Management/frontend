@@ -111,6 +111,14 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
       tone = 'warning';
       Icon = ShieldAlert;
       break;
+    case 'rate-limited':
+      title = 'Compilation paused — rate limit or high load';
+      description =
+        description ||
+        'Too many compile requests arrived in a short window or background auto-compile was deferred under load. Retry in a moment.';
+      tone = 'warning';
+      Icon = Clock;
+      break;
     case 'offline-queued':
       title = 'Offline — compile queued';
       description =
@@ -161,7 +169,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
       data-testid="compile-outcome-card"
       data-outcome={outcome}
       className={cn(
-        'rounded-lg border px-3.5 py-2.5 text-xs space-y-2',
+        'rounded-md border px-3.5 py-2.5 text-xs space-y-2',
         toneClasses,
         className,
       )}
@@ -195,6 +203,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
               (outcome === 'timedout' ||
                 outcome === 'terminated' ||
                 outcome === 'clsi-unavailable' ||
+                outcome === 'rate-limited' ||
                 outcome === 'code-check-blocked' ||
                 outcome === 'offline-queued') && (
                 <button

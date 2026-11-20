@@ -19,6 +19,7 @@ import { useProjectExport } from '@/features/editor/core/hooks/useExport';
 import { useGithubSync } from '@/features/editor/subsystems/project-settings/hooks/useGithubSync';
 import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
@@ -46,7 +47,8 @@ export function useProjectMenuActions() {
   const setSettingsPanelOpen = useSettingsStore((s) => s.setSettingsPanelOpen);
   const settingsActiveTab = useSettingsStore((s) => s.settingsActiveTab);
   const setSettingsActiveTab = useSettingsStore((s) => s.setSettingsActiveTab);
-  const setMainFile = useSettingsStore((s) => s.setMainFile);
+  const storeMainFilePath = usePageStore((s) => s.mainFilePath);
+  const setMainDocument = usePageStore((s) => s.setMainDocument);
 
   const [currentView, setCurrentView] = useState<MenuView>('menu');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -111,25 +113,39 @@ export function useProjectMenuActions() {
   } = usePageActions();
 
   const handleMainFileChange = (newMainFileName: string) => {
-    const prevMainFile = useSettingsStore.getState().mainFile;
-    setMainFile(newMainFileName);
+    const normalizedNewMain = normalizeVirtualPath(newMainFileName) || newMainFileName;
+    const { mainFilePath: prevMainFilePath, rootDocId: prevRootDocId } =
+      usePageStore.getState();
     const filesList = (projectFiles || []) as Array<{
       id: string;
+      docId?: string | null;
       title?: string;
       name?: string;
       filename?: string;
+      path?: string;
     }>;
     const targetFile = filesList.find(
-      (f) => (f.title || f.name || f.filename) === newMainFileName,
+      (f) =>
+        normalizeVirtualPath(f.path || f.title || f.name || f.filename || '') ===
+        normalizedNewMain,
     );
+    const optimisticRootDocId =
+      targetFile?.docId || targetFile?.id || parentPage?.id || prevRootDocId;
+    setMainDocument({
+      rootDocId: optimisticRootDocId,
+      mainFilePath: normalizedNewMain,
+    });
     const onError = () => {
-      setMainFile(prevMainFile);
+      setMainDocument({
+        rootDocId: prevRootDocId,
+        mainFilePath: prevMainFilePath,
+      });
     };
     if (targetFile && (pageId || effectiveProjectId)) {
       setMainFileMutation.mutate(
         {
           pageId: pageId || effectiveProjectId,
-          fileId: targetFile.id,
+          fileId: targetFile.docId || targetFile.id,
           projectId: effectiveProjectId,
         },
         { onError },
@@ -137,7 +153,8 @@ export function useProjectMenuActions() {
     } else if (
       (pageId || effectiveProjectId) &&
       parentPage &&
-      (parentPage.title === newMainFileName || newMainFileName === 'main.tex')
+      (normalizeVirtualPath(parentPage.path || parentPage.title || '') === normalizedNewMain ||
+        normalizedNewMain === 'main.tex')
     ) {
       setMainFileMutation.mutate(
         {
@@ -152,23 +169,35 @@ export function useProjectMenuActions() {
 
   const texFiles = useMemo(() => {
     const list: string[] = [];
-    if (parentPage?.title) {
-      const rootTitle = parentPage.title.endsWith('.tex')
-        ? parentPage.title
-        : `${parentPage.title}.tex`;
-      list.push(rootTitle);
-    }
+    const addTexCandidate = (raw?: string | null) => {
+      if (typeof raw !== 'string') return;
+      const clean = normalizeVirtualPath(raw);
+      if (clean && clean.toLowerCase().endsWith('.tex') && !list.includes(clean)) {
+        list.push(clean);
+      }
+    };
+    addTexCandidate(storeMainFilePath);
     if (projectFiles && Array.isArray(projectFiles)) {
-      (projectFiles as Array<{ title?: string; name?: string; filename?: string }>).forEach((f) => {
-        const name = f.title || f.name || f.filename;
-        if (typeof name === 'string' && name.toLowerCase().endsWith('.tex') && !list.includes(name)) {
-          list.push(name);
-        }
+      (
+        projectFiles as Array<{
+          title?: string;
+          name?: string;
+          filename?: string;
+          path?: string;
+        }>
+      ).forEach((f) => {
+        addTexCandidate(f.path || f.title || f.name || f.filename);
       });
+    }
+    if (list.length === 0 && (parentPage?.path || parentPage?.title)) {
+      const fallbackRaw = normalizeVirtualPath(parentPage.path || parentPage.title || '');
+      if (fallbackRaw) {
+        addTexCandidate(fallbackRaw.toLowerCase().endsWith('.tex') ? fallbackRaw : `${fallbackRaw}.tex`);
+      }
     }
     if (list.length === 0) list.push('main.tex');
     return list;
-  }, [parentPage?.title, projectFiles]);
+  }, [storeMainFilePath, parentPage?.path, parentPage?.title, projectFiles]);
 
   const bibFiles = useMemo(() => {
     const list: string[] = [];
@@ -196,7 +225,7 @@ export function useProjectMenuActions() {
         getContent() ||
         (typeof parentPage?.content === 'string' ? parentPage.content : '') ||
         `\\documentclass{article}\n\\begin{document}\n\\title{${projectTitle}}\n\\maketitle\n\\end{document}`;
-      const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      const targetMainFile = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
       await pagesService.templates.createCustom({
         projectId: effectiveProjectId,
         name: `${projectTitle} Template`,

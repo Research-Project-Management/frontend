@@ -20,7 +20,7 @@ import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assi
 import { pagesService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore, useSettingsStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 import { getEditorEngineForFile } from '@/features/editor/core/bus/engine-registry';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
@@ -192,7 +192,7 @@ export function useLogViewerActions({
       quickFix: { description: string; replacementText: string },
     ) => {
       const pageStore = usePageStore.getState();
-      const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      const configuredMainFile = pageStore.mainFilePath || DEFAULT_MAIN_FILE;
       const activeFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id;
       const replacement = quickFix.replacementText;
       const trimmedFix = replacement.trim();
@@ -276,7 +276,7 @@ export function useLogViewerActions({
       onOutcome?: (outcome: 'proposed' | 'applied') => void,
     ) => {
       const pageStore = usePageStore.getState();
-      const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      const configuredMainFile = pageStore.mainFilePath || DEFAULT_MAIN_FILE;
       let targetFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || configuredMainFile;
       let targetFileName = pageStore.activeFilePage?.title || configuredMainFile;
 

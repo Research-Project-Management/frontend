@@ -42,11 +42,6 @@ const ReviewTab = dynamic(() => import('@/features/editor/subsystems/review').th
   loading: PanelLoadingFallback,
 });
 
-const ChatTab = dynamic(() => import('@/features/editor/subsystems/chat').then((m) => m.ChatTab), {
-  ssr: false,
-  loading: PanelLoadingFallback,
-});
-
 const AiTab = dynamic(() => import('@/features/editor/subsystems/ai').then((m) => m.AiTab), {
   ssr: false,
   loading: PanelLoadingFallback,
@@ -70,8 +65,6 @@ export function PrimarySidebar() {
         return <CitationTab onClose={handleClose} />;
       case 'review':
         return <ReviewTab onClose={handleClose} />;
-      case 'chat':
-        return <ChatTab onClose={handleClose} />;
       case 'ai':
         return <AiTab onClose={handleClose} />;
       default:

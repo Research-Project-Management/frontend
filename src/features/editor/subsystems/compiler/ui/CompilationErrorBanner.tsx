@@ -15,7 +15,7 @@
  */
 
 import React from 'react';
-import { AlertCircle, CloudOff, RefreshCw, ShieldAlert, WifiOff } from 'lucide-react';
+import { AlertCircle, Clock, CloudOff, RefreshCw, ShieldAlert, WifiOff } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { CompileOutcome } from '@/features/editor/domain/types/compiler.types';
 
@@ -52,18 +52,25 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
           className
         )}
       >
-        <div
-          onClick={onOpenLogs}
-          className={cn(
-            'flex items-center gap-2.5 min-w-0',
-            onOpenLogs && 'cursor-pointer hover:underline'
-          )}
-        >
-          <CloudOff className="size-4 shrink-0 text-destructive stroke-[2.2]" />
-          <span className="text-xs font-mono font-medium text-destructive truncate">
-            {errorMessage || 'Compiler service unavailable — could not reach LaTeX build engine'}
-          </span>
-        </div>
+        {onOpenLogs ? (
+          <button
+            type="button"
+            onClick={onOpenLogs}
+            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer hover:underline outline-none focus-visible:underline"
+          >
+            <CloudOff className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium text-destructive truncate">
+              {errorMessage || 'Compiler service unavailable — could not reach LaTeX build engine'}
+            </span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0">
+            <CloudOff className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium text-destructive truncate">
+              {errorMessage || 'Compiler service unavailable — could not reach LaTeX build engine'}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 shrink-0">
           {onRetry && (
@@ -98,29 +105,36 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
         data-testid="compilation-error-banner"
         data-banner-mode="code-check-blocked"
         className={cn(
-          'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 bg-amber-500/12 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 select-none z-20 shrink-0 transition-colors duration-150',
+          'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 bg-warning/10 border-b border-warning/25 text-warning select-none z-20 shrink-0 transition-colors duration-150',
           className
         )}
       >
-        <div
-          onClick={onOpenLogs}
-          className={cn(
-            'flex items-center gap-2.5 min-w-0',
-            onOpenLogs && 'cursor-pointer hover:underline'
-          )}
-        >
-          <ShieldAlert className="size-4 shrink-0 stroke-[2.2]" />
-          <span className="text-xs font-mono font-medium truncate">
-            Auto-compile paused: syntax error detected before build
-          </span>
-        </div>
+        {onOpenLogs ? (
+          <button
+            type="button"
+            onClick={onOpenLogs}
+            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer hover:underline outline-none focus-visible:underline text-warning"
+          >
+            <ShieldAlert className="size-4 shrink-0 stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium truncate">
+              Auto-compile paused: syntax error detected before build
+            </span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0 text-warning">
+            <ShieldAlert className="size-4 shrink-0 stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium truncate">
+              Auto-compile paused: syntax error detected before build
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 shrink-0">
           {errorCount > 0 && (
             <button
               type="button"
               onClick={onJumpToFirstError}
-              className="min-h-[28px] px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-xs font-mono font-medium rounded-md transition-colors cursor-pointer select-none"
+              className="min-h-[28px] px-2.5 py-1 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-mono font-medium rounded-md transition-colors cursor-pointer select-none"
             >
               Jump to error
             </button>
@@ -129,9 +143,66 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
             <button
               type="button"
               onClick={onCompileAnyway}
-              className="min-h-[28px] px-3 py-1 bg-amber-500/25 hover:bg-amber-500/35 text-xs font-mono font-semibold rounded-md transition-colors cursor-pointer select-none"
+              className="min-h-[28px] px-3 py-1 bg-warning/20 hover:bg-warning/30 text-warning text-xs font-mono font-semibold rounded-md transition-colors cursor-pointer select-none"
             >
               Compile anyway
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (outcome === 'rate-limited') {
+    return (
+      <div
+        role="alert"
+        aria-live="polite"
+        data-testid="compilation-error-banner"
+        data-banner-mode="rate-limited"
+        className={cn(
+          'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 bg-warning/10 border-b border-warning/25 text-warning select-none z-20 shrink-0 transition-colors duration-150',
+          className
+        )}
+      >
+        {onOpenLogs ? (
+          <button
+            type="button"
+            onClick={onOpenLogs}
+            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer hover:underline outline-none focus-visible:underline text-warning"
+          >
+            <Clock className="size-4 shrink-0 stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium truncate">
+              {errorMessage || 'Compilation rate limit reached — please wait a moment before retrying'}
+            </span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0 text-warning">
+            <Clock className="size-4 shrink-0 stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium truncate">
+              {errorMessage || 'Compilation rate limit reached — please wait a moment before retrying'}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center gap-1 min-h-[28px] px-3 py-1 bg-warning/15 hover:bg-warning/25 text-warning text-xs font-mono font-semibold rounded-md transition-colors cursor-pointer select-none"
+            >
+              <RefreshCw className="size-3" />
+              <span>Retry compile</span>
+            </button>
+          )}
+          {onOpenLogs && (
+            <button
+              type="button"
+              onClick={onOpenLogs}
+              className="min-h-[28px] px-2.5 py-1 bg-warning/10 hover:bg-warning/20 text-warning text-xs font-mono rounded-md transition-colors cursor-pointer select-none"
+            >
+              View logs
             </button>
           )}
         </div>
@@ -183,20 +254,29 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
           className
         )}
       >
-        <div
-          onClick={onOpenLogs}
-          className={cn(
-            'flex items-center gap-2.5 min-w-0',
-            onOpenLogs && 'cursor-pointer hover:underline'
-          )}
-        >
-          <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
-          <span className="text-xs font-mono font-medium text-destructive truncate">
-            {outcome === 'timedout'
-              ? 'Compilation timed out before completion'
-              : errorMessage || 'Pre-compile validation problems blocked this build'}
-          </span>
-        </div>
+        {onOpenLogs ? (
+          <button
+            type="button"
+            onClick={onOpenLogs}
+            className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer hover:underline outline-none focus-visible:underline text-destructive"
+          >
+            <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium text-destructive truncate">
+              {outcome === 'timedout'
+                ? 'Compilation timed out before completion'
+                : errorMessage || 'Pre-compile validation problems blocked this build'}
+            </span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5 min-w-0 text-destructive">
+            <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+            <span className="text-xs font-mono font-medium text-destructive truncate">
+              {outcome === 'timedout'
+                ? 'Compilation timed out before completion'
+                : errorMessage || 'Pre-compile validation problems blocked this build'}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 shrink-0">
           {onOpenLogs && (
@@ -226,19 +306,26 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
         className
       )}
     >
-      <div
-        onClick={onOpenLogs}
-        className={cn(
-          'flex items-center gap-2.5 min-w-0',
-          onOpenLogs && 'cursor-pointer hover:underline'
-        )}
-        title={onOpenLogs ? 'Click to view full compilation logs' : undefined}
-      >
-        <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
-        <span className="text-xs font-mono font-medium text-destructive truncate">
-          {errorCount} compilation {errorCount === 1 ? 'error' : 'errors'} detected in this build
-        </span>
-      </div>
+      {onOpenLogs ? (
+        <button
+          type="button"
+          onClick={onOpenLogs}
+          title="Click to view full compilation logs"
+          className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer hover:underline outline-none focus-visible:underline text-destructive"
+        >
+          <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+          <span className="text-xs font-mono font-medium text-destructive truncate">
+            {errorCount} compilation {errorCount === 1 ? 'error' : 'errors'} detected in this build
+          </span>
+        </button>
+      ) : (
+        <div className="flex items-center gap-2.5 min-w-0 text-destructive">
+          <AlertCircle className="size-4 shrink-0 text-destructive stroke-[2.2]" />
+          <span className="text-xs font-mono font-medium text-destructive truncate">
+            {errorCount} compilation {errorCount === 1 ? 'error' : 'errors'} detected in this build
+          </span>
+        </div>
+      )}
 
       <button
         type="button"

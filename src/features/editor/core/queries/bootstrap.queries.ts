@@ -14,6 +14,8 @@ import {
 import { syncedDocCacheStore } from '@/features/editor/domain/offline-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
@@ -214,7 +216,12 @@ export function hydrateEditorBootstrap(
     githubLink: workspace.githubLink ?? null,
   });
   pageStore.setRootPageId(workspace.pageId || workspace.rootDocId);
-  pageStore.setRootDocId(workspace.rootDocId ?? null);
+  const normalizedMainFilePath = normalizeVirtualPath(workspace.mainFilePath || '') || null;
+  pageStore.setMainDocument({
+    rootDocId: workspace.rootDocId ?? null,
+    mainFilePath: normalizedMainFilePath,
+  });
+  latexDependencyGraph.setServerRootDoc(normalizedMainFilePath, workspace.rootDocId ?? null);
 
   if (resolvedProjectId) {
     queryClient.setQueryData(['github-link', resolvedProjectId], {

@@ -82,6 +82,7 @@ export type CompileOutcome =
   | 'terminated'
   | 'validation-problems'
   | 'clsi-unavailable'
+  | 'rate-limited'
   | 'offline-queued'
   | 'code-check-blocked';
 

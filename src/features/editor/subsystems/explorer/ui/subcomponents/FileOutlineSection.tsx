@@ -366,7 +366,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           <span className="truncate">File Outline</span>
         </div>
         {outline.length > 0 && (
-          <span className="rounded-full bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
+          <span className="rounded-sm bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
             {outline.length}
           </span>
         )}

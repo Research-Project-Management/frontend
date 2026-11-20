@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
@@ -25,6 +26,7 @@ export interface DocumentEditorState {
   workspaceTitle: string;
   rootPageId: string | null;
   rootDocId: string | null;
+  mainFilePath: string | null;
   activeDocId: string | null;
 
   // Backward-compatible aliases
@@ -45,6 +47,8 @@ export interface DocumentEditorState {
   setGithubLink: (githubLink: EditorGithubLinkInfo | null) => void;
   setRootPageId: (id: string | null) => void;
   setRootDocId: (id: string | null) => void;
+  setMainFilePath: (path: string | null) => void;
+  setMainDocument: (doc: { rootDocId?: string | null; mainFilePath: string | null }) => void;
   setParentPageId: (id: string | null) => void;
   setActiveDocId: (id: string | null) => void;
   setActivePageId: (id: string | null) => void;
@@ -76,6 +80,7 @@ export interface DocumentEditorState {
   getSpaceId: () => string;
   getProjectId: () => string;
   getRootPageId: () => string | null;
+  getMainFilePath: () => string | null;
   getActiveDocId: () => string | null;
 }
 
@@ -88,6 +93,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
   workspaceTitle: '',
   rootPageId: null,
   rootDocId: null,
+  mainFilePath: null,
   parentPageId: null,
   activeDocId: null,
   activePageId: null,
@@ -160,6 +166,23 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
     ),
   setRootDocId: (rootDocId) =>
     set((state) => (state.rootDocId === rootDocId ? state : { rootDocId })),
+  setMainFilePath: (path) =>
+    set((state) => {
+      const normalized = path ? normalizeVirtualPath(path) || null : null;
+      return state.mainFilePath === normalized ? state : { mainFilePath: normalized };
+    }),
+  setMainDocument: (doc) =>
+    set((state) => {
+      const normalized = doc.mainFilePath ? normalizeVirtualPath(doc.mainFilePath) || null : null;
+      const nextRootDocId = doc.rootDocId !== undefined ? doc.rootDocId : state.rootDocId;
+      if (state.mainFilePath === normalized && state.rootDocId === nextRootDocId) {
+        return state;
+      }
+      return {
+        mainFilePath: normalized,
+        rootDocId: nextRootDocId,
+      };
+    }),
   setParentPageId: (parentPageId) =>
     set((state) =>
       state.rootPageId === parentPageId && state.parentPageId === parentPageId
@@ -245,6 +268,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
       workspaceTitle: '',
       rootPageId: null,
       rootDocId: null,
+      mainFilePath: null,
       parentPageId: null,
       activeDocId: null,
       activePageId: null,
@@ -271,6 +295,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
   getSpaceId: () => get().spaceId || get().projectId,
   getProjectId: () => get().projectId || get().spaceId,
   getRootPageId: () => get().rootPageId || get().parentPageId,
+  getMainFilePath: () => get().mainFilePath,
   getActiveDocId: () => get().activeDocId || get().activePageId,
 }));
 

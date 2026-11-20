@@ -348,7 +348,7 @@ No pages of output.`;
     expect(renderedRows.length).toBeLessThan(300);
   });
 
-  it('switches tab and scrolls matching log entry into view when focusTarget is passed', () => {
+  it('switches tab and scrolls matching log entry into view when focusTarget is passed', async () => {
     const scrollIntoViewMock = vi.fn();
     const origScrollIntoView = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoViewMock;
@@ -380,6 +380,8 @@ No pages of output.`;
       );
 
       expect(document.getElementById('log-entry-err-1')).not.toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      expect(scrollIntoViewMock).toHaveBeenCalled();
     } finally {
       Element.prototype.scrollIntoView = origScrollIntoView;
     }

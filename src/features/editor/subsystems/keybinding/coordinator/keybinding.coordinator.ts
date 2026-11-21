@@ -158,6 +158,9 @@ export class KeybindingCoordinator {
       description: 'Toggle AI Assistant Panel (Ctrl+J)',
       scope: 'any',
       handler: (e) => {
+        if (!useSettingsStore.getState().aiAssistEnabled) {
+          return;
+        }
         e.preventDefault();
         editorCommandBus.dispatch({ type: 'sidebar:toggle-ai-panel' });
       },

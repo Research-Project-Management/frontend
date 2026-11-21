@@ -793,15 +793,11 @@ export function useCompilerLogsState({
       rowVirtualizer.scrollToIndex(visibleIdx, { align: 'center' });
     }
 
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => {
-        const el = document.getElementById(match.domId);
-        el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-      });
-    } else {
+    // Wait for the tab switch / virtualizer to commit rows before scrolling.
+    setTimeout(() => {
       const el = document.getElementById(match.domId);
       el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    }
+    }, 30);
 
     onFocusTargetHandled?.();
   }, [

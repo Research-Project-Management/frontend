@@ -25,6 +25,7 @@ export type DialogName =
   | 'citation-picker'
   | 'table-wizard'
   | 'matrix-wizard'
+  | 'equation-generator'
   | 'figure-wizard'
   | 'symbol-palette'
   | 'upload-file'

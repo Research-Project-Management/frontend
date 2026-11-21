@@ -51,6 +51,7 @@ const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/c
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
 const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
 const TableWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/table-wizard/TableWizardModal'), { ssr: false });
+const EquationGeneratorModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/EquationGeneratorModal'), { ssr: false });
 const FigureWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/FigureWizardModal'), { ssr: false });
 const SymbolPaletteModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/SymbolPaletteModal'), { ssr: false });
 const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal'), { ssr: false });
@@ -159,6 +160,7 @@ export function WorkbenchLayout() {
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
   const [tableWizardTab, setTableWizardTab] = useState<'table' | 'matrix'>('table');
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
+  const [equationGeneratorOpen, setEquationGeneratorOpen] = useState(false);
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
@@ -204,6 +206,10 @@ export function WorkbenchLayout() {
         setTableWizardOpen(true);
       } else if (cmd.dialog === 'figure-wizard') {
         setFigureWizardOpen(true);
+      } else if (cmd.dialog === 'equation-generator') {
+        if (useSettingsStore.getState().aiAssistEnabled) {
+          setEquationGeneratorOpen(true);
+        }
       } else if (cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(true);
       } else if (cmd.dialog === 'template-gallery') {
@@ -238,6 +244,9 @@ export function WorkbenchLayout() {
       }
       if (!cmd.dialog || cmd.dialog === 'figure-wizard') {
         setFigureWizardOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'equation-generator') {
+        setEquationGeneratorOpen(false);
       }
       if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(false);
@@ -390,6 +399,22 @@ export function WorkbenchLayout() {
           }}
           initialTab={tableWizardTab}
           initialLatex={tableWizardInitialLatex}
+          onInsert={(latexCode) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
+        />
+      )}
+
+      {equationGeneratorOpen && (
+        <EquationGeneratorModal
+          open={equationGeneratorOpen}
+          onOpenChange={(open) => {
+            setEquationGeneratorOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'equation-generator' });
+            }
+          }}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
             editorCommandBus.dispatch({ type: 'editor:focus' });

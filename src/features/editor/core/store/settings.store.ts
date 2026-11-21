@@ -66,6 +66,7 @@ export interface DocumentSettingsState {
   autoCloseBrackets: boolean;
   linterEnabled: boolean;
   errorLensEnabled: boolean;
+  aiAssistEnabled: boolean;
   autoComplete: boolean;
   nonBlinkingCursor: boolean;
   previewEditorTabs: boolean;
@@ -126,6 +127,8 @@ export interface DocumentSettingsState {
   toggleLinterEnabled: () => void;
   setErrorLensEnabled: (enabled: boolean) => void;
   toggleErrorLensEnabled: () => void;
+  setAiAssistEnabled: (enabled: boolean) => void;
+  toggleAiAssistEnabled: () => void;
   setShowEditorTabs: (show: boolean) => void;
   toggleShowEditorTabs: () => void;
   setShowEquationPreview: (show: boolean) => void;
@@ -179,6 +182,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       autoCloseBrackets: true,
       linterEnabled: true,
       errorLensEnabled: false,
+      aiAssistEnabled: true,
       autoComplete: true,
       nonBlinkingCursor: false,
       previewEditorTabs: false,
@@ -243,6 +247,8 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       toggleLinterEnabled: () => set((s) => ({ linterEnabled: !s.linterEnabled })),
       setErrorLensEnabled: (errorLensEnabled) => set({ errorLensEnabled }),
       toggleErrorLensEnabled: () => set((s) => ({ errorLensEnabled: !s.errorLensEnabled })),
+      setAiAssistEnabled: (aiAssistEnabled) => set({ aiAssistEnabled }),
+      toggleAiAssistEnabled: () => set((s) => ({ aiAssistEnabled: !s.aiAssistEnabled })),
       setShowEditorTabs: (showEditorTabs) => set({ showEditorTabs }),
       toggleShowEditorTabs: () => set((s) => ({ showEditorTabs: !s.showEditorTabs })),
       setShowEquationPreview: (showEquationPreview) => set({ showEquationPreview }),

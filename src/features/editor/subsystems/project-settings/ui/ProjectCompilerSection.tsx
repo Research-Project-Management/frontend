@@ -20,6 +20,7 @@ import { Input } from '@/shared/components/ui/input';
 import {
   usePageStore,
   useSettingsStore,
+  useWorkspaceStore,
   type CompilerEngine,
   type KeybindingMode,
   type EditorTheme,
@@ -61,6 +62,17 @@ export function ProjectCompilerSection({
   const setLinterEnabled = useSettingsStore((s) => s.setLinterEnabled);
   const errorLensEnabled = useSettingsStore((s) => s.errorLensEnabled);
   const setErrorLensEnabled = useSettingsStore((s) => s.setErrorLensEnabled);
+  const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
+  const setAiAssistEnabled = useSettingsStore((s) => s.setAiAssistEnabled);
+  const handleAiAssistChange = (enabled: boolean) => {
+    setAiAssistEnabled(enabled);
+    if (!enabled) {
+      const workspace = useWorkspaceStore.getState();
+      if (workspace.activeSidebarTab === 'ai') {
+        workspace.setActiveSidebarTab('files');
+      }
+    }
+  };
   const showEditorTabs = useSettingsStore((s) => s.showEditorTabs);
   const setShowEditorTabs = useSettingsStore((s) => s.setShowEditorTabs);
   const previewEditorTabs = useSettingsStore((s) => s.previewEditorTabs);
@@ -340,6 +352,18 @@ export function ProjectCompilerSection({
           checked={errorLensEnabled}
           onCheckedChange={setErrorLensEnabled}
           aria-label="Error lens toggle"
+        />
+      </SettingRow>
+
+      {/* AI Assist */}
+      <SettingRow
+        title="AI Assist"
+        description="Enable AI Assistant, writing tools on selection, Error Assist in Logs, and the AI table generator"
+      >
+        <SettingsSwitch
+          checked={aiAssistEnabled}
+          onCheckedChange={handleAiAssistChange}
+          aria-label="AI Assist toggle"
         />
       </SettingRow>
 

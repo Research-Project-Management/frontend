@@ -55,6 +55,10 @@ export function ActivityBar() {
 
   const toggleSettingsPanel = useSettingsStore((s) => s.toggleSettingsPanel);
   const settingsPanelOpen = useSettingsStore((s) => s.settingsPanelOpen);
+  const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
+  const visibleActivities = aiAssistEnabled
+    ? PRIMARY_ACTIVITIES
+    : PRIMARY_ACTIVITIES.filter((item) => item.id !== 'ai');
   const pageId = usePageStore((s) => s.activePageId || s.currentPage?.id);
   const { totalPendingCount } = useReviewPendingCount(pageId);
 
@@ -71,7 +75,7 @@ export function ActivityBar() {
           aria-label="Primary Viewlets"
           className="flex flex-col items-center gap-1.5 w-full"
         >
-          {PRIMARY_ACTIVITIES.map((item) => {
+          {visibleActivities.map((item) => {
             const isActive = sidebarLeftOpen && activeSidebarTab === item.id;
             const Icon = item.icon;
             const isReview = item.id === 'review';

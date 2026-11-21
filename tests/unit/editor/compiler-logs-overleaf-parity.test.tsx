@@ -351,7 +351,9 @@ No pages of output.`;
   it('switches tab and scrolls matching log entry into view when focusTarget is passed', async () => {
     const scrollIntoViewMock = vi.fn();
     const origScrollIntoView = Element.prototype.scrollIntoView;
+    const origHtmlScrollIntoView = HTMLElement.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoViewMock;
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
     try {
       const { rerender } = render(
@@ -380,10 +382,11 @@ No pages of output.`;
       );
 
       expect(document.getElementById('log-entry-err-1')).not.toBeNull();
-      await new Promise((resolve) => setTimeout(resolve, 40));
+      await new Promise((resolve) => setTimeout(resolve, 120));
       expect(scrollIntoViewMock).toHaveBeenCalled();
     } finally {
       Element.prototype.scrollIntoView = origScrollIntoView;
+      HTMLElement.prototype.scrollIntoView = origHtmlScrollIntoView;
     }
   });
 });

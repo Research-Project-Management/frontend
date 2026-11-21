@@ -9,6 +9,7 @@ import type { Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 export interface SelectionGutterAiAction {
   id: 'polish' | 'rewrite' | 'concise' | 'grammar' | 'explain' | 'ask';
@@ -213,7 +214,7 @@ function createSelectionGutterActionsPlugin() {
               ? coords.top - editorRect.top - 2
               : this.computeFallbackLineTop(view, pos);
 
-          const pillHeight = this.pill.offsetHeight || (view.state.readOnly ? 28 : 56);
+          const pillHeight = this.pill.offsetHeight || (this.isAiUnavailable() ? 28 : 56);
           const top =
             editorRect.height > 0
               ? Math.max(4, Math.min(rawTop, Math.max(4, editorRect.height - pillHeight - 4)))
@@ -329,7 +330,7 @@ function createSelectionGutterActionsPlugin() {
         e.preventDefault();
         e.stopPropagation();
 
-        if (this.view.state.readOnly) {
+        if (this.isAiUnavailable()) {
           return;
         }
 
@@ -381,14 +382,21 @@ function createSelectionGutterActionsPlugin() {
         }
       };
 
+      private isAiUnavailable(): boolean {
+        return (
+          this.view.state.readOnly ||
+          !useSettingsStore.getState().aiAssistEnabled
+        );
+      }
+
       private syncReadOnlyState(): void {
-        const readOnly = this.view.state.readOnly;
-        this.divider.style.display = readOnly ? 'none' : '';
-        this.divider.hidden = readOnly;
-        this.aiBtn.style.display = readOnly ? 'none' : '';
-        this.aiBtn.hidden = readOnly;
-        this.aiBtn.disabled = readOnly;
-        if (readOnly) {
+        const hideAi = this.isAiUnavailable();
+        this.divider.style.display = hideAi ? 'none' : '';
+        this.divider.hidden = hideAi;
+        this.aiBtn.style.display = hideAi ? 'none' : '';
+        this.aiBtn.hidden = hideAi;
+        this.aiBtn.disabled = hideAi;
+        if (hideAi) {
           this.closeAiMenu();
         }
       }

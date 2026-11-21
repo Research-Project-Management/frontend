@@ -5,6 +5,7 @@
  * Connects frontend logs and authoring wizards to authoritative backend CLSI AI endpoints:
  * - POST /api/v1/pages/clsi/ai/fix-error
  * - POST /api/v1/pages/clsi/ai/generate-table
+ * - POST /api/v1/pages/clsi/ai/generate-equation
  */
 
 import { apiPost } from '@/shared/lib/api';
@@ -59,7 +60,23 @@ export async function generateLatexTable(
   return rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();
 }
 
+export async function generateLatexEquation(
+  prompt: string,
+  options?: { spaceId?: string; pageId?: string },
+): Promise<string> {
+  const res = await apiPost<{ equation?: string } | null>(
+    `${PAGES_API_BASE}/clsi/ai/generate-equation`,
+    {
+      prompt,
+      ...(options?.spaceId ? { spaceId: options.spaceId } : {}),
+      ...(options?.pageId ? { pageId: options.pageId } : {}),
+    },
+  );
+  return (res?.equation || '').trim();
+}
+
 export const ai = {
   suggestLatexFix,
   generateLatexTable,
+  generateLatexEquation,
 };

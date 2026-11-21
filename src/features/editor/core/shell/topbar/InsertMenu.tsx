@@ -28,6 +28,7 @@ import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.cons
 export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
   const mainBibFile = useSettingsStore((s) => s.mainBibFile) || DEFAULT_BIB_FILE;
+  const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
   const bibStem = mainBibFile.replace(/\.bib$/i, '') || 'references';
 
   const insertSnippet = (snippet: string) => {
@@ -64,6 +65,14 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
             >
               <span className="whitespace-nowrap">Display math</span>
             </MenubarItem>
+            {aiAssistEnabled && (
+              <MenubarItem
+                onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'equation-generator' })}
+                className="cursor-pointer"
+              >
+                <span className="whitespace-nowrap">Generate equation with AI…</span>
+              </MenubarItem>
+            )}
           </MenubarSubContent>
         </MenubarSub>
 

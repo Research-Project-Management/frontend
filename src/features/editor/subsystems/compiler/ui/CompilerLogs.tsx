@@ -10,6 +10,7 @@
 import React from 'react';
 import { ChevronRight, ChevronLeft, Download } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import type {
@@ -55,6 +56,8 @@ export function CompilerLogs({
     onFocusTargetHandled,
   });
 
+  const aiAssistEnabled = useSettingsStore((st) => st.aiAssistEnabled);
+
   const renderDiagnosticRow = (row: CompilerLogVisibleRow) => {
     const { entry, categoryIndex, type, rowKey, domId } = row;
     const explainKey = s.getExplainKey(type, entry, categoryIndex);
@@ -71,7 +74,7 @@ export function CompilerLogs({
           categoryIndex={categoryIndex}
           entry={entry}
           onClick={s.handleEntryClick}
-          onSuggestFix={s.handleSuggestFixRow}
+          onSuggestFix={aiAssistEnabled ? s.handleSuggestFixRow : undefined}
           isFixLoading={aiState?.loading}
           fixResult={aiState?.result}
           isFixProposed={aiState?.proposed}

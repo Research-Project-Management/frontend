@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import {
   Dialog,
   DialogContent,
@@ -125,6 +126,7 @@ export function TableWizardModal({
   });
 
   // AI Table Generator State & Actions (Overleaf Parity)
+  const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
   const [aiPrompt, setAiPrompt] = React.useState('');
   const [isAiGenerating, setIsAiGenerating] = React.useState(false);
 
@@ -399,6 +401,7 @@ export function TableWizardModal({
             </div>
 
             {/* AI Table Generator */}
+            {aiAssistEnabled && (
             <div className="p-2.5 bg-ai/5 border border-ai/25 rounded-md space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-11 font-medium text-ai flex items-center gap-1.5">
@@ -437,6 +440,7 @@ export function TableWizardModal({
                 className="w-full p-2 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
               />
             </div>
+            )}
 
             {/* Table Metadata & Import Panel */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

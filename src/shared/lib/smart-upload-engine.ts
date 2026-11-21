@@ -14,9 +14,11 @@ import {
   getEffectiveBaseUrl,
   isApiError,
 } from '@/shared/lib/api';
+import { sha256HexOfBlobStreaming } from '@/shared/lib/sha256-stream';
 
 export const DEFAULT_MULTIPART_THRESHOLD_BYTES = 15 * 1024 * 1024;
-export const MAX_CLIENT_HASH_BYTES = 50 * 1024 * 1024;
+export const MAX_CLIENT_HASH_BYTES = 512 * 1024 * 1024;
+const SMALL_HASH_FASTPATH_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_PART_CONCURRENCY = 3;
 export const DEFAULT_PART_MAX_RETRIES = 3;
 export const CHECKPOINT_TTL_MS = 20 * 60 * 60 * 1000;
@@ -337,17 +339,26 @@ export const defaultCheckpointStore = new MultipartCheckpointStore();
 export async function computeClientSha256Hex(
   blob: Blob,
   maxBytes = MAX_CLIENT_HASH_BYTES,
+  signal?: AbortSignal,
 ): Promise<string | undefined> {
-  const subtle =
-    globalThis.crypto?.subtle ??
-    (typeof window !== 'undefined' ? window.crypto?.subtle : undefined);
-  if (!subtle || blob.size <= 0 || blob.size > maxBytes) {
+  if (blob.size <= 0 || blob.size > maxBytes) {
     return undefined;
   }
   if (typeof blob.arrayBuffer !== 'function') {
     return undefined;
   }
   try {
+    // Large files: stream in 2 MB slices (flat memory, UI stays responsive).
+    if (blob.size > SMALL_HASH_FASTPATH_BYTES && typeof blob.slice === 'function') {
+      return await sha256HexOfBlobStreaming(blob, signal);
+    }
+
+    const subtle =
+      globalThis.crypto?.subtle ??
+      (typeof window !== 'undefined' ? window.crypto?.subtle : undefined);
+    if (!subtle) {
+      return undefined;
+    }
     const buffer = await blob.arrayBuffer();
     const hashBuffer = await subtle.digest('SHA-256', buffer);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -651,7 +662,9 @@ async function executePresignedSingleUpload(
   }
 
   try {
-    const contentHash = options.contentHash ?? (await computeClientSha256Hex(blob));
+    const contentHash =
+    options.contentHash ??
+    (await computeClientSha256Hex(blob, MAX_CLIENT_HASH_BYTES, options.signal));
     const apiHeadersOpt = options.headers ? { headers: options.headers } : {};
     const presignRaw = await apiPost<PresignResponsePayload>(
       `${baseEndpoint}/presign`,
@@ -760,7 +773,9 @@ async function runResumableMultipartAttempt(
   }
 
   const apiHeadersOpt = options.headers ? { headers: options.headers } : {};
-  const expectedHash = options.contentHash ?? (await computeClientSha256Hex(blob));
+  const expectedHash =
+    options.contentHash ??
+    (await computeClientSha256Hex(blob, MAX_CLIENT_HASH_BYTES, options.signal));
   let checkpoint = checkpointStore.load(fingerprint);
   const resumedFromCheckpoint = Boolean(checkpoint);
 

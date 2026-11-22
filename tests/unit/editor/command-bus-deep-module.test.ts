@@ -11,6 +11,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   editorCommandBus,
+  registerDefaultBridges,
+  setActiveEditorEngine,
+  NOOP_EDITOR_ENGINE,
+  type IEditorEngine,
   type EditorCommand,
   type CommandBusMiddleware,
 } from '@/features/editor/core';
@@ -266,6 +270,69 @@ describe('EditorCommandBus Deep Module (Middleware, Tracing & Execution)', () =>
       editorCommandBus.enableTracing(true);
       editorCommandBus.dispatch({ type: 'editor:focus' });
       expect(editorCommandBus.getTraceHistory()).toHaveLength(1);
+    });
+  });
+
+  describe('standardized engine bridges & non-clobbering set-content', () => {
+    it('routes select-all, indent, outdent, toggle-comment, and delete-selection through command bus bridges', () => {
+      registerDefaultBridges();
+      const mockEngine: IEditorEngine = {
+        ...NOOP_EDITOR_ENGINE,
+        selectAll: vi.fn(),
+        indent: vi.fn(),
+        outdent: vi.fn(),
+        toggleComment: vi.fn(),
+        insertText: vi.fn(),
+        focus: vi.fn(),
+      };
+      setActiveEditorEngine(mockEngine);
+
+      try {
+        editorCommandBus.dispatch({ type: 'editor:select-all' });
+        expect(mockEngine.selectAll).toHaveBeenCalledTimes(1);
+
+        editorCommandBus.dispatch({ type: 'editor:indent' });
+        expect(mockEngine.indent).toHaveBeenCalledTimes(1);
+
+        editorCommandBus.dispatch({ type: 'editor:outdent' });
+        expect(mockEngine.outdent).toHaveBeenCalledTimes(1);
+
+        editorCommandBus.dispatch({ type: 'editor:toggle-comment' });
+        expect(mockEngine.toggleComment).toHaveBeenCalledTimes(1);
+
+        editorCommandBus.dispatch({ type: 'editor:delete-selection' });
+        expect(mockEngine.insertText).toHaveBeenCalledWith('');
+      } finally {
+        setActiveEditorEngine(null);
+      }
+    });
+
+    it('defers editor:set-content to live surface diff subscriber when attached instead of clobbering via engine.setContent', () => {
+      registerDefaultBridges();
+      const setContentSpy = vi.fn();
+      const mockEngine: IEditorEngine = {
+        ...NOOP_EDITOR_ENGINE,
+        setContent: setContentSpy,
+      };
+      setActiveEditorEngine(mockEngine);
+
+      try {
+        // 1. No surface subscriber -> default bridge invokes engine.setContent
+        editorCommandBus.dispatch({ type: 'editor:set-content', content: 'fallback' });
+        expect(setContentSpy).toHaveBeenCalledWith('fallback');
+        setContentSpy.mockClear();
+
+        // 2. Surface diff subscriber attached (like useCodeMirrorBusSync) -> default bridge yields to diff subscriber
+        const surfaceDiffSpy = vi.fn();
+        const unsub = editorCommandBus.subscribe('editor:set-content', surfaceDiffSpy);
+        editorCommandBus.dispatch({ type: 'editor:set-content', content: 'yjs-diff-safe' });
+
+        expect(surfaceDiffSpy).toHaveBeenCalledTimes(1);
+        expect(setContentSpy).not.toHaveBeenCalled();
+        unsub();
+      } finally {
+        setActiveEditorEngine(null);
+      }
     });
   });
 });

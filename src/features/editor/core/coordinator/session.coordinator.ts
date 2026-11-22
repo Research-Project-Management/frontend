@@ -39,6 +39,7 @@ import {
   clearWorkspaceTabDirty,
   flushViaRealtimeYjsStrategy,
   flushViaRestCasStrategy,
+  handleDocumentPersisted,
   executeResolveConflictHelper,
   executeFlushAllDirtyModelsHelper,
   type DocumentPersistencePort,
@@ -315,6 +316,9 @@ export class SessionCoordinator {
   private initCommandSubscriptions(): void {
     editorCommandBus.subscribe('document:content-updated', (cmd) => {
       this.handleRemoteContentUpdated(cmd.docId, cmd.content);
+    });
+    editorCommandBus.subscribe('document:persisted', (cmd) => {
+      handleDocumentPersisted(this.createPersistenceHost(), cmd);
     });
   }
 

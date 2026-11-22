@@ -81,16 +81,9 @@ export function useEditorToolbarActions(readOnly: boolean) {
       return;
     }
 
-    const snippetMap = {
-      bold: { prefix: '\\textbf{', suffix: '}' },
-      italic: { prefix: '\\textit{', suffix: '}' },
-      underline: { prefix: '\\underline{', suffix: '}' },
-    };
-    const s = snippetMap[format];
     editorCommandBus.dispatch({
-      type: 'editor:wrap-selection',
-      prefix: s.prefix,
-      suffix: s.suffix,
+      type: 'editor:format',
+      format,
     });
   };
 
@@ -101,9 +94,8 @@ export function useEditorToolbarActions(readOnly: boolean) {
       return;
     }
     editorCommandBus.dispatch({
-      type: 'editor:wrap-selection',
-      prefix: '$',
-      suffix: '$',
+      type: 'editor:format',
+      format: 'inlineMath',
     });
   };
 
@@ -132,9 +124,8 @@ export function useEditorToolbarActions(readOnly: boolean) {
       return;
     }
     editorCommandBus.dispatch({
-      type: 'editor:wrap-selection',
-      prefix: '\\href{https://}{',
-      suffix: '}',
+      type: 'editor:format',
+      format: 'link',
     });
   };
 
@@ -146,9 +137,8 @@ export function useEditorToolbarActions(readOnly: boolean) {
   const handleInsertCrossRef = () => {
     if (readOnly) return;
     editorCommandBus.dispatch({
-      type: 'editor:wrap-selection',
-      prefix: '\\ref{',
-      suffix: '}',
+      type: 'editor:format',
+      format: 'ref',
     });
   };
 
@@ -169,17 +159,9 @@ export function useEditorToolbarActions(readOnly: boolean) {
       }
     }
 
-    const snippetMap = {
-      itemize: { prefix: '\\begin{itemize}\n  \\item ', suffix: '\n\\end{itemize}' },
-      enumerate: { prefix: '\\begin{enumerate}\n  \\item ', suffix: '\n\\end{enumerate}' },
-      quote: { prefix: '\\begin{quote}\n', suffix: '\n\\end{quote}' },
-      code: { prefix: '\\begin{verbatim}\n', suffix: '\n\\end{verbatim}' },
-    };
-    const s = snippetMap[env];
     editorCommandBus.dispatch({
-      type: 'editor:wrap-selection',
-      prefix: s.prefix,
-      suffix: s.suffix,
+      type: 'editor:format',
+      format: env === 'code' ? 'codeBlock' : env,
     });
   };
 
@@ -202,7 +184,12 @@ export function useEditorToolbarActions(readOnly: boolean) {
     useWorkspaceStore.getState().setActiveSidebarTab('review');
     useWorkspaceStore.getState().setSidebarLeftOpen(true);
 
-    editorCommandBus.dispatch({ type: 'review:create-comment' });
+    editorCommandBus.dispatch({
+      type: 'review:create-comment',
+      line: startLine,
+      endLine,
+      selectedText,
+    });
   }, [readOnly]);
 
   const handleFind = () => {

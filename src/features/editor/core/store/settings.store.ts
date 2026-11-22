@@ -7,7 +7,11 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CompilerEngine, CompileMode } from '@/features/editor/domain/types/compiler.types';
+import {
+  DEFAULT_COMPILER_ENGINE,
+  type CompilerEngine,
+  type CompileMode,
+} from '@/features/editor/domain/types/compiler.types';
 import type { TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 
@@ -153,7 +157,7 @@ export interface DocumentSettingsState {
 export const useSettingsStore = create<DocumentSettingsState>()(
   persist(
     (set) => ({
-      engine: 'pdflatex',
+      engine: DEFAULT_COMPILER_ENGINE,
       compileMode: 'full',
       autoCompile: true,
       layout: 'split',

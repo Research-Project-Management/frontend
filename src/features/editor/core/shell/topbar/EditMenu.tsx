@@ -19,10 +19,10 @@ export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
 
   const handleUndo = () => editorCommandBus.dispatch({ type: 'editor:undo' });
   const handleRedo = () => editorCommandBus.dispatch({ type: 'editor:redo' });
-  const handleSelectAll = () => engine?.selectAll();
+  const handleSelectAll = () => editorCommandBus.dispatch({ type: 'editor:select-all' });
   const handleFind = () => {
     editorCommandBus.dispatch({ type: 'editor:find', open: true });
-    engine?.focus();
+    editorCommandBus.dispatch({ type: 'editor:focus' });
   };
   const handleFindInProject = () => {
     useSearchStore.getState().setShowReplace(false);

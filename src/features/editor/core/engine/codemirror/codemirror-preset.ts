@@ -291,30 +291,6 @@ export function reconfigureVisualMode(
   });
 }
 
-export function reconfigureTheme(
-  view: EditorView,
-  themeId: string,
-  compartments: EditorCompartmentMap = getViewCompartments(view),
-): void {
-  view.dispatch({
-    effects: compartments.theme.reconfigure(getThemeExtension(themeId)),
-  });
-}
-
-export function reconfigureTypography(
-  view: EditorView,
-  fontSize: number,
-  fontFamily?: string,
-  lineHeight?: number,
-  compartments: EditorCompartmentMap = getViewCompartments(view),
-): void {
-  view.dispatch({
-    effects: compartments.typography.reconfigure(
-      createTypographyExtension(fontSize, fontFamily, lineHeight),
-    ),
-  });
-}
-
 export function reconfigureErrorLens(
   view: EditorView,
   enabled: boolean,

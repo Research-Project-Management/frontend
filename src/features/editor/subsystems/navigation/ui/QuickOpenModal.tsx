@@ -23,7 +23,7 @@ import { usePageStore } from '@/features/editor/core';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
-import { getFileIcon } from '@/features/editor/subsystems/explorer/ui/modals/DeletedFilesModal';
+import { getFileIcon } from '@/features/editor/subsystems/explorer/ui/subcomponents/file-icon';
 
 interface QuickOpenModalProps {
   open: boolean;

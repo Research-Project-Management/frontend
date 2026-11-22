@@ -1,6 +1,7 @@
 import type { EditorView } from '@codemirror/view';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { getActiveEditorEngine } from '@/features/editor/core/bus/engine-registry';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import {
@@ -327,6 +328,7 @@ export class ReviewCoordinator {
     docId?: string | null,
   ): void {
     const targetDocId = docId ?? this.activePageId;
+    const yDoc = targetDocId ? getActiveYjsProvider(targetDocId)?.doc ?? null : null;
     this.currentViewMode = viewMode;
     this.currentReviewMode = reviewMode;
     const targetViews = this.getViewsForFile(targetDocId, view);
@@ -337,6 +339,7 @@ export class ReviewCoordinator {
       comments,
       viewMode,
       reviewMode,
+      yDoc,
       currentSuggestions: this.currentSuggestions,
       currentComments: this.currentComments,
       localToPersistedId: this.localToPersistedId,
@@ -349,7 +352,9 @@ export class ReviewCoordinator {
     sug: PageSuggestion,
     action: 'accept' | 'reject',
   ): void {
-    const memento = mutateSuggestion(view, sug, action);
+    const targetDocId = sug.pageId || this.activePageId;
+    const yDoc = targetDocId ? getActiveYjsProvider(targetDocId)?.doc ?? null : null;
+    const memento = mutateSuggestion(view, sug, action, yDoc);
     this.rollbackSnapshots.set(sug.id, memento);
 
     this.currentSuggestions.set(sug.id, {
@@ -357,7 +362,6 @@ export class ReviewCoordinator {
       status: action === 'accept' ? ('accepted' as const) : ('rejected' as const),
     });
 
-    const targetDocId = sug.pageId || this.activePageId;
     syncViewToCache(view, targetDocId);
 
     this.syncEditorDecorations(
@@ -476,9 +480,11 @@ export class ReviewCoordinator {
     for (const s of stateSugs) {
       if (!this.currentSuggestions.has(s.id)) this.currentSuggestions.set(s.id, s);
     }
+    const targetDocId = docId ?? this.activePageId;
+    const yDoc = targetDocId ? getActiveYjsProvider(targetDocId)?.doc ?? null : null;
     const pending = Array.from(this.currentSuggestions.values())
       .filter((s) => s.status === 'pending' && (!docId || !s.pageId || s.pageId === docId))
-      .map((s) => ({ sug: s, range: resolveSuggestionRange(doc, s) }))
+      .map((s) => ({ sug: s, range: resolveSuggestionRange(doc, s, yDoc) }))
       .sort((a, b) => b.range.from - a.range.from);
 
     for (const item of pending) {
@@ -498,11 +504,13 @@ export class ReviewCoordinator {
     const resolved: { sug: PageSuggestion; range: { from: number; to: number } }[] = [];
     const seen = new Set<string>();
 
+    const targetDocId = docId ?? this.activePageId;
+    const yDoc = targetDocId ? getActiveYjsProvider(targetDocId)?.doc ?? null : null;
     for (const rawId of suggestionIds) {
       const sug = this.resolveKnownSuggestion(rawId);
       if (sug && !seen.has(sug.id) && sug.status === 'pending') {
         seen.add(sug.id);
-        resolved.push({ sug, range: resolveSuggestionRange(doc, sug) });
+        resolved.push({ sug, range: resolveSuggestionRange(doc, sug, yDoc) });
       }
     }
     resolved.sort((a, b) => b.range.from - a.range.from);

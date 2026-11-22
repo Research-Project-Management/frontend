@@ -227,6 +227,9 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     chapter: ['\\chapter{', '}\n'],
     itemize: ['\\begin{itemize}\n  \\item ', '\n\\end{itemize}'],
     enumerate: ['\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}'],
+    quote: ['\\begin{quote}\n', '\n\\end{quote}'],
+    codeBlock: ['\\begin{verbatim}\n', '\n\\end{verbatim}'],
+    link: ['\\href{https://}{', '}'],
     table: [
       '\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}\n    \\hline\n    A & B \\\\\n    \\hline\n    1 & 2 \\\\\n    \\hline\n  \\end{tabular}\n  \\caption{Caption}\n  \\label{tab:my_label}\n\\end{table}',
       '',

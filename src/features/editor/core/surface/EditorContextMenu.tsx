@@ -47,7 +47,11 @@ import {
   FileText,
   FileEdit,
 } from 'lucide-react';
-import { getActiveEditorEngine, editorCommandBus } from '@/features/editor/core';
+import {
+  getActiveEditorEngine,
+  editorCommandBus,
+  useSettingsStore,
+} from '@/features/editor/core';
 
 export interface EditorContextMenuProps {
   children: React.ReactNode;
@@ -67,8 +71,7 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   }, []);
 
   const handleBackToEditing = useCallback(() => {
-    const engine = getActiveEditorEngine();
-    engine?.focus?.();
+    editorCommandBus.dispatch({ type: 'editor:focus' });
   }, []);
 
   const handleContextMenuCapture = useCallback((e: React.MouseEvent) => {
@@ -126,19 +129,11 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   }, []);
 
   const handleDelete = useCallback(() => {
-    const engine = getActiveEditorEngine();
-    if (engine) {
-      engine.insertText('');
-      engine.focus();
-    }
+    editorCommandBus.dispatch({ type: 'editor:delete-selection' });
   }, []);
 
   const handleToggleLineComment = useCallback(() => {
-    const engine = getActiveEditorEngine();
-    if (engine) {
-      engine.toggleComment?.();
-      engine.focus();
-    }
+    editorCommandBus.dispatch({ type: 'editor:toggle-comment' });
   }, []);
 
   const handleAddReviewComment = useCallback(() => {
@@ -161,15 +156,16 @@ export function EditorContextMenu({ children, disabled = false }: EditorContextM
   }, []);
 
   const handleFormat = useCallback((type: 'bold' | 'italic' | 'underline' | 'code' | 'inlineMath') => {
-    const engine = getActiveEditorEngine();
-    engine?.format?.(type);
-    engine?.focus?.();
+    if (useSettingsStore.getState().editorMode === 'visual') {
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: type });
+    } else {
+      editorCommandBus.dispatch({ type: 'editor:format', format: type });
+    }
+    editorCommandBus.dispatch({ type: 'editor:focus' });
   }, []);
 
   const handleSelectAll = useCallback(() => {
-    const engine = getActiveEditorEngine();
-    engine?.selectAll?.();
-    engine?.focus?.();
+    editorCommandBus.dispatch({ type: 'editor:select-all' });
   }, []);
 
   const handleWordCount = useCallback(() => {

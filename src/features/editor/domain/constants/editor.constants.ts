@@ -18,7 +18,7 @@ export const EDITOR_STORAGE_KEYS = {
   EXPANDED_FOLDERS_PREFIX: 'flux:expanded-folders:',
 } as const;
 
-export const SYNCTEX_BROADCAST_CHANNEL = 'flux-synctex-bus';
+const SYNCTEX_BROADCAST_CHANNEL = 'flux-synctex-bus';
 
 export function getSyncTexChannelName(targetId?: string | null): string {
   const clean = typeof targetId === 'string' ? targetId.trim() : '';
@@ -33,13 +33,6 @@ export const EDITOR_DOCS_URLS = {
     process.env.NEXT_PUBLIC_LATEX_DOCS_URL || 'https://latexref.xyz/dev/latex2e.html',
   LATEX_INTRO_GUIDE:
     process.env.NEXT_PUBLIC_LATEX_GUIDE_URL || 'https://en.wikibooks.org/wiki/LaTeX',
-} as const;
-
-export const EDITOR_TIMING = {
-  DEFAULT_AUTOSAVE_DELAY_MS: 800,
-  DEFAULT_AUTOCOMPILE_DELAY_MS: 1500,
-  DEFAULT_BARRIER_TIMEOUT_MS: 1500,
-  RETRY_BASE_DELAY_MS: 300,
 } as const;
 
 export const EDITOR_LIMITS = {
@@ -101,31 +94,6 @@ export const CODE_EXTENSIONS = new Set([
   'ts',
   'json',
   'csv',
-]);
-
-export const ARXIV_ALLOWED_EXTENSIONS = new Set([
-  'tex',
-  'ltx',
-  'sty',
-  'cls',
-  'bst',
-  'def',
-  'fd',
-  'cfg',
-  'bbx',
-  'cbx',
-  'bib',
-  'bbl',
-  'png',
-  'jpg',
-  'jpeg',
-  'pdf',
-  'eps',
-  'ps',
-  'svg',
-  'csv',
-  'dat',
-  'txt',
 ]);
 
 /**

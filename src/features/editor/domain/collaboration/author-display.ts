@@ -72,7 +72,7 @@ export interface AuthorDisplayInfo {
   color: string;
 }
 
-export const AUTHOR_COLORS = [
+const AUTHOR_COLORS = [
   '#0284c7', // Sky
   '#16a34a', // Emerald
   '#7c3aed', // Purple

@@ -43,7 +43,15 @@ export const comments = {
 
   createComment: async (
     docId: string,
-    payload: { content: string; line?: number; lineEnd?: number; spaceId?: string },
+    payload: {
+      content: string;
+      line?: number;
+      lineEnd?: number;
+      anchorStart?: string;
+      anchorEnd?: string;
+      baseDocRev?: number;
+      spaceId?: string;
+    },
   ): Promise<PageComment> => {
     const data = await apiPost<{ comment: PageComment }>(`${PAGES_API_BASE}/docs/${docId}/comments`, payload);
     return data.comment;
@@ -76,6 +84,19 @@ export const comments = {
   addReply: async (docId: string, commentId: string, content: string): Promise<PageComment> => {
     const data = await apiPost<{ comment: PageComment }>(
       `${PAGES_API_BASE}/docs/${docId}/comments/${commentId}/reply`,
+      { content },
+    );
+    return data.comment;
+  },
+
+  updateReply: async (
+    docId: string,
+    commentId: string,
+    replyId: string,
+    content: string,
+  ): Promise<PageComment> => {
+    const data = await apiPatch<{ comment: PageComment }>(
+      `${PAGES_API_BASE}/docs/${docId}/comments/${commentId}/replies/${replyId}`,
       { content },
     );
     return data.comment;

@@ -1,8 +1,7 @@
 /**
  * core.types.ts
  *
- * Core document & page domain models, validation schemas, and inferred DTOs.
- * Matches backend document/page module.
+ * Core document & page domain models, UX validation schemas, and inferred DTOs.
  */
 
 import { z } from 'zod';
@@ -17,9 +16,8 @@ export const createFileSchema = z.object({
   content: z.string().optional(),
 });
 
-export type CreateFileInput = z.infer<typeof createFileSchema>;
-
-export const SAFE_FOLDER_SEGMENT_REGEX = /^[a-zA-Z0-9._ -]+$/;
+// UX prefilter allowing Unicode (e.g. Vietnamese) letters/digits; backend SafePath enforces security.
+const SAFE_FOLDER_SEGMENT_REGEX = /^[\p{L}\p{N}._ -]+$/u;
 
 export const createFolderSchema = z.object({
   name: z
@@ -53,8 +51,6 @@ export const createFolderSchema = z.object({
     ),
 });
 
-export type CreateFolderInput = z.infer<typeof createFolderSchema>;
-
 export const renameItemSchema = z.object({
   name: z
     .string()
@@ -63,59 +59,6 @@ export const renameItemSchema = z.object({
     .max(255, 'Name is too long')
     .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in names'),
 });
-
-export type RenameItemInput = z.infer<typeof renameItemSchema>;
-
-export const createPageSchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(1, 'Page title is required')
-    .max(255, 'Page title is too long'),
-  slug: z.string().trim().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().url().optional(),
-  rank: z.number().int().optional(),
-  labels: z.array(z.string()).optional(),
-  isLocked: z.boolean().optional(),
-  isPublished: z.boolean().optional(),
-  content: z.any().optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
-  projectId: z.string().optional(),
-  parentPageId: z.string().optional(),
-});
-
-export type CreatePageInput = z.infer<typeof createPageSchema>;
-
-export const updatePageSchema = z.object({
-  title: z.string().trim().min(1, 'Title cannot be empty').max(255).optional(),
-  slug: z.string().trim().optional(),
-  icon: z.string().optional(),
-  coverImage: z.string().url().optional(),
-  rank: z.number().int().optional(),
-  labels: z.array(z.string()).optional(),
-  isLocked: z.boolean().optional(),
-  isPublished: z.boolean().optional(),
-  content: z.any().optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
-  parentPageId: z.string().optional(),
-  mainFileId: z.string().optional(),
-  pdfThumbnail: z.string().optional(),
-});
-
-export type UpdatePageInput = z.infer<typeof updatePageSchema>;
-
-export const setMainFileSchema = z.object({
-  mainFileId: z.string().min(1, 'Main file ID is required'),
-});
-
-export type SetMainFileInput = z.infer<typeof setMainFileSchema>;
-
-export const updateThumbnailSchema = z.object({
-  pdfThumbnail: z.string().min(1, 'Thumbnail data is required'),
-});
-
-export type UpdateThumbnailInput = z.infer<typeof updateThumbnailSchema>;
 
 declare const brand: unique symbol;
 export type Brand<T, B> = T & { readonly [brand]: B };

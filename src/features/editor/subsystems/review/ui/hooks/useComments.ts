@@ -9,9 +9,71 @@
 import { useMutation, useQuery, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { CommentStatus, PageComment } from '@/features/editor/domain/types/comment.types';
+import { lruDocumentCache } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
+import { encodeYjsAnchor } from '../../extensions/anchor';
+
+function computeLineCharOffsets(
+  text: string,
+  startLine: number,
+  endLine: number,
+): { from: number; to: number } {
+  const targetStart = Math.max(1, startLine);
+  const targetEnd = Math.max(targetStart, endLine);
+  let currentLine = 1;
+  let from = 0;
+  let idx = 0;
+
+  while (currentLine < targetStart && idx <= text.length) {
+    const nl = text.indexOf('\n', idx);
+    if (nl === -1) {
+      from = text.length;
+      idx = text.length + 1;
+      break;
+    }
+    idx = nl + 1;
+    from = idx;
+    currentLine++;
+  }
+
+  let endIdx = from;
+  while (currentLine < targetEnd && endIdx <= text.length) {
+    const nl = text.indexOf('\n', endIdx);
+    if (nl === -1) {
+      endIdx = text.length;
+      break;
+    }
+    endIdx = nl + 1;
+    currentLine++;
+  }
+
+  const finalNl = text.indexOf('\n', endIdx);
+  const to = finalNl === -1 ? text.length : finalNl;
+  return { from, to: Math.max(from, to) };
+}
+
+function computeLineAnchors(
+  docId: string,
+  line?: number | null,
+  lineEnd?: number | null,
+): { anchorStart?: string; anchorEnd?: string; baseDocRev?: number } {
+  const baseDocRev = lruDocumentCache.getModel(docId)?.serverRev;
+  const yText = getActiveYjsProvider(docId)?.yText ?? null;
+  if (!yText || line == null) {
+    return typeof baseDocRev === 'number' ? { baseDocRev } : {};
+  }
+  const { from, to } = computeLineCharOffsets(yText.toString(), line, lineEnd ?? line);
+  const anchorStart = encodeYjsAnchor(yText, from);
+  const anchorEnd = encodeYjsAnchor(yText, to);
+  return {
+    ...(anchorStart ? { anchorStart } : {}),
+    ...(anchorEnd ? { anchorEnd } : {}),
+    ...(typeof baseDocRev === 'number' ? { baseDocRev } : {}),
+  };
+}
 
 export const commentKeys = {
   all: ['page-comments'] as const,
@@ -59,10 +121,12 @@ export const useCreateComment = (customClient?: QueryClient) => {
         lineEnd?: number | null;
         projectId?: string;
       }) => {
+        const anchors = computeLineAnchors(pageId, line, lineEnd);
         return await pagesService.comments.createComment(pageId, {
           content,
           line: line ?? undefined,
           lineEnd: lineEnd ?? undefined,
+          ...anchors,
         });
       },
       onMutate: async ({ pageId, content, line, lineEnd }) => {
@@ -135,8 +199,8 @@ export const useUpdateComment = (customClient?: QueryClient) => {
         projectId?: string;
       }) => {
         return await pagesService.comments.updateComment(pageId, commentId, {
-          content,
-          status: status === 'resolved' ? 'resolved' : 'open',
+          ...(content !== undefined ? { content } : {}),
+          ...(status !== undefined ? { status } : {}),
         });
       },
       onMutate: async ({ pageId, commentId, content, status }) => {
@@ -337,6 +401,37 @@ export const useDeleteReply = (customClient?: QueryClient) => {
       },
       onError: (err: Error | unknown, variables) => {
         toast.error((err as Error)?.message || 'Failed to delete reply', { id: `reply-${variables.replyId}` });
+      },
+    },
+    queryClient,
+  );
+};
+
+export const useUpdateReply = (customClient?: QueryClient) => {
+  const queryClient = useSafeQueryClient(customClient);
+  return useMutation(
+    {
+      mutationFn: async ({
+        pageId,
+        commentId,
+        replyId,
+        content,
+      }: {
+        pageId: string;
+        commentId: string;
+        replyId: string;
+        content: string;
+        projectId?: string;
+      }) => {
+        return await pagesService.comments.updateReply(pageId, commentId, replyId, content);
+      },
+      onSuccess: (_, variables) => {
+        queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
+        toast.success('Reply updated', { id: `reply-${variables.replyId}` });
+      },
+      onError: (err: Error | unknown, variables) => {
+        toast.error((err as Error)?.message || 'Failed to update reply', { id: `reply-${variables.replyId}` });
       },
     },
     queryClient,

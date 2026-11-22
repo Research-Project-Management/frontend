@@ -163,4 +163,150 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
     });
     expect(mockStore.openReviewSidebar).toHaveBeenCalled();
   });
+
+  it('scheduleLocalCreate converts 1-based UI columns to 0-based backend wire coordinates and preserves 1-based UI columns on merge', async () => {
+    vi.useFakeTimers();
+    const createSuggestion = vi.fn().mockImplementation(async (payload) => ({
+      id: 'persisted-col-1',
+      pageId: payload.pageId,
+      type: payload.type,
+      originalText: payload.originalText,
+      suggestedText: payload.suggestedText,
+      fromLine: payload.fromLine,
+      fromColumn: payload.fromColumn,
+      toLine: payload.toLine,
+      toColumn: payload.toColumn,
+      groupId: payload.groupId,
+      status: 'pending' as const,
+      authorId: 'u-1',
+      author: { id: 'u-1', name: 'Alice' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+    const acceptSuggestion = vi.fn().mockResolvedValue({ success: true });
+
+    reviewCoordinator.setPorts({
+      service: {
+        ...mockService,
+        createSuggestion,
+        acceptSuggestion,
+      },
+      notification: mockNotification,
+    });
+
+    try {
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId: 'page-col',
+        event: 'suggestion:local-recorded',
+        payload: {
+          suggestion: {
+            id: 'sug-local-col-1',
+            pageId: 'page-col',
+            groupId: 'grp-col-1',
+            type: 'delete',
+            originalText: 'inefficient ',
+            suggestedText: '',
+            fromLine: 1,
+            fromColumn: 18,
+            toLine: 1,
+            toColumn: 30,
+            fromIndex: 17,
+            toIndex: 29,
+            status: 'pending',
+            authorId: 'u-1',
+            author: { id: 'u-1', name: 'Alice' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await vi.advanceTimersByTimeAsync(400);
+
+      expect(createSuggestion).toHaveBeenCalledTimes(1);
+      expect(createSuggestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageId: 'page-col',
+          groupId: 'grp-col-1',
+          fromLine: 1,
+          fromColumn: 17,
+          toLine: 1,
+          toColumn: 29,
+        }),
+      );
+
+      // Merged persisted mapping is active for resolution
+      const ok = await reviewCoordinator.acceptSuggestion('page-col', 'sug-local-col-1');
+      expect(ok).toBe(true);
+      expect(acceptSuggestion).toHaveBeenCalledWith('page-col', 'persisted-col-1');
+    } finally {
+      vi.useRealTimers();
+      reviewCoordinator.reset();
+    }
+  });
+
+  it('resolveOne on one member of a pending groupId pair batch-resolves all grouped members together', async () => {
+    const batchResolve = vi.fn().mockResolvedValue({ success: true });
+    coordinator = new ReviewCoordinator({
+      service: {
+        ...mockService,
+        batchResolve,
+      },
+      notification: mockNotification,
+    });
+
+    coordinator.syncEditorDecorations(
+      null,
+      [
+        {
+          id: 'sug-grp-del',
+          pageId: 'page-grp',
+          groupId: 'grp-pair-1',
+          type: 'delete',
+          originalText: 'old',
+          suggestedText: '',
+          fromLine: 1,
+          fromColumn: 1,
+          toLine: 1,
+          toColumn: 4,
+          status: 'pending',
+          authorId: 'u-1',
+          author: { id: 'u-1', name: 'Alice' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'sug-grp-ins',
+          pageId: 'page-grp',
+          groupId: 'grp-pair-1',
+          type: 'insert',
+          originalText: '',
+          suggestedText: 'new',
+          fromLine: 1,
+          fromColumn: 4,
+          toLine: 1,
+          toColumn: 7,
+          status: 'pending',
+          authorId: 'u-1',
+          author: { id: 'u-1', name: 'Alice' },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      [],
+      'changes',
+      false,
+      'page-grp',
+    );
+
+    const ok = await coordinator.acceptSuggestion('page-grp', 'sug-grp-del');
+    expect(ok).toBe(true);
+    expect(batchResolve).toHaveBeenCalledTimes(1);
+    expect(batchResolve).toHaveBeenCalledWith('page-grp', {
+      suggestionIds: ['sug-grp-del', 'sug-grp-ins'],
+      action: 'accept',
+    });
+    expect(mockService.acceptSuggestion).not.toHaveBeenCalled();
+  });
 });

@@ -15,6 +15,7 @@ import {
   setSuggestionsEffect,
   type TrackChangesViewMode,
 } from '../extensions/state';
+import { encodeYjsAnchor } from '../extensions/anchor';
 import type {
   ReviewNotificationPort,
   ReviewServicePort,
@@ -124,6 +125,18 @@ export function scheduleLocalCreate(
 
     host.inFlightSuggestionCreates.add(sug.id);
 
+    const provider = getActiveYjsProvider(docId);
+    const yText = provider?.yText ?? null;
+    const cachedRev = lruDocumentCache.getModel(docId)?.serverRev;
+    const anchorStart =
+      typeof latest.fromIndex === 'number'
+        ? encodeYjsAnchor(yText, latest.fromIndex)
+        : null;
+    const anchorEnd =
+      typeof latest.toIndex === 'number'
+        ? encodeYjsAnchor(yText, latest.toIndex)
+        : null;
+
     const servicePort = host.getServicePort();
     const payload = {
       pageId: docId,
@@ -131,9 +144,13 @@ export function scheduleLocalCreate(
       originalText: latest.originalText || '',
       suggestedText: latest.suggestedText || '',
       fromLine: latest.fromLine || 1,
-      fromColumn: latest.fromColumn || 1,
+      fromColumn: Math.max(0, (latest.fromColumn ?? 1) - 1),
       toLine: latest.toLine || latest.fromLine || 1,
-      toColumn: latest.toColumn || 1,
+      toColumn: Math.max(0, (latest.toColumn ?? 1) - 1),
+      ...(latest.groupId ? { groupId: latest.groupId } : {}),
+      ...(anchorStart ? { anchorStart } : {}),
+      ...(anchorEnd ? { anchorEnd } : {}),
+      ...(typeof cachedRev === 'number' ? { baseDocRev: cachedRev } : {}),
       idempotencyKey: sug.id,
       silent: true,
     };
@@ -155,6 +172,8 @@ export function scheduleLocalCreate(
             ...created,
             id: created.id,
             pageId: created.pageId || docId,
+            fromColumn: currentLocal.fromColumn,
+            toColumn: currentLocal.toColumn,
             status: currentLocal.status ?? created.status ?? 'pending',
           };
           host.currentSuggestions.set(created.id, merged);
@@ -244,7 +263,32 @@ export async function resolveOne(
 
     const sug = host.resolveKnownSuggestion(suggestionId);
     const isLocalOnly = isLocalSuggestionId(effectiveId);
-    const targetDocId = docId || sug?.pageId || host.getActivePageId();
+    const targetDocId = docId || sug?.pageId || host.getActivePageId() || '';
+
+    if (sug?.groupId) {
+      const groupIds = Array.from(host.currentSuggestions.values())
+        .filter(
+          (item) =>
+            item.groupId === sug.groupId &&
+            item.status === 'pending' &&
+            (!targetDocId || !item.pageId || item.pageId === targetDocId),
+        )
+        .map((item) => item.id);
+      if (groupIds.length > 1) {
+        const mappedIds = groupIds.map((id) => host.localToPersistedId.get(id) ?? id);
+        for (const id of [...groupIds, ...mappedIds]) {
+          host.inFlightResolutions.add(id);
+        }
+        try {
+          return await resolveSelected(host, targetDocId, groupIds, action);
+        } finally {
+          for (const id of [...groupIds, ...mappedIds]) {
+            host.inFlightResolutions.delete(id);
+          }
+        }
+      }
+    }
+
     const skipOptimisticSplice = !isLocalOnly && isYjsSynced(targetDocId);
 
     const pastTense = action === 'accept' ? 'accepted' : 'rejected';

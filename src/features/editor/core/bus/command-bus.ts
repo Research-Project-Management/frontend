@@ -275,6 +275,10 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     };
   }
 
+  public getSubscriberCount(type: EditorCommand['type']): number {
+    return this.handlers.get(type)?.size ?? 0;
+  }
+
   public clear(): void {
     this.handlers.clear();
     this.executors.clear();
@@ -391,6 +395,11 @@ export function registerDefaultBridges(): void {
       getEditorEngineOrNoop().focus();
     }),
     editorCommandBus.subscribe('editor:set-content', (cmd) => {
+      // If a live surface subscriber (e.g. useCodeMirrorBusSync) is attached,
+      // let it apply cursor-preserving Yjs/CM6 diffs instead of clobbering the document.
+      if (editorCommandBus.getSubscriberCount('editor:set-content') > 1) {
+        return;
+      }
       if (cmd.fileId) {
         const target = getEditorEngineForFile(cmd.fileId);
         if (target) {
@@ -405,6 +414,31 @@ export function registerDefaultBridges(): void {
     }),
     editorCommandBus.subscribe('editor:redo', () => {
       getEditorEngineOrNoop().redo();
+    }),
+    editorCommandBus.subscribe('editor:select-all', () => {
+      const engine = getEditorEngineOrNoop();
+      engine.selectAll();
+      engine.focus();
+    }),
+    editorCommandBus.subscribe('editor:indent', () => {
+      const engine = getEditorEngineOrNoop();
+      engine.indent();
+      engine.focus();
+    }),
+    editorCommandBus.subscribe('editor:outdent', () => {
+      const engine = getEditorEngineOrNoop();
+      engine.outdent();
+      engine.focus();
+    }),
+    editorCommandBus.subscribe('editor:toggle-comment', () => {
+      const engine = getEditorEngineOrNoop();
+      engine.toggleComment?.();
+      engine.focus();
+    }),
+    editorCommandBus.subscribe('editor:delete-selection', () => {
+      const engine = getEditorEngineOrNoop();
+      engine.insertText('');
+      engine.focus();
     }),
     editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
       getEditorEngineOrNoop().wrapSelection(

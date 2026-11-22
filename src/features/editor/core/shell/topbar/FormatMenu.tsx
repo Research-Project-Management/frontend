@@ -81,14 +81,12 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
   );
 
   const handleIndent = useCallback(() => {
-    engine?.indent();
-    engine?.focus();
-  }, [engine]);
+    editorCommandBus.dispatch({ type: 'editor:indent' });
+  }, []);
 
   const handleOutdent = useCallback(() => {
-    engine?.outdent();
-    engine?.focus();
-  }, [engine]);
+    editorCommandBus.dispatch({ type: 'editor:outdent' });
+  }, []);
 
   return (
     <MenubarMenu value={value}>

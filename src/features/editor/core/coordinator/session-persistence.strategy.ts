@@ -48,8 +48,14 @@ export function shouldUseRealtimePersistence(input: {
   hasYText: boolean;
   isOnline: boolean;
   isProviderConnected: boolean;
+  isProviderSynced?: boolean;
 }): boolean {
-  return input.hasYText && input.isOnline && input.isProviderConnected;
+  return (
+    input.hasYText &&
+    input.isOnline &&
+    input.isProviderConnected &&
+    (input.isProviderSynced ?? true)
+  );
 }
 
 export function isTransientSaveError(err: unknown): boolean {
@@ -292,6 +298,29 @@ export async function handleSaveConflictOrError(
   }
 }
 
+const pendingRealtimeFlushVersions = new Map<string, number>();
+
+function commitCleanState(
+  host: SessionPersistenceHost,
+  docId: string,
+  projectId: string | undefined,
+  savedVersion: number,
+  currentVersion: number,
+  savedAt?: string,
+): void {
+  host.clearUnsyncedEdit(docId);
+  lruDocumentCache.markSaved(docId);
+  lruDocumentCache.markClean(docId);
+  clearWorkspaceTabDirty(docId, projectId);
+  host.transitionFsm(docId, {
+    type: 'SAVE_SUCCESS',
+    savedVersion,
+    currentVersion,
+  });
+  useConnectivityStore.getState().setSyncStatus('synced');
+  useConnectivityStore.getState().setLastSavedAt(savedAt ? new Date(savedAt) : new Date());
+}
+
 export function flushViaRealtimeYjsStrategy(
   host: SessionPersistenceHost,
   fileId: string,
@@ -303,17 +332,46 @@ export function flushViaRealtimeYjsStrategy(
   if (model) {
     host.saveUnsyncedEdit(fileId, model.content, effectiveProjectId);
   }
-  lruDocumentCache.markSaved(fileId);
-  lruDocumentCache.markClean(fileId);
-  clearWorkspaceTabDirty(fileId, effectiveProjectId);
   const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
-  host.transitionFsm(fileId, {
-    type: 'SAVE_SUCCESS',
-    savedVersion: currentVersion,
-    currentVersion,
-  });
-  useConnectivityStore.getState().setLastSavedAt(new Date());
+  pendingRealtimeFlushVersions.set(fileId, currentVersion);
+  host.transitionFsm(fileId, { type: 'SAVE_START' });
+  useConnectivityStore.getState().setSyncStatus('saving');
   return true;
+}
+
+export function handleDocumentPersisted(
+  host: SessionPersistenceHost,
+  payload: { docId: string; rev?: number; version?: number; savedAt?: string },
+): void {
+  const { docId, rev, savedAt } = payload;
+  if (!docId) return;
+
+  const model = lruDocumentCache.getModel(docId);
+  if (rev !== undefined && model?.serverRev !== undefined && rev < model.serverRev) {
+    return;
+  }
+
+  if (rev !== undefined || savedAt !== undefined) {
+    lruDocumentCache.updateServerVersion(docId, {
+      rev,
+      updatedAt: savedAt,
+    });
+  }
+
+  const currentVersion = lruDocumentCache.getContentVersion(docId) || 0;
+  const flushedVersion = pendingRealtimeFlushVersions.get(docId);
+  if (flushedVersion !== undefined && currentVersion > flushedVersion) {
+    host.transitionFsm(docId, {
+      type: 'SAVE_SUCCESS',
+      savedVersion: flushedVersion,
+      currentVersion,
+    });
+    useConnectivityStore.getState().setLastSavedAt(savedAt ? new Date(savedAt) : new Date());
+    return;
+  }
+
+  pendingRealtimeFlushVersions.delete(docId);
+  commitCleanState(host, docId, model?.projectId, currentVersion, currentVersion, savedAt);
 }
 
 export async function flushViaRestCasStrategy(

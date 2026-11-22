@@ -1,8 +1,15 @@
 import { StateEffect, StateField, Transaction } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
+import type * as Y from 'yjs';
 import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import {
+  decodeYjsAnchor,
+  encodeYjsAnchor,
+  resolveYjsAnchorRange,
+} from './anchor';
 
+export { decodeYjsAnchor, encodeYjsAnchor, resolveYjsAnchorRange };
 export type { TrackChangesViewMode };
 
 const LOCAL_SUGGESTION_PREFIX = 'sug-local-';
@@ -21,6 +28,7 @@ export interface RawSuggestion {
   docId?: string;
   pageId?: string;
   projectId?: string;
+  groupId?: string;
   type?: PageSuggestion['type'];
   text?: string;
   originalText?: string;
@@ -37,6 +45,9 @@ export interface RawSuggestion {
   fromColumn?: number;
   toLine?: number;
   toColumn?: number;
+  anchorStart?: string;
+  anchorEnd?: string;
+  baseDocRev?: number;
 }
 
 export interface RawComment {
@@ -49,6 +60,9 @@ export interface RawComment {
   content?: string;
   line?: number;
   lineEnd?: number;
+  anchorStart?: string;
+  anchorEnd?: string;
+  baseDocRev?: number;
   status?: PageComment['status'];
   resolved?: boolean;
   fromIndex?: number;
@@ -62,12 +76,14 @@ export const setSuggestionsEffect = StateEffect.define<PageSuggestion[]>();
 export const setViewModeEffect = StateEffect.define<TrackChangesViewMode>();
 export const setReviewModeEffect = StateEffect.define<boolean>();
 export const setCommentsEffect = StateEffect.define<PageComment[]>();
+export const setYDocEffect = StateEffect.define<Y.Doc | null>();
 export const setReviewDataEffect = StateEffect.define<{
   suggestions?: PageSuggestion[];
   comments?: Array<PageComment | RawComment>;
   changes?: Array<PageSuggestion | RawSuggestion>;
   viewMode?: TrackChangesViewMode;
   reviewMode?: boolean;
+  yDoc?: Y.Doc | null;
 }>();
 
 export interface ReviewExtensionConfig {
@@ -76,6 +92,7 @@ export interface ReviewExtensionConfig {
   comments: PageComment[];
   viewMode: TrackChangesViewMode;
   reviewMode: boolean;
+  yDoc?: Y.Doc | null;
 }
 
 export interface ReviewExtensionOptions {
@@ -86,6 +103,7 @@ export interface ReviewExtensionOptions {
   initialReviewMode?: boolean;
   reviewMode?: 'on' | 'off' | boolean;
   viewMode?: TrackChangesViewMode;
+  yDoc?: Y.Doc | null;
 }
 
 export function getSafeOffset(
@@ -104,10 +122,54 @@ export function getSafeOffset(
   return Math.min(line.from + safeCol, line.to);
 }
 
+export function resolveCommentRange(
+  doc: EditorView['state']['doc'],
+  c: PageComment,
+  yDoc?: Y.Doc | null,
+): { from: number; to: number; line: number } | null {
+  if (doc.lines === 0) return null;
+
+  if (yDoc && c.anchorStart && c.anchorEnd) {
+    const anchored = resolveYjsAnchorRange(doc, yDoc, c.anchorStart, c.anchorEnd);
+    if (anchored && anchored.from <= anchored.to) {
+      const safeFrom = Math.max(0, Math.min(anchored.from, doc.length));
+      const line = doc.lineAt(safeFrom).number;
+      if (anchored.from < anchored.to) {
+        return { from: anchored.from, to: anchored.to, line };
+      }
+      const lineObj = doc.line(line);
+      return { from: lineObj.from, to: lineObj.to, line };
+    }
+  }
+
+  let lineNum = c.line;
+  const fromIndex = (c as typeof c & { fromIndex?: number }).fromIndex;
+  if (!lineNum && typeof fromIndex === 'number' && doc.length > 0) {
+    lineNum = doc.lineAt(Math.max(0, Math.min(fromIndex, doc.length))).number;
+  }
+  if (!lineNum) return null;
+
+  const startLine = Math.max(1, Math.min(lineNum, doc.lines));
+  const endLine = Math.max(startLine, Math.min(c.lineEnd || startLine, doc.lines));
+  return {
+    from: doc.line(startLine).from,
+    to: doc.line(endLine).to,
+    line: startLine,
+  };
+}
+
 export function resolveSuggestionRange(
   doc: EditorView['state']['doc'],
   s: PageSuggestion,
+  yDoc?: Y.Doc | null,
 ): { from: number; to: number } {
+  if (yDoc && s.anchorStart && s.anchorEnd) {
+    const anchored = resolveYjsAnchorRange(doc, yDoc, s.anchorStart, s.anchorEnd);
+    if (anchored && anchored.from < anchored.to) {
+      return anchored;
+    }
+  }
+
   const cand = s as typeof s & {
     fromIndex?: number;
     fromOffset?: number;
@@ -194,6 +256,7 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
       comments: [],
       viewMode: 'changes',
       reviewMode: false,
+      yDoc: null,
     };
   },
   update(value, tr: Transaction) {
@@ -210,6 +273,8 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
         next = { ...next, reviewMode: effect.value };
       } else if (effect.is(setCommentsEffect)) {
         next = { ...next, comments: effect.value };
+      } else if (effect.is(setYDocEffect)) {
+        next = { ...next, yDoc: effect.value };
       } else if (effect.is(setReviewDataEffect)) {
         if (effect.value.suggestions || effect.value.changes) {
           suggestionsReplaced = true;
@@ -224,6 +289,7 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
               id: c.id,
               pageId: c.docId || c.pageId || '',
               projectId: c.projectId || '',
+              groupId: c.groupId,
               type: c.type || 'insert',
               originalText: c.type === 'delete' ? (c.text || '') : (c.originalText || ''),
               suggestedText: c.type === 'insert' ? (c.text || '') : (c.suggestedText || ''),
@@ -238,6 +304,9 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
               fromColumn: c.fromColumn || 1,
               toLine: c.toLine || 1,
               toColumn: c.toColumn || 1,
+              anchorStart: c.anchorStart,
+              anchorEnd: c.anchorEnd,
+              baseDocRev: c.baseDocRev,
             } as PageSuggestion;
           });
         }
@@ -261,6 +330,9 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
               content: c.content || '',
               line: c.line || calcLine,
               lineEnd: c.lineEnd || c.line || calcLine,
+              anchorStart: c.anchorStart,
+              anchorEnd: c.anchorEnd,
+              baseDocRev: c.baseDocRev,
               status: c.status || (c.resolved ? 'resolved' : 'open'),
               resolved: !!c.resolved,
               fromIndex: c.fromIndex,
@@ -278,6 +350,7 @@ export const reviewStateField = StateField.define<ReviewExtensionConfig>({
           comments: newComments,
           viewMode: effect.value.viewMode || next.viewMode,
           reviewMode: effect.value.reviewMode !== undefined ? effect.value.reviewMode : next.reviewMode,
+          yDoc: effect.value.yDoc !== undefined ? effect.value.yDoc : next.yDoc,
         };
       }
     }

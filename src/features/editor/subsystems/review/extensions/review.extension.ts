@@ -13,15 +13,20 @@ import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { reviewModeFilter } from './filter';
 import {
   createLocalSuggestionId,
+  decodeYjsAnchor,
+  encodeYjsAnchor,
   getSafeOffset,
   isLocalSuggestionId,
+  resolveCommentRange,
   resolveSuggestionRange,
+  resolveYjsAnchorRange,
   reviewStateField,
   setCommentsEffect,
   setReviewDataEffect,
   setReviewModeEffect,
   setSuggestionsEffect,
   setViewModeEffect,
+  setYDocEffect,
   type RawComment,
   type RawSuggestion,
   type ReviewExtensionConfig,
@@ -38,9 +43,13 @@ import {
 
 export {
   createLocalSuggestionId,
+  decodeYjsAnchor,
+  encodeYjsAnchor,
   getSafeOffset,
   isLocalSuggestionId,
+  resolveCommentRange,
   resolveSuggestionRange,
+  resolveYjsAnchorRange,
   reviewModeFilter,
   reviewStateField,
   reviewTheme,
@@ -49,6 +58,7 @@ export {
   setReviewModeEffect,
   setSuggestionsEffect,
   setViewModeEffect,
+  setYDocEffect,
 };
 export type {
   RawComment,
@@ -71,7 +81,8 @@ export const reviewDecorationsField = StateField.define<DecorationSet>({
         e.is(setViewModeEffect) ||
         e.is(setReviewModeEffect) ||
         e.is(setCommentsEffect) ||
-        e.is(setReviewDataEffect),
+        e.is(setReviewDataEffect) ||
+        e.is(setYDocEffect),
     );
 
     if (configChanged) {
@@ -116,7 +127,7 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   const isChanges = !isClean && !isOriginal;
 
   for (const s of pendingSuggestions) {
-    const { from, to } = resolveSuggestionRange(doc, s);
+    const { from, to } = resolveSuggestionRange(doc, s, config.yDoc);
     if (from >= to) continue;
 
     const authorName = s.author?.name || 'Collaborator';
@@ -187,12 +198,9 @@ function buildDecorations(state: EditorView['state']): DecorationSet {
   }
 
   for (const c of openComments) {
-    if (!c.line) continue;
-    const startLine = Math.max(1, Math.min(c.line, doc.lines));
-    const endLine = Math.max(startLine, Math.min(c.lineEnd || c.line, doc.lines));
-
-    const from = doc.line(startLine).from;
-    const to = doc.line(endLine).to;
+    const resolved = resolveCommentRange(doc, c, config.yDoc);
+    if (!resolved) continue;
+    const { from, to } = resolved;
 
     if (from < to) {
       items.push({
@@ -236,16 +244,11 @@ export const reviewGutter = gutter({
     const commentsByLine = new Map<number, PageComment[]>();
     for (const c of config.comments) {
       if (c.status === 'open') {
-        let lineNum = c.line;
-        const fromIndex = (c as typeof c & { fromIndex?: number }).fromIndex;
-        if (!lineNum && typeof fromIndex === 'number' && doc.length > 0) {
-          lineNum = doc.lineAt(Math.min(fromIndex, doc.length)).number;
-        }
-        if (lineNum) {
-          const safeLine = Math.max(1, Math.min(lineNum, doc.lines));
-          const list = commentsByLine.get(safeLine) || [];
+        const resolved = resolveCommentRange(doc, c, config.yDoc);
+        if (resolved) {
+          const list = commentsByLine.get(resolved.line) || [];
           list.push(c);
-          commentsByLine.set(safeLine, list);
+          commentsByLine.set(resolved.line, list);
         }
       }
     }
@@ -328,7 +331,7 @@ export function getSuggestionTooltip(view: EditorView, pos: number): Tooltip | n
     if (isClean && s.type === 'delete') continue;
     if (isOriginal && s.type === 'insert') continue;
 
-    const { from, to } = resolveSuggestionRange(doc, s);
+    const { from, to } = resolveSuggestionRange(doc, s, config.yDoc);
     if (pos >= from && pos <= to) {
       return {
         pos: from,
@@ -360,6 +363,7 @@ export function createReviewExtension(options: ReviewExtensionOptions = {}): Ext
       comments: options.initialComments || [],
       viewMode,
       reviewMode,
+      yDoc: options.yDoc ?? null,
     })),
     reviewModeFilter,
     reviewDecorationsField,

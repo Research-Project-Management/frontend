@@ -5,6 +5,9 @@
 
 import type { Item } from '@/features/library/types/core.types';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
+import { stripLatexComments } from '@/features/editor/domain/latex/dependency-graph';
+
+export { stripLatexComments };
 
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:
@@ -24,7 +27,6 @@ export const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
  */
 export const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
 
-const COMMENT_STRIP_REGEX = /(^|[^\\])%.*$/gm;
 const CODE_BLOCK_STRIP_REGEX = /```[\s\S]*?```/g;
 const VALID_CITEKEY_REGEX = /^[a-zA-Z0-9_:-]+$/;
 const LATEX_TRIGGER_REGEX =
@@ -46,15 +48,6 @@ const NO_TRIGGER_RESULT: CitationTriggerContext = {
   format: 'latex',
   searchPrefix: '',
 };
-
-/**
- * Strips LaTeX comments (% ...) while preserving escaped percent signs (\%).
- */
-export function stripLatexComments(raw: string): string {
-  if (!raw) return '';
-  if (raw.indexOf('%') === -1) return raw;
-  return raw.replace(COMMENT_STRIP_REGEX, '$1');
-}
 
 /**
  * Strips fenced markdown code blocks (```...```) to avoid scanning citation examples in code snippets.

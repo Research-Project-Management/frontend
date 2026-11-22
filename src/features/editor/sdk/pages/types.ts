@@ -405,6 +405,10 @@ export interface CreateSuggestionPayload {
   fromColumn?: number;
   toLine: number;
   toColumn?: number;
+  groupId?: string;
+  anchorStart?: string;
+  anchorEnd?: string;
+  baseDocRev?: number;
   description?: string;
   spaceId?: string | null;
   projectId?: string;

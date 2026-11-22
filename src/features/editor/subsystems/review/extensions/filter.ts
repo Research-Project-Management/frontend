@@ -203,6 +203,10 @@ export const reviewModeFilter = EditorState.transactionFilter.of((tr: Transactio
 
   // Case 3: Selection replacement -> pending delete + pending insert
   if (fromA < toA && insertedText.length > 0) {
+    const groupId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : undefined;
     const originalText = startDoc.sliceString(fromA, toA);
     const startLineObj = startDoc.lineAt(fromA);
     const endLineObj = startDoc.lineAt(toA);
@@ -216,6 +220,7 @@ export const reviewModeFilter = EditorState.transactionFilter.of((tr: Transactio
 
     const deleteSug: PageSuggestion = {
       id: createLocalSuggestionId('del'),
+      ...(groupId ? { groupId } : {}),
       pageId,
       type: 'delete',
       originalText,
@@ -235,6 +240,7 @@ export const reviewModeFilter = EditorState.transactionFilter.of((tr: Transactio
 
     const insertSug: PageSuggestion = {
       id: createLocalSuggestionId('ins'),
+      ...(groupId ? { groupId } : {}),
       pageId,
       type: 'insert',
       originalText: '',

@@ -6,13 +6,14 @@
 
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { PAGES_API_BASE } from './base';
+import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler.types';
 import type {
   DiagnosticReportDto,
   ErrorExplanationDto,
 } from './types';
 
 export const diagnostics = {
-  parseLog: async (logText: string, engine = 'pdflatex'): Promise<DiagnosticReportDto> => {
+  parseLog: async (logText: string, engine: string = DEFAULT_COMPILER_ENGINE): Promise<DiagnosticReportDto> => {
     if (!logText || !logText.trim() || logText.includes('signal is aborted') || logText.includes('Compilation superseded')) {
       return {
         id: `report-${Date.now()}`,

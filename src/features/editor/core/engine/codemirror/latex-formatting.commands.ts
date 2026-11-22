@@ -301,6 +301,12 @@ export const latexFormattingKeymap: readonly KeyBinding[] = [
         selectedText: selectedText || '',
       });
 
+      editorCommandBus.dispatch({
+        type: 'review:create-comment',
+        line: startLine,
+        endLine,
+        selectedText: selectedText || '',
+      });
       editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
       return true;
     },

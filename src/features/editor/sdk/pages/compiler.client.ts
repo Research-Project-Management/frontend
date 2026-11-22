@@ -9,6 +9,10 @@ import { apiGet, apiPost, rawFetch } from '@/shared/lib/api';
 import { isApiError } from '@/shared/types/api.types';
 import { PAGES_API_BASE, getPagesBaseUrl } from './base';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
+import {
+  DEFAULT_COMPILER_ENGINE,
+  type CompilerEngine,
+} from '@/features/editor/domain/types/compiler.types';
 import type {
   CompileLatexPayload,
   CompileLatexResponse,
@@ -166,10 +170,10 @@ export const compiler = {
     suggestion?: string;
     sessionId?: string;
     code?: string;
-    engine?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+    engine?: CompilerEngine;
   }): Promise<PreviewCompileResult> => {
     const source = opts.code || opts.suggestion || opts.baseContent || '';
-    const engine = opts.engine || 'pdflatex';
+    const engine = opts.engine || DEFAULT_COMPILER_ENGINE;
 
     try {
       const res = await apiPost<{ pdf?: string; logs?: string; synctex?: string; error?: string }>(

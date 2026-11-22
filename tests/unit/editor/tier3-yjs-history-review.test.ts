@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
+import {
+  sessionCoordinator,
+  shouldUseRealtimePersistence,
+} from '@/features/editor/core/coordinator/session.coordinator';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   acquireYjsProvider,
   evictYjsProviderByDocId,
@@ -11,14 +15,20 @@ import {
   getActiveYjsProvider,
 } from '@/features/editor/sdk/realtime/yjs-provider-pool';
 import { YjsSocketIOProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import * as Y from 'yjs';
 import {
   createReviewExtension,
+  encodeYjsAnchor,
+  resolveCommentRange,
+  resolveSuggestionRange,
   reviewStateField,
   ReviewCoordinator,
+  setYDocEffect,
 } from '@/features/editor/subsystems/review';
 import { history, review } from '@/features/editor/sdk/pages.service';
 import { useConnectivityStore } from '@/features/editor/core';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
+import type { PageComment } from '@/features/editor/domain/types/comment.types';
 
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}-${Date.now()}-${idSeq++}`;
@@ -188,6 +198,8 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
         suggestedText: 'earth',
         status: 'pending',
       });
+      expect(fieldState.suggestions[0].groupId).toBeTruthy();
+      expect(fieldState.suggestions[0].groupId).toBe(fieldState.suggestions[1].groupId);
     });
   });
 
@@ -336,6 +348,216 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
       expect(String(fetchSpy.mock.calls[4]?.[0])).toBe(
         '/api/v1/pages/pages/page-9/review-overview',
       );
+    });
+  });
+
+  describe('6. Hybrid Yjs RelativePosition Anchoring', () => {
+    it('tracks suggestion range via Yjs RelativePosition anchors after earlier document insertions', () => {
+      const yDoc = new Y.Doc();
+      const yText = yDoc.getText('content');
+      yText.insert(0, 'Alpha target omega');
+
+      const startIdx = 'Alpha '.length;
+      const endIdx = startIdx + 'target'.length;
+      const anchorStart = encodeYjsAnchor(yText, startIdx);
+      const anchorEnd = encodeYjsAnchor(yText, endIdx);
+      expect(anchorStart).toBeTruthy();
+      expect(anchorEnd).toBeTruthy();
+
+      // Simulate another collaborator inserting text before the anchored range
+      const prefix = 'Prefix inserted ';
+      yText.insert(0, prefix);
+
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      const state = EditorState.create({
+        doc: yText.toString(),
+        extensions: [
+          createReviewExtension({
+            pageId: 'doc-yjs-anchor',
+            yDoc,
+          }),
+        ],
+      });
+      editorView = new EditorView({ state, parent: container });
+
+      // Simulate hydrated server suggestion without fromIndex/toIndex and stale line/column
+      const staleSuggestion: PageSuggestion = {
+        id: 'sug-anchor-1',
+        pageId: 'doc-yjs-anchor',
+        type: 'insert',
+        originalText: '',
+        suggestedText: 'target',
+        status: 'pending',
+        authorId: 'u-1',
+        author: { id: 'u-1', name: 'Alice' },
+        fromLine: 1,
+        fromColumn: startIdx + 1,
+        toLine: 1,
+        toColumn: endIdx + 1,
+        anchorStart,
+        anchorEnd,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const field = editorView.state.field(reviewStateField);
+      expect(field.yDoc).toBe(yDoc);
+
+      const resolved = resolveSuggestionRange(editorView.state.doc, staleSuggestion, field.yDoc);
+      expect(editorView.state.doc.sliceString(resolved.from, resolved.to)).toBe('target');
+
+      // Clearing yDoc via effect updates reviewStateField
+      editorView.dispatch({ effects: [setYDocEffect.of(null)] });
+      expect(editorView.state.field(reviewStateField).yDoc).toBeNull();
+    });
+
+    it('tracks comment range and shifted multi-line number via Yjs RelativePosition anchors', () => {
+      const yDoc = new Y.Doc();
+      const yText = yDoc.getText('content');
+      yText.insert(0, 'Line one\nReview target phrase here');
+
+      const anchorIdx = yText.toString().indexOf('target');
+      const anchorStart = encodeYjsAnchor(yText, anchorIdx);
+      const anchorEnd = encodeYjsAnchor(yText, anchorIdx + 'target'.length);
+      expect(anchorStart).toBeTruthy();
+      expect(anchorEnd).toBeTruthy();
+
+      // Insert 2 new lines before the anchored comment
+      yText.insert(0, 'Added header 1\nAdded header 2\n');
+
+      container = document.createElement('div');
+      document.body.appendChild(container);
+      const state = EditorState.create({
+        doc: yText.toString(),
+        extensions: [
+          createReviewExtension({
+            pageId: 'doc-comment-anchor',
+            yDoc,
+          }),
+        ],
+      });
+      editorView = new EditorView({ state, parent: container });
+
+      const comment: PageComment = {
+        id: 'cmt-anchor-1',
+        page: 'doc-comment-anchor',
+        projectPageId: 'doc-comment-anchor',
+        author: { id: 'u-1', name: 'Alice' },
+        content: 'Clarify target wording',
+        line: 2,
+        lineEnd: 2,
+        anchorStart,
+        anchorEnd,
+        status: 'open',
+        replies: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const resolved = resolveCommentRange(editorView.state.doc, comment, yDoc);
+      expect(resolved).not.toBeNull();
+      expect(resolved!.line).toBe(4);
+      expect(editorView.state.doc.sliceString(resolved!.from, resolved!.to)).toBe('target');
+    });
+  });
+
+  describe('7. Closed-Loop Realtime Persistence ACK (doc:persisted)', () => {
+    it('requires isProviderSynced=true in shouldUseRealtimePersistence and syncs serverRev on document:persisted', () => {
+      expect(
+        shouldUseRealtimePersistence({
+          hasYText: true,
+          isOnline: true,
+          isProviderConnected: true,
+          isProviderSynced: false,
+        }),
+      ).toBe(false);
+
+      expect(
+        shouldUseRealtimePersistence({
+          hasYText: true,
+          isOnline: true,
+          isProviderConnected: true,
+          isProviderSynced: true,
+        }),
+      ).toBe(true);
+
+      const docId = nextId('doc-ack');
+      lruDocumentCache.registerModel(docId, {
+        projectId: 'proj-ack',
+        content: 'hello',
+        serverRev: 3,
+      });
+      lruDocumentCache.updateContent(docId, 'hello edited', true);
+
+      editorCommandBus.dispatch({
+        type: 'document:persisted',
+        docId,
+        rev: 7,
+        version: 7,
+        savedAt: '2026-11-22T16:40:00.000Z',
+      });
+
+      const updated = lruDocumentCache.getModel(docId);
+      expect(updated?.serverRev).toBe(7);
+      expect(updated?.isDirty).toBe(false);
+
+      // Out-of-order stale rev must be ignored (monotonic guard)
+      editorCommandBus.dispatch({
+        type: 'document:persisted',
+        docId,
+        rev: 4,
+        version: 4,
+      });
+      expect(lruDocumentCache.getModel(docId)?.serverRev).toBe(7);
+      lruDocumentCache.evictModel(docId);
+    });
+
+    it('keeps isDirty=true when user types new edits while doc:persisted ACK is in flight', async () => {
+      const docId = nextId('doc-race');
+      lruDocumentCache.registerModel(docId, {
+        projectId: 'proj-race',
+        content: 'v1',
+        serverRev: 1,
+      });
+      lruDocumentCache.updateContent(docId, 'v2', true);
+
+      // Force realtime flush mode via spy on isRealtimeConnected
+      vi.spyOn(sessionCoordinator, 'isRealtimeConnected').mockReturnValue(true);
+      await sessionCoordinator.flushFile(docId);
+
+      // Must remain dirty until authoritative doc:persisted ACK arrives
+      expect(lruDocumentCache.getModel(docId)?.isDirty).toBe(true);
+
+      // User types v3 before ACK for v2 arrives
+      lruDocumentCache.updateContent(docId, 'v3', true);
+
+      editorCommandBus.dispatch({
+        type: 'document:persisted',
+        docId,
+        rev: 2,
+        version: 2,
+        savedAt: '2026-11-22T16:52:00.000Z',
+      });
+
+      // serverRev updates to 2, but isDirty stays true because v3 > flushed v2
+      const afterStaleAck = lruDocumentCache.getModel(docId);
+      expect(afterStaleAck?.serverRev).toBe(2);
+      expect(afterStaleAck?.isDirty).toBe(true);
+
+      // Next flush + ACK for v3 cleanly marks document clean
+      await sessionCoordinator.flushFile(docId);
+      editorCommandBus.dispatch({
+        type: 'document:persisted',
+        docId,
+        rev: 3,
+        version: 3,
+        savedAt: '2026-11-22T16:52:02.000Z',
+      });
+      expect(lruDocumentCache.getModel(docId)?.serverRev).toBe(3);
+      expect(lruDocumentCache.getModel(docId)?.isDirty).toBe(false);
+
+      lruDocumentCache.evictModel(docId);
     });
   });
 });

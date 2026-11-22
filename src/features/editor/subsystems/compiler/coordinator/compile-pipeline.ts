@@ -23,6 +23,7 @@ import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/d
 import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { logger } from '@/shared/lib/utils';
+import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler.types';
 import {
   type SyncTeXNode,
   type SyncTeXMap,
@@ -321,7 +322,7 @@ export const CompilePipeline = {
         pageId: pageId || undefined,
         mainFile: mainFile || undefined,
         files: Object.keys(overlayFiles).length > 0 ? overlayFiles : undefined,
-        engine: engine ?? 'pdflatex',
+        engine: engine ?? DEFAULT_COMPILER_ENGINE,
         texLiveVersion: opts.texLiveVersion,
         draft: draft ?? false,
         useCache: useCache ?? true,
@@ -370,7 +371,7 @@ export const CompilePipeline = {
         mainFile: mainFile || undefined,
         source: sourceContent || undefined,
         files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
-        engine: engine ?? 'pdflatex',
+        engine: engine ?? DEFAULT_COMPILER_ENGINE,
         texLiveVersion: opts.texLiveVersion,
         draft: draft ?? false,
         useCache: useCache ?? true,

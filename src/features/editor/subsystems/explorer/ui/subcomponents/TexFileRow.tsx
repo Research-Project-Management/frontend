@@ -2,11 +2,6 @@
 
 import React, { useCallback } from 'react';
 import {
-  FileCode2,
-  BookText,
-  Braces,
-  FileType,
-  Image,
   Star,
   Pencil,
   Trash2,
@@ -31,44 +26,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
-
-const ICON_TEX = { icon: FileCode2, color: 'text-foreground' };
-const ICON_BIB = { icon: BookText, color: 'text-foreground' };
-const ICON_CLS = { icon: Braces, color: 'text-foreground' };
-const ICON_TXT = { icon: FileType, color: 'text-foreground' };
-const ICON_IMG = { icon: Image, color: 'text-foreground' };
-const ICON_DEFAULT = { icon: FileCode2, color: 'text-foreground' };
-
-export function getFileIcon(filename: string) {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  switch (ext) {
-    case 'tex':
-    case 'ltx':
-    case 'dtx':
-      return ICON_TEX;
-    case 'bib':
-    case 'bst':
-      return ICON_BIB;
-    case 'cls':
-    case 'sty':
-    case 'ins':
-      return ICON_CLS;
-    case 'md':
-    case 'txt':
-      return ICON_TXT;
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'svg':
-    case 'gif':
-    case 'webp':
-    case 'eps':
-    case 'pdf':
-      return ICON_IMG;
-    default:
-      return ICON_DEFAULT;
-  }
-}
+import { getFileIcon } from './file-icon';
 
 import { displayName, cleanBasename } from '@/features/editor/domain/document/document-naming';
 export { displayName, cleanBasename };
@@ -114,7 +72,7 @@ export const TexFileRow = React.memo(function TexFileRow({
   onDownload,
   onCopyCommand,
 }: TexFileRowProps) {
-  const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
+  const { icon: FileIcon, color: fileColor } = getFileIcon(file.title, { monochrome: true });
   const fullName = displayName(file.title);
   const label = displayLabel || fullName;
 

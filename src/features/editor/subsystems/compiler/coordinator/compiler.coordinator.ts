@@ -10,6 +10,7 @@
  */
 
 import { CompilePipeline, type CompilerDiagnostic, type CompilerPort } from './compile-pipeline';
+import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler.types';
 import { FlushBarrier } from './flush-barrier';
 import {
   resolveForwardDetail,
@@ -470,7 +471,7 @@ export class CompilerCoordinator {
         mainFile: resolvedMainFile,
         source: snapshot.source,
         files: snapshot.files,
-        engine: this.options.getEngine?.() || settingsStore.engine || 'pdflatex',
+        engine: this.options.getEngine?.() || settingsStore.engine || DEFAULT_COMPILER_ENGINE,
         texLiveVersion: this.options.getTexLiveVersion?.() || settingsStore.texLiveVersion,
         draft: options?.draft ?? (settingsStore.compileMode === 'draft'),
         useCache: options?.forceClean ? false : settingsStore.useCache,

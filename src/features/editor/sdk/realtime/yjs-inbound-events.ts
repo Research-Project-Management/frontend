@@ -28,6 +28,7 @@ import type {
 export const RELAYABLE_SOCKET_EVENTS = [
   'compile:progress',
   'doc:evicted',
+  'doc:persisted',
   'fileTree:update',
   'doc:content-updated',
   'project:chat:new',
@@ -91,6 +92,23 @@ export function dispatchInboundServerEventHelper(
     const data = rawData as { spaceId?: string; docId?: string } | undefined;
     if (data?.docId && data.docId !== ctx.pageId) return;
     ctx.onDocEvicted();
+    return;
+  }
+
+  if (eventName === 'doc:persisted') {
+    const data = rawData as
+      | { spaceId?: string; docId?: string; rev?: number; version?: number; savedAt?: string }
+      | undefined;
+    const targetDocId = data?.docId || ctx.pageId;
+    if (targetDocId) {
+      ctx.getCommandBus()?.dispatch({
+        type: 'document:persisted',
+        docId: targetDocId,
+        rev: data?.rev,
+        version: data?.version,
+        savedAt: data?.savedAt,
+      });
+    }
     return;
   }
 

@@ -56,6 +56,11 @@ export type EditorCommand =
   | { type: 'editor:undo' }
   | { type: 'editor:redo' }
   | { type: 'editor:focus' }
+  | { type: 'editor:select-all' }
+  | { type: 'editor:indent' }
+  | { type: 'editor:outdent' }
+  | { type: 'editor:toggle-comment' }
+  | { type: 'editor:delete-selection' }
   | { type: 'editor:find'; open?: boolean }
   | { type: 'editor:split'; direction: 'vertical' | 'horizontal' | 'none'; fileId?: string }
   | { type: 'editor:open-to-side'; fileId: string; filePath?: string }
@@ -138,6 +143,7 @@ export type EditorCommand =
   | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
   | { type: 'synctex:map-updated'; map: import('@/features/editor/subsystems/compiler/synctex/synctex-index').SyncTeXMap | null }
   | { type: 'document:content-updated'; docId: string; content: string }
+  | { type: 'document:persisted'; docId: string; rev?: number; version?: number; savedAt?: string }
   | { type: 'document:conflict'; docId: string; remoteContent: string; localContent: string }
   | { type: 'filetree:updated'; payload?: unknown }
   | { type: 'workspace:open-file'; fileId: string; filePath?: string; preview?: boolean }

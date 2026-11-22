@@ -13,8 +13,8 @@ import type { EditorView } from '@codemirror/view';
 import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 import { reviewCoordinator } from '../../coordinator/review.coordinator';
-import { commentKeys, usePageComments } from './useComments';
-import { suggestionKeys, usePageSuggestions } from './useSuggestions';
+import { usePageComments } from './useComments';
+import { usePageSuggestions } from './useSuggestions';
 
 const EMPTY_SUGGESTIONS: never[] = [];
 const EMPTY_COMMENTS: never[] = [];
@@ -54,11 +54,15 @@ export function useReviewSync(
       if (evtDocId && evtDocId !== docId) return;
 
       if (event.startsWith('comment:') || event.startsWith('comments:')) {
-        void contextClient.invalidateQueries({ queryKey: commentKeys.byPage(docId) });
+        void contextClient.invalidateQueries({ queryKey: ['page-comments', docId] });
         void contextClient.invalidateQueries({ queryKey: ['project-review-overview'] });
         void contextClient.invalidateQueries({ queryKey: ['pages', 'detail', docId] });
-      } else if (event.startsWith('suggestion:') || event.startsWith('suggestions:')) {
-        void contextClient.invalidateQueries({ queryKey: suggestionKeys.byPage(docId) });
+      } else if (
+        event.startsWith('suggestion:') ||
+        event.startsWith('suggestions:') ||
+        event.startsWith('track-changes:')
+      ) {
+        void contextClient.invalidateQueries({ queryKey: ['page-suggestions', docId] });
         void contextClient.invalidateQueries({ queryKey: ['project-review-overview'] });
         void contextClient.invalidateQueries({ queryKey: ['pages', 'detail', docId] });
       } else if (event === 'review:status-changed') {

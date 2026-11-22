@@ -1,6 +1,14 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { editorCommandBus } from '@/features/editor/core';
+import { useReviewSync } from '@/features/editor/subsystems/review';
+import {
+  createCommentSchema,
+  createReplySchema,
+} from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
 
 import * as api from '@/shared/lib/api';
@@ -245,6 +253,149 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       });
 
       expect(updated).toBe('Line 1\nNew Section Combined\nLine 4');
+    });
+  });
+
+  describe('4. Realtime Review Sync & Comment Update Regression', () => {
+    it('useReviewSync invalidates prefix suggestion queries on track-changes:* and status queries on review:status-changed', () => {
+      vi.spyOn(pagesService.suggestions, 'getSuggestions').mockResolvedValue([]);
+      vi.spyOn(pagesService.comments, 'getComments').mockResolvedValue([]);
+
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const invalidateSpy = vi.spyOn(client, 'invalidateQueries');
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client }, children);
+
+      const { unmount } = renderHook(() => useReviewSync('doc-sync-1', null), { wrapper });
+
+      act(() => {
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId: 'doc-sync-1',
+          event: 'track-changes:created',
+        });
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId: 'doc-sync-1',
+          event: 'track-changes:resolved',
+        });
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId: 'doc-sync-1',
+          event: 'review:status-changed',
+        });
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['page-suggestions', 'doc-sync-1'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['project-review-overview'] });
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['manuscript-review-status'] });
+
+      unmount();
+      client.clear();
+    });
+
+    it('useUpdateComment omits status when only content is edited', async () => {
+      const { useUpdateComment } = await vi.importActual<
+        typeof import('@/features/editor/subsystems/review/ui/hooks/useComments')
+      >('@/features/editor/subsystems/review/ui/hooks/useComments');
+
+      const updateSpy = vi.spyOn(pagesService.comments, 'updateComment').mockResolvedValue({
+        id: 'cmt-1',
+        page: 'doc-cmt-1',
+        projectPageId: 'doc-cmt-1',
+        author: { id: 'u-1', name: 'Alice' },
+        content: 'Edited wording',
+        line: 3,
+        status: 'open',
+        replies: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client }, children);
+
+      const { result, unmount } = renderHook(() => useUpdateComment(client), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          pageId: 'doc-cmt-1',
+          commentId: 'cmt-1',
+          content: 'Edited wording',
+        });
+      });
+
+      expect(updateSpy).toHaveBeenCalledWith('doc-cmt-1', 'cmt-1', {
+        content: 'Edited wording',
+      });
+
+      unmount();
+      client.clear();
+    });
+
+    it('createCommentSchema & createReplySchema accept up to 10000 chars and useUpdateReply invokes comments.updateReply', async () => {
+      const maxStr = 'x'.repeat(10000);
+      const overStr = 'x'.repeat(10001);
+      expect(createCommentSchema.safeParse({ content: maxStr }).success).toBe(true);
+      expect(createCommentSchema.safeParse({ content: overStr }).success).toBe(false);
+      expect(createReplySchema.safeParse({ content: maxStr }).success).toBe(true);
+      expect(createReplySchema.safeParse({ content: overStr }).success).toBe(false);
+
+      const { useUpdateReply } = await vi.importActual<
+        typeof import('@/features/editor/subsystems/review/ui/hooks/useComments')
+      >('@/features/editor/subsystems/review/ui/hooks/useComments');
+
+      const replyUpdateSpy = vi.spyOn(pagesService.comments, 'updateReply').mockResolvedValue({
+        id: 'cmt-2',
+        page: 'doc-cmt-2',
+        projectPageId: 'doc-cmt-2',
+        author: { id: 'u-1', name: 'Alice' },
+        content: 'Root',
+        line: 1,
+        status: 'open',
+        replies: [
+          {
+            id: 'rep-1',
+            author: { id: 'u-1', name: 'Alice' },
+            content: 'Updated reply',
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(QueryClientProvider, { client }, children);
+
+      const { result, unmount } = renderHook(() => useUpdateReply(client), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          pageId: 'doc-cmt-2',
+          commentId: 'cmt-2',
+          replyId: 'rep-1',
+          content: 'Updated reply',
+        });
+      });
+
+      expect(replyUpdateSpy).toHaveBeenCalledWith(
+        'doc-cmt-2',
+        'cmt-2',
+        'rep-1',
+        'Updated reply',
+      );
+
+      unmount();
+      client.clear();
     });
   });
 });

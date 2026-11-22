@@ -18,6 +18,10 @@ export interface ReviewServicePort {
     fromColumn: number;
     toLine: number;
     toColumn: number;
+    groupId?: string;
+    anchorStart?: string;
+    anchorEnd?: string;
+    baseDocRev?: number;
     idempotencyKey?: string;
     silent?: boolean;
   }): Promise<{

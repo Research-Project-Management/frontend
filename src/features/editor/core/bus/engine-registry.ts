@@ -55,7 +55,7 @@ export const NOOP_EDITOR_ENGINE: IEditorEngine = Object.freeze({
 /**
  * Registry Class Pattern: Encapsulates active editor engine & PDF viewer state.
  */
-export class EditorEngineRegistry {
+class EditorEngineRegistry {
   private activeEngineInstance: IEditorEngine | null = null;
   private activeViewerInstance: unknown = null;
   private readonly enginesByFileId = new Map<string, IEditorEngine>();
@@ -141,7 +141,7 @@ export class EditorEngineRegistry {
   }
 }
 
-export const editorEngineRegistry = new EditorEngineRegistry();
+const editorEngineRegistry = new EditorEngineRegistry();
 
 export function subscribeEditorEngineChanges(listener: () => void): () => void {
   return editorEngineRegistry.subscribe(listener);

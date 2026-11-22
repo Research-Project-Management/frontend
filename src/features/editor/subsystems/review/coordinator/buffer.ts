@@ -1,4 +1,5 @@
 import type { EditorView } from '@codemirror/view';
+import type * as Y from 'yjs';
 import { programmaticSyncAnnotation } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
@@ -11,6 +12,7 @@ import {
   setReviewModeEffect,
   setSuggestionsEffect,
   setViewModeEffect,
+  setYDocEffect,
   type TrackChangesViewMode,
 } from '../extensions/state';
 
@@ -32,9 +34,10 @@ export function mutateSuggestion(
   view: EditorView,
   sug: PageSuggestion,
   action: 'accept' | 'reject',
+  yDoc?: Y.Doc | null,
 ): SuggestionMemento {
   const doc = view.state.doc;
-  const { from, to } = resolveSuggestionRange(doc, sug);
+  const { from, to } = resolveSuggestionRange(doc, sug, yDoc);
   const currentSlice = from < to && to <= doc.length ? doc.sliceString(from, to) : '';
   let postMutationTo = to;
 
@@ -216,6 +219,7 @@ export function syncDecorations(params: {
   comments: PageComment[];
   viewMode: TrackChangesViewMode;
   reviewMode: boolean;
+  yDoc?: Y.Doc | null;
   currentSuggestions: Map<string, PageSuggestion>;
   currentComments: Map<string, PageComment>;
   localToPersistedId: Map<string, string>;
@@ -227,6 +231,7 @@ export function syncDecorations(params: {
     comments,
     viewMode,
     reviewMode,
+    yDoc,
     currentSuggestions,
     currentComments,
     localToPersistedId,
@@ -287,6 +292,7 @@ export function syncDecorations(params: {
           setCommentsEffect.of(scopedComments),
           setViewModeEffect.of(viewMode),
           setReviewModeEffect.of(reviewMode),
+          ...(yDoc !== undefined ? [setYDocEffect.of(yDoc)] : []),
         ],
       });
     } catch (err) {

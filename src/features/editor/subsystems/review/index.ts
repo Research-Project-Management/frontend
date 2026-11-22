@@ -33,8 +33,13 @@ export {
   setViewModeEffect,
   setReviewModeEffect,
   setReviewDataEffect,
+  setYDocEffect,
   getSafeOffset,
+  resolveCommentRange,
   resolveSuggestionRange,
+  encodeYjsAnchor,
+  decodeYjsAnchor,
+  resolveYjsAnchorRange,
   isLocalSuggestionId,
   createLocalSuggestionId,
   type TrackChangesViewMode,
@@ -112,6 +117,7 @@ export {
   useAddReply,
   useResolveComment,
   useDeleteReply,
+  useUpdateReply,
 } from './ui/hooks/useComments';
 export { useReviewSync } from './ui/hooks/useReviewSync';
 export {

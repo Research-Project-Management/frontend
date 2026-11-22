@@ -128,8 +128,8 @@ export function getFileCategoryMeta(
       typeLabel: 'Library Paper',
       sizeText,
       icon: FileText,
-      iconClassName: 'text-primary',
-      badgeClassName: 'text-primary bg-primary/10 border-primary/20',
+      iconClassName: 'text-muted-foreground',
+      badgeClassName: 'text-muted-foreground bg-muted border-border',
     };
   }
 

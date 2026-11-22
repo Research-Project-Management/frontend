@@ -7,7 +7,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { normalizeSpaceId } from '../transport/flux';
+import { fluxTransport, normalizeSpaceId } from '../transport/flux';
 import {
   deleteSession,
   fetchSessions,
@@ -154,4 +154,9 @@ export function useDeleteAiDocument(spaceId?: string | null) {
       );
     },
   });
+}
+
+/** Revert all reversible AI mutations recorded for a specific turn trace ID. */
+export async function revertAiTurn(traceId: string, spaceId?: string | null) {
+  return fluxTransport.revertTurn(traceId, normalizeSpaceId(spaceId) ?? undefined);
 }

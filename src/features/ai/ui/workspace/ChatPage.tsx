@@ -127,8 +127,8 @@ export function ChatPage() {
       const trimmed = text.trim();
       if (!trimmed && turnCtx.attachments.length === 0) return;
 
-      await thread.send(trimmed, {
-        mode: 'chat',
+      const sendOptions = {
+        mode: 'chat' as const,
         spaceId: effectiveSpaceId,
         chatId: effectiveChatId,
         documentIds:
@@ -146,9 +146,10 @@ export function ChatPage() {
             ? turnCtx.webSearchSites
             : ['*']
           : undefined,
-      });
+      };
 
       turnCtx.clearSources();
+      await thread.send(trimmed, sendOptions);
     },
     [thread, turnCtx, effectiveSpaceId, effectiveChatId],
   );

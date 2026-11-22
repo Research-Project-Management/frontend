@@ -30,7 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import {
   useExperimentsUIStore,
   type ExperimentsInspectorTab,

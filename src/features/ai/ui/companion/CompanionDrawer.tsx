@@ -232,8 +232,8 @@ function CompanionDrawerInner() {
         setPromptToFill('');
       }
 
-      await thread.send(finalMessageText, {
-        mode: usePaperEndpoint ? 'paper' : 'chat',
+      const sendOptions = {
+        mode: (usePaperEndpoint ? 'paper' : 'chat') as 'paper' | 'chat',
         spaceId: effectiveSpaceId,
         chatId: activeChatId,
         documentIds: combinedDocIds.length > 0 ? combinedDocIds : undefined,
@@ -266,11 +266,12 @@ function CompanionDrawerInner() {
                   pageNumber: quotedPassage.pageNumber,
                 }
               : undefined,
-      });
+      };
 
       if (!overrides) {
         turnCtx.clearSources();
       }
+      await thread.send(finalMessageText, sendOptions);
     },
     [
       thread,

@@ -14,7 +14,7 @@ import {
   saveReaderBookmarksToStorage,
   DEFAULT_READER_TABS,
   type StorageLike,
-} from '@/features/library/core/adapters/library-local-storage.adapter';
+} from '@/features/library/core/adapters/local-storage.adapter';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import {
   clearAllWarmReaderPools,

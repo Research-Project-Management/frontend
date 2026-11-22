@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { LibrarySidebar as Sidebar } from '@/features/library/ui/sidebar/LibrarySidebar';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import React from "react";
 

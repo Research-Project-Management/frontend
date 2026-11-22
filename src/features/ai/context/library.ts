@@ -4,8 +4,8 @@ import { useMemo } from 'react';
 import {
   buildTree,
   type TreeNode,
-} from '@/features/library/domain/collection-tree.domain';
-import { isProjectScope } from '@/features/library/domain/identifiers.domain';
+} from '@/features/library/domain/collection-tree';
+import { isProjectScope } from '@/features/library/domain/identifiers';
 import { ItemsService } from '@/features/library/sdk/clients/items.client';
 import { useItems } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';

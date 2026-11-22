@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ModernLibraryPage } from '@/features/library/ui/pages/LibraryPage';
+import { LibraryPage } from '@/features/library/ui/pages/LibraryPage';
 
 export const metadata: Metadata = { title: 'Feed · Library · Flux' };
 
@@ -9,5 +9,5 @@ export default async function LibraryFeedDetailPage({
   params: Promise<{ feedId: string }>;
 }) {
   const { feedId } = await params;
-  return <ModernLibraryPage view="feed" feedId={feedId} />;
+  return <LibraryPage view="feed" feedId={feedId} />;
 }

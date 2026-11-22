@@ -17,7 +17,7 @@ import { cn } from '@/shared/lib/utils';
 import { useChatStore } from '../store/chat.store';
 import { useFriendRequests } from '../hooks/use-chat-queries';
 import { ConversationItem, FilterTab } from '../types/chat.types';
-import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import { SidebarResizer } from '@/features/library/ui/sidebar/SidebarSystemNav';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';

@@ -251,6 +251,31 @@ export class FluxHttpTransport implements AiTransportPort {
       });
     }
   }
+
+  async revertTurn(
+    traceId: string,
+    spaceId?: string | null,
+  ): Promise<{
+    trace_id: string;
+    space_id: string;
+    reverted_count: number;
+    results: Array<{
+      tool: string;
+      entity_id: string;
+      label?: string;
+      status: 'reverted' | 'already_gone' | 'failed';
+      error?: string;
+    }>;
+  }> {
+    const cleanSpaceId = normalizeSpaceId(spaceId);
+    const qs = cleanSpaceId
+      ? `?spaceId=${encodeURIComponent(cleanSpaceId)}`
+      : '';
+    return apiPost(
+      `/api/ai/turns/${encodeURIComponent(traceId)}/revert${qs}`,
+      {},
+    );
+  }
 }
 
 export const fluxTransport = new FluxHttpTransport();

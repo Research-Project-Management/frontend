@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -12,14 +12,18 @@ import {
   GitBranch,
   GitCompare,
   ListTodo,
+  Loader2,
+  RotateCcw,
   UserRound,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import { revertAiTurn } from '../../engine/queries';
 import type {
   EditorPatchesWidget,
   EditorPatchItem,
   ResponseWidget,
+  RevertibleTurnWidget,
 } from '../../types/message';
 
 function normalizePriority(priority?: string) {
@@ -428,6 +432,71 @@ function EditorPatchesCard({
   );
 }
 
+function RevertibleTurnControl({
+  widget,
+}: {
+  widget: RevertibleTurnWidget;
+}) {
+  const [status, setStatus] = useState<'idle' | 'reverting' | 'reverted' | 'error'>('idle');
+  const [revertedCount, setRevertedCount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleRevert = async () => {
+    if (status === 'reverting' || status === 'reverted') return;
+    setStatus('reverting');
+    setErrorMsg('');
+    try {
+      const res = await revertAiTurn(
+        widget.data.traceId,
+        widget.data.spaceId,
+      );
+      const failed = res.results.find((r) => r.status === 'failed');
+      if (failed) {
+        setStatus('error');
+        setErrorMsg(failed.error || 'Revert failed');
+        return;
+      }
+      setRevertedCount(res.reverted_count || widget.data.count);
+      setStatus('reverted');
+    } catch (err) {
+      setStatus('error');
+      setErrorMsg(err instanceof Error ? err.message : 'Revert failed');
+    }
+  };
+
+  if (status === 'reverted') {
+    return (
+      <div className="inline-flex items-center gap-1.5 py-0.5 text-xs text-muted-foreground">
+        <CheckCircle2 className="size-3.5 text-success/80 shrink-0" aria-hidden="true" />
+        <span>Reverted {revertedCount}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 py-0.5 text-xs">
+      <button
+        type="button"
+        disabled={status === 'reverting'}
+        onClick={() => {
+          void handleRevert();
+        }}
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60 transition-colors cursor-pointer rounded px-1.5 py-0.5 hover:bg-muted/60"
+      >
+        {status === 'reverting' ? (
+          <Loader2 className="size-3 text-ai animate-spin shrink-0" aria-hidden="true" />
+        ) : (
+          <RotateCcw className="size-3 shrink-0" aria-hidden="true" />
+        )}
+        <span>Undo ({widget.data.count})</span>
+      </button>
+      {status === 'error' && errorMsg && (
+        <span className="text-xs text-destructive/90">{errorMsg}</span>
+      )}
+    </div>
+  );
+}
+
 export interface WidgetsPartProps {
   widgets?: ResponseWidget[];
   onReviewEditorPatch?: (patch: EditorPatchItem) => void;
@@ -453,6 +522,8 @@ export function WidgetsPart({
             onReviewEditorPatch={onReviewEditorPatch}
             onApplyAllEditorPatches={onApplyAllEditorPatches}
           />
+        ) : widget.type === 'revertible_turn' ? (
+          <RevertibleTurnControl key={index} widget={widget} />
         ) : (
           <MetricSummaryCard key={index} widget={widget} />
         ),

@@ -109,10 +109,28 @@ export interface EditorPatchesWidget {
   streaming?: boolean;
 }
 
+export interface RevertibleTurnItem {
+  tool: string;
+  entity_id: string;
+  label?: string;
+}
+
+export interface RevertibleTurnWidget {
+  type: 'revertible_turn';
+  title: string;
+  data: {
+    traceId: string;
+    spaceId?: string;
+    count: number;
+    items: RevertibleTurnItem[];
+  };
+}
+
 export type ResponseWidget =
   | WorkItemOverviewWidget
   | MetricSummaryWidget
-  | EditorPatchesWidget;
+  | EditorPatchesWidget
+  | RevertibleTurnWidget;
 
 export interface AgentAction {
   type:

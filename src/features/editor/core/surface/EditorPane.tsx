@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * EditorPane.tsx
@@ -47,7 +47,7 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 
-export interface EditorPaneFileItem {
+interface EditorPaneFileItem {
   id: string;
   title?: string;
   filename?: string;
@@ -150,7 +150,7 @@ export function EditorPane({
       onClick={handleSyncFocus}
       className="flex-1 h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
     >
-      {/* ── Pane Header ────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Pane Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {isSplitActive ? (
         <div className="flex items-center justify-between h-9 px-3 bg-surface border-b border-border shrink-0 select-none">
           <div className="flex items-center gap-2 min-w-0">
@@ -250,7 +250,7 @@ export function EditorPane({
         </div>
       ) : null}
 
-      {/* ── Editor Body Surface ────────────────────────────────────────────── */}
+      {/* â”€â”€ Editor Body Surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
         {isAsset && file ? (
           <ImagePanel

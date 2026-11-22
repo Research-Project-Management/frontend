@@ -1,8 +1,8 @@
-/**
- * editor-spelling-port.ts
+﻿/**
+ * editor-spelling.port.ts
  *
  * Facet & Port for LaTeX Spell Checking in CodeMirror 6 extensions.
- * Location: `features/editor/engines/adapters/editor-spelling-port.ts`
+ * Location: `features/editor/engines/adapters/editor-spelling.port.ts`
  *
  * Matt Pocock Codebase Design principles:
  * - Decouples CodeMirror extensions from coordinator and SDK singletons.
@@ -35,16 +35,8 @@ export function setDefaultSpellingService(service: SpellingServicePort): void {
   defaultSpellingService = service;
 }
 
-export function getDefaultSpellingService(): SpellingServicePort {
-  return defaultSpellingService;
-}
-
 export function setDefaultSpellingNotifier(notifier: SpellingNotificationPort): void {
   defaultNotifier = notifier;
-}
-
-export function getDefaultSpellingNotifier(): SpellingNotificationPort {
-  return defaultNotifier;
 }
 
 export const spellingServiceFacet = Facet.define<SpellingServicePort, SpellingServicePort>({

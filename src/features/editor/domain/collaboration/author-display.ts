@@ -1,4 +1,4 @@
-/**
+﻿/**
  * author-display.ts
  *
  * Pure domain logic for Review & Collaboration author presentation:

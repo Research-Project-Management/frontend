@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
 /**
- * use-editor-instance.ts
+ * useEditorInstance.ts
  *
  * Lightweight, Context-Free Hook for accessing active editor & viewer instances.
  * Replaces React Context providers to prevent tree-wide re-renders.
@@ -12,7 +12,6 @@ import { useSyncExternalStore } from 'react';
 import {
   getActiveEditorEngine,
   getActiveEditorContent,
-  getActivePdfViewer,
   subscribeEditorEngineChanges,
 } from './command-bus';
 
@@ -26,11 +25,5 @@ export function useEditorInstance() {
   return {
     engine,
     getContent: getActiveEditorContent,
-  };
-}
-
-export function useViewerInstance() {
-  return {
-    viewer: getActivePdfViewer(),
   };
 }

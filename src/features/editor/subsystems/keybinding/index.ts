@@ -11,6 +11,4 @@
 export {
   keybindingCoordinator,
   KeybindingCoordinator,
-  type KeybindingScope,
-  type ShortcutDefinition,
 } from './coordinator/keybinding.coordinator';

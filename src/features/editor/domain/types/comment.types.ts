@@ -1,4 +1,4 @@
-/**
+﻿/**
  * comment.types.ts
  *
  * Types and validation schemas for inline document comments and discussion threads.
@@ -35,7 +35,7 @@ export type CreateReplyInput = z.infer<typeof createReplySchema>;
 
 export type CommentStatus = 'open' | 'resolved';
 
-export interface CommentAuthor {
+interface CommentAuthor {
   id: string;
   name: string;
   avatar?: string;

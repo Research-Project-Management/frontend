@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useCompilerLogsState.ts
  *
  * State, backend log parsing, warning filtering, virtualized row preparation,
@@ -14,7 +14,7 @@ import {
   useCompileStore,
   selectFilteredCompileDiagnostics,
 } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';

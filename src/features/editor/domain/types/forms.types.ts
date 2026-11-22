@@ -1,4 +1,4 @@
-/**
+﻿/**
  * forms.types.ts
  *
  * Unified validation schemas and form value types for the Editor subsystem
@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 
-// ── File Management & Import Modals ──────────────────────────────────────────
+// â”€â”€ File Management & Import Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const newFileModalSchema = z.object({
   fileName: z
@@ -31,7 +31,7 @@ export const newFileModalSchema = z.object({
 
 export type NewFileModalFormValues = z.infer<typeof newFileModalSchema>;
 
-export const urlImportModalSchema = z.object({
+const urlImportModalSchema = z.object({
   url: z.string().trim().url('Please enter a valid HTTP/HTTPS URL'),
   fileName: z
     .string()
@@ -53,7 +53,7 @@ export const libraryBibtexModalSchema = z.object({
 
 export type LibraryBibtexModalFormValues = z.infer<typeof libraryBibtexModalSchema>;
 
-// ── Figure & Media Wizard ───────────────────────────────────────────────────
+// â”€â”€ Figure & Media Wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const figureWizardSchema = z.object({
   selectedFilename: z.string().min(1, 'Please select or upload an image'),
@@ -67,9 +67,9 @@ export const figureWizardSchema = z.object({
 
 export type FigureWizardFormValues = z.infer<typeof figureWizardSchema>;
 
-// ── Table Matrix Wizard ─────────────────────────────────────────────────────
+// â”€â”€ Table Matrix Wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export const tableWizardSchema = z.object({
+const tableWizardSchema = z.object({
   tableStyle: z.enum(['booktabs', 'bordered', 'minimal']).default('booktabs'),
   defaultAlign: z.enum(['l', 'c', 'r']).default('c'),
   caption: z.string().default('Summary of results'),
@@ -81,7 +81,7 @@ export const tableWizardSchema = z.object({
 
 export type TableWizardFormValues = z.infer<typeof tableWizardSchema>;
 
-// ── GitHub & Git Sync ───────────────────────────────────────────────────────
+// â”€â”€ GitHub & Git Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const pushChangesSchema = z.object({
   commitMessage: z.string().trim().min(1, 'Commit message is required'),
@@ -108,9 +108,9 @@ export const createRepoSchema = z.object({
 
 export type CreateRepoFormValues = z.infer<typeof createRepoSchema>;
 
-// ── Project Settings & Spelling ─────────────────────────────────────────────
+// â”€â”€ Project Settings & Spelling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export const learnedWordSchema = z.object({
+const learnedWordSchema = z.object({
   word: z
     .string()
     .trim()
@@ -121,7 +121,7 @@ export const learnedWordSchema = z.object({
 
 export type LearnedWordFormValues = z.infer<typeof learnedWordSchema>;
 
-// ── Topbar / Project Identity ───────────────────────────────────────────────
+// â”€â”€ Topbar / Project Identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const projectRenameSchema = z.object({
   name: z.string().trim().min(1, 'Project name cannot be empty').max(150, 'Project name is too long'),
@@ -129,7 +129,7 @@ export const projectRenameSchema = z.object({
 
 export type ProjectRenameInput = z.infer<typeof projectRenameSchema>;
 
-export const projectCopySchema = z.object({
+const projectCopySchema = z.object({
   name: z.string().trim().min(1, 'Copy name cannot be empty').max(150, 'Copy name is too long'),
 });
 

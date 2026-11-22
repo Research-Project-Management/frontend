@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useFilesTabController.ts
  *
  * State, queries, mutations, inline create/rename/delete handlers, upload wiring,
@@ -10,7 +10,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useEditorStorage } from './useStorage';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import {
   createFileSchema,
   createFolderSchema,
@@ -51,13 +51,13 @@ const FILE_EXTENSION_REGEX = /\.[a-z]+$/i;
 const VALID_MAIN_TEX_EXT_REGEX = /\.(tex|ltx|rtex|rnw)$/i;
 const TRAILING_DOT_REGEX = /\.$/;
 
-export const sanitizeTitle = (raw: string) => {
+const sanitizeTitle = (raw: string) => {
   const trimmed = raw.trim();
   if (FILE_EXTENSION_REGEX.test(trimmed)) return trimmed;
   return trimmed.replace(TRAILING_DOT_REGEX, '');
 };
 
-export function resolveExplorerItemById(
+function resolveExplorerItemById(
   fileId: string,
   files?: Array<{ id: string; title: string }> | null,
   projectFiles?: StorageItem[] | null,

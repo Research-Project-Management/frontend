@@ -1,11 +1,11 @@
-/**
+﻿/**
  * unsynced-edit-diff.ts
  *
  * Lightweight O(N) line-set / prefix-suffix diff summary used by unsynced-edit recovery
  * and conflict dialogs to preview how local uncommitted text differs from the server baseline.
  */
 
-export interface UnsyncedEditDiffLine {
+interface UnsyncedEditDiffLine {
   type: 'added' | 'removed';
   lineNumber: number;
   text: string;

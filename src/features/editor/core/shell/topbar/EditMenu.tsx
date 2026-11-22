@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * EditMenu.tsx
@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { ShieldCheck } from 'lucide-react';
 import { useSearchStore } from '../../store/search.store';

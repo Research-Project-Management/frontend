@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-symbols-core.ts
  *
  * Lightweight Project Symbol & Structure Outline State Holder (Domain Layer).
@@ -63,7 +63,7 @@ export interface OutlineNode extends OutlineItem {
   children: OutlineNode[];
 }
 
-export const SECTION_LEVEL_WEIGHT: Record<SectionLevel, number> = {
+const SECTION_LEVEL_WEIGHT: Record<SectionLevel, number> = {
   book: 0,
   part: 0,
   chapter: 1,
@@ -79,7 +79,7 @@ export const SECTION_LEVEL_WEIGHT: Record<SectionLevel, number> = {
   table: 3,
 };
 
-export function inferLabelType(name: string): LabelEntry['type'] {
+function inferLabelType(name: string): LabelEntry['type'] {
   const lower = (name || '').toLowerCase();
   if (lower.startsWith('fig:') || lower.startsWith('figure:')) return 'fig';
   if (lower.startsWith('tab:') || lower.startsWith('table:')) return 'tab';
@@ -96,7 +96,7 @@ export function inferLabelType(name: string): LabelEntry['type'] {
   return 'other';
 }
 
-export function buildOutlineTree(items: OutlineItem[]): OutlineNode[] {
+function buildOutlineTree(items: OutlineItem[]): OutlineNode[] {
   const root: OutlineNode[] = [];
   const stack: { node: OutlineNode; level: number }[] = [];
 
@@ -166,8 +166,8 @@ export class LatexSymbolsIndexCore {
     return str
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
-      .replace(/Đ/g, 'D')
+      .replace(/Ä‘/g, 'd')
+      .replace(/Ä/g, 'D')
       .toLowerCase();
   }
 

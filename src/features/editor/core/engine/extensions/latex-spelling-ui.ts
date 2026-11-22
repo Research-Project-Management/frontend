@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-spelling-ui.ts
  *
  * CodeMirror 6 Spell Check StateField, Hover Tooltip, Context Menu, and Theme.
@@ -26,7 +26,7 @@ import type {
 import {
   resolveSpellingService,
   resolveSpellingNotifier,
-} from '@/features/editor/core/engine/adapters/editor-spelling-port';
+} from '@/features/editor/core/engine/adapters/editor-spelling.port';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 
 export interface SpellErrorRange {

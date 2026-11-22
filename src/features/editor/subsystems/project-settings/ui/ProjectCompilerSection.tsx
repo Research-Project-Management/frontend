@@ -38,6 +38,11 @@ export interface ProjectCompilerSectionProps {
   onMainFileChange: (newMainFileName: string) => void;
   onClearCache: () => void;
   isClearingCache: boolean;
+  /**
+   * Controls whether Auto-Compile, Draft Mode, and Stop-on-First-Error toggles
+   * are rendered in the settings drawer UI. Defaults to false.
+   */
+  showCompileModeControls?: boolean;
 }
 
 export function ProjectCompilerSection({
@@ -46,6 +51,7 @@ export function ProjectCompilerSection({
   onMainFileChange,
   onClearCache,
   isClearingCache,
+  showCompileModeControls = false,
 }: ProjectCompilerSectionProps) {
   const engine = useSettingsStore((s) => s.engine);
   const setEngine = useSettingsStore((s) => s.setEngine);
@@ -295,17 +301,19 @@ export function ProjectCompilerSection({
         </Select>
       </SettingRow>
 
-      {/* Auto-compile */}
-      <SettingRow
-        title="Auto-compile"
-        description="Automatically compile on document changes"
-      >
-        <SettingsSwitch
-          checked={autoCompile}
-          onCheckedChange={setAutoCompile}
-          aria-label="Auto-compile toggle"
-        />
-      </SettingRow>
+      {/* Auto-compile (hidden on UI by default while underlying design remains active) */}
+      {showCompileModeControls && (
+        <SettingRow
+          title="Auto-compile"
+          description="Automatically compile on document changes"
+        >
+          <SettingsSwitch
+            checked={autoCompile}
+            onCheckedChange={setAutoCompile}
+            aria-label="Auto-compile toggle"
+          />
+        </SettingRow>
+      )}
 
       {/* Auto-complete */}
       <SettingRow
@@ -537,29 +545,32 @@ export function ProjectCompilerSection({
         </Select>
       </SettingRow>
 
-      {/* Draft Mode (Fast compile) - Overleaf Parity */}
-      <SettingRow
-        title="Draft mode"
-        description="Speeds up compilation by skipping image inclusion"
-      >
-        <SettingsSwitch
-          checked={compileMode === 'draft'}
-          onCheckedChange={(checked) => setCompileMode(checked ? 'draft' : 'full')}
-          aria-label="Draft mode toggle"
-        />
-      </SettingRow>
+      {/* Draft Mode & Stop on First Error (hidden on UI by default while underlying design remains active) */}
+      {showCompileModeControls && (
+        <>
+          <SettingRow
+            title="Draft mode"
+            description="Speeds up compilation by skipping image inclusion"
+          >
+            <SettingsSwitch
+              checked={compileMode === 'draft'}
+              onCheckedChange={(checked) => setCompileMode(checked ? 'draft' : 'full')}
+              aria-label="Draft mode toggle"
+            />
+          </SettingRow>
 
-      {/* Stop on First Error */}
-      <SettingRow
-        title="Stop on first error"
-        description="Halt compiler immediately on fatal TeX error"
-      >
-        <SettingsSwitch
-          checked={stopOnFirstError}
-          onCheckedChange={setStopOnFirstError}
-          aria-label="Stop on first error toggle"
-        />
-      </SettingRow>
+          <SettingRow
+            title="Stop on first error"
+            description="Halt compiler immediately on fatal TeX error"
+          >
+            <SettingsSwitch
+              checked={stopOnFirstError}
+              onCheckedChange={setStopOnFirstError}
+              aria-label="Stop on first error toggle"
+            />
+          </SettingRow>
+        </>
+      )}
 
       {/* Hide Bad Boxes (Overleaf Parity) */}
       <SettingRow

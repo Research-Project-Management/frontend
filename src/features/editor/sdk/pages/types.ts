@@ -1,4 +1,4 @@
-/**
+﻿/**
  * types.ts
  *
  * Unified DTOs and payloads for the Manuscript service subsystem.
@@ -275,14 +275,14 @@ export interface CompileLatexResponse {
   validationIssues?: CompileValidationIssue[];
 }
 
-export interface WordCountSectionDto {
+interface WordCountSectionDto {
   title: string;
   level: string;
   line: number;
   words: number;
 }
 
-export interface WordCountFileStatsDto {
+interface WordCountFileStatsDto {
   id: string;
   title: string;
   path?: string;
@@ -416,7 +416,7 @@ export interface CreateSuggestionPayload {
   silent?: boolean;
 }
 
-export interface DiffChunk {
+interface DiffChunk {
   type: 'added' | 'removed' | 'deleted' | 'unchanged' | 'change';
   lines?: string[];
   oldStart?: number;
@@ -444,7 +444,7 @@ export interface VersionDiffResponse {
   };
 }
 
-export interface OpLogEntry {
+interface OpLogEntry {
   id?: string;
   timestamp: number;
   userId?: string;
@@ -465,7 +465,7 @@ export interface ReconstructedContent {
   timestamp?: number;
 }
 
-export interface SearchMatchEntry {
+interface SearchMatchEntry {
   line: number;
   text: string;
   matchStart: number;
@@ -473,7 +473,7 @@ export interface SearchMatchEntry {
   snippet: string;
 }
 
-export interface FileSearchResult {
+interface FileSearchResult {
   fileId: string;
   fileName: string;
   isMainFile: boolean;
@@ -637,22 +637,22 @@ export interface ImportFromProjectPayload {
   parentPageId?: string;
 }
 
-export type EditorBootstrapDegradedBranch = 'symbols' | 'lastBuild';
+type EditorBootstrapDegradedBranch = 'symbols' | 'lastBuild';
 
-export interface EditorBootstrapGithubLinkDto {
+interface EditorBootstrapGithubLinkDto {
   id: string;
   repoFullName: string;
   branch: string;
   lastSyncedAt: string | null;
 }
 
-export interface EditorBootstrapPermissionsDto {
+interface EditorBootstrapPermissionsDto {
   role: string;
   canEdit: boolean;
   canCompile: boolean;
 }
 
-export interface EditorBootstrapWorkspaceDto {
+interface EditorBootstrapWorkspaceDto {
   spaceId: string;
   spaceType?: 'personal' | 'project';
   pageId: string;
@@ -664,7 +664,7 @@ export interface EditorBootstrapWorkspaceDto {
   githubLink: EditorBootstrapGithubLinkDto | null;
 }
 
-export interface EditorBootstrapActiveDocDto {
+interface EditorBootstrapActiveDocDto {
   id: string;
   nodeId?: string | null;
   page: {
@@ -693,7 +693,7 @@ export interface EditorBootstrapActiveDocDto {
   fallbackToRoot: boolean;
 }
 
-export interface EditorBootstrapLastBuildDto {
+interface EditorBootstrapLastBuildDto {
   status: 'ready' | 'error' | 'uncompiled';
   pdfArtifactUrl: string | null;
   synctexAvailable: boolean;

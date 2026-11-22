@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Utility functions for parsing, extracting, and formatting citations
  * across LaTeX and Markdown documents in the Flux Editor.
  */
@@ -25,7 +25,7 @@ export const PANDOC_BRACKET_REGEX = /\[([^\]]*@[a-zA-Z0-9_:-]+[^\]]*)\]/g;
 /**
  * Regex matching individual @citekey inside Markdown text or bracketed blocks.
  */
-export const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
+const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
 
 const CODE_BLOCK_STRIP_REGEX = /```[\s\S]*?```/g;
 const VALID_CITEKEY_REGEX = /^[a-zA-Z0-9_:-]+$/;
@@ -34,7 +34,7 @@ const LATEX_TRIGGER_REGEX =
 const MD_BRACKET_TRIGGER_REGEX = /\[@([a-zA-Z0-9_:-]*)$/;
 const MD_MULTI_TRIGGER_REGEX = /;\s*@([a-zA-Z0-9_:-]*)$/;
 const VIETNAMESE_DIACRITIC_REGEX =
-  /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
+  /[Ã Ã¡áº£Ã£áº¡Äƒáº¯áº±áº³áºµáº·Ã¢áº¥áº§áº©áº«áº­Ä‘Ã¨Ã©áº»áº½áº¹Ãªáº¿á»á»ƒá»…á»‡Ã¬Ã­á»‰Ä©á»‹Ã²Ã³á»Ãµá»Ã´á»‘á»“á»•á»—á»™Æ¡á»›á»á»Ÿá»¡á»£Ã¹Ãºá»§Å©á»¥Æ°á»©á»«á»­á»¯á»±á»³Ã½á»·á»¹á»µ]/i;
 const COMBINING_DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 const VIETNAMESE_SURNAME_REGEX =
   /^(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|dinh|doan|lam|trinh|mai|dao|cao|ha|luu|luong|thai|ta|phung|to|vuong|chu)(\s|$)/i;
@@ -52,7 +52,7 @@ const NO_TRIGGER_RESULT: CitationTriggerContext = {
 /**
  * Strips fenced markdown code blocks (```...```) to avoid scanning citation examples in code snippets.
  */
-export function stripCodeBlocks(raw: string): string {
+function stripCodeBlocks(raw: string): string {
   if (!raw) return '';
   if (raw.indexOf('```') === -1) return raw;
   return raw.replace(CODE_BLOCK_STRIP_REGEX, '');
@@ -138,9 +138,9 @@ function isValidCitekey(key: string): boolean {
   return VALID_CITEKEY_REGEX.test(key);
 }
 
-export type CitationTriggerFormat = 'latex' | 'markdown';
+type CitationTriggerFormat = 'latex' | 'markdown';
 
-export interface CitationTriggerContext {
+interface CitationTriggerContext {
   isTrigger: boolean;
   format: CitationTriggerFormat;
   searchPrefix: string;
@@ -203,7 +203,7 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
  * Strategy Lookup Table for Citation Snippet Formatting.
  * Maps canonical and alias citation styles to pure formatting functions.
  */
-export const CITATION_SNIPPET_FORMATTERS: Readonly<Record<string, (key: string) => string>> = {
+const CITATION_SNIPPET_FORMATTERS: Readonly<Record<string, (key: string) => string>> = {
   'latex-cite': (key) => `\\cite{${key}}`,
   cite: (key) => `\\cite{${key}}`,
   'latex-citep': (key) => `\\citep{${key}}`,
@@ -296,13 +296,13 @@ export function isVietnameseAuthorName(name: string): boolean {
   const clean = name
     .normalize('NFD')
     .replace(COMBINING_DIACRITICS_REGEX, '')
-    .replace(/đ/gi, 'd')
+    .replace(/Ä‘/gi, 'd')
     .toLowerCase();
   return VIETNAMESE_SURNAME_REGEX.test(clean);
 }
 
 /**
- * Cultural format for author summary (e.g. "Nguyễn Văn An và c.s." vs "Turing et al.")
+ * Cultural format for author summary (e.g. "Nguyá»…n VÄƒn An vÃ  c.s." vs "Turing et al.")
  */
 export function formatShortAuthor(rawAuthorStr?: string): string {
   if (!rawAuthorStr) return '';
@@ -316,7 +316,7 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
   const formatSingle = (authorStr: string): string => {
     const trimmed = authorStr.trim();
     if (isVietnameseAuthorName(trimmed)) {
-      // Natural Vietnamese: remove accidental commas (e.g. "Nguyễn, Văn An" -> "Nguyễn Văn An")
+      // Natural Vietnamese: remove accidental commas (e.g. "Nguyá»…n, VÄƒn An" -> "Nguyá»…n VÄƒn An")
       return trimmed.replace(COMMA_SPACING_REGEX, ' ');
     }
     // Western: extract last name
@@ -334,7 +334,7 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
   if (authors.length === 2) {
     return `${firstAuthor} & ${formatSingle(authors[1])}`;
   }
-  return `${firstAuthor} ${isVietnameseAuthorName(authors[0]) ? 'và c.s.' : 'et al.'}`;
+  return `${firstAuthor} ${isVietnameseAuthorName(authors[0]) ? 'vÃ  c.s.' : 'et al.'}`;
 }
 
 function resolveRawAuthorString(entry: { author?: string; authors?: string[] }): string | undefined {
@@ -481,7 +481,7 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
 
 /**
  * Cleans raw abstract text:
- * - Strips leading 'Abstract:', 'Abstract — ', 'BACKGROUND:' or redundant labels
+ * - Strips leading 'Abstract:', 'Abstract â€” ', 'BACKGROUND:' or redundant labels
  * - Cleans excessive whitespace and trims
  */
 export function cleanAbstractText(rawAbstract?: string): string {

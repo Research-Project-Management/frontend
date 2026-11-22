@@ -1,4 +1,4 @@
-/**
+﻿/**
  * navigation.coordinator.ts
  *
  * Unified Document Navigation & Focus Coordinator (Coordinators Layer).
@@ -42,11 +42,11 @@ import {
   computeDiagnosticStep,
 } from './diagnostic-stepper';
 
-export interface NavigationNotificationPort {
+interface NavigationNotificationPort {
   info(message: string, options?: { id?: string }): void;
 }
 
-export const defaultNavigationNotifier: NavigationNotificationPort = {
+const defaultNavigationNotifier: NavigationNotificationPort = {
   info(message, options) {
     if (typeof window !== 'undefined') {
       try {
@@ -58,7 +58,7 @@ export const defaultNavigationNotifier: NavigationNotificationPort = {
   },
 };
 
-export interface OpenDocumentOptions {
+interface OpenDocumentOptions {
   fileId: string;
   title: string;
   path?: string;
@@ -69,7 +69,7 @@ export interface OpenDocumentOptions {
   preview?: boolean;
 }
 
-export interface PendingLineJump {
+interface PendingLineJump {
   fileId?: string;
   filePath?: string;
   line: number;

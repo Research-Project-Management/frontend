@@ -1,10 +1,10 @@
-/**
+﻿/**
  * canvas-types.ts
  *
  * Domain Types for Collaborative Diagram Canvas & TikZ Transpilation.
  */
 
-export type CanvasElementType =
+type CanvasElementType =
   | 'rectangle'
   | 'ellipse'
   | 'diamond'

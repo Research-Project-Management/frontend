@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-storage.ts
@@ -28,7 +28,7 @@ import {
   waitForEditorBootstrap,
 } from '@/features/editor/core/queries/document.queries';
 
-export function useResolvedProjectId(
+function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
   explicitProjectId?: string | null,
 ): string {
@@ -50,7 +50,7 @@ export function useResolvedProjectId(
   );
 }
 
-export function useResolvedPageId(
+function useResolvedPageId(
   pageIdOrProjectId?: string | null,
   explicitProjectId?: string | null,
 ): string {
@@ -68,7 +68,7 @@ const STORAGE_QUERY_STALE_TIME = 30_000;
 const STORAGE_QUERY_GC_TIME = 5 * 60_000;
 const EMPTY_STORAGE_ITEMS: EditorStorageItem[] = [];
 
-export function useEditorStorageFiles(
+function useEditorStorageFiles(
   pageIdOrProjectId?: string | null,
   parentId?: string | null,
   explicitProjectId?: string | null,
@@ -354,7 +354,7 @@ export function useEditorStorageMutations(
   };
 }
 
-export function useEditorStorageRootDoc(
+function useEditorStorageRootDoc(
   pageIdOrProjectId?: string | null,
   explicitProjectId?: string | null,
 ) {

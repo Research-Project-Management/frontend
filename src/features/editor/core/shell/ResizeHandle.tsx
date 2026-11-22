@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ResizeHandle.tsx
  *
  * Interactive IDE Separator & Draggable Splitter Handle.
@@ -38,14 +38,14 @@ export interface ResizeHandleProps {
   onDragX?: (clientX: number, startClientX: number) => void;
 }
 
-export interface HorizontalDragOptions {
+interface HorizontalDragOptions {
   thresholdPx?: number;
   onStart?: () => void;
   onEnd?: (didDrag: boolean) => void;
   cursor?: string;
 }
 
-export function startHorizontalDrag(
+function startHorizontalDrag(
   startClientX: number,
   onMove: (clientX: number, startClientX: number) => void,
   options?: HorizontalDragOptions,
@@ -304,12 +304,12 @@ export function ResizeHandle({
         'group relative shrink-0 outline-none select-none z-20 flex items-center justify-center overflow-hidden transition-colors duration-150 touch-none',
         isHorizontal
           ? cn(
-              'h-[8px] w-full flex-row bg-muted/40 border-y border-border/70 hover:bg-primary/12 hover:border-primary/30 focus-visible:bg-primary/12 focus-visible:border-primary/40 cursor-row-resize',
-              activeDragging && 'bg-primary/20 border-primary/50',
+              'h-[8px] w-full flex-row bg-muted/40 border-y border-border/70 cursor-row-resize',
+              activeDragging && 'bg-muted/80 border-border',
             )
           : cn(
-              'w-[10px] h-full flex-col bg-muted/40 border-x border-border/70 hover:bg-primary/12 hover:border-primary/30 focus-visible:bg-primary/12 focus-visible:border-primary/40',
-              activeDragging && 'bg-primary/20 border-primary/50',
+              'w-[10px] h-full flex-col bg-muted/40 border-x border-border/70',
+              activeDragging && 'bg-muted/80 border-border',
               isCollapsed && !onDragX ? 'cursor-pointer' : 'cursor-col-resize',
             ),
         className,
@@ -328,10 +328,10 @@ export function ResizeHandle({
             'absolute top-[42%] -translate-y-1/2 left-0 right-0 z-30 flex items-center justify-center',
             'w-full h-11 rounded-none p-0',
             'bg-background/90 border-y border-border text-muted-foreground',
-            'hover:bg-primary/15 hover:text-primary hover:border-primary/40',
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
+            'hover:bg-accent hover:text-foreground hover:border-border',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             'transition-colors duration-150 cursor-pointer',
-            activeDragging && 'bg-primary/15 text-primary border-primary/50',
+            activeDragging && 'bg-accent text-foreground border-border',
           )}
         >
           {isPointingLeft ? (
@@ -351,19 +351,19 @@ export function ResizeHandle({
           <span
             className={cn(
               'size-[3px] rounded-full transition-colors',
-              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+              activeDragging ? 'bg-muted-foreground/70' : 'bg-muted-foreground/40 group-hover:bg-muted-foreground/70',
             )}
           />
           <span
             className={cn(
               'size-[3px] rounded-full transition-colors',
-              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+              activeDragging ? 'bg-muted-foreground/70' : 'bg-muted-foreground/40 group-hover:bg-muted-foreground/70',
             )}
           />
           <span
             className={cn(
               'size-[3px] rounded-full transition-colors',
-              activeDragging ? 'bg-primary' : 'bg-muted-foreground/40 group-hover:bg-primary/70',
+              activeDragging ? 'bg-muted-foreground/70' : 'bg-muted-foreground/40 group-hover:bg-muted-foreground/70',
             )}
           />
         </div>

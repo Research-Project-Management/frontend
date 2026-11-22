@@ -1,4 +1,4 @@
-/**
+﻿/**
  * keybinding.coordinator.ts
  *
  * Centralized Keyboard Shortcut Router & Scope Manager (Coordinators Layer).
@@ -23,9 +23,9 @@ import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { gotoLine } from '@codemirror/search';
 import type { EditorView } from '@codemirror/view';
 
-export type KeybindingScope = 'any' | 'editorTextFocus' | 'viewerFocus';
+type KeybindingScope = 'any' | 'editorTextFocus' | 'viewerFocus';
 
-export interface ShortcutDefinition {
+interface ShortcutDefinition {
   id: string;
   key: string; // e.g. 'Mod-Enter', 'Mod-p', 'F5', 'F8', 'Shift-F8'
   description: string;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * suggestion.types.ts
  *
  * Types for track changes, collaborative editing proposals, and diff resolution.
@@ -8,7 +8,7 @@ export type SuggestionType = 'insert' | 'delete' | 'replace';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
 export type TrackChangesViewMode = 'changes' | 'clean' | 'original' | 'show' | 'hide';
 
-export interface SuggestionAuthor {
+interface SuggestionAuthor {
   id: string;
   name: string;
   email?: string;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * settings.store.ts
  *
  * Store for editor user preferences, compiler settings, layout sizing, and typography.
@@ -159,7 +159,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
     (set) => ({
       engine: DEFAULT_COMPILER_ENGINE,
       compileMode: 'full',
-      autoCompile: true,
+      autoCompile: false,
       layout: 'split',
       editorTheme: 'auto',
       pdfSpreadView: false,
@@ -323,7 +323,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
   ),
 );
 
-export function rehydrateEditorSettingsFromStorage(): Promise<void> | void {
+function rehydrateEditorSettingsFromStorage(): Promise<void> | void {
   return useSettingsStore.persist.rehydrate();
 }
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * WordCountModal.tsx
@@ -47,13 +47,13 @@ import { extractDocumentContentString } from '@/features/editor/domain/types/cor
 
 export { countLatexWords, type TeXcountStats, type LatexWordCountResult, type WordCountSection };
 
-export interface WordCountModalFile {
+interface WordCountModalFile {
   id: string;
   title: string;
   content?: unknown;
 }
 
-export interface WordCountModalProps {
+interface WordCountModalProps {
   open: boolean;
   onClose: () => void;
   projectId?: string;
@@ -64,7 +64,7 @@ export interface WordCountModalProps {
   onInsertSnippet?: (snippet: string) => void;
 }
 
-export type WordCountScope = 'document' | 'project' | 'selection';
+type WordCountScope = 'document' | 'project' | 'selection';
 
 const wordCountResultCache = new Map<string, WordCountResponse['stats']>();
 const wordCountInFlightCache = new Map<string, Promise<WordCountResponse>>();
@@ -96,7 +96,7 @@ function hashWordCountInput(
   return `${scope}|${projectId ?? ''}|${includeBib ? 1 : 0}|${filename}|${source.length}:${h >>> 0}|${filesHash >>> 0}`;
 }
 
-export function WordCountModal({
+function WordCountModal({
   open,
   onClose,
   projectId,
@@ -371,7 +371,7 @@ export function WordCountModal({
         showCloseButton={false}
         className="w-[95vw] sm:w-full sm:max-w-[480px] p-0 gap-0 overflow-hidden rounded-md border border-border bg-background shadow-raised-200 flex flex-col max-h-[85vh] select-none"
       >
-        {/* ── Dialog Header (Only Title with live indicator, and Close Icon) ─── */}
+        {/* â”€â”€ Dialog Header (Only Title with live indicator, and Close Icon) â”€â”€â”€ */}
         <div className="flex items-center justify-between px-6 pt-5 pb-2 bg-background shrink-0">
           <div className="flex items-center gap-2">
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
@@ -396,7 +396,7 @@ export function WordCountModal({
           Official academic word count and structural analysis based on TeXcount.
         </DialogDescription>
 
-        {/* ── Scope Selector Tabs (Fixed Toolbar) ────────────────────────── */}
+        {/* â”€â”€ Scope Selector Tabs (Fixed Toolbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="px-6 pt-2 pb-2 shrink-0 bg-background">
           <Tabs
             value={scope}
@@ -435,7 +435,7 @@ export function WordCountModal({
           </Tabs>
         </div>
 
-        {/* ── Body: Single Unified Source of Truth Table ─────────────────── */}
+        {/* â”€â”€ Body: Single Unified Source of Truth Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2 space-y-3 thin-scrollbar">
           <div className="w-full">
             <table className="w-full text-13 border-collapse" aria-label="Word count metrics">
@@ -508,7 +508,7 @@ export function WordCountModal({
             </table>
           </div>
 
-          {/* ── Multi-File Project Breakdown (Only for Project scope when > 1 file) ── */}
+          {/* â”€â”€ Multi-File Project Breakdown (Only for Project scope when > 1 file) â”€â”€ */}
           {scope === 'project' && perFileStats.length > 1 && (
             <div className="pt-2">
               <div className="text-11 font-medium text-muted-foreground pb-1 px-1 flex items-center justify-between">
@@ -534,7 +534,7 @@ export function WordCountModal({
           )}
         </div>
 
-        {/* ── Dialog Footer with %TC:incbib option and Close button ── */}
+        {/* â”€â”€ Dialog Footer with %TC:incbib option and Close button â”€â”€ */}
         <DialogFooter className="px-6 pb-5 pt-3 bg-background flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 sm:gap-2 shrink-0 m-0 border-0">
           <div className="flex items-center gap-2">
             <Checkbox

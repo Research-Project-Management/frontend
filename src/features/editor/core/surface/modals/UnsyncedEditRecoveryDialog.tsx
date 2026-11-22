@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * UnsyncedEditRecoveryDialog
@@ -74,7 +74,7 @@ export function UnsyncedEditRecoveryDialog({
           <div className="text-xs space-y-2 flex-1 min-h-0 overflow-y-auto py-1 pr-1" data-testid="unsynced-edit-diff-summary">
             <div className="flex flex-wrap gap-3 text-muted-foreground">
               <span className="text-success">+{summary.addedLines} lines in local edit</span>
-              <span className="text-destructive">−{summary.removedLines} lines vs server</span>
+              <span className="text-destructive">âˆ’{summary.removedLines} lines vs server</span>
               <span>
                 {summary.localLineCount} / {summary.serverLineCount} lines (local / server)
               </span>
@@ -101,12 +101,12 @@ export function UnsyncedEditRecoveryDialog({
                     key={`${line.type}-${line.lineNumber}-${idx}`}
                     className={line.type === 'added' ? 'text-success' : 'text-destructive'}
                   >
-                    {line.type === 'added' ? '+' : '−'} {String(line.lineNumber).padStart(4, ' ')} | {line.text}
+                    {line.type === 'added' ? '+' : 'âˆ’'} {String(line.lineNumber).padStart(4, ' ')} | {line.text}
                   </div>
                 ))}
                 {summary.addedLines + summary.removedLines > summary.preview.length && (
                   <div className="text-muted-foreground">
-                    … and {summary.addedLines + summary.removedLines - summary.preview.length} more lines
+                    â€¦ and {summary.addedLines + summary.removedLines - summary.preview.length} more lines
                   </div>
                 )}
               </pre>

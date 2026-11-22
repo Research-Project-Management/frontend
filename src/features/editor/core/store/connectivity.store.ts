@@ -1,4 +1,4 @@
-/**
+﻿/**
  * connectivity.store.ts
  *
  * Store for Network Connectivity and Cloud Sync Status (State Layer).
@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 
-export type CloudSyncStatus = 'synced' | 'saving' | 'offline' | 'error';
+type CloudSyncStatus = 'synced' | 'saving' | 'offline' | 'error';
 
 export interface ConnectivityState {
   isOnline: boolean;

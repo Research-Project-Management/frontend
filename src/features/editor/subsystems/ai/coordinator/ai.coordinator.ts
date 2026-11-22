@@ -121,6 +121,21 @@ function pickDisambiguatedRange(
   return best && !tied ? best.range : null;
 }
 
+const DOC_CLASS_RE = /\\documentclass(?:\[[^\]]*\])?\{[^}]+\}/;
+
+function findAfterDocumentClassPos(content: string): number {
+  const match = DOC_CLASS_RE.exec(content);
+  if (!match) return -1;
+  const endOfMatch = match.index + match[0].length;
+  const nextNewline = content.indexOf('\n', endOfMatch);
+  return nextNewline === -1 ? content.length : nextNewline + 1;
+}
+
+function formatLineInsertion(content: string, pos: number, lines: string[]): string {
+  const needsLeadingNewline = pos > 0 && content[pos - 1] !== '\n';
+  return `${needsLeadingNewline ? '\n' : ''}${lines.join('\n')}\n`;
+}
+
 export function resolveAnchorInContent(
   content: string,
   patch: Pick<EditorPatchItem, 'kind' | 'searchText' | 'replaceText' | 'fromLine' | 'toLine'>,
@@ -128,11 +143,27 @@ export function resolveAnchorInContent(
   if (typeof content !== 'string') return null;
   const search = normalizeEol(patch.searchText || '');
   const replacement = normalizeEol(patch.replaceText || '');
+  const afterDocClass = findAfterDocumentClassPos(content);
+  const insertsUsepackageOnly =
+    /\\usepackage/.test(replacement) && !DOC_CLASS_RE.test(replacement);
 
   if (search.length > 0) {
     const exact = findAllExactRanges(content, search);
     const chosen = pickDisambiguatedRange(content, exact, patch.fromLine);
     if (chosen) {
+      if (afterDocClass !== -1 && chosen.from < afterDocClass && insertsUsepackageOnly) {
+        const addedLines = replacement
+          .split('\n')
+          .filter((ln) => ln.trim().length > 0);
+        if (addedLines.length > 0) {
+          return {
+            from: afterDocClass,
+            to: afterDocClass,
+            originalText: '',
+            replacementText: formatLineInsertion(content, afterDocClass, addedLines),
+          };
+        }
+      }
       return {
         from: chosen.from,
         to: chosen.to,
@@ -144,6 +175,19 @@ export function resolveAnchorInContent(
     const trimmed = findTrimmedLineRanges(content, search);
     const chosenTrimmed = pickDisambiguatedRange(content, trimmed, patch.fromLine);
     if (chosenTrimmed) {
+      if (afterDocClass !== -1 && chosenTrimmed.from < afterDocClass && insertsUsepackageOnly) {
+        const addedLines = replacement
+          .split('\n')
+          .filter((ln) => ln.trim().length > 0);
+        if (addedLines.length > 0) {
+          return {
+            from: afterDocClass,
+            to: afterDocClass,
+            originalText: '',
+            replacementText: formatLineInsertion(content, afterDocClass, addedLines),
+          };
+        }
+      }
       return {
         from: chosenTrimmed.from,
         to: chosenTrimmed.to,
@@ -154,18 +198,29 @@ export function resolveAnchorInContent(
   }
 
   if (patch.kind === 'insert_preamble') {
+    const addedLines = replacement
+      .split('\n')
+      .filter((ln) => ln.trim() !== '\\begin{document}' && !DOC_CLASS_RE.test(ln) && ln.trim().length > 0);
+    if (addedLines.length === 0) return null;
+
     const beginIdx = content.indexOf('\\begin{document}');
+    let insertPos = -1;
     if (beginIdx !== -1) {
-      const lineStart = content.lastIndexOf('\n', beginIdx) + 1;
-      const addedLines = replacement
-        .split('\n')
-        .filter((ln) => ln.trim() !== '\\begin{document}' && ln.trim().length > 0);
-      if (addedLines.length === 0) return null;
+      const beginLineStart = content.lastIndexOf('\n', beginIdx) + 1;
+      insertPos =
+        afterDocClass !== -1 && beginLineStart < afterDocClass
+          ? afterDocClass
+          : beginLineStart;
+    } else if (afterDocClass !== -1) {
+      insertPos = afterDocClass;
+    }
+
+    if (insertPos !== -1) {
       return {
-        from: lineStart,
-        to: lineStart,
+        from: insertPos,
+        to: insertPos,
         originalText: '',
-        replacementText: `${addedLines.join('\n')}\n`,
+        replacementText: formatLineInsertion(content, insertPos, addedLines),
       };
     }
   }

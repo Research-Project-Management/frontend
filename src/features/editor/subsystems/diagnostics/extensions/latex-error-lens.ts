@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-error-lens.ts
  *
  * VS Code-style Inline Error Lens Extension (Block 4: Engines Layer).
@@ -36,7 +36,7 @@ export interface ErrorLensPayload {
 export const setErrorLensDiagnosticsEffect = StateEffect.define<IndexedDiagnosticItem[] | ErrorLensPayload>();
 export const clearErrorLensDiagnosticsEffect = StateEffect.define<void>();
 
-// ── Error Lens Widget ─────────────────────────────────────────────────────────
+// â”€â”€ Error Lens Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export class ErrorLensWidget extends WidgetType {
   public readonly line: number;
@@ -76,7 +76,7 @@ export class ErrorLensWidget extends WidgetType {
     wrap.setAttribute('data-severity', severity);
     if (isStale) {
       wrap.setAttribute('data-stale', 'true');
-      wrap.title = 'Line modified — recompile to verify';
+      wrap.title = 'Line modified â€” recompile to verify';
     }
 
     // 1. Icon Indicator
@@ -123,7 +123,7 @@ export class ErrorLensWidget extends WidgetType {
   }
 }
 
-// ── StateField for Error Lens Decorations ─────────────────────────────────────
+// â”€â”€ StateField for Error Lens Decorations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const DECO_LINE_BY_SEVERITY: Record<string, Decoration> = {
   error: Decoration.line({ class: 'cm-error-lens-line cm-error-lens-line-error' }),
@@ -219,9 +219,9 @@ export const errorLensField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// ── Error Lens Theme & Styles (Flux Design System Standard) ───────────────────
+// â”€â”€ Error Lens Theme & Styles (Flux Design System Standard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export const errorLensTheme = EditorView.baseTheme({
+const errorLensTheme = EditorView.baseTheme({
   '.cm-error-lens': {
     display: 'inline-flex',
     alignItems: 'center',
@@ -289,7 +289,7 @@ export const errorLensTheme = EditorView.baseTheme({
   },
 });
 
-// ── Extension Factory ─────────────────────────────────────────────────────────
+// â”€â”€ Extension Factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ErrorLensOptions {
   enabled?: boolean;

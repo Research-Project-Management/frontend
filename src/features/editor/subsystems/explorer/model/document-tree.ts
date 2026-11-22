@@ -1,4 +1,4 @@
-/**
+﻿/**
  * document-tree.ts
  *
  * Simple, deterministic 1:1 Path-Trie tree builder for the Editor File Explorer
@@ -457,8 +457,6 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   return [...rootFiles, ...sortedFolders];
 }
 
-export const buildUnifiedTree = buildFileTree;
-
 /**
  * Flattens a hierarchical file tree into a depth-first ordered list of nodes.
  */
@@ -479,7 +477,7 @@ export function flattenFileTree(nodes: FileTreeNode[]): FileTreeNode[] {
 /**
  * Finds a file or folder node in the tree by its virtual path or ID.
  */
-export function findNodeByPath(nodes: FileTreeNode[], targetPathOrId: string): FileTreeNode | undefined {
+function findNodeByPath(nodes: FileTreeNode[], targetPathOrId: string): FileTreeNode | undefined {
   const cleanTarget = normalizeVirtualPath(targetPathOrId).toLowerCase();
   if (!cleanTarget) return undefined;
 

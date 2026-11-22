@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * SearchTab.tsx
@@ -33,7 +33,7 @@ import {
 import { SEARCH_RESULTS_VIRTUAL_THRESHOLD } from "@/features/editor/domain/constants/editor.constants";
 import { useDebounce } from "@/shared/hooks/use-debounce";
 import { pagesService } from "@/features/editor/sdk/pages.service";
-import { useEditorInstance } from "@/features/editor/core/bus/use-editor-instance";
+import { useEditorInstance } from "@/features/editor/core/bus/useEditorInstance";
 import { extractProjectId } from "@/features/editor/domain/types/core.types";
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -182,7 +182,7 @@ export default function SearchTab() {
     };
   }, [setQuery, setShowReplace]);
 
-  // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
+  // â”€â”€â”€ BACKEND SEARCH QUERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const {
     data: backendSearchData,
     isFetching,
@@ -556,7 +556,7 @@ export default function SearchTab() {
                 {isReplacingAll ? (
                   <>
                     <Loader2 className="size-3 animate-spin mr-1 shrink-0" />
-                    Replacing…
+                    Replacingâ€¦
                   </>
                 ) : (
                   "Replace All"

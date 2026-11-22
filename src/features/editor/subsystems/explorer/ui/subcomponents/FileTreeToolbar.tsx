@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * FileTreeToolbar.tsx
@@ -58,7 +58,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
 }: FileTreeToolbarProps) {
   return (
     <div className="relative flex h-9 shrink-0 items-center justify-between px-3 select-none">
-      {/* ── Title / Collapse Button ── */}
+      {/* â”€â”€ Title / Collapse Button â”€â”€ */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <button
@@ -83,7 +83,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
         </TooltipContent>
       </Tooltip>
 
-      {/* ── Actions: Plus (New/Upload) & Filter (Sort by) ── */}
+      {/* â”€â”€ Actions: Plus (New/Upload) & Filter (Sort by) â”€â”€ */}
       <div className="flex items-center gap-0.5">
         {isFileTreeOpen && (
           <>
@@ -166,7 +166,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                   <span>Name</span>
                   {sortBy === 'name' && (
                     <span className="text-xs text-muted-foreground font-sans">
-                      {sortDirection === 'asc' ? '↑' : '↓'}
+                      {sortDirection === 'asc' ? 'â†‘' : 'â†“'}
                     </span>
                   )}
                 </DropdownMenuItem>
@@ -178,7 +178,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                   <span>File type</span>
                   {sortBy === 'type' && (
                     <span className="text-xs text-muted-foreground font-sans">
-                      {sortDirection === 'asc' ? '↑' : '↓'}
+                      {sortDirection === 'asc' ? 'â†‘' : 'â†“'}
                     </span>
                   )}
                 </DropdownMenuItem>

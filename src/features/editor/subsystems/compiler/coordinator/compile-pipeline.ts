@@ -1,4 +1,4 @@
-/**
+﻿/**
  * compile-pipeline.ts
  *
  * Domain pipeline for client-side compilation orchestration:
@@ -56,9 +56,9 @@ export {
   type PdfBlobResult,
 };
 
-// ── Thumbnail Generator ───────────────────────────────────────────────────────
+// â”€â”€ Thumbnail Generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
+async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   if (typeof window === 'undefined') return null;
   let loadingOp: ReturnType<(typeof import('react-pdf'))['pdfjs']['getDocument']> | null = null;
   let pdf: import('pdfjs-dist').PDFDocumentProxy | null = null;
@@ -100,7 +100,7 @@ export async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   }
 }
 
-// ── Compile Engine Execution Types ────────────────────────────────────────────
+// â”€â”€ Compile Engine Execution Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type { CompilerDiagnostic, ForwardSyncResult };
 
@@ -192,7 +192,7 @@ export interface CompilerPort {
 let activeCompileController: AbortController | null = null;
 let activeCompileTargetId: string | null = null;
 
-// ── Deep Compile Pipeline ─────────────────────────────────────────────────────
+// â”€â”€ Deep Compile Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export const CompilePipeline = {
   /**

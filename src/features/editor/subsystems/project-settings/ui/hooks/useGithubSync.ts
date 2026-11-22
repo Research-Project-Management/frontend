@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * use-github-sync.ts
@@ -23,7 +23,7 @@ import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { clearYjsProviderPool, flushYjsProviders } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
-export const githubSyncKeys = {
+const githubSyncKeys = {
   all: ['github-sync'] as const,
   link: (projectId?: string) => ['github-link', projectId] as const,
   repos: () => ['github-repos'] as const,

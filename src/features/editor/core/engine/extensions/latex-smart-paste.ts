@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-smart-paste.ts
  *
  * CodeMirror 6 Smart Paste Extension (Engines Layer).
@@ -24,7 +24,7 @@ import {
   parseHtmlToLatex,
 } from '@/features/editor/domain/latex/smart-paste';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { getDefaultFileUploader } from '@/features/editor/core/engine/adapters/editor-filestore-port';
+import { getDefaultFileUploader } from '@/features/editor/core/engine/adapters/editor-filestore.port';
 
 export interface LatexSmartPasteOptions {
   spaceId?: string;

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * PdfSurface.tsx
@@ -71,7 +71,7 @@ export interface PdfSurfaceHandle {
   getContainer: () => HTMLDivElement | null;
 }
 
-export interface PdfSurfaceProps {
+interface PdfSurfaceProps {
   pdfUrl: string | null;
   synctexMap: SyncTeXMap | null;
   scale: number;

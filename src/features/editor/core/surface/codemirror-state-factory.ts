@@ -1,4 +1,4 @@
-/**
+﻿/**
  * codemirror-state-factory.ts
  *
  * Pure EditorState builders, diff-application helpers, and LRU / WarmPool
@@ -149,7 +149,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
   });
 }
 
-export function findDiffRange(
+function findDiffRange(
   currentDoc: string,
   nextText: string,
 ): { from: number; to: number; insert: string } | null {

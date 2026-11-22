@@ -1,4 +1,4 @@
-/**
+﻿/**
  * yjs-awareness-sync.ts
  *
  * Line-offset indexing, Yjs text diffing, binary sync frame helpers,
@@ -347,7 +347,7 @@ export function toCollaborationPresence(
   };
 }
 
-export function resolveRemoteClientId(
+function resolveRemoteClientId(
   key: string,
   localClientId: number,
   socketToClientIdMap: Map<string, number>,

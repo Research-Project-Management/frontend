@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * useProjectSearchActions.ts
@@ -19,7 +19,7 @@ import {
 } from '@/features/editor/core';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
-export function buildSearchRegex(
+function buildSearchRegex(
   query: string,
   options: { useRegex: boolean; wholeWord: boolean; caseSensitive: boolean },
 ): RegExp | null {

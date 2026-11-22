@@ -30,12 +30,19 @@ export interface CompileButtonProps {
   onCompile?: () => void;
   onClearCacheAndCompile?: () => void;
   onStopCompilation?: () => void;
+  /**
+   * Controls whether Auto-Compile, Compile Mode (Normal/Fast), and Stop-on-First-Error
+   * options are exposed in the UI dropdown. Underlying design remains active in store/coordinators.
+   * Defaults to false for lean server resource governance.
+   */
+  showCompileModeControls?: boolean;
 }
 
 export const CompileButton = React.memo(function CompileButton({
   onCompile,
   onClearCacheAndCompile,
   onStopCompilation,
+  showCompileModeControls = false,
 }: CompileButtonProps) {
   const compileStatus = useCompileStore((s) => s.compileStatus);
 
@@ -120,59 +127,64 @@ export const CompileButton = React.memo(function CompileButton({
           sideOffset={4}
           className="w-56 p-1 text-xs bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 select-none"
         >
-          {/* Group 1: Auto Compile */}
-          <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
-            Auto compile
-          </div>
-          <DropdownMenuItem
-            onClick={() => setAutoCompile(true)}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
-          >
-            <span>On</span>
-            {autoCompile && <Check className="size-3.5 text-foreground" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setAutoCompile(false)}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
-          >
-            <span>Off</span>
-            {!autoCompile && <Check className="size-3.5 text-foreground" />}
-          </DropdownMenuItem>
+          {showCompileModeControls && (
+            <>
+              {/* Group 1: Auto Compile */}
+              <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
+                Auto compile
+              </div>
+              <DropdownMenuItem
+                onClick={() => setAutoCompile(true)}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+              >
+                <span>On</span>
+                {autoCompile && <Check className="size-3.5 text-foreground" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setAutoCompile(false)}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+              >
+                <span>Off</span>
+                {!autoCompile && <Check className="size-3.5 text-foreground" />}
+              </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-          {/* Group 2: Compile Mode */}
-          <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
-            Compile mode
-          </div>
-          <DropdownMenuItem
-            onClick={() => setCompileMode('full')}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
-          >
-            <span>Normal</span>
-            {compileMode === 'full' && <Check className="size-3.5 text-foreground" />}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setCompileMode('draft')}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
-          >
-            <span>Fast (draft)</span>
-            {compileMode === 'draft' && <Check className="size-3.5 text-foreground" />}
-          </DropdownMenuItem>
+              {/* Group 2: Compile Mode */}
+              <div className="px-2.5 py-1.5 text-12 font-medium text-muted-foreground select-none">
+                Compile mode
+              </div>
+              <DropdownMenuItem
+                onClick={() => setCompileMode('full')}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+              >
+                <span>Normal</span>
+                {compileMode === 'full' && <Check className="size-3.5 text-foreground" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setCompileMode('draft')}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+              >
+                <span>Fast (draft)</span>
+                {compileMode === 'draft' && <Check className="size-3.5 text-foreground" />}
+              </DropdownMenuItem>
 
-          <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
 
-          {/* Group 3: Stop on first error */}
-          <DropdownMenuItem
-            onClick={() => setStopOnFirstError(!stopOnFirstError)}
-            className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
-          >
-            <span>Stop on first error</span>
-            {stopOnFirstError && <Check className="size-3.5 text-foreground" />}
-          </DropdownMenuItem>
+              {/* Group 3: Stop on first error */}
+              <DropdownMenuItem
+                onClick={() => setStopOnFirstError(!stopOnFirstError)}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm hover:bg-muted cursor-pointer"
+              >
+                <span>Stop on first error</span>
+                {stopOnFirstError && <Check className="size-3.5 text-foreground" />}
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           {/* Group 4: Advanced Clear Cache Actions */}
-          <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleClearCacheAndCompile}
             className="flex items-center px-2 py-1.5 text-destructive hover:bg-destructive/10 rounded-sm cursor-pointer"

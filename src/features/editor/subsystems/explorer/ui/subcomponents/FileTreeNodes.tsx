@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback } from 'react';
 import { useStorageItemActions } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
@@ -48,7 +48,7 @@ const ICON_ATTACHMENT = { icon: Paperclip, color: 'text-foreground' };
 const IMAGE_EXT_SET = RASTER_AND_VECTOR_IMAGE_EXTENSIONS;
 const CODE_EXT_SET = CODE_EXTENSIONS;
 
-export function getStorageIcon(item: StorageItem) {
+function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? '';
   const ext = item.filename.split('.').pop()?.toLowerCase() ?? '';
   if (mime.startsWith('image/') || IMAGE_EXT_SET.has(ext)) {

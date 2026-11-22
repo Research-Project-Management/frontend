@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import React, { useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 
-export const RAW_LOGS_VIRTUAL_LINE_THRESHOLD = 150;
+const RAW_LOGS_VIRTUAL_LINE_THRESHOLD = 150;
 
 export interface RawLatexLogsViewerProps {
   log?: string | null;

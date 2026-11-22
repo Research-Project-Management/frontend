@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Comments.tsx
@@ -44,9 +44,9 @@ import { MentionRenderer } from './Badges';
 import { MentionTextarea } from './MentionInput';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
-// ── Reply Row ───────────────────────────────────────────────────────────────
+// â”€â”€ Reply Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export interface ReplyRowProps {
+interface ReplyRowProps {
   reply: CommentReply;
   currentUserId?: string;
   onDelete: (replyId: string) => void;
@@ -54,7 +54,7 @@ export interface ReplyRowProps {
   membersMap?: Map<string, MentionMember>;
 }
 
-export const ReplyRow = React.memo(function ReplyRow({
+const ReplyRow = React.memo(function ReplyRow({
   reply,
   currentUserId,
   onDelete,
@@ -105,9 +105,9 @@ export const ReplyRow = React.memo(function ReplyRow({
   );
 });
 
-// ── Reply Form ──────────────────────────────────────────────────────────────
+// â”€â”€ Reply Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export interface ReplyFormProps {
+interface ReplyFormProps {
   commentId: string;
   pageId: string;
   projectId?: string;
@@ -197,7 +197,7 @@ const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {
   containIntrinsicSize: 'auto 140px',
 };
 
-// ── Comment Card ────────────────────────────────────────────────────────────
+// â”€â”€ Comment Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface CommentCardProps {
   comment: PageComment;
@@ -237,7 +237,16 @@ export const CommentCard = React.memo(function CommentCard({
   );
 
   const isResolved = comment.status === 'resolved';
-  const hasReplies = Boolean(comment.replies && comment.replies.length > 0);
+  const replies = comment.replies ?? [];
+  const hasReplies = replies.length > 0;
+  const [showAllReplies, setShowAllReplies] = useState(false);
+  const COLLAPSE_THRESHOLD = 3;
+  const hiddenRepliesCount =
+    !showAllReplies && replies.length > COLLAPSE_THRESHOLD
+      ? replies.length - 2
+      : 0;
+  const displayedReplies =
+    hiddenRepliesCount > 0 ? replies.slice(replies.length - 2) : replies;
 
   const handleToggleStatus = () => {
     resolveMutation.mutate({
@@ -403,7 +412,25 @@ export const CommentCard = React.memo(function CommentCard({
       {/* Row 4: Replies */}
       {hasReplies && (
         <div className="mt-2.5 pt-2 border-t border-border space-y-2">
-          {comment.replies.map((reply: CommentReply) => (
+          {hiddenRepliesCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAllReplies(true)}
+              className="text-11 font-medium text-primary hover:underline cursor-pointer"
+            >
+              Show {hiddenRepliesCount} earlier {hiddenRepliesCount === 1 ? 'reply' : 'replies'}
+            </button>
+          )}
+          {showAllReplies && replies.length > COLLAPSE_THRESHOLD && (
+            <button
+              type="button"
+              onClick={() => setShowAllReplies(false)}
+              className="text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Hide earlier replies
+            </button>
+          )}
+          {displayedReplies.map((reply: CommentReply) => (
             <ReplyRow
               key={reply.id}
               reply={reply}
@@ -416,13 +443,15 @@ export const CommentCard = React.memo(function CommentCard({
         </div>
       )}
 
-      {/* Row 5: Isolated Reply Form */}
-      <ReplyForm commentId={comment.id} pageId={pageId} projectId={projectId} />
+      {/* Row 5: Isolated Reply Form (only for open threads) */}
+      {!isResolved && (
+        <ReplyForm commentId={comment.id} pageId={pageId} projectId={projectId} />
+      )}
     </div>
   );
 });
 
-// ── New Comment Form ────────────────────────────────────────────────────────
+// â”€â”€ New Comment Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface NewCommentFormProps {
   pageId: string;
@@ -492,15 +521,20 @@ export function NewCommentForm({
   const isPending = isSubmitting || createMutation.isPending;
 
   return (
-    <div className="border-b border-border bg-card p-3.5">
-      <form onSubmit={handleSubmit(handlePost)} className="flex flex-col gap-2">
+    <div className="mx-3 mt-3 rounded-lg border border-border bg-card p-3 shadow-xs">
+      <form onSubmit={handleSubmit(handlePost)} className="flex flex-col gap-2.5">
         {/* Form Header */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">New Comment</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs font-semibold text-foreground">New Comment</span>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-10 font-mono text-muted-foreground">
+              {line ? `Line ${line}` : 'Document'}
+            </span>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-0.5 text-muted-foreground hover:text-foreground cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+            className="rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-['']"
             aria-label="Close comment form"
           >
             <X className="size-3.5 shrink-0" />
@@ -509,8 +543,8 @@ export function NewCommentForm({
 
         {/* Selected Quote Preview */}
         {pendingQuote && (
-          <div className="text-xs bg-muted/60 border border-border/70 px-2.5 py-1.5 italic text-muted-foreground truncate rounded-md">
-            &ldquo;{pendingQuote}&rdquo;
+          <div className="border-l-2 border-primary/60 bg-muted/50 px-2.5 py-1.5 text-11 font-mono text-muted-foreground truncate rounded-r-md">
+            {pendingQuote}
           </div>
         )}
 
@@ -523,7 +557,7 @@ export function NewCommentForm({
               value={field.value || ''}
               onChange={field.onChange}
               members={members}
-              placeholder="Leave a comment... Type @ to mention a collaborator (Ctrl+Enter to post)"
+              placeholder="Write a comment... (@ to mention, Ctrl+Enter to post)"
               rows={3}
               autoFocus
               disabled={isPending}
@@ -533,7 +567,7 @@ export function NewCommentForm({
                   handleSubmit(handlePost)();
                 }
               }}
-              className="bg-background text-foreground border border-input focus:border-primary text-xs"
+              className="bg-background text-foreground border border-input focus:border-primary text-xs rounded-md"
             />
           )}
         />
@@ -546,30 +580,33 @@ export function NewCommentForm({
         )}
 
         {/* Form Footer */}
-        <div className="flex items-center justify-between pt-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-11 font-mono text-muted-foreground">
-              {line ? `Line ${line}` : 'Whole document'}
-            </span>
-            {content.length > 0 && (
-              <span className="text-10 font-mono text-muted-foreground/80">
-                {content.length}/5000
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <span className="text-10 font-mono text-muted-foreground/80">
+            {content.length > 0 ? `${content.length}/10000` : ''}
+          </span>
 
-          <button
-            type="submit"
-            disabled={isPending || !content.trim()}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-3.5 py-1 min-h-[28px] text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
-          >
-            {isPending ? (
-              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
-            ) : (
-              <Send className="size-3" />
-            )}
-            Post
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isPending}
+              className="h-7 px-2.5 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isPending || !content.trim()}
+              className="flex items-center gap-1.5 h-7 rounded-md bg-primary px-3 text-11 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-45 cursor-pointer transition-colors"
+            >
+              {isPending ? (
+                <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Send className="size-3" />
+              )}
+              Post
+            </button>
+          </div>
         </div>
       </form>
     </div>

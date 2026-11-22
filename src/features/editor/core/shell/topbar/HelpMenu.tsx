@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * HelpMenu.tsx
@@ -19,7 +19,7 @@ import {
 import { editorCommandBus } from '../../bus/command-bus';
 import { EDITOR_DOCS_URLS } from '@/features/editor/domain/constants/editor.constants';
 
-export function HelpMenu({ value = 'help' }: { value?: string } = {}) {
+function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   const handleOpenShortcuts = () => {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'shortcuts' });
   };

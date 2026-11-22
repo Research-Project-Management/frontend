@@ -8,6 +8,7 @@ import {
   type DecorationSet,
   type Tooltip,
 } from '@codemirror/view';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { reviewModeFilter } from './filter';
@@ -349,6 +350,18 @@ export function getSuggestionTooltip(view: EditorView, pos: number): Tooltip | n
 
 export const reviewHoverTooltip = hoverTooltip(getSuggestionTooltip, { hoverTime: 120 });
 
+export const commentHighlightClickHandler = EditorView.domEventHandlers({
+  click(event) {
+    const target = event.target as HTMLElement | null;
+    const highlightEl = target?.closest?.('[data-comment-id]') as HTMLElement | null;
+    const commentId = highlightEl?.getAttribute('data-comment-id');
+    if (!commentId) return false;
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+    editorCommandBus.dispatch({ type: 'review:navigate-to-comment', commentId });
+    return false;
+  },
+});
+
 export function createReviewExtension(options: ReviewExtensionOptions = {}): Extension {
   const reviewMode =
     typeof options.reviewMode === 'string'
@@ -368,6 +381,7 @@ export function createReviewExtension(options: ReviewExtensionOptions = {}): Ext
     reviewModeFilter,
     reviewDecorationsField,
     reviewHoverTooltip,
+    commentHighlightClickHandler,
     reviewTheme,
   ];
 }

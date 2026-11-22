@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tikz-transpiler.ts
  *
  * AST TikZ Transpiler for converting diagram canvas elements into compilable LaTeX/TikZ code.
@@ -14,7 +14,7 @@ export interface TikZTranspileOptions {
 /**
  * Escapes special LaTeX characters in prose while preserving inline math ($...$).
  */
-export function escapeLatexText(text: string): string {
+function escapeLatexText(text: string): string {
   if (!text) return '';
 
   // Split by inline math segments $...$ so math contents are preserved untouched

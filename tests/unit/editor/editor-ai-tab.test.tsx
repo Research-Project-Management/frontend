@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({ projectId: 'test-project-123', pageId: 'test-page-456' }),
 }));
 
-vi.mock('@/features/editor/core/bus/use-editor-instance', () => ({
+vi.mock('@/features/editor/core/bus/useEditorInstance', () => ({
   useEditorInstance: () => ({
     engine: {
       getSelectedText: () => '',

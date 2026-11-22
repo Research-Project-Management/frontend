@@ -1,4 +1,4 @@
-/**
+﻿/**
  * editor-tab-pool.domain.ts
  *
  * Production-grade Tri-State Editor Tab Pool & Tab Governance Domain (1:1 Reader Architecture Parity).
@@ -20,7 +20,7 @@ import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.type
 
 export const MAX_EDITOR_TABS = EDITOR_LIMITS.MAX_EDITOR_TABS;
 export const MAX_PERSISTED_EDITOR_PAGES = EDITOR_LIMITS.MAX_PERSISTED_EDITOR_PAGES;
-export const DEFAULT_WARM_EDITOR_TAB_CAPACITY = 5;
+const DEFAULT_WARM_EDITOR_TAB_CAPACITY = 5;
 
 /**
  * Hardware-adaptive warm standby capacity matching Zotero/Reader's 3/5/8 curve:

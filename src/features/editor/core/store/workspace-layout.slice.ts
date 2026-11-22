@@ -1,4 +1,4 @@
-/**
+﻿/**
  * workspace-layout.slice.ts
  *
  * Workbench Layout State Slice (Sidebar, Split Modes, Active Pane, Detached Preview).
@@ -55,7 +55,7 @@ export interface LayoutState {
   resetLayout: () => void;
 }
 
-export const DEFAULT_LAYOUT = {
+const DEFAULT_LAYOUT = {
   sidebarLeftOpen: true,
   sidebarLeftWidth: 260,
   activeSidebarTab: 'files' as ActivityBarTab,

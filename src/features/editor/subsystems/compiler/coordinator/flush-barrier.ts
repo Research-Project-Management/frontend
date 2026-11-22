@@ -1,4 +1,4 @@
-/**
+﻿/**
  * flush-barrier.ts
  *
  * Pre-Compilation Atomic Consistency & Persistence Flush Barrier (Deep Module Pattern).
@@ -27,7 +27,7 @@ export interface FlushBarrierResult {
   timedOut?: boolean;
 }
 
-export const DEFAULT_BARRIER_TIMEOUT_MS = 1500;
+const DEFAULT_BARRIER_TIMEOUT_MS = 1500;
 
 export class FlushBarrier {
   /**

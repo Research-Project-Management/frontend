@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import { useParams } from 'next/navigation';
@@ -7,12 +7,12 @@ import {
   usePageStore,
   editorCommandBus,
 } from '@/features/editor/core';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { type CitationValidationDto, type BibEntryDto } from '@/features/editor/sdk/pages/types';
-import { generateCitationKey } from '@/features/library/domain/citations.domain';
+import { generateCitationKey } from '@/features/library/domain/citations';
 import { type BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
   extractCitationKeys,

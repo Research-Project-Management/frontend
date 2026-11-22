@@ -13,56 +13,26 @@
 // 1. Domain Models & Engines
 export {
   buildFileTree,
-  buildUnifiedTree,
   filterFileTree,
-  flattenFileTree,
-  flattenVisibleTree,
   findAncestorFolderPaths,
-  findNodeByPath,
   getRootFilePriority,
   type FileTreeNode,
-  type FileTreeFileNode,
   type FileTreeFolderNode,
   type FlattenedTreeNode,
-  type BuildFileTreeParams,
 } from './model/document-tree';
 
 export {
   lruDocumentCache,
   LRUDocumentCache,
   type DocumentModelState,
-  type DocumentCursorSelection,
-  type DocumentScrollViewport,
-  type DocumentModelStats,
-  type ModelChangeListener,
-  type ModelEvictionListener,
 } from '@/features/editor/domain/document/lru-document-cache';
 
-export {
-  PROJECT_TEMPLATES,
-  RAW_ACADEMIC_TEMPLATES,
-  type ProjectTemplate,
-  type RawAcademicTemplate,
-  type TemplateCategory,
-  type TemplateIconName,
-} from './model/template-gallery.data';
+export type {
+  ProjectTemplate,
+} from './ui/modals/TemplateGalleryModal';
 
 export {
-  formatEditorTitle,
-  getExportFilename,
-  isLatexSourceFile,
-  isBibtexFile,
-  isImageAsset,
-  displayName,
-  cleanBasename,
   normalizeVirtualPath,
-  splitVirtualPathSegments,
-  splitVirtualPath,
-  joinVirtualPath,
-  isUnderVirtualFolder,
-  rewritePathPrefix,
-  parseVirtualFolderId,
-  formatLatexIncludeSnippet,
 } from '@/features/editor/domain/document/document-naming';
 
 export {
@@ -70,25 +40,13 @@ export {
   parseZipArchive,
   extractAndImportZipToProject,
   type ExtractedZipProject,
-  type ParsedZipArchive,
-  type ZipImportResult,
   type ImportZipProgress,
 } from '@/features/editor/sdk/archive/archive-import';
-export {
-  exportProjectAsZip,
-  exportArxivSubmissionZip,
-  exportVersionAsZip,
-} from '@/features/editor/sdk/archive/archive-export';
 
 // 2. UI Presentation Layer
 export { default as FilesTab } from './ui/FilesTab';
-export { FileTreeContainer, isFolderOpen } from './ui/FileTreeContainer';
-export { useFileTree } from './ui/hooks/useFileTree';
+export { FileTreeContainer } from './ui/FileTreeContainer';
 export { TexFileRow } from './ui/subcomponents/TexFileRow';
 export { IndentGuides, InlineInput, RenameInput, RowActions } from './ui/subcomponents/FileTreePrimitives';
-export { StorageFileRow, getStorageIcon } from './ui/subcomponents/FileTreeNodes';
 export { FileTreeFolderRow } from './ui/subcomponents/FileTreeFolderRow';
-export { default as AddFilesModal } from './ui/modals/AddFilesModal';
-export { DeleteFileDialog } from './ui/modals/DeleteFileDialog';
-export { UploadConflictDialog } from './ui/modals/UploadConflictDialog';
 

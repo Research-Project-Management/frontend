@@ -1,4 +1,4 @@
-/**
+﻿/**
  * yjs-provider-pool.ts
  *
  * Multi-tab resilient singleton pool management for YjsSocketIOProvider instances.
@@ -24,7 +24,7 @@ interface PooledYjsEntry {
  * by `projectId:pageId` and `pageId` to guarantee O(1) lookup regardless of whether
  * the caller supplies `userId`.
  */
-export class YjsProviderPool {
+class YjsProviderPool {
   private readonly byKey = new Map<string, PooledYjsEntry>();
   private readonly byProjectPage = new Map<string, Set<PooledYjsEntry>>();
   private readonly byPage = new Map<string, Set<PooledYjsEntry>>();
@@ -277,7 +277,7 @@ export class YjsProviderPool {
   }
 }
 
-export const yjsProviderPool = new YjsProviderPool();
+const yjsProviderPool = new YjsProviderPool();
 
 export function subscribeYjsPoolCleared(listener: () => void): () => void {
   return yjsProviderPool.subscribeCleared(listener);

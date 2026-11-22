@@ -25,8 +25,6 @@ export interface LinterDiagnostic {
   code?: string;
 }
 
-export type LatexLintDiagnostic = LinterDiagnostic;
-
 export interface LinterOptions {
   projectId?: string;
   docId?: string;
@@ -35,8 +33,6 @@ export interface LinterOptions {
   knownLabels?: string[];
   retractedCitationsMap?: Map<string, RetractedItemInfo>;
 }
-
-export type LatexLinterOptions = LinterOptions;
 
 const cacheResetCallbacks = new Set<() => void>();
 
@@ -180,5 +176,3 @@ export function runLatexLinter(text: string, options: LinterOptions = {}): Linte
   if (!text || !text.trim()) return [];
   return scanRetractedCitations(text, options.retractedCitationsMap);
 }
-
-export const lintLatexDocument = runLatexLinter;

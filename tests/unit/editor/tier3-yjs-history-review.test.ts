@@ -341,7 +341,7 @@ describe('Khối 2 / Tầng 3 — Live Yjs Sync, History & Track Changes / Revie
 
       await review.getReviewStatus('', 'doc-7');
       expect(String(fetchSpy.mock.calls[3]?.[0])).toBe(
-        '/api/v1/pages/pages/doc-7/review-status',
+        '/api/v1/pages/docs/doc-7/review-status',
       );
 
       await review.getProjectOverview('page-9', { isPageScope: true });

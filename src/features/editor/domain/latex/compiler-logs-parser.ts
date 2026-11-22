@@ -1,4 +1,4 @@
-/**
+﻿/**
  * compiler-logs-parser.ts
  *
  * Domain types, path normalization utilities, and structured diagnostic adapters
@@ -31,7 +31,7 @@ const LOG_WRAP_LIMIT = 79;
 const PARSED_LOG_CACHE_MAX = 5;
 const parsedLogCache = new Map<string, ParsedLog>();
 
-export function unwrapLatexLogLines(raw: string): string[] {
+function unwrapLatexLogLines(raw: string): string[] {
   const rawLines = raw.replace(/\r\n|\r/g, '\n').split('\n');
   if (rawLines.length === 0) return [];
   const wrappedLines: string[] = [rawLines[0]];
@@ -51,7 +51,7 @@ export function unwrapLatexLogLines(raw: string): string[] {
   return wrappedLines;
 }
 
-export function normalizeCompilerLogPath(rawPath: string): string {
+function normalizeCompilerLogPath(rawPath: string): string {
   if (!rawPath) return '';
   let clean = rawPath
     .trim()
@@ -88,13 +88,13 @@ export function diagnosticsToParsedLog(
       typeof item.line === 'number' && !isNaN(item.line) ? item.line : undefined;
     const rawExcerpt = item.context || undefined;
     const entry: LogEntry = {
-      message: (item.message || '').replace(/—/g, '-'),
+      message: (item.message || '').replace(/â€”/g, '-'),
       file: file || undefined,
       line,
       ...(item.code ? { code: item.code } : {}),
       ...(item.source ? { source: item.source } : {}),
       ...(item.highlightCommand ? { highlightCommand: item.highlightCommand } : {}),
-      rawExcerpt: rawExcerpt ? rawExcerpt.replace(/—/g, '-') : undefined,
+      rawExcerpt: rawExcerpt ? rawExcerpt.replace(/â€”/g, '-') : undefined,
       quickFix: item.quickFix,
       explanation: item.explanation
         ? {

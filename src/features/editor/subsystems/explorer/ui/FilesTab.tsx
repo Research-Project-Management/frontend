@@ -139,6 +139,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onSetMain={c.handleSetMain}
           onDownload={c.downloadTex}
           onCopyCommand={c.copyTexCommand}
+          onNewFile={c.handleOpenFileModal}
+          onNewFolder={() => c.handleStartCreateFolder('')}
+          onUpload={c.handleOpenUploadModal}
         />
       );
     },

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * diagnostics.types.ts
  *
  * Canonical Domain Diagnostic Contract (Layer 1: Pure Domain Model).
@@ -7,7 +7,7 @@
  * Inline Error Lens, and AI AutoFix assistants.
  */
 
-export type DiagnosticSeverity = 'error' | 'warning' | 'info';
+type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
 export interface EditorDiagnosticItem {
   id: string;

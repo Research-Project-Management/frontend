@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { memo } from 'react';
 import { FileText, Library } from 'lucide-react';
@@ -8,11 +8,13 @@ import type { CitationFilterTab } from '@/features/editor/subsystems/citation/ui
 interface CitationBottomNavProps {
   filterTab: CitationFilterTab;
   onFilterTabChange: (tab: CitationFilterTab) => void;
+  documentCount?: number;
 }
 
 export const CitationBottomNav = memo(function CitationBottomNav({
   filterTab,
   onFilterTabChange,
+  documentCount = 0,
 }: CitationBottomNavProps) {
   return (
     <nav
@@ -26,15 +28,17 @@ export const CitationBottomNav = memo(function CitationBottomNav({
         className={cn(
           'relative flex flex-1 flex-col items-center justify-center gap-1 h-full transition-colors cursor-pointer text-xs font-medium',
           filterTab === 'document'
-            ? 'text-foreground font-semibold bg-muted/30'
+            ? 'text-primary font-semibold bg-muted/30'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
         {filterTab === 'document' && (
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-foreground" />
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
         )}
         <FileText className="size-3.5 shrink-0" />
-        <span className="leading-tight">In Document</span>
+        <span className="leading-tight">
+          Cited{documentCount > 0 ? ` (${documentCount})` : ''}
+        </span>
       </button>
 
       {/* Library Tab */}
@@ -44,12 +48,12 @@ export const CitationBottomNav = memo(function CitationBottomNav({
         className={cn(
           'relative flex flex-1 flex-col items-center justify-center gap-1 h-full transition-colors cursor-pointer text-xs font-medium',
           filterTab === 'library'
-            ? 'text-foreground font-semibold bg-muted/30'
+            ? 'text-primary font-semibold bg-muted/30'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
         {filterTab === 'library' && (
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-foreground" />
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
         )}
         <Library className="size-3.5 shrink-0" />
         <span className="leading-tight">Library</span>

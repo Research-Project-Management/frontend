@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-preamble-patch.ts
  *
  * Pure domain helpers for detecting preamble-only LaTeX snippets
@@ -18,7 +18,7 @@ export interface PreambleInsertionPatch {
   changed: boolean;
 }
 
-export const PREAMBLE_DECLARATION_LINE_RE =
+const PREAMBLE_DECLARATION_LINE_RE =
   /^\s*\\(?:usepackage|RequirePackage|PassOptionsToPackage|usetikzlibrary)(?:\[[^\]]*\])?(?:\{[^}]*\})+\s*(?:%.*)?$/;
 
 const DOC_CLASS_TOKEN_RE = /\\documentclass(?:\[[^\]]*\])?\{[^}]+\}/;
@@ -38,7 +38,7 @@ interface IndexedLine {
  * Strips from the first unescaped `%` comment delimiter to end of line,
  * preserving escaped literal `\%`.
  */
-export function stripUnescapedLatexComment(line: string): string {
+function stripUnescapedLatexComment(line: string): string {
   let backslashes = 0;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];

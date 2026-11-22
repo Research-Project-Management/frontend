@@ -7,10 +7,7 @@
  */
 
 export {
-  OFFLINE_DB_STORES,
-  OfflineDbConnection,
   calculateAdaptiveEditorQuota,
-  isQuotaExceededError,
   type EditorAdaptiveQuotaPolicy,
 } from './offline-db.connection';
 
@@ -33,7 +30,6 @@ export {
 export {
   OfflineQuotaGovernor,
   createEditorOfflineStorage,
-  offlineDbConnection,
   unsyncedEditsStore,
   syncedDocCacheStore,
   pendingOutboxStore,

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * RenameCitationModal.tsx
@@ -26,7 +26,7 @@ import { Input } from '@/shared/components/ui/input';
 import { validateCitationKey } from '@/features/editor/subsystems/citation/model/citation-refactor';
 import { workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 
-export interface RenameCitationModalProps {
+interface RenameCitationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   oldKey: string;

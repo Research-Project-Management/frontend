@@ -1,4 +1,4 @@
-/**
+﻿/**
  * src/features/editor/core/index.ts
  *
  * Core Workbench Subsystem Public Seam & Central Spine (Matt Pocock Deep Module).
@@ -16,18 +16,14 @@ export {
   getActiveEditorEngine,
   setActiveEditorEngine,
   getActiveEditorContent,
-  getActivePdfViewer,
   setActivePdfViewer,
   registerDefaultBridges,
   registerEditorEngine,
   unregisterEditorEngine,
   getEditorEngineForFile,
   getAllRegisteredEngines,
-  subscribeEditorEngineChanges,
 } from './bus/command-bus';
-export { useEditorCommand } from './bus/use-editor-command';
-export { useEditorInstance, useViewerInstance } from './bus/use-editor-instance';
-export { programmaticSyncAnnotation } from './engine/adapters/codemirror.adapter';
+export { useEditorInstance } from './bus/useEditorInstance';
 
 export type {
   IEditorCommandBus,
@@ -59,11 +55,8 @@ export {
   setEditorWindowStorageProvider,
   mergeEditorTabsWithStorage,
   saveEditorTabsForPage,
-  saveEditorWindowSplitState,
-  scheduleSaveActiveEditorTab,
   flushPendingEditorTabSaves,
   loadEditorTabsForPage,
-  removeEditorTabsForPage,
 } from './store/editor-tabs-storage.adapter';
 export type {
   PersistedSplitMode,
@@ -82,7 +75,6 @@ export {
 
 export {
   useSettingsStore,
-  rehydrateEditorSettingsFromStorage,
 } from './store/settings.store';
 export type {
   TrackChangesViewMode,
@@ -96,7 +88,6 @@ export type {
 
 export {
   useConnectivityStore,
-  isNetworkError,
 } from './store/connectivity.store';
 
 export * from '@/features/editor/domain/constants/editor.constants';
@@ -115,7 +106,6 @@ export {
 } from './store/search.store';
 
 export {
-  fallbackQueryClient,
   useSafeQueryClient,
 } from './queries/safe-query-client';
 
@@ -126,7 +116,6 @@ export { default as WorkbenchLayout } from './shell/WorkbenchLayout';
 export { default as ActivityBar } from './shell/ActivityBar';
 export { default as Topbar } from './shell/Topbar';
 export { default as WorkbenchShell } from './shell/WorkbenchShell';
-export { default as OfflineBanner } from './shell/OfflineBanner';
 export { default as SidebarPanelHeader } from './shell/SidebarPanelHeader';
 export { default as PrimarySidebar } from './shell/PrimarySidebar';
 
@@ -146,12 +135,6 @@ export {
   workspaceCoordinator,
   WorkspaceCoordinator,
 } from './coordinator/workspace.coordinator';
-
-export {
-  visibilityCoordinator,
-  VisibilityCoordinator,
-  type VisibilityLifecycleState,
-} from './coordinator/visibility.coordinator';
 
 export {
   documentFacade,

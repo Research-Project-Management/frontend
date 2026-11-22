@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PdfViewer.tsx
  *
  * Full PDF Preview Container with Overleaf Parity (Block 6: UI Features Layer).
@@ -52,7 +52,7 @@ import { usePdfSearch, type PdfDocumentProxyLike } from './hooks/usePdfSearch';
 
 const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 
-export interface PdfViewerProps {
+interface PdfViewerProps {
   isDetached?: boolean;
 }
 

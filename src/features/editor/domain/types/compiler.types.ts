@@ -1,4 +1,4 @@
-/**
+﻿/**
  * compiler.types.ts
  *
  * Types and validation schemas for LaTeX compilation, diagnostics, and word count.
@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-export const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex', 'latex']);
+const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex', 'latex']);
 export type CompilerEngine = z.infer<typeof compilerEngineSchema>;
 export const DEFAULT_COMPILER_ENGINE: CompilerEngine = 'pdflatex';
 
@@ -105,7 +105,7 @@ export interface WordCountResult {
   mathFormulas?: number;
 }
 
-// ── Compiler Diagnostics & Log Viewer ────────────────────────────────────────
+// â”€â”€ Compiler Diagnostics & Log Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface ErrorExplanationDto {
   code?: string;

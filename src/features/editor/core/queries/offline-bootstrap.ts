@@ -1,4 +1,4 @@
-/**
+﻿/**
  * offline-bootstrap.ts
  *
  * Offline IndexedDB Bootstrap Synthesis & File List Fallback Helpers.
@@ -12,7 +12,7 @@ import {
 } from '@/features/editor/domain/offline-storage';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
 
-export function parseCachedWorkspaceTree(
+function parseCachedWorkspaceTree(
   raw: CachedWorkspaceTree | null,
 ): {
   workspace: EditorBootstrapResponseDto['workspace'];

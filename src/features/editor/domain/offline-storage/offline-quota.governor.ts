@@ -102,7 +102,6 @@ export function createEditorOfflineStorage(): EditorOfflineStorageBundle {
 
 const defaultStorage = createEditorOfflineStorage();
 
-export const offlineDbConnection = defaultStorage.connection;
 export const unsyncedEditsStore = defaultStorage.unsyncedEdits;
 export const syncedDocCacheStore = defaultStorage.syncedDocCache;
 export const pendingOutboxStore = defaultStorage.pendingOutbox;

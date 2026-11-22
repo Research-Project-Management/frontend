@@ -1,4 +1,4 @@
-/**
+﻿/**
  * workspace-service-port.ts
  *
  * Hexagonal / Deep Module Ports for WorkspaceCoordinator.
@@ -10,7 +10,7 @@
  * 3. Zustand Store singletons (`useWorkspaceStore`, `usePageStore`)
  */
 
-export interface WorkspaceFileNodeDto {
+interface WorkspaceFileNodeDto {
   id: string;
   title?: string | null;
   name?: string | null;

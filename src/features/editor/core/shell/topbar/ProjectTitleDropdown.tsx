@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ProjectTitleDropdown.tsx
@@ -26,7 +26,6 @@ import {
   Loader2,
   X,
   Calculator,
-  Trash2,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -50,7 +49,7 @@ import { Input } from '@/shared/components/ui/input';
 import { usePageStore } from '../../store/editor.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
 import { editorCommandBus } from '../../bus/command-bus';
 
@@ -58,7 +57,7 @@ import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useProjectTitleActions } from './useProjectTitleActions';
 
-export function ProjectTitleDropdown() {
+function ProjectTitleDropdown() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const currentPageId = usePageStore((s) => s.currentPage?.id ?? undefined);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? undefined);
@@ -157,10 +156,6 @@ export function ProjectTitleDropdown() {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'word-count' });
   };
 
-  const handleOpenDeletedFiles = () => {
-    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
-  };
-
   return (
     <>
       <DropdownMenu>
@@ -212,14 +207,6 @@ export function ProjectTitleDropdown() {
             <span>Word count</span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onClick={handleOpenDeletedFiles}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm cursor-pointer hover:bg-muted"
-          >
-            <Trash2 className="size-3.5 text-muted-foreground shrink-0" />
-            <span>Deleted files</span>
-          </DropdownMenuItem>
-
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
@@ -259,7 +246,7 @@ export function ProjectTitleDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ── Rename Project Modal ── */}
+      {/* â”€â”€ Rename Project Modal â”€â”€ */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
         <DialogContent
           showCloseButton={false}

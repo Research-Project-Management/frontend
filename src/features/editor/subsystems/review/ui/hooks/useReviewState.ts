@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -27,7 +27,6 @@ import {
   useRejectSuggestion,
 } from './useSuggestions';
 
-export type { ReviewPendingCountResult } from './usePendingCount';
 export { useReviewPendingCount } from './usePendingCount';
 export type { ReviewScope };
 
@@ -84,7 +83,7 @@ export function useReviewState() {
   const { selectFile } = useActiveDocument();
 
   const [scope, setScope] = useState<ReviewScope>('current');
-  const [showResolved, setShowResolved] = useState(true);
+  const [showResolved, setShowResolved] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [overviewResolvedCount, setOverviewResolvedCount] = useState(0);
 
@@ -333,6 +332,7 @@ export function useReviewState() {
   return {
     pageId,
     projectId,
+    currentFileName: currentPageTitle || 'document.tex',
     user,
     scope,
     setScope,

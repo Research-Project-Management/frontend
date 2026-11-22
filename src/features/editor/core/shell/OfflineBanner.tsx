@@ -1,4 +1,4 @@
-/**
+﻿/**
  * OfflineBanner.tsx
  *
  * Global Offline & Connectivity Status Banner (Block 7: UI Shell Layer).

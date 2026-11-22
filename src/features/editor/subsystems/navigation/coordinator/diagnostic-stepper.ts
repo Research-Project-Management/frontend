@@ -1,4 +1,4 @@
-/**
+﻿/**
  * diagnostic-stepper.ts
  *
  * File-path resolution for SyncTeX/diagnostic jumps and F8 / Shift+F8 diagnostic
@@ -85,7 +85,7 @@ export function resolveJumpTargetByFilePath(
   return { resolvedFileId, resolvedTitle };
 }
 
-export function getProjectDiagnosticsList(
+function getProjectDiagnosticsList(
   severity: 'error' | 'warning' = 'error',
 ): ProjectDiagnosticEntry[] {
   const all = diagnosticsCoordinator.getAllDiagnostics().filter((d) => d.severity === severity);

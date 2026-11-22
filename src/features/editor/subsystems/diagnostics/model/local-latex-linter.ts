@@ -1,4 +1,4 @@
-/**
+﻿/**
  * local-latex-linter.ts
  *
  * Pure, synchronous, zero-network real-time LaTeX syntax linter.
@@ -11,7 +11,7 @@ import {
   type LinterOptions,
 } from './latex-linter-core';
 
-export const HARD_SYNTAX_ERROR_CODES = new Set([
+const HARD_SYNTAX_ERROR_CODES = new Set([
   'UNBALANCED_BRACES',
   'ENVIRONMENT_MISMATCH',
   'MISSING_MATH_DELIMITER',
@@ -181,7 +181,7 @@ export function runLocalLatexSyntaxLinter(
     }
 
     // Smart quotes warning
-    const smartQuoteMatch = codeOnly.match(/[“”‘’]/);
+    const smartQuoteMatch = codeOnly.match(/[â€œâ€â€˜â€™]/);
     if (smartQuoteMatch && smartQuoteMatch.index !== undefined) {
       const quoteFrom = lineStart + smartQuoteMatch.index;
       diagnostics.push({

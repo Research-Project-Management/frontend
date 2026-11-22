@@ -1,4 +1,4 @@
-/**
+﻿/**
  * xy-cut.ts
  *
  * Recursive XY-Cut Algorithm for Multi-Column PDF Document Layout Analysis & Natural Reading Order Extraction.
@@ -23,7 +23,7 @@ export interface PdfBoundingBox {
   h: number;
 }
 
-export interface PdfTextBlock {
+interface PdfTextBlock {
   text: string;
   bbox: PdfBoundingBox;
   lines: string[];
@@ -39,7 +39,7 @@ export interface XyCutOptions {
   maxRecursionDepth?: number; // Guard against stack overflow (default: 20)
 }
 
-export interface LayoutCutNode {
+interface LayoutCutNode {
   type: 'horizontal' | 'vertical' | 'leaf';
   cutPosition?: number;
   bbox: PdfBoundingBox;
@@ -252,7 +252,7 @@ function findProjectionValleys(
  * Recursive XY-Cut core algorithm.
  * Partitions boxes hierarchically by largest valleys along alternating or optimal axes.
  */
-export function buildXyCutTree(
+function buildXyCutTree(
   items: PdfTextItem[],
   bounds: PdfBoundingBox,
   options: Required<XyCutOptions>,
@@ -410,7 +410,7 @@ export function buildXyCutTree(
  * - Vertical cuts: Left child -> Right child
  * - Horizontal cuts: Top child -> Bottom child
  */
-export function flattenXyCutTree(node: LayoutCutNode): PdfTextItem[] {
+function flattenXyCutTree(node: LayoutCutNode): PdfTextItem[] {
   if (node.type === 'leaf') {
     return node.items;
   }

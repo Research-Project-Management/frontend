@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-linter.ts
  *
  * Local-First Real-Time LaTeX Linter Extension for CodeMirror 6 (Block 4: Engines Layer).
@@ -49,7 +49,7 @@ function hashLinterInput(text: string, options: LinterOptions = {}): string {
   return `${cacheEpoch}|${options.projectId ?? ''}|${options.docId ?? ''}|${options.filePath ?? 'main.tex'}|${text.length}:${h >>> 0}|${bibSig}|${labelSig}|${retractedSize}`;
 }
 
-export class LatexLinterClient {
+class LatexLinterClient {
   private currentRequestId = 0;
   private lastLintedHash: string | null = null;
   private lastDiagnostics: Diagnostic[] = [];
@@ -135,7 +135,7 @@ export class LatexLinterClient {
   }
 }
 
-export const latexLinterClient = new LatexLinterClient();
+const latexLinterClient = new LatexLinterClient();
 
 interface ViewLinterCacheEntry {
   inputHash: string;
@@ -155,7 +155,7 @@ export function resetLatexLinterCache(): void {
   clearLatexLinterCache();
 }
 
-export function createLatexLinterPlugin(boundFilePath?: string) {
+function createLatexLinterPlugin(boundFilePath?: string) {
   return ViewPlugin.fromClass(
     class {
       update(update: ViewUpdate) {
@@ -194,7 +194,7 @@ export function createLatexLinterPlugin(boundFilePath?: string) {
  */
 export const latexLinterPlugin = createLatexLinterPlugin();
 
-export function createLatexLinterSource(
+function createLatexLinterSource(
   boundFilePath?: string,
 ): (view: EditorView) => LinterDiagnostic[] {
   let instanceLastInputHash: string | null = null;

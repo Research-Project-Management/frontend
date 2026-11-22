@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * LayoutSwitcher.tsx
@@ -109,7 +109,7 @@ export function detachPdfPreview(projectId?: string | null, pdfUrl?: string | nu
   }
 }
 
-export function LayoutSwitcher() {
+function LayoutSwitcher() {
   const layout = useSettingsStore((s) => s.layout);
   const setLayout = useSettingsStore((s) => s.setLayout);
   const pdfUrl = useCompileStore((s) => s.pdfUrl);

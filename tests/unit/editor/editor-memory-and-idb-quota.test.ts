@@ -19,7 +19,7 @@ import {
 } from '@/features/editor/subsystems/compiler';
 import {
   calculateAdaptiveReaderQuota,
-} from '@/features/library/domain/reader-document-storage.domain';
+} from '@/features/library/core/adapters/reader-storage.adapter';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { pageQuery } from '@/features/editor/core/queries/document.queries';
 

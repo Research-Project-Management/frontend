@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * InsertMenu.tsx
@@ -19,13 +19,13 @@ import {
   MenubarSubContent,
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { useWorkspaceStore } from '../../store/workspace.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 
-export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
+function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
   const mainBibFile = useSettingsStore((s) => s.mainBibFile) || DEFAULT_BIB_FILE;
   const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
@@ -70,7 +70,7 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
                 onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'equation-generator' })}
                 className="cursor-pointer"
               >
-                <span className="whitespace-nowrap">Generate equation with AI…</span>
+                <span className="whitespace-nowrap">Generate equation with AIâ€¦</span>
               </MenubarItem>
             )}
           </MenubarSubContent>

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * compilation-snapshot.ts
  *
  * In-Memory Consistent Project Compilation Snapshot Domain Model (Pure Domain Layer).
@@ -25,7 +25,7 @@ export interface ProjectCompilationSnapshot {
   fileCount: number;
 }
 
-export type SnapshotContentValue =
+type SnapshotContentValue =
   | string
   | { source?: string; text?: string; content?: string }
   | null
@@ -40,20 +40,20 @@ export interface SnapshotProjectFile {
   content?: SnapshotContentValue;
 }
 
-export interface SnapshotLRUModel {
+interface SnapshotLRUModel {
   fileId: string;
   filePath?: string;
   content: string;
   isDirty?: boolean;
 }
 
-export interface SnapshotDirtyItem {
+interface SnapshotDirtyItem {
   fileId: string;
   filePath?: string;
   content: string;
 }
 
-export interface SnapshotActiveDoc {
+interface SnapshotActiveDoc {
   id?: string;
   title?: string | null;
   name?: string | null;
@@ -80,7 +80,7 @@ export interface AssembleSnapshotParams {
  * Builds a fileId -> human path map from every available source (explicit map, project files
  * from the page store, current page, active doc). Used to avoid keying content by UUID.
  */
-export function buildFilePathIndex(params: AssembleSnapshotParams): Map<string, string> {
+function buildFilePathIndex(params: AssembleSnapshotParams): Map<string, string> {
   const index = new Map<string, string>();
   const add = (id: string | null | undefined, path: string | null | undefined) => {
     if (!id || !path || path === id) return;
@@ -99,7 +99,7 @@ export function buildFilePathIndex(params: AssembleSnapshotParams): Map<string, 
  * Resolves a project-relative path for a fileId, preferring an explicit path when it is not a
  * raw UUID/id, falling back to `pathIndex`, then `fallbackPath`.
  */
-export function resolveSnapshotFilePath(
+function resolveSnapshotFilePath(
   fileId: string | null | undefined,
   explicitPath: string | null | undefined,
   pathIndex: Map<string, string>,
@@ -212,7 +212,7 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
     }
   }
 
-  // 5. Overlay active editor buffer (highest priority — live keystrokes)
+  // 5. Overlay active editor buffer (highest priority â€” live keystrokes)
   let activeFilePath = 'main.tex';
   if (params.activeDoc) {
     activeFilePath = resolveSnapshotFilePath(

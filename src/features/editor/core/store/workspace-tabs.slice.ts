@@ -64,10 +64,6 @@ export function getCurrentWindowPageScope(): string | null {
   return currentWindowPageScope;
 }
 
-export function setCurrentWindowPageScope(scope: string | null): void {
-  currentWindowPageScope = scope;
-}
-
 export function createTabsSlice<
   TState extends WorkspaceTabsSliceState &
     Pick<LayoutState, 'editorSplitMode' | 'secondaryFileId'>,

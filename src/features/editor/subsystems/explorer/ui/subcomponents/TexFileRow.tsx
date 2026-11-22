@@ -8,6 +8,9 @@ import {
   Download,
   Copy,
   Columns2,
+  FilePlus,
+  FolderPlus,
+  Upload,
 } from 'lucide-react';
 import { editorCommandBus } from '@/features/editor/core';
 import {
@@ -50,6 +53,9 @@ export interface TexFileRowProps {
   onSetMain: (id: string) => void;
   onDownload?: (file: { id: string; title: string }) => void;
   onCopyCommand?: (title: string) => void;
+  onNewFile?: () => void;
+  onNewFolder?: () => void;
+  onUpload?: () => void;
 }
 
 export const TexFileRow = React.memo(function TexFileRow({
@@ -71,10 +77,24 @@ export const TexFileRow = React.memo(function TexFileRow({
   onSetMain,
   onDownload,
   onCopyCommand,
+  onNewFile,
+  onNewFolder,
+  onUpload,
 }: TexFileRowProps) {
   const { icon: FileIcon, color: fileColor } = getFileIcon(file.title, { monochrome: true });
   const fullName = displayName(file.title);
   const label = displayLabel || fullName;
+
+  const handleCopyPath = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      const targetPath = file.title || fullName;
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        void navigator.clipboard.writeText(targetPath);
+      }
+    },
+    [file.title, fullName],
+  );
 
   const handleCopyInput = useCallback(
     (e?: React.MouseEvent) => {
@@ -168,70 +188,106 @@ export const TexFileRow = React.memo(function TexFileRow({
         </TooltipContent>
       </Tooltip>
 
-      {/* Row action dropdown trigger (⋮) */}
-      <RowActions>
-        {!isMain && /\.(tex|ltx|rtex|rnw)$/i.test(file.title || displayName(file.title)) && (
+      {/* Row action dropdown trigger (⋮) — only visible on the active open file */}
+      {isActive && (
+        <RowActions className="opacity-100 sm:opacity-100">
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
-              onSetMain(file.id);
+              onStartRename(file);
             }}
             className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
           >
-            <Star className="size-4 text-warning shrink-0" strokeWidth={1.5} />
-            <span>Set as Main Document</span>
+            <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Rename</span>
           </DropdownMenuItem>
-        )}
-        <DropdownMenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            editorCommandBus.dispatch({ type: 'editor:open-to-side', fileId: file.id });
-          }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <Columns2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Open to the Side</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={handleCopyInput}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Copy \input command</span>
-        </DropdownMenuItem>
-        {onDownload && (
           <DropdownMenuItem
-            onClick={handleDownload}
+            onClick={handleCopyPath}
             className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
           >
-            <Download className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Download</span>
+            <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Copy path</span>
           </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={(e) => {
-            e.stopPropagation();
-            onStartRename(file);
-          }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-          <span>Rename</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={isMain}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isMain) onDelete(file.id);
-          }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
-          <span>Delete</span>
-        </DropdownMenuItem>
-      </RowActions>
+          {onDownload && (
+            <DropdownMenuItem
+              onClick={handleDownload}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Download className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Download</span>
+            </DropdownMenuItem>
+          )}
+          {!isMain && /\.(tex|ltx|rtex|rnw)$/i.test(file.title || displayName(file.title)) && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSetMain(file.id);
+                }}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <Star className="size-4 text-warning shrink-0" strokeWidth={1.5} />
+                <span>Set as main document</span>
+              </DropdownMenuItem>
+            </>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={isMain}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isMain) onDelete(file.id);
+            }}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
+            <span>Delete</span>
+          </DropdownMenuItem>
+          {(onNewFile || onNewFolder || onUpload) && (
+            <>
+              <DropdownMenuSeparator />
+              {onNewFile && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNewFile();
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <FilePlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>New file</span>
+                </DropdownMenuItem>
+              )}
+              {onNewFolder && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNewFolder();
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>New folder</span>
+                </DropdownMenuItem>
+              )}
+              {onUpload && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onUpload();
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Upload className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Upload</span>
+                </DropdownMenuItem>
+              )}
+            </>
+          )}
+        </RowActions>
+      )}
     </div>
   );
 

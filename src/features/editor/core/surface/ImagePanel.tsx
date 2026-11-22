@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ImagePanel.tsx
  *
  * Image Asset Viewer Panel inside Editor Area (Block 6: UI Features Layer).

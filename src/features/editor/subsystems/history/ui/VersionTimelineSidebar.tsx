@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import {
@@ -16,7 +16,7 @@ import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectVersionListItem } from '@/features/editor/domain/types/history.types';
 
-export function formatVersionTime(dateStr?: string | null): string {
+function formatVersionTime(dateStr?: string | null): string {
   if (!dateStr) return 'Just now';
   try {
     const d = new Date(dateStr);
@@ -280,7 +280,7 @@ export function VersionTimelineSidebar({
                       <span>{v.fileCount || 1} files</span>
                       {onSelectBaseVersion && (
                         <>
-                          <span className="text-border/70">•</span>
+                          <span className="text-border/70">â€¢</span>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -293,7 +293,7 @@ export function VersionTimelineSidebar({
                             )}
                             title={`Set Version ${v.version} as the comparison base`}
                           >
-                            {isBase ? '● Base' : 'Set as base'}
+                            {isBase ? 'â— Base' : 'Set as base'}
                           </button>
                         </>
                       )}

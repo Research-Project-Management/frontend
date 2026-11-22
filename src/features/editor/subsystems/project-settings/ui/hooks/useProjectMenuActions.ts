@@ -1,4 +1,4 @@
-/**
+﻿/**
  * useProjectMenuActions.ts
  *
  * Project menu drawer state, file/page queries, export, template publishing,
@@ -16,8 +16,8 @@ import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { filesQuery, pageQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { useProjectExport } from '@/features/editor/core/hooks/useExport';
-import { useGithubSync } from '@/features/editor/subsystems/project-settings/hooks/useGithubSync';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useGithubSync } from '@/features/editor/subsystems/project-settings/ui/hooks/useGithubSync';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';

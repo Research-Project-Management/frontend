@@ -1,4 +1,4 @@
-/**
+﻿/**
  * session-persistence.strategy.ts
  *
  * REST CAS retry, conflict resolution extraction, realtime Yjs flush, and
@@ -58,7 +58,7 @@ export function shouldUseRealtimePersistence(input: {
   );
 }
 
-export function isTransientSaveError(err: unknown): boolean {
+function isTransientSaveError(err: unknown): boolean {
   const status = (err as { status?: number })?.status;
   if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504) {
     return true;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * pdf-outline.ts
  *
  * Utilities for extracting and resolving document outlines/bookmarks from PDF.js instances
@@ -15,7 +15,7 @@ export interface PdfOutlineItem {
   level: number;
 }
 
-export interface PdfJsOutlineItem {
+interface PdfJsOutlineItem {
   title: string;
   dest?: string | unknown[];
   items?: PdfJsOutlineItem[];
@@ -147,7 +147,7 @@ export const OUTLINE_INDENT = [0, 8, 18, 28, 38, 48, 58];
 /**
  * Strips LaTeX formatting commands, math delims, and labels from section titles.
  */
-export function cleanLatexTitle(raw: string): string {
+function cleanLatexTitle(raw: string): string {
   let cleaned = raw || '';
   for (let i = 0; i < 4; i++) {
     cleaned = cleaned.replace(/\\[a-zA-Z]+\*?(?:\[[^\]]*\])?\{([^{}]*)\}/g, '$1');
@@ -224,7 +224,7 @@ function extractDocumentContentString(content: unknown): string {
   return '';
 }
 
-export function parseLatexHeadings(
+function parseLatexHeadings(
   content: unknown,
   sourceFile?: string,
   backendEntries?: LatexOutlineEntryDto[],

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * word-count.ts
  *
  * Domain types and lightweight adapters for LaTeX word count statistics.
@@ -13,7 +13,7 @@ export interface WordCountSection {
   words: number;
 }
 
-export interface WordCountFileStats {
+interface WordCountFileStats {
   id: string;
   title: string;
   path?: string;
@@ -122,7 +122,7 @@ function countProseWords(text: string): number {
     .replace(/\\[a-zA-Z]+\*?/g, ' ')
     .replace(/[{}\[\]()~^_\\.,;:?!'"`@#$%&*+=<>|/\\-]/g, ' ');
   let count = 0;
-  const matches = cleaned.match(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu) || [];
+  const matches = cleaned.match(/[\p{L}\p{N}]+(?:['â€™][\p{L}\p{N}]+)*/gu) || [];
   for (const token of matches) {
     const cjkMatches = token.match(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/g);
     if (cjkMatches) {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * FileMenu.tsx
@@ -14,7 +14,7 @@ import { usePageStore } from '../../store/editor.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useWorkspaceStore } from '../../store/workspace.store';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings, History } from 'lucide-react';
 import { GitHubIcon } from '@/shared/components/icons';

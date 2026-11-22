@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+﻿import { describe, it, expect, vi } from 'vitest';
 import {
   extractLatexWords,
   createLatexSpellingExtension,
@@ -8,7 +8,7 @@ import {
   resolveSpellingNotifier,
   setDefaultSpellingService,
   setDefaultSpellingNotifier,
-} from '@/features/editor/core/engine/adapters/editor-spelling-port';
+} from '@/features/editor/core/engine/adapters/editor-spelling.port';
 import type {
   SpellingServicePort,
   SpellingNotificationPort,
@@ -123,21 +123,21 @@ for sorting lists.
   });
 
   it('correctly extracts Vietnamese words with tone marks and Latin Extended characters', () => {
-    const text = 'Nghiên cứu về trí tuệ nhân tạo và xử lý ngôn ngữ tự nhiên.';
+    const text = 'NghiÃªn cá»©u vá» trÃ­ tuá»‡ nhÃ¢n táº¡o vÃ  xá»­ lÃ½ ngÃ´n ngá»¯ tá»± nhiÃªn.';
     const words = extractLatexWords(text).map((w) => w.word);
-    expect(words).toContain('Nghiên');
-    expect(words).toContain('cứu');
-    expect(words).toContain('về');
-    expect(words).toContain('trí');
-    expect(words).toContain('tuệ');
-    expect(words).toContain('nhân');
-    expect(words).toContain('tạo');
-    expect(words).toContain('xử');
-    expect(words).toContain('lý');
-    expect(words).toContain('ngôn');
-    expect(words).toContain('ngữ');
-    expect(words).toContain('tự');
-    expect(words).toContain('nhiên');
+    expect(words).toContain('NghiÃªn');
+    expect(words).toContain('cá»©u');
+    expect(words).toContain('vá»');
+    expect(words).toContain('trÃ­');
+    expect(words).toContain('tuá»‡');
+    expect(words).toContain('nhÃ¢n');
+    expect(words).toContain('táº¡o');
+    expect(words).toContain('xá»­');
+    expect(words).toContain('lÃ½');
+    expect(words).toContain('ngÃ´n');
+    expect(words).toContain('ngá»¯');
+    expect(words).toContain('tá»±');
+    expect(words).toContain('nhiÃªn');
   });
 
   it('masks BibTeX entries, citation keys, field keys, and author metadata', () => {

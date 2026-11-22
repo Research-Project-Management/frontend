@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ProjectDictionaryTab.tsx
@@ -11,7 +11,7 @@ import { Plus, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
-import { useSpellingDictionary } from '@/features/editor/subsystems/project-settings/hooks/useSpelling';
+import { useSpellingDictionary } from '@/features/editor/subsystems/project-settings/ui/hooks/useSpelling';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 
 export interface ProjectDictionaryTabProps {

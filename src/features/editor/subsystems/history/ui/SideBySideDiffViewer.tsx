@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * SideBySideDiffViewer.tsx
@@ -50,7 +50,7 @@ function normalizeDiffLine(raw: DiffLine | string, idx: number): DiffLine {
 
 const alignedHunkCache = new WeakMap<DiffHunk, AlignedSplitRow[]>();
 
-export function alignHunkForSplitView(hunk: DiffHunk): AlignedSplitRow[] {
+function alignHunkForSplitView(hunk: DiffHunk): AlignedSplitRow[] {
   const cached = alignedHunkCache.get(hunk);
   if (cached) return cached;
 

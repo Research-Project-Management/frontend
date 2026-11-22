@@ -1,5 +1,5 @@
-/**
- * latex-structure.ts — Lightweight LaTeX Outline, Environment & Diagnostic helpers.
+﻿/**
+ * latex-structure.ts â€” Lightweight LaTeX Outline, Environment & Diagnostic helpers.
  * Authoritative full-document AST outline parsing is handled by `/structure/outline`.
  */
 
@@ -76,13 +76,13 @@ export function parseCompileErrors(
   return errors;
 }
 
-export interface LatexSection {
+interface LatexSection {
   level: string;
   title: string;
   startLine: number;
 }
 
-export interface LatexEnvironment {
+interface LatexEnvironment {
   type: string;
   startLine: number;
   endLine: number;

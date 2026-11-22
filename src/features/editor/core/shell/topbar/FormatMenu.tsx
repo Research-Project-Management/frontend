@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * FormatMenu.tsx
@@ -32,7 +32,7 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useSettingsStore } from '../../store/settings.store';
 import { editorCommandBus } from '../../bus/command-bus';
 import { isMacPlatform } from '@/features/editor/domain/constants/editor.constants';
@@ -44,7 +44,7 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
 
   // Platform-aware modifier label
   const isMac = useMemo(() => isMacPlatform(), []);
-  const modLabel = isMac ? '⌘' : 'Ctrl ';
+  const modLabel = isMac ? 'âŒ˜' : 'Ctrl ';
 
   const handleFormat = useCallback(
     (format: LatexFormatType) => {

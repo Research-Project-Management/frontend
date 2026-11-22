@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * CitationRetractionAlertDialog.tsx
@@ -21,7 +21,7 @@ import {
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import type { RetractedItemInfo } from '@/features/editor/subsystems/citation/model/retracted-citations';
 
-export interface PendingRetractedCitation {
+interface PendingRetractedCitation {
   entry: BibEntry;
   info: RetractedItemInfo;
 }

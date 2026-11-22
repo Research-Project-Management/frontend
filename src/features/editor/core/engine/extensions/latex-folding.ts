@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-folding.ts
  *
  * CodeMirror 6 Intelligent LaTeX Code Folding Service (Block 4: Engines Layer).
@@ -40,7 +40,7 @@ function stripUnescapedComment(line: string): string {
   return line;
 }
 
-export function computeLatexFoldRange(
+function computeLatexFoldRange(
   state: EditorState,
   lineStart: number,
   _lineEnd?: number,
@@ -144,7 +144,7 @@ export function computeLatexFoldRange(
   return null;
 }
 
-export const latexFoldService = foldService.of(computeLatexFoldRange);
+const latexFoldService = foldService.of(computeLatexFoldRange);
 
 /**
  * Creates the CodeMirror 6 LaTeX Folding Extension

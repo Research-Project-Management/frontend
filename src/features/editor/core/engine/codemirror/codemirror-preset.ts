@@ -1,4 +1,4 @@
-/**
+﻿/**
  * codemirror-preset.ts
  *
  * Core CodeMirror 6 Extension Preset (Engines Layer).
@@ -119,7 +119,7 @@ if (typeof window !== 'undefined') {
  * Allows toggling editor features without unmounting EditorView or losing undo history.
  * Use `createEditorCompartments()` for per-instance compartments across split panes.
  */
-export function createEditorCompartments() {
+function createEditorCompartments() {
   return {
     readOnly: new Compartment(),
     lineNumbers: new Compartment(),
@@ -146,11 +146,11 @@ export type EditorCompartmentMap = ReturnType<typeof createEditorCompartments>;
 
 export const editorCompartments: EditorCompartmentMap = createEditorCompartments();
 
-export const editorCompartmentsFacet = Facet.define<EditorCompartmentMap, EditorCompartmentMap>({
+const editorCompartmentsFacet = Facet.define<EditorCompartmentMap, EditorCompartmentMap>({
   combine: (values) => values[0] ?? editorCompartments,
 });
 
-export function getViewCompartments(view?: EditorView | null): EditorCompartmentMap {
+function getViewCompartments(view?: EditorView | null): EditorCompartmentMap {
   return view?.state.facet(editorCompartmentsFacet) ?? editorCompartments;
 }
 

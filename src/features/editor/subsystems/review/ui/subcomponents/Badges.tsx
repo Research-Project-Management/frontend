@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Badges.tsx
@@ -13,7 +13,7 @@ import { AtSign } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { parseMentionTokens } from '@/features/editor/domain/collaboration/mention';
 
-// ── Review Icons ────────────────────────────────────────────────────────────
+// â”€â”€ Review Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function ReviewIcon({
   className = 'size-4',
@@ -57,15 +57,15 @@ export function ResolvedCommentsIcon({
   );
 }
 
-// ── Mention Badges & Renderer ───────────────────────────────────────────────
+// â”€â”€ Mention Badges & Renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export interface MentionBadgeProps {
+interface MentionBadgeProps {
   name: string;
   userId?: string;
   className?: string;
 }
 
-export const MentionBadge = React.memo(function MentionBadge({
+const MentionBadge = React.memo(function MentionBadge({
   name,
   userId,
   className,

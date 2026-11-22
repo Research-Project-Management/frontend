@@ -24,31 +24,6 @@ export const EDITOR_FONT_FAMILIES = [
 
 export const EDITOR_FONT_SIZES = [10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
 
-export type SettingsTab =
-  | 'editor'
-  | 'compiler'
-  | 'references'
-  | 'github'
-  | 'appearance';
-
-// ── Overleaf 1:1 Code Icon (<>) ────────────────────────────────────────────────
-export function CodeIconBrackets({ className = 'size-4 shrink-0' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <polyline points="8 7 3 12 8 17" />
-      <polyline points="16 7 21 12 16 17" />
-    </svg>
-  );
-}
-
 // ── Settings Switch (Toggle) ──────────────────────────────────────────────────
 export function SettingsSwitch({
   checked,

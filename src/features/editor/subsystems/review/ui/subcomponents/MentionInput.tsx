@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, {
   useState,
@@ -228,7 +228,7 @@ export const MentionTextarea = React.forwardRef<
 
   return (
     <div className="relative w-full">
-      {/* ── Autocomplete Popover Dropdown ── */}
+      {/* â”€â”€ Autocomplete Popover Dropdown â”€â”€ */}
       {isOpen && (
         <div
           ref={popoverRef}
@@ -301,7 +301,7 @@ export const MentionTextarea = React.forwardRef<
         </div>
       )}
 
-      {/* ── Input or Textarea ── */}
+      {/* â”€â”€ Input or Textarea â”€â”€ */}
       {singleLine ? (
         <input
           ref={inputRef as React.RefObject<HTMLInputElement>}

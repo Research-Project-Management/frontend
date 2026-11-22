@@ -147,7 +147,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       </div>
 
       {/* ── Content List ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-4 space-y-1 bg-background sidebar-scrollbar">
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto px-2 pt-1.5 pb-0 space-y-1 bg-background sidebar-scrollbar">
         {filterTab === 'document' ? (
           <>
             {/* Authoritative Bibliography Validation Warnings */}
@@ -194,14 +194,13 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                     variant="citations"
                     isCompact
                     title="No citations in document"
-                    description="Citations added with \\cite{...} will appear here."
+                    description="Citations added with \cite{...} will appear here."
                     action={
                       <button
                         type="button"
                         onClick={() => openPickerModal()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                        className="inline-flex items-center px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
                       >
-                        <Plus className="size-3.5" />
                         <span>Insert Citation</span>
                       </button>
                     }
@@ -254,9 +253,8 @@ export default function CitationTab({ onClose }: CitationTabProps) {
                       <button
                         type="button"
                         onClick={() => openPickerModal()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                        className="inline-flex items-center px-3 py-1.5 rounded-md text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
                       >
-                        <Plus className="size-3.5" />
                         <span>Search References</span>
                       </button>
                     }
@@ -280,6 +278,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       <CitationBottomNav
         filterTab={filterTab}
         onFilterTabChange={setFilterTab}
+        documentCount={citedEntries.length}
       />
     </div>
   );

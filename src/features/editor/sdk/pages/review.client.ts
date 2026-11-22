@@ -83,7 +83,7 @@ export const comments = {
 
   addReply: async (docId: string, commentId: string, content: string): Promise<PageComment> => {
     const data = await apiPost<{ comment: PageComment }>(
-      `${PAGES_API_BASE}/docs/${docId}/comments/${commentId}/reply`,
+      `${PAGES_API_BASE}/docs/${docId}/comments/${commentId}/replies`,
       { content },
     );
     return data.comment;
@@ -210,11 +210,8 @@ export const suggestions = {
 };
 
 export const review = {
-  getReviewStatus: async (spaceId: string, docId: string): Promise<ReviewStatusResponse> => {
-    const endpoint = spaceId
-      ? `${PAGES_API_BASE}/spaces/${spaceId}/docs/${docId}/review-status`
-      : `${PAGES_API_BASE}/pages/${docId}/review-status`;
-    return await apiGet<ReviewStatusResponse>(endpoint);
+  getReviewStatus: async (_spaceId: string, docId: string): Promise<ReviewStatusResponse> => {
+    return await apiGet<ReviewStatusResponse>(`${PAGES_API_BASE}/docs/${docId}/review-status`);
   },
 
   getProjectOverview: async (
@@ -234,13 +231,13 @@ export const review = {
   },
 
   updateReviewStatus: async (
-    spaceId: string,
+    _spaceId: string,
     docId: string,
     payload: { status: ReviewStatus; notes?: string; deadline?: string },
   ): Promise<ReviewStatusResponse> => {
-    const endpoint = spaceId
-      ? `${PAGES_API_BASE}/spaces/${spaceId}/docs/${docId}/review-status`
-      : `${PAGES_API_BASE}/pages/${docId}/review-status`;
-    return await apiPost<ReviewStatusResponse>(endpoint, payload);
+    return await apiPost<ReviewStatusResponse>(
+      `${PAGES_API_BASE}/docs/${docId}/review-status`,
+      payload,
+    );
   },
 };

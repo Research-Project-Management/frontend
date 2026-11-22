@@ -1,4 +1,4 @@
-/**
+﻿/**
  * visibility.coordinator.ts
  *
  * Tab Visibility & CRDT/Lifecycle Hibernation Coordinator (Coordinators Layer).
@@ -14,9 +14,9 @@
 
 import { editorCommandBus } from '../bus/command-bus';
 
-export type VisibilityLifecycleState = 'active' | 'hibernated';
+type VisibilityLifecycleState = 'active' | 'hibernated';
 
-export class VisibilityCoordinator {
+class VisibilityCoordinator {
   private currentState: VisibilityLifecycleState = 'active';
   private initialized = false;
   private hiddenTimestamp: number | null = null;

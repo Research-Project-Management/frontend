@@ -16,60 +16,31 @@ export {
   CompilerCoordinator,
   SnapshotProvider,
   buildPageStoreFilePaths,
-  type CompileOptions,
-  type SyncTeXForwardDetail,
-  type SyncTeXReverseDetail,
 } from './coordinator/compiler.coordinator';
 export {
   CompilePipeline,
-  generateThumbnail,
   type CompilerPort,
   type CompileExecutionOptions,
-  type CompileExecutionResult,
-  type DirtyFileItem,
-  type FlushBarrierDeps,
-  type CompilerDiagnostic,
 } from './coordinator/compile-pipeline';
 export {
   useCompileStore,
   selectFilteredCompileDiagnostics,
-  useFilteredCompileDiagnostics,
-  type DocumentCompilerState,
-  type FilteredCompileDiagnosticsResult,
-  type CompilePhase,
-  type CompileOutcome,
-  type CompileReport,
 } from './coordinator/compiler.store';
-export type {
-  CompileLogMeta,
-  DiagnosticsSummary,
-  CompileValidationIssue,
-} from '@/features/editor/domain/types/compiler.types';
 export {
   createInitialCompilerFsmContext,
   compilerFsmTransition,
   deriveCompileStatus,
   isCompilerFsmRunning,
   type CompilerFsmContext,
-  type CompilerFsmEvent,
-  type CompilerFsmPhase,
 } from '@/features/editor/domain/document/compiler-fsm';
 export {
   useViewerStore,
-  type DocumentViewerState,
-  type PdfFitMode,
 } from './coordinator/viewer.store';
 
 // 2. SyncTeX & PDF Intelligence
 export {
-  TEX_SP_PER_PT,
-  TEX_PT_TO_BP,
-  DEFAULT_PDF_PAGE_WIDTH_PT,
-  DEFAULT_PDF_PAGE_HEIGHT_PT,
-  type PdfPageDimensions,
   type SyncTeXNode,
   type SyncTeXMap,
-  type SyncTeXReverseResult,
   resolveForward,
   resolveForwardDetail,
   resolveReverse,
@@ -78,10 +49,7 @@ export {
 } from './synctex/synctex-index';
 export {
   performRecursiveXyCut,
-  buildXyCutTree,
   computeBoundingBox,
-  type PdfTextBlock,
-  type PdfBoundingBox,
 } from './synctex/xy-cut';
 export {
   extractPdfBookmarks,
@@ -89,22 +57,18 @@ export {
   parseDocumentOutline,
   dtoToOutlineEntries,
   cacheBackendOutline,
-  cleanLatexTitle,
   OUTLINE_INDENT,
-  type PdfOutlineItem,
   type OutlineEntry,
 } from './synctex/pdf-outline';
 export {
   createPdfBlobAndUrl,
   extractDoiFromText,
   parsePdfDate,
-  type PdfBlobResult,
 } from './synctex/pdf-resolver';
 
 // 3. Log Parsing & Diagnostic Filtering
 export {
   parseLatexLog,
-  DEFAULT_OUTPUT_FILES,
   type LogEntry,
   type ParsedLog,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
@@ -120,10 +84,7 @@ export { default as DetachedPdfPlaceholder } from './ui/DetachedPdfPlaceholder';
 export {
   default as PdfSurface,
   PdfSyncTeXHighlightBox,
-  type PdfSurfaceHandle,
-  type PdfSurfaceProps,
   type SynctexHighlightState,
-  type ClickIndicator,
 } from './ui/PdfSurface';
 export { default as CompilerLogs } from './ui/CompilerLogs';
 export { CompileOutcomeCard } from './ui/logs/CompileOutcomeCard';
@@ -131,19 +92,17 @@ export { CompileButton } from './ui/CompileButton';
 export { default as CompilationErrorBanner } from './ui/CompilationErrorBanner';
 export {
   resolveProjectFileByLogPath,
-  type ProjectFileCandidate,
 } from './ui/hooks/useLogViewerActions';
 export { default as PdfToolbar } from './ui/PdfToolbar';
 export { default as PdfFindBar } from './ui/PdfFindBar';
 export { default as PdfZoomControls } from './ui/PdfZoomControls';
-export { usePdfZoom, type UsePdfZoomOptions } from './ui/hooks/usePdfZoom';
+export { usePdfZoom } from './ui/hooks/usePdfZoom';
 export { usePdfSearch, buildPdfSearchRegex, escapePdfSearchRegExp } from './ui/hooks/usePdfSearch';
 export { useSynchronizedScroll } from './ui/hooks/useSynchronizedScroll';
 
 // 5. Pre-Compile Flush Barrier
 export {
   FlushBarrier,
-  type FlushBarrierResult,
 } from './coordinator/flush-barrier';
 
 // 6. Subsystem Deep Interface Port & Implementation (The Seam)

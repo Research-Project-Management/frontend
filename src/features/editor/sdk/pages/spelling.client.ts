@@ -1,4 +1,4 @@
-/**
+﻿/**
  * spelling.client.ts
  *
  * Pages Spelling & Custom Dictionaries Sub-API (Part of pagesService SDK).
@@ -16,7 +16,7 @@ export interface SpellingSuggestionResponse {
   suggestions: string[];
 }
 
-export interface MisspelledWord {
+interface MisspelledWord {
   word: string;
   line: number;
   col: number;

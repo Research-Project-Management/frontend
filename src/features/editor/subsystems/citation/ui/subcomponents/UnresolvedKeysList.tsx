@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { memo } from 'react';
 import { AlertCircle, Search, Copy, Check } from 'lucide-react';

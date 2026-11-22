@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
@@ -15,7 +15,7 @@ import {
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
 
 const outlineResultCache = new Map<string, OutlineEntry[]>();

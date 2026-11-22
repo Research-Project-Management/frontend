@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * Overview.tsx
@@ -26,9 +26,9 @@ import { CommentCard } from './Comments';
 import { SuggestionCard } from './Suggestions';
 import { EmptyReviewState } from './Nav';
 
-// ── Overview File Group ─────────────────────────────────────────────────────
+// â”€â”€ Overview File Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export interface OverviewFileGroupProps {
+interface OverviewFileGroupProps {
   file: { id: string; title: string };
   currentUserId?: string;
   projectId?: string;
@@ -42,7 +42,7 @@ export interface OverviewFileGroupProps {
   isPreloadedLoading?: boolean;
 }
 
-export const OverviewFileGroup = React.memo(function OverviewFileGroup({
+const OverviewFileGroup = React.memo(function OverviewFileGroup({
   file,
   currentUserId,
   projectId,
@@ -97,32 +97,22 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
   }
 
   return (
-    <div className="border-b border-border last:border-b-0">
+    <section className="py-1">
       {/* File Header */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label={`Jump to file ${file.title}`}
         onClick={() => onNavigateToFile(file.id)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onNavigateToFile(file.id);
-          }
-        }}
-        className="flex items-center justify-between px-3.5 py-2 bg-muted/40 hover:bg-muted/70 cursor-pointer transition-colors border-b border-border outline-none focus-visible:ring-1 focus-visible:ring-border"
+        className="group sticky top-0 z-10 w-full flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-xs hover:bg-muted/50 cursor-pointer transition-colors text-left outline-none focus-visible:ring-1 focus-visible:ring-border"
       >
-        <div className="flex items-center gap-2 min-w-0">
-          <FileText className="size-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs font-mono font-semibold text-foreground truncate">{file.title}</span>
-        </div>
-        <span className="text-11 font-mono font-semibold px-2 py-0.5 rounded-sm bg-background text-foreground border border-border">
-          {totalVisibleCount}
+        <FileText className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" strokeWidth={1.5} />
+        <span className="text-12 font-mono font-medium text-muted-foreground group-hover:text-foreground truncate transition-colors">
+          {file.title}
         </span>
-      </div>
+      </button>
 
       {/* Items under this file */}
-      <div className="flex flex-col p-2.5">
+      <div className="flex flex-col gap-2 px-3 pt-1 pb-2.5">
         {visibleSuggestions.map((s: PageSuggestion) => (
           <SuggestionCard
             key={s.id}
@@ -154,11 +144,11 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 });
 
-// ── Overview View ───────────────────────────────────────────────────────────
+// â”€â”€ Overview View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface OverviewViewProps {
   files: Array<{ id: string; title: string }>;
@@ -232,7 +222,7 @@ export function OverviewView({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto min-h-0">
+    <div className="flex-1 overflow-y-auto min-h-0 sidebar-scrollbar divide-y divide-border/60">
       {files.map((file) => {
         const preloaded = overviewByDocId?.get(file.id);
         return (

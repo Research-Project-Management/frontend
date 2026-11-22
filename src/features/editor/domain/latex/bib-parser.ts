@@ -1,4 +1,4 @@
-/**
+﻿/**
  * bib-parser.ts
  *
  * Canonical BibTeX `BibEntry` domain model and lightweight fallback parser (Domain Layer).
@@ -38,7 +38,7 @@ export interface BibParseResult {
   entries: BibEntry[];
 }
 
-export function parseBibFields(body: string, entry: BibEntry): void {
+function parseBibFields(body: string, entry: BibEntry): void {
   const fieldRegex = /\b(title|author|year|journal|booktitle|doi|volume|number|issue|pages|publisher|url|abstract)\s*=\s*(?:\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}|"([^"]*)"|([^,\s}\n]+))/gi;
   let match: RegExpExecArray | null;
   while ((match = fieldRegex.exec(body)) !== null) {

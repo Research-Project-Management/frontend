@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ViewMenu.tsx
@@ -43,7 +43,7 @@ function CommentPenIcon({ className }: { className?: string }) {
   );
 }
 
-export function ViewMenu() {
+function ViewMenu() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const {
     layout,
@@ -98,7 +98,7 @@ export function ViewMenu() {
       </MenubarTrigger>
 
       <MenubarContent className="min-w-64 text-xs select-none">
-        {/* ── Section 1: Layout options ── */}
+        {/* â”€â”€ Section 1: Layout options â”€â”€ */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Layout options
         </div>
@@ -188,7 +188,7 @@ export function ViewMenu() {
 
         <MenubarSeparator />
 
-        {/* ── Section 2: Editor display mode (Source vs Visual) ── */}
+        {/* â”€â”€ Section 2: Editor display mode (Source vs Visual) â”€â”€ */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editor display mode</span>
@@ -225,7 +225,7 @@ export function ViewMenu() {
           </MenubarSubContent>
         </MenubarSub>
 
-        {/* ── Section 3: Editing mode ── */}
+        {/* â”€â”€ Section 3: Editing mode â”€â”€ */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editing mode</span>
@@ -279,7 +279,7 @@ export function ViewMenu() {
         {/* Divider */}
         <MenubarSeparator />
 
-        {/* ── Section 3: Editor settings ── */}
+        {/* â”€â”€ Section 3: Editor settings â”€â”€ */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Editor settings
         </div>
@@ -324,7 +324,7 @@ export function ViewMenu() {
         {/* Divider */}
         <MenubarSeparator />
 
-        {/* ── Section 4: PDF preview ── */}
+        {/* â”€â”€ Section 4: PDF preview â”€â”€ */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           PDF preview
         </div>

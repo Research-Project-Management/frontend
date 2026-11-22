@@ -36,7 +36,7 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   };
 });
 
-vi.mock('@/features/library/sdk/catalog/catalog.queries', () => ({
+vi.mock('@/features/library/sdk/queries/catalog.queries', () => ({
   useCollections: vi.fn().mockReturnValue({
     collections: [],
     isLoading: false,

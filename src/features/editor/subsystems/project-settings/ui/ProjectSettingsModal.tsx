@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ProjectSettingsModal.tsx / OverleafMenuDrawer
@@ -36,7 +36,7 @@ import { ProjectReferencesTab } from './ProjectReferencesTab';
 import { ProjectDictionaryTab } from './ProjectDictionaryTab';
 import { ProjectCompilerSection } from './ProjectCompilerSection';
 import { ProjectGitSmartHttpCard } from './ProjectGitSmartHttpCard';
-import { useProjectMenuActions } from './useProjectMenuActions';
+import { useProjectMenuActions } from './hooks/useProjectMenuActions';
 
 export { EDITOR_FONT_FAMILIES, EDITOR_FONT_SIZES };
 
@@ -229,7 +229,7 @@ export function ProjectSettingsModal() {
                   </div>
                 </div>
                 <span className="text-xs text-primary font-medium group-hover:underline">
-                  {m.isCopyingPage ? 'Copying...' : 'Duplicate →'}
+                  {m.isCopyingPage ? 'Copying...' : 'Duplicate â†’'}
                 </span>
               </button>
 
@@ -250,7 +250,7 @@ export function ProjectSettingsModal() {
                   </div>
                 </div>
                 <span className="text-xs text-primary font-medium group-hover:underline">
-                  {m.isSavingTemplate ? 'Saving...' : 'Save →'}
+                  {m.isSavingTemplate ? 'Saving...' : 'Save â†’'}
                 </span>
               </button>
 
@@ -270,7 +270,7 @@ export function ProjectSettingsModal() {
                   </div>
                 </div>
                 <span className="text-xs text-primary font-medium group-hover:underline">
-                  Analyze →
+                  Analyze â†’
                 </span>
               </button>
             </section>

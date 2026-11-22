@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * ProjectGithubTab.tsx
@@ -21,7 +21,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useIntegrations } from '@/features/settings/hooks/use-integrations';
-import { useGithubSync } from '@/features/editor/subsystems/project-settings/hooks/useGithubSync';
+import { useGithubSync } from '@/features/editor/subsystems/project-settings/ui/hooks/useGithubSync';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -206,7 +206,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
         </Button>
       </div>
 
-      {/* ── Linked State ──────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Linked State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {isLinked && linkedRepo && (
         <div className="space-y-4">
           {/* Linked Repo Card */}
@@ -323,7 +323,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
         </div>
       )}
 
-      {/* ── Unlinked State / Change Repository ────────────────────────────────── */}
+      {/* â”€â”€ Unlinked State / Change Repository â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {(!isLinked || showChangeRepo) && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">

@@ -14,8 +14,4 @@ export {
   navigationCoordinator,
   NavigationCoordinator,
   jumpToEditorLine,
-  defaultNavigationNotifier,
-  type OpenDocumentOptions,
-  type PendingLineJump,
-  type NavigationNotificationPort,
 } from './coordinator/navigation.coordinator';

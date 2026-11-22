@@ -1,4 +1,4 @@
-/**
+﻿/**
  * core.types.ts
  *
  * Core document & page domain models, UX validation schemas, and inferred DTOs.
@@ -61,7 +61,7 @@ export const renameItemSchema = z.object({
 });
 
 declare const brand: unique symbol;
-export type Brand<T, B> = T & { readonly [brand]: B };
+type Brand<T, B> = T & { readonly [brand]: B };
 
 export type SpaceId = Brand<string, 'SpaceId'>;
 export type DocId = Brand<string, 'DocId'>;
@@ -77,9 +77,9 @@ export type DocumentContent =
       content?: string;
     };
 
-export type PageStatus = 'draft' | 'published' | 'archived';
+type PageStatus = 'draft' | 'published' | 'archived';
 
-export interface PageAuthor {
+interface PageAuthor {
   id: string;
   name: string;
   avatar?: string;
@@ -134,7 +134,7 @@ export interface PageFile {
   url?: string;
 }
 
-// ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────
+// â”€â”€ Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export interface TextDocument {
   id: string;
@@ -229,13 +229,11 @@ export function extractDocumentContentString(content?: DocumentContent | unknown
 export {
   newFileModalSchema,
   type NewFileModalFormValues,
-  urlImportModalSchema,
   type UrlImportModalFormValues,
   libraryBibtexModalSchema,
   type LibraryBibtexModalFormValues,
   figureWizardSchema,
   type FigureWizardFormValues,
-  tableWizardSchema,
   type TableWizardFormValues,
   pushChangesSchema,
   type PushChangesFormValues,
@@ -243,10 +241,8 @@ export {
   type LinkRepoFormValues,
   createRepoSchema,
   type CreateRepoFormValues,
-  learnedWordSchema,
   type LearnedWordFormValues,
   projectRenameSchema,
   type ProjectRenameInput,
-  projectCopySchema,
   type ProjectCopyInput,
 } from './forms.types';

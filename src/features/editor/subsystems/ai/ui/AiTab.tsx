@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -34,7 +34,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useAiChatActions } from './useAiChatActions';
 
 interface AiTabProps {
@@ -631,7 +631,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   ? {
                       text: selectionContext,
                       label: activeFilename
-                        ? `Selected LaTeX • ${activeFilename}`
+                        ? `Selected LaTeX â€¢ ${activeFilename}`
                         : 'Selected LaTeX',
                     }
                   : null

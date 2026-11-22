@@ -1,4 +1,4 @@
-/**
+﻿/**
  * latex-spelling.ts
  *
  * CodeMirror 6 Live LaTeX Spell Check Extension (Engines Layer).
@@ -15,7 +15,7 @@ import {
   resolveSpellingService,
   spellingServiceFacet,
   spellingNotifierFacet,
-} from '@/features/editor/core/engine/adapters/editor-spelling-port';
+} from '@/features/editor/core/engine/adapters/editor-spelling.port';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
   extractLatexWords,
@@ -57,12 +57,7 @@ function hashSpellingInput(projectId: string, language: string, text: string): s
   return `${projectId}|${language}|${text.length}:${h >>> 0}`;
 }
 
-export function clearSpellingCaches(): void {
-  spellingResultCache.clear();
-  inFlightSpellingChecks.clear();
-}
-
-export function resetSpellingSessionCache(): void {
+function resetSpellingSessionCache(): void {
   sessionIgnoredWords.clear();
   spellingResultCache.clear();
   inFlightSpellingChecks.clear();
@@ -79,7 +74,7 @@ export interface LatexSpellingOptions {
 let lastSpellingLanguage: string | null = null;
 let lastSpellingProjectId: string | null = null;
 
-export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
+function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
   const { projectId, language = 'en_US', enabled = true, spellingService: customService } = options;
 
   return ViewPlugin.fromClass(

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { memo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -53,7 +53,7 @@ export const VirtualizedCitationList = memo(function VirtualizedCitationList({
   return (
     <div
       ref={parentRef}
-      className="max-h-[calc(100vh-210px)] overflow-y-auto sidebar-scrollbar"
+      className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar"
     >
       <div
         style={{

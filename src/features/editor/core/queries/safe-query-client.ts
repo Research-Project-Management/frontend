@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * safe-query-client.ts
@@ -11,7 +11,7 @@
 import { useContext } from 'react';
 import { QueryClientContext, QueryClient } from '@tanstack/react-query';
 
-export const fallbackQueryClient = new QueryClient({
+const fallbackQueryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,

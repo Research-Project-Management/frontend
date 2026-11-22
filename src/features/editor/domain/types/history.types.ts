@@ -1,10 +1,10 @@
-/**
+﻿/**
  * history.types.ts
  *
  * Types for version history, snapshot comparisons, and change timelines.
  */
 
-export type VersionEventType =
+type VersionEventType =
   | 'manual_save'
   | 'auto_save'
   | 'collaborative_checkpoint'
@@ -14,7 +14,7 @@ export type VersionEventType =
   | 'asset_uploaded'
   | 'asset_deleted';
 
-export interface VersionAuthor {
+interface VersionAuthor {
   id: string;
   name: string;
   avatar?: string;
@@ -34,7 +34,7 @@ export interface PageVersionWithContent extends PageVersion {
   content: string;
 }
 
-export interface PageEvent {
+interface PageEvent {
   id: string;
   versionNumber?: number;
   eventType: VersionEventType;
@@ -50,7 +50,7 @@ export interface PageEvent {
 
 export type ProjectEvent = PageEvent;
 
-export interface DiffChunk {
+interface DiffChunk {
   type: 'added' | 'deleted' | 'removed' | 'unchanged' | 'change';
   value?: string;
   content?: string;
@@ -100,7 +100,7 @@ export interface ProjectVersionListItem {
   createdAt: string;
 }
 
-export interface FileSnapshotDto {
+interface FileSnapshotDto {
   path: string;
   lines?: string[];
   content?: string;
@@ -114,9 +114,9 @@ export interface ProjectSnapshotDetail extends ProjectVersionListItem {
   files: Record<string, FileSnapshotDto | string>;
 }
 
-export type FileDiffStatus = 'added' | 'deleted' | 'modified' | 'renamed' | 'unchanged';
+type FileDiffStatus = 'added' | 'deleted' | 'modified' | 'renamed' | 'unchanged';
 
-export interface WordDiffToken {
+interface WordDiffToken {
   type: 'added' | 'deleted' | 'unchanged';
   text: string;
 }

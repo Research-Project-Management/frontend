@@ -1,4 +1,4 @@
-/**
+﻿/**
  * WorkbenchLayout.tsx
  *
  * Workbench Layout Orchestrator (Block 7: UI Shell Layer).
@@ -33,7 +33,7 @@ import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
-import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
@@ -45,7 +45,6 @@ import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.con
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
 const ProjectSettingsModal = dynamic(() => import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal'), { ssr: false });
-const DeletedFilesModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/DeletedFilesModal'), { ssr: false });
 const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
 const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationPickerModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
@@ -152,7 +151,6 @@ export function WorkbenchLayout() {
   );
 
   const [wordCountOpen, setWordCountOpen] = useState(false);
-  const [deletedFilesOpen, setDeletedFilesOpen] = useState(false);
   const [citationPickerOpen, setCitationPickerOpen] = useState(false);
   const [citationPickerInitialQuery, setCitationPickerInitialQuery] = useState<string | undefined>(undefined);
   const [renameCitationOpen, setRenameCitationOpen] = useState(false);
@@ -186,8 +184,6 @@ export function WorkbenchLayout() {
     const unsubCmd = editorCommandBus.subscribe('dialog:open', (cmd) => {
       if (cmd.dialog === 'word-count') {
         setWordCountOpen(true);
-      } else if (cmd.dialog === 'deleted-files') {
-        setDeletedFilesOpen(true);
       } else if (cmd.dialog === 'citation-picker') {
         setCitationPickerInitialQuery(cmd.payload?.initialQuery || undefined);
         setCitationPickerOpen(true);
@@ -229,9 +225,6 @@ export function WorkbenchLayout() {
     const unsubClose = editorCommandBus.subscribe('dialog:close', (cmd) => {
       if (!cmd.dialog || cmd.dialog === 'word-count') {
         setWordCountOpen(false);
-      }
-      if (!cmd.dialog || cmd.dialog === 'deleted-files') {
-        setDeletedFilesOpen(false);
       }
       if (!cmd.dialog || cmd.dialog === 'citation-picker') {
         setCitationPickerOpen(false);
@@ -344,20 +337,6 @@ export function WorkbenchLayout() {
           projectId={rawProjectId}
           rootPageId={rootPageId}
           engine={engine}
-        />
-      )}
-
-      {deletedFilesOpen && (
-        <DeletedFilesModal
-          open={deletedFilesOpen}
-          onOpenChange={(open) => {
-            if (!open) {
-              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'deleted-files' });
-            } else {
-              setDeletedFilesOpen(true);
-            }
-          }}
-          pageId={rootPageId || currentPageId || ''}
         />
       )}
 

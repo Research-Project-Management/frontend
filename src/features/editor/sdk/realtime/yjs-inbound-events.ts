@@ -1,4 +1,4 @@
-/**
+﻿/**
  * yjs-inbound-events.ts
  *
  * Extracted Socket.IO inbound event registration & dispatch helpers for YjsSocketIOProvider.
@@ -25,7 +25,7 @@ import type {
   YjsSocketIOProviderOptions,
 } from './yjs-awareness-sync';
 
-export const RELAYABLE_SOCKET_EVENTS = [
+const RELAYABLE_SOCKET_EVENTS = [
   'compile:progress',
   'doc:evicted',
   'doc:persisted',
@@ -34,7 +34,7 @@ export const RELAYABLE_SOCKET_EVENTS = [
   'project:chat:new',
 ] as const;
 
-export const REVIEW_SOCKET_EVENTS = [
+const REVIEW_SOCKET_EVENTS = [
   'review:status-changed',
   'track-changes:created',
   'track-changes:resolved',

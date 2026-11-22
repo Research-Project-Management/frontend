@@ -4,6 +4,7 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useReviewState } from './hooks/useReviewState';
+import { useDeleteComment, useResolveComment } from './hooks/useComments';
 import {
   ReviewHeader,
   ReviewBottomNav,
@@ -24,6 +25,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
   const {
     pageId,
     projectId,
+    currentFileName,
     user,
     scope,
     setScope,
@@ -40,6 +42,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     commentLineEnd,
     mentionMembers,
     membersMap,
+    comments,
     visibleComments,
     visibleSuggestions,
     pendingSuggestions,
@@ -64,6 +67,13 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
   } = useReviewState();
 
 
+  const resolveCommentMutation = useResolveComment();
+  const deleteCommentMutation = useDeleteComment();
+  const resolvedComments = React.useMemo(
+    () => comments.filter((c) => c.status === 'resolved'),
+    [comments],
+  );
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden text-foreground select-none">
       {/* ── Top Header ── */}
@@ -71,6 +81,23 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         showResolved={showResolved}
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
+        resolvedComments={resolvedComments}
+        currentFileName={currentFileName}
+        onReopenComment={(commentId) => {
+          if (pageId) {
+            resolveCommentMutation.mutate({
+              pageId,
+              commentId,
+              resolved: false,
+              projectId,
+            });
+          }
+        }}
+        onDeleteComment={(commentId) => {
+          if (pageId) {
+            deleteCommentMutation.mutate({ pageId, commentId, projectId });
+          }
+        }}
         onClose={onClose}
       />
 
@@ -133,7 +160,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
                 <span className="text-xs">Loading review items…</span>
               </div>
             ) : totalAllItems === 0 ? (
-              <EmptyReviewState />
+              showAddForm ? null : <EmptyReviewState />
             ) : totalVisibleItems === 0 ? (
               <EmptyReviewState
                 title="No open comments or suggestions"

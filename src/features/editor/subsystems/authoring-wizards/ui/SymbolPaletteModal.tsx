@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * SymbolPaletteModal.tsx
@@ -40,7 +40,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
-export interface SymbolPaletteModalProps {
+interface SymbolPaletteModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInsert: (latexSymbol: string) => void;
@@ -72,7 +72,7 @@ const SYMBOLS_BY_CATEGORY: Record<string, readonly IndexedMathSymbol[]> = (() =>
   return map;
 })();
 
-export function SymbolPaletteModal({
+function SymbolPaletteModal({
   open,
   onOpenChange,
   onInsert,
@@ -158,11 +158,11 @@ export function SymbolPaletteModal({
         >
           <TabsList className="flex items-center w-full h-8 text-11 rounded-md bg-muted p-0.5 border border-border overflow-x-auto scrollbar-none">
             <TabsTrigger value="all" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">All</TabsTrigger>
-            <TabsTrigger value="greek-lower" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (α)</TabsTrigger>
-            <TabsTrigger value="greek-upper" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (Δ)</TabsTrigger>
-            <TabsTrigger value="operators" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Operators (∫)</TabsTrigger>
-            <TabsTrigger value="relations" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Relations (≤)</TabsTrigger>
-            <TabsTrigger value="arrows" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Arrows (→)</TabsTrigger>
+            <TabsTrigger value="greek-lower" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (Î±)</TabsTrigger>
+            <TabsTrigger value="greek-upper" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (Î”)</TabsTrigger>
+            <TabsTrigger value="operators" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Operators (âˆ«)</TabsTrigger>
+            <TabsTrigger value="relations" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Relations (â‰¤)</TabsTrigger>
+            <TabsTrigger value="arrows" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Arrows (â†’)</TabsTrigger>
           </TabsList>
 
           {/* Symbol Grid */}

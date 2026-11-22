@@ -1,4 +1,4 @@
-/**
+﻿/**
  * editor.store.ts
  *
  * Store for current active document, active file, project context, and file hierarchy.
@@ -10,7 +10,7 @@ import { normalizeVirtualPath } from '@/features/editor/domain/document/document
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
-export interface EditorGithubLinkInfo {
+interface EditorGithubLinkInfo {
   id: string;
   repoFullName: string;
   branch: string;
@@ -18,7 +18,7 @@ export interface EditorGithubLinkInfo {
 }
 
 export interface DocumentEditorState {
-  // ── Coordinate Model (spaceId -> pageId -> activeDocId) ──
+  // â”€â”€ Coordinate Model (spaceId -> pageId -> activeDocId) â”€â”€
   spaceId: string;
   spaceType: 'personal' | 'project';
   projectId: string;
@@ -39,7 +39,7 @@ export interface DocumentEditorState {
   permissions: { role: string; canEdit: boolean; canCompile: boolean } | null;
   githubLink: EditorGithubLinkInfo | null;
 
-  // ── Setters & Actions ───────────────────────────────────────────────────
+  // â”€â”€ Setters & Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   setCurrentPage: (page: Page | PageFile | null | ((prev: Page | PageFile | null) => Page | PageFile | null)) => void;
   setSpaceId: (id: string) => void;
   setProjectId: (id: string) => void;
@@ -72,7 +72,7 @@ export interface DocumentEditorState {
   }) => void;
   resetPageState: () => void;
 
-  // ── Canonical Manuscript & LaTeX Accessors (Overleaf Parity) ────────────
+  // â”€â”€ Canonical Manuscript & LaTeX Accessors (Overleaf Parity) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   getActiveDocument: () => Page | PageFile | null;
   getActiveDocumentId: () => string | null;
   getActiveDocumentTitle: () => string;
@@ -278,7 +278,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
       githubLink: null,
     }),
 
-  // ── Canonical Manuscript Accessor Implementations ───────────────────────
+  // â”€â”€ Canonical Manuscript Accessor Implementations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   getActiveDocument: () => get().activeFilePage || get().currentPage,
   getActiveDocumentId: () => get().activeDocId || get().activePageId || (get().activeFilePage || get().currentPage)?.id || null,
   getActiveDocumentTitle: () => (get().activeFilePage || get().currentPage)?.title || 'main.tex',

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * compiler-fsm.ts
  *
  * Pure Finite State Machine (Domain Layer) for the LaTeX Compiler Lifecycle.
@@ -16,7 +16,7 @@ import type {
   DiagnosticsSummary,
 } from '../types/compiler.types';
 
-export type CompilerFsmPhase = CompilePhase;
+type CompilerFsmPhase = CompilePhase;
 
 export interface CompilerFsmContext {
   readonly phase: CompilerFsmPhase;
@@ -55,7 +55,7 @@ export type CompilerFsmEvent =
   | { type: 'CLEAR_LOGS' }
   | { type: 'RESET' };
 
-export function createEmptyDiagnosticsSummary(): DiagnosticsSummary {
+function createEmptyDiagnosticsSummary(): DiagnosticsSummary {
   return {
     totalErrors: 0,
     totalWarnings: 0,
@@ -233,7 +233,7 @@ export function compilerFsmTransition(
       }
       const offlineReport: CompileReport = {
         outcome: 'offline-queued',
-        errorMessage: 'Offline — compile queued',
+        errorMessage: 'Offline â€” compile queued',
         diagnostics: [],
         summary: createEmptyDiagnosticsSummary(),
         validationIssues: [],

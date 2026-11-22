@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 /**
  * CitationInspectorPane.tsx
@@ -31,7 +31,7 @@ import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { editorCommandBus } from '@/features/editor/core';
 import type { CitationStyle } from '../modals/CitationPickerModal';
 
-export const STYLE_OPTIONS: { id: CitationStyle; label: string; preview: string }[] = [
+const STYLE_OPTIONS: { id: CitationStyle; label: string; preview: string }[] = [
   { id: 'latex-cite', label: '\\cite', preview: '\\cite{key}' },
   { id: 'latex-citep', label: '\\citep', preview: '\\citep{key}' },
   { id: 'latex-citet', label: '\\citet', preview: '\\citet{key}' },
@@ -120,7 +120,7 @@ export function CitationInspectorPane({
           onClick={onBackToList}
           className="inline-flex items-center gap-1.5 text-xs text-foreground font-medium hover:underline cursor-pointer"
         >
-          <span>← Back to references list</span>
+          <span>â† Back to references list</span>
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * spelling.port.ts
  *
  * Pure Domain Port contracts for Spelling Service and Notifications.
@@ -10,7 +10,7 @@
  * - Testable: allows unit testing spellcheck extensions with in-memory test doubles.
  */
 
-export interface MisspelledWordDomain {
+interface MisspelledWordDomain {
   word: string;
   line?: number;
   col?: number;
@@ -18,14 +18,14 @@ export interface MisspelledWordDomain {
   suggestions?: string[];
 }
 
-export interface SpellingReportDomain {
+interface SpellingReportDomain {
   language: string;
   totalWordsChecked: number;
   misspelledCount: number;
   errors: MisspelledWordDomain[];
 }
 
-export interface CheckSpellingPayloadDomain {
+interface CheckSpellingPayloadDomain {
   text?: string;
   docId?: string;
   language?: string;

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * synctex-index.ts
  *
  * SyncTeX Coordinate Types & Thin Client Contract (Domain Layer).
@@ -6,8 +6,8 @@
  * the backend CLSI SyncTeX domain service (`resolveForwardRemote` / `resolveReverseRemote`).
  */
 
-export const TEX_SP_PER_PT = 65536;
-export const TEX_PT_TO_BP = 72 / 72.27;
+const TEX_SP_PER_PT = 65536;
+const TEX_PT_TO_BP = 72 / 72.27;
 export const DEFAULT_PDF_PAGE_WIDTH_PT = 595;
 export const DEFAULT_PDF_PAGE_HEIGHT_PT = 842;
 

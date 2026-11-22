@@ -206,6 +206,7 @@ vi.mock('@/features/editor/subsystems/review/ui/hooks/useComments', () => {
     useResolveComment: () => ({ mutate: globalReviewMocks.mockMutateResolve, isPending: false }),
     useDeleteComment: () => ({ mutate: globalReviewMocks.mockMutateDelete, isPending: false }),
     useDeleteReply: () => ({ mutate: globalReviewMocks.mockMutateDeleteReply, isPending: false }),
+    useUpdateReply: () => ({ mutate: vi.fn(), isPending: false }),
     useAddReply: () => ({ mutate: globalReviewMocks.mockMutateAddReply, isPending: false }),
     useCreateComment: () => ({ mutate: globalReviewMocks.mockMutateCreate, isPending: false }),
     useUpdateComment: () => ({ mutate: globalReviewMocks.mockMutateUpdate, isPending: false }),

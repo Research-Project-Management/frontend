@@ -211,6 +211,7 @@ export default function StickyDock({
   const pathname = usePathname();
   const { totalBadgeCount } = useChatBadgeCounts();
   const isChatActive = pathname === '/chat' || pathname.startsWith('/chat/');
+  const isAiRoute = pathname === '/ai' || pathname.startsWith('/ai/');
   const isFloatingChatOpen = useChatStore((s) => s.isFloatingChatOpen);
   const toggleFloatingChat = useChatStore((s) => s.toggleFloatingChat);
 
@@ -284,7 +285,7 @@ export default function StickyDock({
           isFloating
             ? cn(
                 'hidden md:flex fixed bottom-5 z-40 items-center justify-center size-10 transition-all duration-200',
-                (drawerOpen || isChatActive) && 'opacity-0 pointer-events-none scale-90 translate-y-2'
+                (drawerOpen || isChatActive || isAiRoute) && 'opacity-0 pointer-events-none scale-90 translate-y-2'
               )
             : 'relative flex items-center justify-center size-8',
           className

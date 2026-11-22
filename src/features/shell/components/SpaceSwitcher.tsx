@@ -152,7 +152,7 @@ export default function SpaceSwitcher() {
     validateOrHealSpace,
   ]);
 
-  // Sync URL [projectId] param with WorkspaceContextStore
+  // Sync URL [projectId] param and personal /settings routes with WorkspaceContextStore
   React.useEffect(() => {
     const urlProjectId = params?.projectId;
     if (urlProjectId && urlProjectId !== 'personal' && urlProjectId !== 'pages') {
@@ -169,15 +169,24 @@ export default function SpaceSwitcher() {
           avatar: matched?.avatar ?? activeSpace.projectAvatar ?? null,
         });
       }
+      return;
+    }
+
+    const isPersonalSettingsRoute =
+      pathname === '/settings' || pathname?.startsWith('/settings/');
+    if (isPersonalSettingsRoute && activeSpace.type !== 'personal') {
+      setPersonalSpace();
     }
   }, [
     params?.projectId,
+    pathname,
     projects,
     activeSpace.type,
     activeSpace.projectId,
     activeSpace.projectName,
     activeSpace.projectAvatar,
     setProjectSpace,
+    setPersonalSpace,
   ]);
 
   const personalDisplayName = useMemo(() => {

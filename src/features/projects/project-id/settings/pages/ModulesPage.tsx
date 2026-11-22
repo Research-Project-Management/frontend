@@ -4,7 +4,7 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { LayoutGrid, MessageSquare, BarChart3, Archive, Microscope } from 'lucide-react';
-import { WorkItemsIcon, WikiIcon, StorageIcon } from '@/shared/components/icons';
+import { WorkItemsIcon, WikiIcon } from '@/shared/components/icons';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Item } from '../components/module/Item';

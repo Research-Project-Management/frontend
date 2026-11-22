@@ -7,9 +7,6 @@ import {
   CalendarDays,
   X,
   Check,
-  CalendarClock,
-  UserCheck,
-  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -195,41 +192,32 @@ export function GeneralDetails({
           </div>
         </div>
 
-        {/* Research Field / Topic (Optional) */}
+        {/* Topic */}
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <BookOpen className="size-3.5 text-muted-foreground" />
-            <Label className="text-12 font-medium text-foreground">Research field / Topic</Label>
-            <span className="text-11 text-muted-foreground">(optional)</span>
-          </div>
+          <Label className="text-12 font-medium text-foreground">Topic</Label>
           <Input
             value={researchField}
             onChange={(e) => onResearchFieldChange?.(e.target.value)}
-            placeholder="e.g. Machine Learning, Natural Language Processing, Computer Vision"
+            placeholder="Enter project topic..."
             className="h-8 text-13 rounded-md border-border bg-background px-2.5 focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
 
-        {/* Description / Abstract */}
+        {/* Description */}
         <div className="space-y-1.5">
-          <Label className="text-12 font-medium text-foreground">Research abstract / Description</Label>
+          <Label className="text-12 font-medium text-foreground">Description</Label>
           <Textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
-            placeholder="Outline research questions, methodology, or project objectives..."
+            placeholder="Enter project description..."
             className="text-13 min-h-[90px] rounded-md border-border bg-background focus-visible:ring-1 focus-visible:ring-ring resize-none p-2.5 leading-relaxed"
           />
         </div>
       </div>
 
-      {/* ── Section 2: Timeline & Strategic Governance ── */}
+      {/* ── Section 2: Project Stage, Priority & Timeline ── */}
       <div className="space-y-4 pt-4 border-t border-border/60">
-        <div className="flex items-center gap-2 text-foreground font-medium text-13">
-          <CalendarClock className="size-4 text-primary shrink-0" />
-          <span>Timeline & Priority</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
           {/* 1. Project Stage / State */}
           <div className="space-y-1.5 min-w-0">
             <Label className="text-12 font-medium text-muted-foreground">Project stage</Label>
@@ -439,36 +427,9 @@ export function GeneralDetails({
           </div>
         </div>
 
-        {/* Lead / Principal Investigator Card */}
-        {lead && (
-          <div className="flex items-center justify-between p-3 rounded-md border border-border/80 bg-muted/30">
-            <div className="flex items-center gap-3 min-w-0">
-              <Avatar className="size-8">
-                {lead.avatar ? (
-                  <AvatarImage src={lead.avatar} alt={lead.name || 'PI'} />
-                ) : null}
-                <AvatarFallback className="text-11 font-medium bg-primary/10 text-primary">
-                  {leadInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-12 font-medium text-foreground truncate">
-                  {lead.name || 'Project Lead'}
-                </p>
-                <p className="text-11 text-muted-foreground truncate">
-                  {lead.email || 'Lead Investigator'}
-                </p>
-              </div>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-11 font-medium bg-primary/10 text-primary shrink-0">
-              <UserCheck className="size-3" />
-              <span>Project Lead / PI</span>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* ── Section 3: Action Row & Creation Timestamp ── */}
+      {/* ── Section 3: Action Row & Project Metadata ── */}
       <div className="flex items-center justify-between pt-4 border-t border-border/60 gap-4 flex-wrap">
         <Button
           onClick={onSubmit}
@@ -479,9 +440,26 @@ export function GeneralDetails({
           Update project
         </Button>
 
-        <span className="text-12 text-muted-foreground">
-          Created on {formattedDate}
-        </span>
+        <div className="flex items-center gap-3 text-12 text-muted-foreground flex-wrap">
+          {lead && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span>Lead:</span>
+              <Avatar className="size-5">
+                {lead.avatar ? (
+                  <AvatarImage src={lead.avatar} alt={lead.name || 'Project lead'} />
+                ) : null}
+                <AvatarFallback className="text-10 font-medium bg-primary/10 text-primary">
+                  {leadInitials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-foreground truncate max-w-[160px]">
+                {lead.name || lead.email || 'Project lead'}
+              </span>
+            </div>
+          )}
+          {lead && <span className="text-border">·</span>}
+          <span>Created on {formattedDate}</span>
+        </div>
       </div>
     </div>
   );

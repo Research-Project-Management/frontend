@@ -262,15 +262,6 @@ export default function LabelsPage() {
       <PageHeader
         title="Labels"
         icon={Tag}
-        actions={
-          <Button
-            size="sm"
-            onClick={() => openCreateModal()}
-          >
-            <Plus className="size-3.5 shrink-0" />
-            Add label
-          </Button>
-        }
       />
 
       <PageContent maxWidth="lg">
@@ -289,9 +280,17 @@ export default function LabelsPage() {
               </div>
             }
             right={
-              <span className="text-12 text-muted-foreground hidden sm:inline-block">
-                {allLabelsCount} {allLabelsCount === 1 ? 'label' : 'labels'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-12 text-muted-foreground hidden sm:inline-block">
+                  {allLabelsCount} {allLabelsCount === 1 ? 'label' : 'labels'}
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => openCreateModal()}
+                >
+                  Add label
+                </Button>
+              </div>
             }
           />
 
@@ -326,9 +325,9 @@ export default function LabelsPage() {
                     className="rounded-md border border-border bg-background overflow-hidden transition-colors shadow-none"
                   >
                     {/* Root Row */}
-                    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 hover:bg-muted/40 transition-colors group">
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        {hasChildren ? (
+                    <div className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/40 transition-colors group">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        {hasChildren && (
                           <button
                             type="button"
                             onClick={() => toggleGroup(root.id)}
@@ -343,8 +342,6 @@ export default function LabelsPage() {
                               <ChevronDown className="size-3.5 shrink-0" />
                             )}
                           </button>
-                        ) : (
-                          <div className="size-6" />
                         )}
 
                         <span
@@ -373,21 +370,22 @@ export default function LabelsPage() {
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-opacity shrink-0">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
                           onClick={() => openCreateModal(root.id)}
-                          className="h-7 text-12 px-2 text-muted-foreground hover:text-foreground cursor-pointer gap-1 relative before:absolute before:-inset-1 md:before:hidden"
-                          title="Add sub-label inside this group"
+                          className="size-7 rounded-md text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                          title="Add sub-label"
+                          aria-label={`Add sub-label inside ${root.name}`}
                         >
                           <Plus className="size-3.5 shrink-0" />
-                          <span className="hidden sm:inline">Add sub-label</span>
                         </Button>
 
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditModal(root)}
-                          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                          className="size-7 rounded-md text-foreground/75 hover:text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                           title="Edit label"
+                          aria-label={`Edit ${root.name}`}
                         >
                           <Pencil className="size-3.5 shrink-0" />
                         </Button>
@@ -396,8 +394,9 @@ export default function LabelsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => setDeletingLabel(root)}
-                          className="size-7 text-muted-foreground hover:text-destructive cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                          className="size-7 rounded-md text-foreground/75 hover:text-destructive hover:bg-destructive/10 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
                           title="Delete label"
+                          aria-label={`Delete ${root.name}`}
                         >
                           <Trash2 className="size-3.5 shrink-0" />
                         </Button>

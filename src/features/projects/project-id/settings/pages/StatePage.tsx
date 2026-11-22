@@ -237,25 +237,8 @@ export default function StatePage() {
     <PageLayout>
       <PageHeader title="States" icon={CircleDot} />
       <PageContent maxWidth="lg">
-        <div className="space-y-6">
-          {/* Subsystem Scope Description Banner */}
-          <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-13 font-semibold text-foreground tracking-tight">
-                Work Item Workflow
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-10 font-medium bg-muted text-muted-foreground border border-border/60">
-                5 State Groups
-              </span>
-            </div>
-            <p className="text-12 text-muted-foreground leading-relaxed">
-              Configure workflow states for tasks, bugs, and experiment runs. Each state maps to one of the 5 canonical state groups (Backlog, Unstarted, Started, Completed, Cancelled) powering Kanban boards, cycles, and velocity tracking.
-            </p>
-          </div>
-
-          {/* Groups list */}
-          <div className="space-y-4">
-            {STATE_GROUPS.map((groupKey) => {
+        <div className="space-y-4">
+          {STATE_GROUPS.map((groupKey) => {
               const groupConfig = STATE_GROUP_CONFIG[groupKey];
               const groupStates = statesByGroup[groupKey];
               const isCollapsed = collapsedGroups.has(groupKey);
@@ -283,9 +266,6 @@ export default function StatePage() {
                       <StateIcon group={groupKey} size={15} />
                       <span className="text-13 font-semibold text-foreground tracking-tight">
                         {groupConfig.label}
-                      </span>
-                      <span className="text-11 text-muted-foreground hidden sm:inline font-normal">
-                        &bull; {groupConfig.description}
                       </span>
                     </button>
 
@@ -568,7 +548,6 @@ export default function StatePage() {
                 </div>
               );
             })}
-          </div>
         </div>
       </PageContent>
 

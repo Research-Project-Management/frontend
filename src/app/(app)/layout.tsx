@@ -95,7 +95,7 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh max-h-dvh flex flex-col bg-background relative overflow-hidden' suppressHydrationWarning>
+    <div className='h-dvh max-h-dvh flex flex-col bg-muted relative overflow-hidden' suppressHydrationWarning>
       <ErrorBoundary fallback={null} featureName="Toolbar">
         <Topbar />
       </ErrorBoundary>
@@ -103,7 +103,7 @@ export default function AppLayout({
         <ErrorBoundary fallback={null} featureName="Sidebar">
           <Sidebar />
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
+        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 md:mr-2 md:mb-2 flex flex-col relative min-h-0 overflow-hidden'>
           {isProjectWorkspace ? (
             <ProjectLayout>
               <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">

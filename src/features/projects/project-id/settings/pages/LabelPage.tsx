@@ -37,9 +37,6 @@ import {
   Pencil,
   Trash2,
   Check,
-  Layers,
-  BookOpen,
-  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -77,7 +74,6 @@ interface TabConfig {
   id: SubsystemTab;
   label: string;
   singular: string;
-  icon: React.ComponentType<{ className?: string }>;
   description: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -89,7 +85,6 @@ const TAB_CONFIGS: Record<SubsystemTab, TabConfig> = {
     id: 'work_item',
     label: 'Work Items',
     singular: 'Work Item',
-    icon: Layers,
     description:
       'Manage taxonomy labels for tasks, bugs, features, and experiment runs.',
     emptyTitle: 'No work item labels yet',
@@ -101,7 +96,6 @@ const TAB_CONFIGS: Record<SubsystemTab, TabConfig> = {
     id: 'library',
     label: 'Library',
     singular: 'Library',
-    icon: BookOpen,
     description:
       'Manage taxonomy labels and subject classification for scientific papers and citations.',
     emptyTitle: 'No library labels yet',
@@ -113,7 +107,6 @@ const TAB_CONFIGS: Record<SubsystemTab, TabConfig> = {
     id: 'page',
     label: 'Pages',
     singular: 'Page',
-    icon: FileText,
     description:
       'Manage versioning, review, and milestone labels for manuscripts and document chapters.',
     emptyTitle: 'No page labels yet',
@@ -522,7 +515,6 @@ export default function LabelPage() {
           <div className="flex items-center gap-1.5 border-b border-border pb-3">
             {(['work_item', 'library', 'page'] as const).map((tabKey) => {
               const config = TAB_CONFIGS[tabKey];
-              const Icon = config.icon;
               const isActive = activeTab === tabKey;
               return (
                 <button
@@ -530,32 +522,16 @@ export default function LabelPage() {
                   type="button"
                   onClick={() => handleTabChange(tabKey)}
                   className={cn(
-                    "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-13 font-medium transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    "inline-flex items-center px-3.5 py-1.5 rounded-lg text-13 font-medium transition-all cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     isActive
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                      ? "bg-muted text-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   )}
                 >
-                  <Icon className="size-4 shrink-0" />
                   <span>{config.label}</span>
                 </button>
               );
             })}
-          </div>
-
-          {/* ── Subsystem Scope Description Banner ── */}
-          <div className="p-3.5 rounded-xl border border-border/70 bg-muted/20 space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-13 font-semibold text-foreground tracking-tight">
-                {currentTabConfig.label} Taxonomy
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-10 font-medium bg-muted text-muted-foreground border border-border/60">
-                Scoped to {currentTabConfig.label}
-              </span>
-            </div>
-            <p className="text-12 text-muted-foreground leading-relaxed">
-              {currentTabConfig.description}
-            </p>
           </div>
 
           {/* ── Toolbar: Search & Add Label Button ── */}
@@ -698,9 +674,6 @@ export default function LabelPage() {
                             </span>
                           )}
                         </div>
-                        <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-10 font-medium bg-muted/80 text-muted-foreground border border-border/50 shrink-0">
-                          {currentTabConfig.singular}
-                        </span>
                       </div>
 
                       {/* Right: Three Dots Action Menu */}

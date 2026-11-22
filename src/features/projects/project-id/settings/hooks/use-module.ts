@@ -12,7 +12,7 @@ export function useModules(projectId: string) {
   const updateMutation = useUpdateProject();
 
   const DEFAULT_MODULES = useMemo(
-    () => ['work-items', 'pages', 'chat', 'storage', 'analytics', 'archives'],
+    () => ['work-items', 'pages', 'chat', 'experiments', 'analytics', 'archives'],
     [],
   );
 
@@ -68,25 +68,9 @@ export function useModules(projectId: string) {
     });
   }, [projectId, updateProject]);
 
-  const hasChanges = useMemo(() => {
-    const a = [...active].sort().join(',');
-    const b = [...serverModules].sort().join(',');
-    return a !== b;
-  }, [active, serverModules]);
-
-  const save = useCallback(() => {
-    const modulesToSave = Array.from(new Set(['overview', 'work-items', ...active]));
-    updateProject(
-      { projectId, modules: modulesToSave },
-      { onSuccess: () => toast.success('Modules updated', { id: 'settings-module' }) },
-    );
-  }, [projectId, active, updateProject]);
-
   return {
     active,
     toggle,
-    hasChanges,
-    save,
     isSaving: updateMutation.isPending,
     isLoading,
     isError,

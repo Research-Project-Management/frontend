@@ -72,10 +72,13 @@ export function SecurityTab() {
       ) : (
         <div className="space-y-6">
           {/* ── Section Header ── */}
-          <div className="pb-3 border-b border-border">
+          <div className="pb-3 border-b border-border space-y-1">
             <h3 className="text-14 font-semibold text-foreground tracking-tight">
               Password Management
             </h3>
+            <p className="text-12 text-muted-foreground">
+              Update your password regularly to keep your account secure.
+            </p>
           </div>
 
           <Form {...form}>
@@ -101,7 +104,7 @@ export function SecurityTab() {
                         <button
                           type="button"
                           onClick={() => setShowCurrent(!showCurrent)}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                           aria-label={showCurrent ? 'Hide current password' : 'Show current password'}
                         >
                           {showCurrent ? (
@@ -138,7 +141,7 @@ export function SecurityTab() {
                         <button
                           type="button"
                           onClick={() => setShowNew(!showNew)}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                           aria-label={showNew ? 'Hide new password' : 'Show new password'}
                         >
                           {showNew ? (
@@ -175,7 +178,7 @@ export function SecurityTab() {
                         <button
                           type="button"
                           onClick={() => setShowConfirm(!showConfirm)}
-                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
                           aria-label={showConfirm ? 'Hide confirm password' : 'Show confirm password'}
                         >
                           {showConfirm ? (

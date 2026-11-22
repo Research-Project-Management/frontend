@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Switch } from '@/shared/components/ui/switch';
-import { cn } from "@/shared/lib/utils";
 import type { ModuleDef } from '../../types/module.types';
 
 interface ItemProps {
@@ -16,28 +15,22 @@ export function Item({ mod, active, disabled, onToggle }: ItemProps) {
   const Icon = mod.icon;
 
   return (
-    <div
-      className={cn(
-        'flex items-center justify-between gap-4 rounded-md border p-4 transition-colors',
-        active
-          ? 'border-border bg-background hover:bg-muted/30'
-          : 'border-border/60 bg-muted/20 opacity-60',
-        mod.locked && 'opacity-70',
-      )}
-    >
+    <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-background hover:bg-muted/30 p-4 transition-colors">
       <div className="flex items-center gap-3 min-w-0">
-        <div
-          className={cn(
-            'flex size-9 shrink-0 items-center justify-center rounded-md bg-muted',
-            active ? 'text-foreground' : 'text-muted-foreground',
-          )}
-        >
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
           <Icon className="size-4 shrink-0" />
         </div>
         <div className="min-w-0">
-          <h3 className="text-13 font-semibold text-foreground leading-tight">
-            {mod.label}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-13 font-semibold text-foreground leading-tight">
+              {mod.label}
+            </h3>
+            {mod.locked && (
+              <span className="px-1.5 py-0.5 rounded text-10 font-medium bg-muted text-muted-foreground shrink-0">
+                Core
+              </span>
+            )}
+          </div>
           <p className="text-12 text-muted-foreground leading-snug mt-0.5">
             {mod.desc}
           </p>

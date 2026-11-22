@@ -78,9 +78,9 @@ export default function ProjectSettingLayout({
         aria-label="Project Settings navigation"
         className="h-full w-60 shrink-0 border-r border-border bg-background md:bg-transparent flex flex-col select-none max-md:w-full max-md:h-auto max-md:border-r-0 max-md:border-b"
       >
-        <div className="h-11 px-4 flex items-center shrink-0 max-md:hidden">
-          <span className="font-semibold text-sm tracking-tight text-foreground">
-            Settings
+        <div className="h-11 px-3.5 flex items-center shrink-0 max-md:hidden">
+          <span className="font-semibold text-13 tracking-tight text-foreground">
+            Project Settings
           </span>
         </div>
 
@@ -110,7 +110,7 @@ export default function ProjectSettingLayout({
                     'group/item relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 select-none max-md:shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden',
                     isActive
                       ? 'bg-muted text-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
+                      : 'text-foreground hover:bg-muted font-normal'
                   )}
                 >
                   <Icon

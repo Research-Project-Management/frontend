@@ -5,14 +5,13 @@ import {
   AlertCircle,
   ArrowRight,
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { MessagePart } from '../../types/message';
 import { getAgentMeta } from '../registry/agents';
 import {
-  CATEGORY_SURFACE,
   getToolMeta,
   getToolUI,
   type ToolPartData,
@@ -21,6 +20,28 @@ import {
 export type TracePartData =
   | ToolPartData
   | Extract<MessagePart, { type: 'agent-handoff' }>;
+
+const CONTEXT_KEYS = [
+  'title',
+  'file_path',
+  'query',
+  'identifier',
+  'name',
+  'action',
+  'target_bib_file',
+] as const;
+
+function formatToolContext(input?: Record<string, unknown>): string | null {
+  if (!input) return null;
+  for (const key of CONTEXT_KEYS) {
+    const val = input[key];
+    if (typeof val === 'string' && val.trim()) {
+      const clean = val.trim();
+      return clean.length <= 48 ? clean : `${clean.slice(0, 47)}…`;
+    }
+  }
+  return null;
+}
 
 export function ToolPart({ part }: { part: ToolPartData }) {
   const [open, setOpen] = useState(false);
@@ -31,17 +52,22 @@ export function ToolPart({ part }: { part: ToolPartData }) {
 
   const meta = getToolMeta(part.toolName);
   const Icon = meta.icon;
+  const contextLabel = formatToolContext(part.input);
+  const hasInspectorData = Boolean(part.input || part.output);
 
   return (
     <div className="py-1">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`p-1 rounded-md ${CATEGORY_SURFACE[meta.category]}`}>
-            <Icon className="size-3 shrink-0" />
-          </span>
-          <span className="text-xs font-medium text-foreground truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Icon className="size-3.5 text-muted-foreground shrink-0" />
+          <span className="text-xs text-foreground/90 truncate">
             {meta.label}
           </span>
+          {contextLabel && (
+            <span className="text-xs text-muted-foreground truncate">
+              · {contextLabel}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
@@ -49,17 +75,17 @@ export function ToolPart({ part }: { part: ToolPartData }) {
             <Loader2 className="size-3 text-ai animate-spin shrink-0" />
           )}
           {part.status === 'done' && (
-            <CheckCircle2 className="size-3 text-success shrink-0" />
+            <CheckCircle2 className="size-3 text-success/80 shrink-0" />
           )}
           {part.status === 'error' && (
             <AlertCircle className="size-3 text-destructive shrink-0" />
           )}
 
-          {(part.input || part.output || part.error) && (
+          {hasInspectorData && (
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="text-xs text-foreground px-1.5 py-0.5 rounded-md hover:bg-muted transition-colors cursor-pointer"
+              className="text-[11px] text-muted-foreground hover:text-foreground px-1 py-0.5 rounded hover:bg-muted/60 transition-colors cursor-pointer"
             >
               {open ? 'Hide' : 'Details'}
             </button>
@@ -67,8 +93,14 @@ export function ToolPart({ part }: { part: ToolPartData }) {
         </div>
       </div>
 
-      {open && (
-        <div className="mt-1.5 rounded-sm bg-muted/60 p-2 text-xs font-mono space-y-1">
+      {part.error && (
+        <p className="mt-1 ml-5 text-xs text-destructive/90 bg-destructive/5 rounded px-2 py-1 break-words">
+          {part.error}
+        </p>
+      )}
+
+      {open && hasInspectorData && (
+        <div className="mt-1.5 ml-5 rounded-sm bg-muted/50 p-2 text-xs font-mono space-y-1">
           {part.input && (
             <div>
               <p className="text-xs text-muted-foreground font-sans font-semibold">
@@ -87,12 +119,6 @@ export function ToolPart({ part }: { part: ToolPartData }) {
               <pre className="text-foreground/80 whitespace-pre-wrap">
                 {JSON.stringify(part.output, null, 2)}
               </pre>
-            </div>
-          )}
-          {part.error && (
-            <div className="text-destructive">
-              <p className="text-xs font-sans font-semibold">Error:</p>
-              <p>{part.error}</p>
             </div>
           )}
         </div>
@@ -116,14 +142,15 @@ export function AgentHandoffPart({
       <div className="flex items-center gap-2 min-w-0">
         <ArrowRight className="size-3 text-ai shrink-0" />
         <span className="truncate">
-          Delegating to <strong className="font-semibold text-foreground">{names}</strong>
+          Delegating to{' '}
+          <strong className="font-semibold text-foreground">{names}</strong>
         </span>
       </div>
       {part.status === 'calling' && (
         <Loader2 className="size-3 text-ai animate-spin shrink-0" />
       )}
       {part.status === 'done' && (
-        <CheckCircle2 className="size-3 text-success shrink-0" />
+        <CheckCircle2 className="size-3 text-success/80 shrink-0" />
       )}
       {part.status === 'error' && (
         <AlertCircle className="size-3 text-destructive shrink-0" />
@@ -153,91 +180,93 @@ export function ToolTraceGroup({
   items: TracePartData[];
   isStreaming?: boolean;
 }) {
-  const [toggleState, setToggleState] = useState<{
-    forStreaming: boolean;
-    collapsed: boolean;
-  }>({ forStreaming: isStreaming, collapsed: !isStreaming });
-
-  if (items.length === 0) return null;
-
   const toolItems = items.filter(
     (item): item is ToolPartData => item.type === 'tool',
   );
   const runningTool = toolItems.find((t) => t.status === 'calling');
+  const hasErrors = toolItems.some((item) => item.status === 'error');
+  const defaultExpanded = isStreaming || hasErrors;
+
+  const [toggleState, setToggleState] = useState<{
+    forDefault: boolean;
+    collapsed: boolean;
+  }>({ forDefault: defaultExpanded, collapsed: !defaultExpanded });
+
+  if (items.length === 0) return null;
+
   const runningHandoff = items.find(
     (item) => item.type === 'agent-handoff' && item.status === 'calling',
   );
 
   if (toolItems.length === 0) {
-    if (!isStreaming || !runningHandoff || runningHandoff.type !== 'agent-handoff') {
+    if (
+      !isStreaming ||
+      !runningHandoff ||
+      runningHandoff.type !== 'agent-handoff'
+    ) {
       return null;
     }
     return (
-      <div className="my-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
-        <Loader2 className="size-3.5 text-ai animate-spin shrink-0" />
+      <div className="my-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Loader2 className="size-3 text-ai animate-spin shrink-0" />
         <span>{getActivityLabel(runningHandoff.to)}</span>
       </div>
     );
   }
 
   const collapsed =
-    toggleState.forStreaming === isStreaming
+    toggleState.forDefault === defaultExpanded
       ? toggleState.collapsed
-      : !isStreaming;
-  const hasErrors = toolItems.some((item) => item.status === 'error');
-  const doneTools = toolItems.filter((t) => t.status === 'done').length;
+      : !defaultExpanded;
 
-  let summaryPrefix = 'Executed ';
-  let summaryCount = `${doneTools}/${toolItems.length}`;
-  let summarySuffix = ` action${toolItems.length === 1 ? '' : 's'}`;
-  if (runningTool) {
-    summaryPrefix = `Running: ${getToolMeta(runningTool.toolName).label}`;
-    summaryCount = '';
-    summarySuffix = '';
-  }
+  const runningContext = runningTool
+    ? formatToolContext(runningTool.input)
+    : null;
+  const stepNoun = toolItems.length === 1 ? 'step' : 'steps';
 
   return (
-    <div className="my-2 rounded-md border border-border bg-panel/35 overflow-hidden">
+    <div className="my-1.5">
       <button
         type="button"
         onClick={() =>
           setToggleState({
-            forStreaming: isStreaming,
+            forDefault: defaultExpanded,
             collapsed: !collapsed,
           })
         }
-        className={cn(
-          'w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-          !collapsed && 'border-b border-border/60',
-        )}
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary rounded"
       >
-        <div className="flex items-center gap-2 min-w-0">
+        {runningTool ? (
+          <Loader2 className="size-3 text-ai animate-spin shrink-0" />
+        ) : hasErrors ? (
+          <AlertCircle className="size-3 text-destructive shrink-0" />
+        ) : (
+          <CheckCircle2 className="size-3 text-success/80 shrink-0" />
+        )}
+
+        <span className="truncate">
           {runningTool ? (
-            <Loader2 className="size-3.5 text-ai animate-spin shrink-0" />
+            <>
+              {getToolMeta(runningTool.toolName).label}
+              {runningContext ? ` · ${runningContext}` : '…'}
+            </>
           ) : hasErrors ? (
-            <AlertCircle className="size-3.5 text-destructive shrink-0" />
+            `${toolItems.length} ${stepNoun} · failed`
           ) : (
-            <CheckCircle2 className="size-3.5 text-success shrink-0" />
+            `${toolItems.length} ${stepNoun}`
           )}
+        </span>
 
-          <span className="text-xs font-medium text-foreground truncate">
-            {summaryPrefix}
-            {summaryCount && (
-              <span className="font-mono tabular-nums">{summaryCount}</span>
-            )}
-            {summarySuffix}
-          </span>
-        </div>
-
-        <ChevronDown
-          className={`size-3.5 text-muted-foreground/60 transition-transform ${
-            collapsed ? '-rotate-90' : ''
-          } shrink-0`}
+        <ChevronRight
+          className={cn(
+            'size-3 text-muted-foreground/60 transition-transform shrink-0',
+            !collapsed && 'rotate-90',
+          )}
         />
       </button>
 
       {!collapsed && (
-        <div className="divide-y divide-border/30 px-3 py-1.5">
+        <div className="ml-1.5 mt-1 pl-3 border-l border-border/50 space-y-1">
           {toolItems.map((item, idx) => (
             <ToolPart key={item.toolCallId || idx} part={item} />
           ))}

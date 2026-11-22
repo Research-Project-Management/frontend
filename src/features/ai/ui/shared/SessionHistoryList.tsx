@@ -165,12 +165,12 @@ export function SessionHistoryList({
                   onClick={() => onSelect(chat.id)}
                   aria-current={isActive ? 'page' : undefined}
                   title={displayTitle}
-                  className="flex-1 min-w-0 h-full px-1.5 text-left truncate rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ai cursor-pointer"
+                  className="flex-1 min-w-0 h-full pl-1.5 pr-7 md:pr-1.5 md:group-hover:pr-7 md:group-focus-within:pr-7 md:group-has-[[data-state=open]]:pr-7 text-left truncate rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ai cursor-pointer"
                 >
                   {displayTitle}
                 </button>
 
-                <div className="flex items-center shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity motion-reduce:transition-none">
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center shrink-0 opacity-100 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto md:group-focus-within:opacity-100 md:group-focus-within:pointer-events-auto has-[[data-state=open]]:opacity-100 has-[[data-state=open]]:pointer-events-auto transition-opacity motion-reduce:transition-none">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button

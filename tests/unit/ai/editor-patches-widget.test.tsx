@@ -286,4 +286,41 @@ describe('SSE meta widget decoding & EditorPatchesCard', () => {
       }
     }
   });
+
+  it('renders passive Provenance Badge on EditorPatchesCard with short commit SHA and GitHub link', () => {
+    const widget: EditorPatchesWidget = {
+      type: 'editor_patches',
+      title: 'Proposed LaTeX Edit',
+      patches: [
+        {
+          id: 'p-exp-1',
+          fileId: 'doc-main',
+          filePath: 'main.tex',
+          kind: 'insert_after',
+          title: 'Insert benchmark table',
+          searchText: '\\section{Experiments}',
+          replaceText: '\\begin{table}...\\end{table}',
+        },
+      ],
+      provenance: [
+        {
+          repo: 'flux-lab/vision-exp',
+          path: 'eval/metrics.csv',
+          commitSha: 'a8f2c3e4b5d6e7f8a8f2c3e4b5d6e7f8a8f2c3e4',
+          url: 'https://github.com/flux-lab/vision-exp/blob/a8f2c3e4b5d6e7f8a8f2c3e4b5d6e7f8a8f2c3e4/eval/metrics.csv',
+        },
+      ],
+    };
+
+    render(<WidgetsPart widgets={[widget]} />);
+
+    const link = screen.getByRole('link', {
+      name: /flux-lab\/vision-exp@a8f2c3e/i,
+    });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/flux-lab/vision-exp/blob/a8f2c3e4b5d6e7f8a8f2c3e4b5d6e7f8a8f2c3e4/eval/metrics.csv',
+    );
+    expect(link).toHaveAttribute('target', '_blank');
+  });
 });

@@ -52,7 +52,7 @@ export const useAiCompanionStore = create<AiCompanionState>()(
       toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
       setOpen: (open: boolean) => set({ isOpen: open }),
       setWidth: (width: number) =>
-        set({ width: Math.min(Math.max(width, 280), 640) }),
+        set({ width: Math.min(Math.max(width, 280), 840) }),
       setActiveChatId: (id: string | null) =>
         set({ activeChatId: id, isHistoryView: false }),
       toggleHistoryView: () =>

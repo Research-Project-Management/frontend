@@ -346,6 +346,9 @@ export function decodeFluxSseFrame(
         if (typeof parsed.error === 'string' && parsed.error) {
           return [{ type: 'error', message: parsed.error }];
         }
+        if (parsed.type === 'reasoning' && typeof parsed.delta === 'string') {
+          return [{ type: 'reasoning-delta', delta: unescapeNewlines(parsed.delta) }];
+        }
         if (typeof parsed.delta === 'string') {
           return [{ type: 'text-delta', delta: unescapeNewlines(parsed.delta) }];
         }

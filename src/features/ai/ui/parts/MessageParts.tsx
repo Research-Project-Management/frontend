@@ -345,7 +345,7 @@ export const MessageParts = memo(function MessageParts({
           <div
             className={cn(
               compact
-                ? 'max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-primary text-primary-foreground font-normal'
+                ? 'max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-ai text-white font-normal'
                 : 'max-w-[min(85%,56ch)] bg-muted/85 text-foreground rounded-lg rounded-br-sm px-3.5 py-2.5',
             )}
           >

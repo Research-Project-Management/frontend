@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useId, useMemo, useRef, useState } from 'react';
-import { ChevronRight, FolderKanban, Globe, Search, SquarePen, X } from 'lucide-react';
+import { ChevronDown, FolderKanban, Globe, Search, SquarePen, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { threadPool } from '../../engine/pool';
@@ -45,7 +45,11 @@ export function CompanionHistory({
   const filteredChats = useMemo(() => {
     if (!search.trim()) return chats;
     const q = search.toLowerCase();
-    return chats.filter((c) => (c.title || '').toLowerCase().includes(q));
+    return chats.filter(
+      (c) =>
+        (c.title && c.title.toLowerCase().includes(q)) ||
+        (c.lastMessage && c.lastMessage.toLowerCase().includes(q)),
+    );
   }, [chats, search]);
 
   const handleOpenSearch = () => {
@@ -77,22 +81,22 @@ export function CompanionHistory({
   return (
     <div className="flex flex-col h-full bg-background select-none overflow-hidden">
       {/* Action Buttons Row */}
-      <div className="p-3 pb-2 flex items-center gap-1.5 shrink-0">
+      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-2 shrink-0">
         {isSearchOpen ? (
           <>
             <button
               type="button"
               onClick={onNewChat}
-              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai shrink-0"
               aria-label="New chat"
               title="New chat"
             >
-              <SquarePen className="size-3.5 text-foreground/80" aria-hidden="true" />
+              <SquarePen className="size-4 text-foreground/85 shrink-0" aria-hidden="true" />
             </button>
 
-            <div className="flex-1 relative flex items-center h-8 rounded-md border border-border bg-background focus-within:border-ai focus-within:ring-1 focus-within:ring-ai/30 px-2 transition-colors">
+            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background focus-within:border-ai focus-within:ring-1 focus-within:ring-ai/30 transition-colors">
               <Search
-                className="size-3.5 text-foreground/70 shrink-0 mr-1.5"
+                className="size-4 text-muted-foreground shrink-0 pointer-events-none"
                 aria-hidden="true"
               />
               <input
@@ -102,7 +106,7 @@ export function CompanionHistory({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none font-normal"
+                className="w-full bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none border-none p-0 focus:ring-0"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setIsSearchOpen(false);
@@ -116,10 +120,10 @@ export function CompanionHistory({
                   setIsSearchOpen(false);
                   setSearch('');
                 }}
-                className="size-4 relative before:absolute before:-inset-2.5 md:before:hidden flex items-center justify-center text-foreground/70 hover:text-foreground cursor-pointer rounded transition-colors ml-1 outline-none focus-visible:ring-1 focus-visible:ring-ai"
+                className="size-4 relative before:absolute before:-inset-2.5 md:before:hidden flex items-center justify-center rounded text-muted-foreground hover:text-foreground cursor-pointer shrink-0 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
                 aria-label="Close search"
               >
-                <X className="size-3" aria-hidden="true" />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             </div>
           </>
@@ -128,21 +132,21 @@ export function CompanionHistory({
             <button
               type="button"
               onClick={onNewChat}
-              className="flex-1 h-8 px-2.5 relative before:absolute before:-inset-1.5 md:before:hidden rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground text-12 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai"
               aria-label="New chat"
             >
-              <SquarePen className="size-3.5 text-foreground/80" aria-hidden="true" />
+              <SquarePen className="size-4 text-foreground/85 shrink-0" aria-hidden="true" />
               <span>New chat</span>
             </button>
 
             <button
               type="button"
               onClick={handleOpenSearch}
-              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden shrink-0 rounded-md border border-border/80 bg-background hover:bg-muted/50 text-foreground/80 flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+              className="size-8 relative before:absolute before:-inset-1.5 md:before:hidden flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted text-foreground/80 hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai shrink-0"
               title="Search chats"
               aria-label="Search chats"
             >
-              <Search className="size-3.5" aria-hidden="true" />
+              <Search className="size-4 shrink-0" aria-hidden="true" />
             </button>
           </>
         )}
@@ -191,28 +195,26 @@ export function CompanionHistory({
       )}
 
       {/* Recents Collapsible List */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-2 py-1 select-none">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pt-2 select-none">
         <button
           type="button"
           aria-expanded={isRecentsOpen}
           aria-controls={isRecentsOpen ? recentsId : undefined}
           onClick={() => setIsRecentsOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-2.5 py-2 rounded-md hover:bg-muted/40 transition-colors text-left cursor-pointer group outline-none focus-visible:ring-1 focus-visible:ring-ai"
+          className="flex items-center justify-between w-full py-1 px-1 rounded-sm text-11 font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ai"
         >
-          <span className="text-13 font-semibold text-foreground/90 tracking-tight">
-            Recents
-          </span>
-          <ChevronRight
+          <span>Recents</span>
+          <ChevronDown
             className={cn(
-              'size-4 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
-              isRecentsOpen && 'rotate-90',
+              'size-3.5 text-muted-foreground transition-transform duration-150 motion-reduce:transition-none',
+              !isRecentsOpen && '-rotate-90',
             )}
             aria-hidden="true"
           />
         </button>
 
         {isRecentsOpen && (
-          <div id={recentsId} className="mt-1">
+          <div id={recentsId} className="flex-1 overflow-y-auto mt-1.5 pb-3">
             <SessionHistoryList
               chats={filteredChats}
               activeChatId={activeChatId}

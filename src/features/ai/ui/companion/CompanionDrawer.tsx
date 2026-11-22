@@ -39,6 +39,15 @@ import { ContextPicker } from '../context/ContextPicker';
 import { CompanionHistory } from './CompanionHistory';
 import { CompanionMessages } from './CompanionMessages';
 
+const MIN_DRAWER_WIDTH = 280;
+const MAX_DRAWER_WIDTH = 840;
+const DEFAULT_DRAWER_WIDTH = 380;
+
+function getResponsiveMaxWidth(): number {
+  if (typeof window === 'undefined') return MAX_DRAWER_WIDTH;
+  return Math.max(420, Math.min(MAX_DRAWER_WIDTH, Math.floor(window.innerWidth * 0.55)));
+}
+
 function CompanionDrawerInner() {
   const pathname = usePathname();
   const isPaperReader = Boolean(pathname?.includes('/library/papers/'));
@@ -303,16 +312,20 @@ function CompanionDrawerInner() {
   const [isResizing, setIsResizing] = useState(false);
   const [liveWidth, setLiveWidth] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [maxWidth, setMaxWidth] = useState(MAX_DRAWER_WIDTH);
   const startXRef = useRef(0);
   const startWidthRef = useRef(width);
   const latestClientXRef = useRef(0);
   const rafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const syncViewport = () => {
+      setIsMobile(window.innerWidth < 768);
+      setMaxWidth(getResponsiveMaxWidth());
+    };
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    return () => window.removeEventListener('resize', syncViewport);
   }, []);
 
   const handleMouseDown = useCallback(
@@ -338,7 +351,7 @@ function CompanionDrawerInner() {
           rafIdRef.current = null;
           const delta = startXRef.current - latestClientXRef.current;
           const rawWidth = startWidthRef.current + delta;
-          setLiveWidth(Math.min(Math.max(rawWidth, 240), 640));
+          setLiveWidth(Math.min(Math.max(rawWidth, 240), getResponsiveMaxWidth()));
         });
       }
     };
@@ -357,9 +370,9 @@ function CompanionDrawerInner() {
       if (rawWidth < 200) {
         setOpen(false);
         setLiveWidth(null);
-        setWidth(380);
+        setWidth(DEFAULT_DRAWER_WIDTH);
       } else {
-        setWidth(Math.min(Math.max(rawWidth, 280), 640));
+        setWidth(Math.min(Math.max(rawWidth, MIN_DRAWER_WIDTH), getResponsiveMaxWidth()));
         setLiveWidth(null);
       }
     };
@@ -377,24 +390,7 @@ function CompanionDrawerInner() {
     };
   }, [isResizing, setOpen, setWidth]);
 
-  const currentWidth = liveWidth ?? width;
-
-  const firstUserMsg = thread.messages.find((m) => m.role === 'user')?.content;
-  const isGreeting =
-    firstUserMsg &&
-    /^(hello|hi|hey|greetings|howdy)[!.,? ]*$/i.test(firstUserMsg.trim());
-  const chatTitle =
-    thread.title && thread.title !== 'New Chat'
-      ? thread.title
-      : !isGreeting && firstUserMsg
-        ? firstUserMsg.length > 36
-          ? `${firstUserMsg.slice(0, 36)}...`
-          : firstUserMsg
-        : thread.title || 'AI Assistant';
-  const displayTitle =
-    (thread.messages.length > 0 || thread.title) && chatTitle
-      ? chatTitle
-      : 'AI Assistant';
+  const currentWidth = Math.min(liveWidth ?? width, maxWidth);
 
   const selectedIdSet = useMemo(
     () => new Set(turnCtx.sources.map((s) => s.id)),
@@ -423,8 +419,8 @@ function CompanionDrawerInner() {
           'flex flex-col bg-background relative pb-[env(safe-area-inset-bottom)]',
           'fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-lg border-l border-border animate-in slide-in-from-right duration-200 motion-reduce:animate-none motion-reduce:transform-none overflow-hidden',
           isPaperReader
-            ? 'md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:border-border md:shadow-none md:animate-none md:overflow-visible'
-            : 'md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:border-border md:shadow-none md:animate-none md:overflow-visible',
+            ? 'md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:max-w-none md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:border-border md:shadow-none md:animate-none md:overflow-visible'
+            : 'md:relative md:inset-auto md:z-auto md:order-3 md:h-auto md:self-stretch md:max-w-none md:shrink-0 md:rounded-md md:border md:border-border md:mr-2 md:mb-2 md:shadow-none md:animate-none md:overflow-visible',
           isResizing && 'transition-none select-none',
         )}
       >
@@ -433,31 +429,31 @@ function CompanionDrawerInner() {
           role="separator"
           aria-orientation="vertical"
           aria-valuenow={currentWidth}
-          aria-valuemin={280}
-          aria-valuemax={640}
+          aria-valuemin={MIN_DRAWER_WIDTH}
+          aria-valuemax={maxWidth}
           aria-label="Drag to resize, double-click to reset (380px)"
           tabIndex={0}
           onMouseDown={handleMouseDown}
           onDoubleClick={() => {
-            setWidth(380);
+            setWidth(DEFAULT_DRAWER_WIDTH);
             setLiveWidth(null);
           }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowLeft') {
               e.preventDefault();
-              setWidth(Math.min(640, width + 20));
+              setWidth(Math.min(maxWidth, width + 20));
             } else if (e.key === 'ArrowRight') {
               e.preventDefault();
-              setWidth(Math.max(280, width - 20));
+              setWidth(Math.max(MIN_DRAWER_WIDTH, width - 20));
             } else if (e.key === 'Home') {
               e.preventDefault();
-              setWidth(280);
+              setWidth(MIN_DRAWER_WIDTH);
             } else if (e.key === 'End') {
               e.preventDefault();
-              setWidth(640);
+              setWidth(maxWidth);
             } else if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              setWidth(380);
+              setWidth(DEFAULT_DRAWER_WIDTH);
             }
           }}
           className={cn(
@@ -512,20 +508,15 @@ function CompanionDrawerInner() {
                 isPaperReader ? 'h-10 text-12' : 'h-11 text-13',
               )}
             >
-              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <img
-                  src="/Chat.svg"
-                  alt="AI Assistant"
-                  className="size-4 shrink-0 rounded-full object-contain"
-                />
+              <div className="flex items-center min-w-0 flex-1 mr-2">
                 <span
                   className={cn(
                     'font-semibold text-foreground tracking-tight truncate',
                     isPaperReader ? 'text-12' : 'text-13',
                   )}
-                  title={displayTitle}
+                  title="AI Assistant"
                 >
-                  {displayTitle}
+                  AI Assistant
                 </span>
               </div>
 

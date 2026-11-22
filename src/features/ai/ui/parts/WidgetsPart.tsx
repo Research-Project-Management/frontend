@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   CircleDot,
   Clock3,
+  ExternalLink,
   FileCode2,
+  GitBranch,
   GitCompare,
   ListTodo,
   UserRound,
@@ -322,6 +324,41 @@ function EditorPatchesCard({
           </button>
         )}
       </div>
+
+      {widget.provenance && widget.provenance.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/20 px-3 py-1.5">
+          <span className="text-10 font-medium text-muted-foreground">
+            Source:
+          </span>
+          {widget.provenance.map((item, idx) => {
+            const safeUrl =
+              item.url.startsWith('https://') || item.url.startsWith('http://')
+                ? item.url
+                : undefined;
+            if (!safeUrl) return null;
+            return (
+              <a
+                key={`${item.repo}-${item.commitSha}-${idx}`}
+                href={safeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${item.repo}/${item.path} @ ${item.commitSha}`}
+                className="inline-flex items-center gap-1 rounded-sm border border-border bg-background px-1.5 py-0.5 font-mono text-10 text-foreground hover:bg-muted transition-colors"
+              >
+                <GitBranch
+                  className="size-3 text-muted-foreground shrink-0"
+                  aria-hidden="true"
+                />
+                <span>{`${item.repo}@${item.commitSha.slice(0, 7)}`}</span>
+                <ExternalLink
+                  className="size-2.5 text-muted-foreground shrink-0"
+                  aria-hidden="true"
+                />
+              </a>
+            );
+          })}
+        </div>
+      )}
 
       <div className="divide-y divide-border">
         {patches.map((patch, idx) => {

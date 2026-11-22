@@ -94,10 +94,18 @@ export interface EditorPatchItem {
   warnings?: string[];
 }
 
+export interface ProvenanceItem {
+  repo: string;
+  path: string;
+  commitSha: string;
+  url: string;
+}
+
 export interface EditorPatchesWidget {
   type: 'editor_patches';
   title: string;
   patches: EditorPatchItem[];
+  provenance?: ProvenanceItem[];
   streaming?: boolean;
 }
 

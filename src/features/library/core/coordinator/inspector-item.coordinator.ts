@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   useLibraryCommandStore,
   buildInverseMetadataPatch,
   createUpdateItemMetadataCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import {
   useLibraryItemDetailQuery,
   useUpdateLibraryItemMutation,
@@ -19,19 +19,19 @@ import {
   prefetchReaderDocumentBlob,
   buildPdfBlobCacheKey,
 } from '@/features/library/sdk/queries/reader.queries';
-import { getItemFileUrl } from '@/features/library/domain/identifiers.domain';
-import { documentStorage } from '@/features/library/domain/reader-document-storage.domain';
+import { getItemFileUrl } from '@/features/library/domain/identifiers';
+import { documentStorage } from '@/features/library/core/adapters/reader-storage.adapter';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import {
   normalizeTags,
   getAssignedCollectionIds,
-} from '@/features/library/domain/metadata.mapper';
+} from '@/features/library/domain/metadata/mapper';
 import {
   getBibliographicSchema,
   resolveBibliographicField,
   buildBibliographicFieldPatch,
-} from '@/features/library/domain/bibliographic-schema.domain';
-import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
+} from '@/features/library/domain/metadata/schema';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
 import type {
   Item,
   Collection,
@@ -44,103 +44,6 @@ export {
   resolveBibliographicField,
   buildBibliographicFieldPatch,
 };
-
-interface UsePanelResizeOptions {
-  /** Initial or controlled width of the panel in pixels */
-  width: number;
-  /** Callback fired continuously during drag and on release */
-  setWidth: (width: number) => void;
-  /** Direction of the handle relative to the panel ('right' for Left Sidebar, 'left' for Right Inspector) */
-  direction?: 'left' | 'right';
-  /** Minimum allowable width in px (default: 200) */
-  minWidth?: number;
-  /** Maximum allowable width in px (default: 640) */
-  maxWidth?: number;
-}
-
-/**
- * Headless hook for fluid, requestAnimationFrame-debounced panel resizing.
- * Unifies sidebar (left panel) and inspector (right panel) border drag handles.
- */
-export function usePanelResize({
-  width,
-  setWidth,
-  direction = 'right',
-  minWidth = 200,
-  maxWidth = 640,
-}: UsePanelResizeOptions) {
-  const [isDragging, setIsDragging] = useState(false);
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(width);
-  const latestClientXRef = useRef(0);
-  const rafIdRef = useRef<number | null>(null);
-
-  const clampWidth = useCallback(
-    (val: number) => Math.min(Math.max(val, minWidth), maxWidth),
-    [minWidth, maxWidth],
-  );
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setIsDragging(true);
-      startXRef.current = e.clientX;
-      startWidthRef.current = width;
-      latestClientXRef.current = e.clientX;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    },
-    [width],
-  );
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const sign = direction === 'right' ? 1 : -1;
-    const computeNextWidth = () =>
-      clampWidth(startWidthRef.current + sign * (latestClientXRef.current - startXRef.current));
-
-    const handleMouseMove = (e: MouseEvent) => {
-      latestClientXRef.current = e.clientX;
-      if (rafIdRef.current === null) {
-        rafIdRef.current = requestAnimationFrame(() => {
-          setWidth(computeNextWidth());
-          rafIdRef.current = null;
-        });
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      setWidth(computeNextWidth());
-      setIsDragging(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-
-    window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isDragging, setWidth, direction, clampWidth]);
-
-  return {
-    isDragging,
-    handleMouseDown,
-  };
-}
 
 interface UseInspectorItemResolverParams {
   propItem?: Item | null;

@@ -282,7 +282,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
   describe('LDE3 Domain, Store & SDK Architectural Invariants', () => {
     it('recognizes item.isMyPublication in isItemInMyPublications and projects it in mapBackendItem', async () => {
       const { isItemInMyPublications } = await import('@/features/library/domain/system-views.policy');
-      const { mapBackendItem } = await import('@/features/library/domain/metadata.mapper');
+      const { mapBackendItem } = await import('@/features/library/domain/metadata/mapper');
 
       expect(isItemInMyPublications({ id: '1', title: 'A', isMyPublication: true })).toBe(true);
       expect(isItemInMyPublications({ id: '2', title: 'B', isInMyPublications: true })).toBe(true);
@@ -301,7 +301,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('normalizes canonical CSL citation style IDs across domain and CitationService', async () => {
       const { normalizeCitationStyleId, CANONICAL_CSL_STYLE_IDS } = await import(
-        '@/features/library/domain/citations.domain'
+        '@/features/library/domain/citations'
       );
       const { CitationService } = await import(
         '@/features/library/sdk/clients/attachments-annotations.client'
@@ -329,7 +329,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         useLibraryUIStore,
         MIN_INSPECTOR_WIDTH,
         MAX_INSPECTOR_WIDTH,
-      } = await import('@/features/library/core/store/library-ui.store');
+      } = await import('@/features/library/core/store/ui.store');
 
       expect(MIN_INSPECTOR_WIDTH).toBe(260);
       expect(MAX_INSPECTOR_WIDTH).toBe(640);
@@ -524,9 +524,9 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const {
         computeDuplicateSetKey,
         getDeterministicDuplicateGroupKey,
-      } = await import('@/features/library/domain/diff.domain');
-      const { getItemAuthorsSummary } = await import('@/features/library/domain/creators.domain');
-      const { formatAuthors } = await import('@/features/library/domain/citations.domain');
+      } = await import('@/features/library/domain/diff');
+      const { getItemAuthorsSummary } = await import('@/features/library/domain/creators');
+      const { formatAuthors } = await import('@/features/library/domain/citations');
 
       const items = [
         { id: 'item-b', title: 'B', itemType: 'journalArticle' },
@@ -545,7 +545,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
     });
 
     it('computes field candidate selection and recommendation state via resolveMergeFieldOptionState', async () => {
-      const { resolveMergeFieldOptionState, selectRecommendedFieldValue } = await import('@/features/library/domain/diff.domain');
+      const { resolveMergeFieldOptionState, selectRecommendedFieldValue } = await import('@/features/library/domain/diff');
 
       // Priority coalesce + 3 deterministic upgrade rules (DOI, Venue, Completeness)
       expect(
@@ -721,7 +721,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('sniffs PDF front-matter/XMP, ACL/BioRxiv/PMC filenames, FlateDecode streams, and computes WebCrypto SHA-256', async () => {
       const { sniffPdfEdgeIdentifier, computeEdgeFileSha256 } = await import(
-        '@/features/library/domain/identifiers.domain'
+        '@/features/library/domain/identifiers'
       );
 
       // 1. Sniff XMP <prism:doi> from first 128KB of a PDF

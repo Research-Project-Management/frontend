@@ -37,7 +37,7 @@ import {
   buildOutlineSections,
   filterVisibleOutlineSections,
   resolveActiveOutlineSectionId,
-} from "@/features/library/domain/reader-search-outline.domain";
+} from "@/features/library/domain/reader/search-outline";
 import AnnotationsPanel from "./AnnotationsPanel";
 import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderThumbnailsPanel";
 import {
@@ -51,7 +51,7 @@ import {
   type OutlineNodeItemProps,
   type OutlineTreeViewProps,
 } from "./ReaderThumbnailsPanel";
-import { usePanelResize } from "@/features/library/core/coordinator/inspector-item.coordinator";
+import { usePanelResize } from "@/shared/hooks/use-panel-resize";
 
 export {
   LazyThumbnailPage,

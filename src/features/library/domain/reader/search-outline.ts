@@ -16,10 +16,10 @@ import type {
   FlattenedOutlineSection,
   PdfOutlineProxyDoc,
 } from '@/features/library/types/reader.types';
-import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators.domain';
-import { isValidValue } from '@/features/library/domain/metadata.mapper';
-import { foldDiacritics } from '@/features/library/domain/citations.domain';
-import { isProjectScope } from '@/features/library/domain/identifiers.domain';
+import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
+import { isValidValue } from '@/features/library/domain/metadata/mapper';
+import { foldDiacritics } from '@/features/library/domain/citations';
+import { isProjectScope } from '@/features/library/domain/identifiers';
 
 export { foldDiacritics };
 export type {

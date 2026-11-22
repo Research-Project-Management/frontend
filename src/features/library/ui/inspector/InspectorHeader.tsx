@@ -33,12 +33,12 @@ import { useRetraction } from '@/features/library/core/coordinator/curation.coor
 import {
   useLibraryCommandStore,
   createRestoreCommand,
-} from '@/features/library/core/manager/library-command.manager';
-import type { InspectorSectionId } from '@/features/library/core/store/library-ui.store';
+} from '@/features/library/core/manager/command.manager';
+import type { InspectorSectionId } from '@/features/library/core/store/ui.store';
 import type { Item } from '@/features/library/types/core.types';
 import { getTitleFieldForType } from '@/features/library/types/item-types.types';
-import { getItemDisplayTitle } from '@/features/library/domain/metadata.mapper';
-import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
+import { getItemDisplayTitle } from '@/features/library/domain/metadata/mapper';
+import { buildInspectorFieldPatch } from '@/features/library/domain/metadata/field-schema';
 import dynamic from 'next/dynamic';
 import {
   isItemRetracted,

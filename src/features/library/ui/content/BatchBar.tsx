@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ShieldAlert, FileEdit } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import type { Collection, CslStyle, Item } from '@/features/library/types/core.types';
@@ -13,7 +13,7 @@ import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/
 import { executeCopyMultiCite, executeCopyInTextCite, executeExportAllBibtex, executeDownloadBibFile } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useBatchRenameAttachmentsMutation } from '@/features/library/core/coordinator/item-action.coordinator';
-import { formatCitationStyleLabel } from '@/features/library/domain/citations.domain';
+import { formatCitationStyleLabel } from '@/features/library/domain/citations';
 import { BatchMoveCollectionPopover, BatchCitationExportPopovers, BatchSmartViewActions, BatchLifecycleActions } from '@/features/library/ui/content/BatchBarPopovers';
 
 type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinator>;

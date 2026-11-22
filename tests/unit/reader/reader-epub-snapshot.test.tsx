@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
-import { resolveEpubOrSnapshot } from '@/features/library/domain/reader.domain';
+import { resolveEpubOrSnapshot } from '@/features/library/domain/reader/reader';
 import { EpubAndSnapshotViewer } from '@/features/library/ui/reader/viewer/EpubAndSnapshotViewer';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 

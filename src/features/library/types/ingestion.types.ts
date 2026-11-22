@@ -122,8 +122,6 @@ export interface ProcessModalStoreApi {
   dismissProcessingItem: (id: string) => void;
 }
 
-export type ProcessModalStoreAdapter = ProcessModalStoreApi;
-
 // ── Feeds ────────────────────────────────────────────────────────────────────
 export type FeedReadFilterType = 'all' | 'unread' | 'read';
 

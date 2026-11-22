@@ -1,16 +1,16 @@
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import {
   useLibraryCommandStore,
   createTrashCommand,
   createBatchTagToggleCommand,
-} from "@/features/library/core/manager/library-command.manager";
-import { normalizeTags } from "@/features/library/domain/metadata.mapper";
+} from "@/features/library/core/manager/command.manager";
+import { normalizeTags } from "@/features/library/domain/metadata/mapper";
 import {
   isPersistedItemId,
   isPersistedLibraryItem,
-} from "@/features/library/domain/library-permissions.policy";
+} from "@/features/library/domain/permissions.policy";
 import type { Item } from "@/features/library/types/core.types";
 
 interface UseLibraryKeyboardShortcutsOptions {

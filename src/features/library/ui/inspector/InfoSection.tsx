@@ -2,14 +2,14 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { getItemTypeDefinition, normalizeCanonicalItemType, mapRegistryItemTypes, SchemaFieldDefinition, SchemaItemTypeDefinition, type Item } from '@/features/library/types/core.types';
-import { cleanValue } from '@/features/library/domain/metadata.mapper';
+import { cleanValue } from '@/features/library/domain/metadata/mapper';
 import { toast } from 'sonner';
 import { cn, copyToClipboard as copyText } from '@/shared/lib/utils';
 import { useItemTypes } from '@/features/library/core/coordinator/item-action.coordinator';
 import { CreatorFields } from './CreatorFields';
 import { GeneralFields, ExtraAuditFields } from './GeneralFields';
 import { DynamicInspectorField } from './NoteMarkdownEditor';
-import { INSPECTOR_FIELD_DESCRIPTORS, prepareInspectorFieldContext, resolveInspectorFieldValue, buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
+import { INSPECTOR_FIELD_DESCRIPTORS, prepareInspectorFieldContext, resolveInspectorFieldValue, buildInspectorFieldPatch } from '@/features/library/domain/metadata/field-schema';
 import { FileText, Loader2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { Document, Page } from 'react-pdf';
 import { setupPdfWorker, getSharedPdfDocumentOptions, getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';

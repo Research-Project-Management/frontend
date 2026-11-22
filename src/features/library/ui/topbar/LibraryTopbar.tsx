@@ -28,7 +28,7 @@ import {
   TopbarNewItemDropdown,
   TopbarNewFeedDropdown,
 } from "./TopbarNewItemDropdown";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import {
   useLibraryNavigation,
   useLibraryPermissions,

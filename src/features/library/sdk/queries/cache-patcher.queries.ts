@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import { prefetchLibraryCollection, prefetchLibraryProjectScope } from '@/features/shell/lib/navigation-prefetch';
 import type { Item } from '@/features/library/types/core.types';
-import { getMappedItemMeta, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
+import { getMappedItemMeta, setMappedItemMeta } from '@/features/library/domain/metadata/mapper';
 import type { InvalidationClient } from '@/features/library/types/ingestion.types';
 import {
   itemKeys,
@@ -13,8 +13,8 @@ import {
   invalidateCollections,
   normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
-import { getItemFileUrl, resolveAllItemAttachmentUrls } from '@/features/library/domain/identifiers.domain';
-import { warmViewerPool } from '@/features/library/domain/reader-tab-pool.domain';
+import { getItemFileUrl, resolveAllItemAttachmentUrls } from '@/features/library/domain/identifiers';
+import { warmViewerPool } from '@/features/library/domain/reader/tab-pool';
 import { invalidatePdfBlobCache } from '../clients/http.client';
 import {
   isTrashQueryKey, doesItemMatchQueryFilter, MEMBERSHIP_MUTATION_KEYS,

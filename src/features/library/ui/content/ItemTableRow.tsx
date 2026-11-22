@@ -18,22 +18,22 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
-import { isPersistedLibraryItem } from '@/features/library/domain/library-permissions.policy';
+import { isPersistedLibraryItem } from '@/features/library/domain/permissions.policy';
 import { cn } from '@/shared/lib/utils';
 import {
   useLibraryUIStore,
   useIsItemSelected,
   useIsActiveItem,
-} from '@/features/library/core/store/library-ui.store';
+} from '@/features/library/core/store/ui.store';
 import { ItemContextMenu } from './ItemRowActions';
 import { ItemRowActions } from './ItemRowActions';
 import type { Item, Collection } from '@/features/library/types/core.types';
-import { cleanText, formatAuthors } from '@/features/library/domain/citations.domain';
+import { cleanText, formatAuthors } from '@/features/library/domain/citations';
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
   getPublicationVenue,
-} from '@/features/library/domain/metadata.mapper';
+} from '@/features/library/domain/metadata/mapper';
 import { getItemTypeDefinition } from '@/features/library/types/item-types.types';
 
 interface ItemTableRowProps {

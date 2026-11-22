@@ -16,7 +16,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
 } from '@/shared/components/ui/context-menu';
-import type { FlattenedOutlineSection } from '@/features/library/domain/reader-search-outline.domain';
+import type { FlattenedOutlineSection } from '@/features/library/domain/reader/search-outline';
 
 setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();

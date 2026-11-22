@@ -7,14 +7,14 @@ import type {
   ProcessingFileItem,
   ProcessModalState,
   ProcessBatchUploadOptions,
-  ProcessModalStoreAdapter,
+  ProcessModalStoreApi,
 } from '@/features/library/types/ingestion.types';
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
+import { cleanFilenameToTitle } from '@/features/library/domain/metadata/mapper';
 
 export type BatchUploadExecutor = (
   files: File[],
   options: ProcessBatchUploadOptions,
-  store: ProcessModalStoreAdapter,
+  store: ProcessModalStoreApi,
 ) => Promise<void>;
 
 let registeredBatchUploadExecutor: BatchUploadExecutor | null = null;
@@ -29,7 +29,7 @@ export type {
   ProcessingFileItem,
   ProcessBatchUploadOptions,
   IngestionRunStatus,
-  ProcessModalStoreAdapter,
+  ProcessModalStoreApi,
 };
 
 // ---------------------------------------------------------------------------
@@ -490,7 +490,7 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     const abortSignal = controller.signal;
     activeBatchUploadsCount += 1;
 
-    const storeAdapter: ProcessModalStoreAdapter = {
+    const storeApi: ProcessModalStoreApi = {
       getState: get,
       setState: set,
       initializeBatchRun: get().initializeBatchRun,
@@ -504,7 +504,7 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     try {
       const executor = registeredBatchUploadExecutor;
       if (executor) {
-        await executor(files, { ...options, abortSignal }, storeAdapter);
+        await executor(files, { ...options, abortSignal }, storeApi);
       }
     } finally {
       activeBatchUploadsCount = Math.max(0, activeBatchUploadsCount - 1);

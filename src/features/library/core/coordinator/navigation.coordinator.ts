@@ -4,10 +4,10 @@ import { useMemo, useCallback, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { LibraryOrderBy } from '@/features/library/types/ingestion.types';
 import type { LibraryPermissions } from '@/features/library/types/core.types';
-import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
+import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/permissions.policy';
 import { useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryDeltaSync } from '@/features/library/sdk/queries/sync.queries';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 
 export { useLibraryDeltaSync };

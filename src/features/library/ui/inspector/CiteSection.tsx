@@ -37,9 +37,9 @@ import {
   generateCitationKey,
   getCleanStyleLabel,
   normalizeCitationStyleId,
-} from "@/features/library/domain/citations.domain";
+} from "@/features/library/domain/citations";
 import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import DOMPurify from "dompurify";
 
 interface CiteSectionProps {

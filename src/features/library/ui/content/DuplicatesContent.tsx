@@ -11,7 +11,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { getItemAuthorsSummary } from '@/features/library/domain/creators.domain';
+import { getItemAuthorsSummary } from '@/features/library/domain/creators';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
   ContentSkeleton,
@@ -24,7 +24,7 @@ import {
   useMergeDuplicates,
   useBatchMergeDuplicates,
 } from '@/features/library/core/coordinator/curation.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   clearGroupMergeDraft,
   computeDuplicateSetKey,
@@ -35,11 +35,11 @@ import {
   extractExplicitUserMergeOverrides,
   inspectItemDifferences,
   selectBestMasterItemId,
-} from '@/features/library/domain/diff.domain';
+} from '@/features/library/domain/diff';
 import {
   useLibraryCommandStore,
   createMergeDuplicatesCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,

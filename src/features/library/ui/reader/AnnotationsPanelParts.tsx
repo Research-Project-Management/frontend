@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/features/library/types/reader.types';
 import { annotationFormSchema } from '@/features/library/types/reader.types';
-import { PdfAnnotationEngine, ANNOTATION_PALETTE_COLORS, formatAnnotationCitation } from '@/features/library/domain/reader.domain';
+import { PdfAnnotationEngine, ANNOTATION_PALETTE_COLORS, formatAnnotationCitation } from '@/features/library/domain/reader/reader';
 
 const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
   ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]),

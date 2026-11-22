@@ -13,7 +13,7 @@ import {
   type LibraryColumnKey,
   type LibraryOrderBy,
 } from '@/features/library/types/ingestion.types';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { Input } from '@/shared/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 

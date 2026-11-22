@@ -27,12 +27,12 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Item } from "@/features/library/types/items.types";
-import { getItemAuthorsSummary } from "@/features/library/domain/creators.domain";
+import { getItemAuthorsSummary } from "@/features/library/domain/creators";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {
   resolveMergeFieldOptionState,
   type ItemFieldDiff,
-} from "@/features/library/domain/diff.domain";
+} from "@/features/library/domain/diff";
 
 interface MergeModalProps {
   open: boolean;

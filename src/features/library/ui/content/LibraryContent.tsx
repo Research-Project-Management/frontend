@@ -17,7 +17,7 @@ import {
 import {
   useLibraryCommandStore,
   createBatchDetachCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import { useSavedSearchResults, useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import { ContentSkeleton } from './LibraryIllustrations';
 import { ItemTable } from './ItemTable';
@@ -27,10 +27,10 @@ import { LibraryEmptyState } from './ItemTableHeader';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { createProvisionalUploadItem } from '@/features/library/domain/metadata.mapper';
+import { createProvisionalUploadItem } from '@/features/library/domain/metadata/mapper';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import {

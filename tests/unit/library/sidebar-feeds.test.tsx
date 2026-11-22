@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FeedsListSection } from '@/features/library/ui/sidebar/FeedsListSection';
-import { useFeedsStore } from '@/features/library/core/store/reader.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 // Mock router

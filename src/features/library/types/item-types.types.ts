@@ -24,7 +24,7 @@ import {
   ITEM_TYPE_CREATOR_ROLES_MAP,
   type SchemaFieldDefinition,
   type ItemTypeCategoryGroup,
-} from './item-type-mappings.constants';
+} from '../domain/metadata/item-type-mappings';
 
 export {
   ITEM_TYPE_FIELDS_MAP,

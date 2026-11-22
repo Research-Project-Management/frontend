@@ -3,7 +3,7 @@ import {
   LruTabPool,
   calculateAdaptiveTabPoolCapacity,
   DEFAULT_ZOTERO_WARM_TAB_CAPACITY,
-} from '@/features/library/domain/reader-tab-pool.domain';
+} from '@/features/library/domain/reader/tab-pool';
 
 describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
   describe('1. Algorithmic Rigor: LRU Tab Pool (O(1) Bounds)', () => {
@@ -232,7 +232,7 @@ describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
   describe('6. Cross-Module Garbage Collection (Library -> Reader Tab & Storage Cleanup)', () => {
     it('closes open tabs and evicts warmViewerPool entries when items are trashed/purged in Library', async () => {
       const { useReaderStore } = await import('@/features/library/core/store/reader.store');
-      const { warmViewerPool } = await import('@/features/library/domain/reader-tab-pool.domain');
+      const { warmViewerPool } = await import('@/features/library/domain/reader/tab-pool');
       const { cleanupReaderResourcesForItems } = await import(
         '@/features/library/core/coordinator/reader/use-reader'
       );

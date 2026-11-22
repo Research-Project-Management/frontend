@@ -4,7 +4,7 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 import { toast } from 'sonner';
 import { ItemsService } from '../clients/items.client';
 import { StateService } from '../clients/catalog-entities.client';
-import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
+import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata/mapper';
 import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/types/core.types';
 import { itemKeys, libraryKeys, invalidateCollections, normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher.queries';

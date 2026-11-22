@@ -16,7 +16,7 @@ import {
   extractStructuredItemTags,
   buildCanonicalTagsPatch,
   type StructuredItemTag,
-} from "@/features/library/domain/metadata.mapper";
+} from "@/features/library/domain/metadata/mapper";
 import { useTags } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 
 export { buildCanonicalTagsPatch };

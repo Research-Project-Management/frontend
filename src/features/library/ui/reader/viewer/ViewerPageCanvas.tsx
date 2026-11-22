@@ -12,8 +12,8 @@ import {
 import { getCappedDevicePixelRatio, releaseCanvasMemory, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline.domain';
-import { smoothPointsToSvgPath } from '@/features/library/domain/reader-ink-canvas.domain';
+import { calculatePageAspectRatio } from '@/features/library/domain/reader/search-outline';
+import { smoothPointsToSvgPath } from '@/features/library/domain/reader/ink-canvas';
 import { PageAnnotationOverlay } from './PageAnnotationOverlay';
 import JSZip from 'jszip';
 import DOMPurify from 'dompurify';

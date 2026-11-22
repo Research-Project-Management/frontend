@@ -13,12 +13,12 @@ import {
   normalizeCompareValue,
   getMergeableFieldsForTypes,
   type FieldOptionValue,
-} from '@/features/library/domain/diff.domain';
+} from '@/features/library/domain/diff';
 import type { Item } from '@/features/library/types/core.types';
 import {
   useLibraryCommandStore,
   createMergeDuplicatesCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import { registerDraftCacheClearListener } from '@/features/library/sdk/query-keys';
 export {
   type DuplicateGroupMergeDraft,

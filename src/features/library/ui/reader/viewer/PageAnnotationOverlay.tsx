@@ -15,7 +15,7 @@ import type {
 } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
-import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
+import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader/search-outline';
 
 export type { ActiveHighlightTooltipState };
 

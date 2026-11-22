@@ -33,7 +33,7 @@ import {
   normalizeFetchedFeedEntries,
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 import {
   executeSaveFeedEntryWithFeedback,
   resolveFeedTitleFromUrl,
@@ -45,7 +45,7 @@ import {
   type Collection,
 } from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 
 export type { SavedFeedSubscription };

@@ -10,12 +10,12 @@ import type {
   InkDrawingState,
 } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
+import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader/search-outline';
 import {
   calculatePointsBoundingBox,
   simplifyPointsRdp,
   smoothPointsToSvgPath,
-} from '@/features/library/domain/reader-ink-canvas.domain';
+} from '@/features/library/domain/reader/ink-canvas';
 import { searchReaderAttachmentAnchors } from '@/features/library/sdk/queries/reader.queries';
 
 export { cropCanvasSelectionToDataUrl };

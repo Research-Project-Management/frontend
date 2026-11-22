@@ -23,7 +23,7 @@ import {
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
 import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
 import type {
   Collection,
   CslStyle,

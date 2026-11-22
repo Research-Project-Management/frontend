@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ReaderToolbar } from '@/features/library/ui/reader/ReaderToolbar';
-import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader.domain';
+import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader/reader';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 describe('Reader Annotation Tools & Color Palette Parity (Zotero 7)', () => {

@@ -1,4 +1,4 @@
-import { stripLatexMarkup } from './metadata-sanitizers.domain';
+import { stripLatexMarkup } from './metadata/sanitizers';
 
 const BRACKET_PAIRS: ReadonlyArray<readonly [string, number, number]> = [
   [')', 41, 40],

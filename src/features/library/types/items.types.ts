@@ -163,22 +163,11 @@ export const relationTypeSchema = z.enum([
   'survey_of',
 ]);
 
-const LEGACY_RELATION_TYPE_MAP: Record<string, z.infer<typeof relationTypeSchema>> = {
-  cited_by: 'isCitedBy',
-  supplement_to: 'supplementTo',
-  part_of: 'partOf',
-  continued_by: 'isContinuedBy',
-};
-
 export function normalizeRelationType(
   raw?: unknown,
 ): z.infer<typeof relationTypeSchema> {
   if (typeof raw !== 'string' || !raw.trim()) return 'related';
-  const trimmed = raw.trim();
-  if (trimmed in LEGACY_RELATION_TYPE_MAP) {
-    return LEGACY_RELATION_TYPE_MAP[trimmed];
-  }
-  const parsed = relationTypeSchema.safeParse(trimmed);
+  const parsed = relationTypeSchema.safeParse(raw.trim());
   return parsed.success ? parsed.data : 'related';
 }
 

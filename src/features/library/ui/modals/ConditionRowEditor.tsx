@@ -45,7 +45,7 @@ import {
   HAS_ATTACHMENT_OPTIONS,
   getFieldConfig,
   parseDurationParts,
-} from "@/features/library/domain/saved-search-ast.domain";
+} from "@/features/library/domain/saved-search-ast";
 
 interface ConditionFieldSelectProps {
   value: SavedSearchField;

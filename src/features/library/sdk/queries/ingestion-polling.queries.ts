@@ -11,13 +11,13 @@ import {
   extractPmid,
   extractPmcId,
   cleanIsbn,
-} from '@/features/library/domain/identifiers.domain';
+} from '@/features/library/domain/identifiers';
 import {
   mapOpenAlexWorksToFeedEntries,
   mapCrossRefWorksToFeedEntries,
   mapEuropePmcWorksToFeedEntries,
   type FeedEntryApiItem,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 
 export interface PollRunOutcome {
   ok: boolean;

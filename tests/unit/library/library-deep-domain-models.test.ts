@@ -3,19 +3,19 @@ import {
   normalizeSearchStr,
   calculateFilterMatchScore,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/extra-metadata.mapper';
+} from '@/features/library/domain/metadata/extra-mapper';
 import {
   getFieldConfig,
   parseDurationParts,
   formatConditionValue,
-} from '@/features/library/domain/saved-search-ast.domain';
+} from '@/features/library/domain/saved-search-ast';
 import {
   calculateEffectiveViewportDimensions,
   computeSpreadPairs,
   isPageInVirtualWindow,
   calculatePageAspectRatio,
   normalizeRectCoordinates,
-} from '@/features/library/domain/reader-search-outline.domain';
+} from '@/features/library/domain/reader/search-outline';
 
 describe('Library Deep Domain Models (Pure In-Process)', () => {
   describe('filter-matcher.domain', () => {
@@ -239,7 +239,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
         hydrateBibliographicSchema,
         resolveBibliographicField,
         buildBibliographicFieldPatch,
-      } = await import('@/features/library/domain/bibliographic-schema.domain');
+      } = await import('@/features/library/domain/metadata/schema');
 
       const initialSnap = getBibliographicSchema();
       expect(initialSnap.version).toBeGreaterThanOrEqual(1);
@@ -279,7 +279,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
         loadReaderStorageState,
         saveFeedReadEntryIdsToStorage,
         loadFeedReadEntryIdsFromStorage,
-      } = await import('@/features/library/core/adapters/library-local-storage.adapter');
+      } = await import('@/features/library/core/adapters/local-storage.adapter');
 
       const memoryMap = new Map<string, string>();
       const memoryStorage = {
@@ -322,7 +322,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
         useLibraryCommandStore,
         dispatchContextualOrCommandUndo,
         dispatchContextualOrCommandRedo,
-      } = await import('@/features/library/core/manager/library-command.manager');
+      } = await import('@/features/library/core/manager/command.manager');
 
       useLibraryCommandStore.getState().clearHistory();
       const events: string[] = [];

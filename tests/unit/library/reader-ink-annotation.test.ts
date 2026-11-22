@@ -7,8 +7,8 @@ import {
   simplifyPointsRdp,
   smoothPointsToSvgPath,
   type NormalizedPoint,
-} from '@/features/library/domain/reader-ink-canvas.domain';
-import { getOutboxStorage } from '@/features/library/core/adapters/library-outbox-storage.adapter';
+} from '@/features/library/domain/reader/ink-canvas';
+import { getOutboxStorage } from '@/features/library/core/adapters/outbox-storage.adapter';
 import { enqueueOfflineMutation } from '@/features/library/core/coordinator/offline-sync.coordinator';
 import { isUuidV7, uuidv7 } from '@/shared/utils/uuid.util';
 

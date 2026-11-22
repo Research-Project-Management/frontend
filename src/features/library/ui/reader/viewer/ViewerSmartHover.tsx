@@ -4,7 +4,7 @@ import { useState, useRef, useMemo, useCallback, type RefObject, useEffect } fro
 import { Columns2, ArrowUpRight, X, StickyNote, Check, Quote, Copy, Underline, MessageSquare, FileText } from 'lucide-react';
 import type { DocumentFulltext, AnnotationRect, ReaderDocument, ReaderAnnotation } from '@/features/library/types/reader.types';
 import { copyToClipboard, cn } from '@/shared/lib/utils';
-import { formatInTextCitation } from '@/features/library/domain/reader.domain';
+import { formatInTextCitation } from '@/features/library/domain/reader/reader';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 import {

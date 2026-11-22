@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   useBatchRestoreItemsMutation,
   useDeleteLibraryItemsMutation,
@@ -15,10 +15,10 @@ import {
   useAssignCollectionItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import { useLibraryCommandStore, createRestoreCommand, createMoveItemsCommand, createBatchDetachCommand, createBatchAssignCommand } from '@/features/library/core/manager/library-command.manager';
+import { useLibraryCommandStore, createRestoreCommand, createMoveItemsCommand, createBatchDetachCommand, createBatchAssignCommand } from '@/features/library/core/manager/command.manager';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
-import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
-import { isPersistedLibraryItem } from '@/features/library/domain/library-permissions.policy';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata/mapper';
+import { isPersistedLibraryItem } from '@/features/library/domain/permissions.policy';
 import type { Item, CslStyle } from '@/features/library/types/core.types';
 import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 import {

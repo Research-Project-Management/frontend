@@ -4,9 +4,9 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { type Item, SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT, getTitleFieldForType } from '@/features/library/types/core.types';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata.mapper';
-import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
+import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata/mapper';
+import { buildInspectorFieldPatch } from '@/features/library/domain/metadata/field-schema';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
 interface GeneralFieldsProps {

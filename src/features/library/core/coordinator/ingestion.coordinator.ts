@@ -4,7 +4,6 @@ import type { UploadedMultipartFile } from '@/features/library/sdk/queries/extra
 import {
   fetchIngestionRunStatus,
   fetchIngestionRunProgress,
-  feedsTransportBindings,
   pollIngestionRunCompletion,
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -21,10 +20,7 @@ import {
   useProcessModalStore,
   registerBatchUploadExecutor,
 } from '@/features/library/core/store/process-modal.store';
-import {
-  useFeedsStore,
-  registerFeedsTransportAdapter,
-} from '@/features/library/core/store/reader.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
@@ -37,7 +33,7 @@ import type {
 import {
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 import type {
   Collection,
   AddFeedFormValues,
@@ -51,7 +47,7 @@ import {
   computeAdaptiveUploadConcurrency,
   bundleLightweightTextFiles,
   executeBundledTextBatch,
-  type IFileIngestionStrategy,
+  type FileIngestionStrategy,
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
 } from './file-ingestion.strategies';
@@ -63,7 +59,7 @@ export {
   BinaryAttachmentFileStrategy,
   computeAdaptiveUploadConcurrency,
   bundleLightweightTextFiles,
-  type IFileIngestionStrategy,
+  type FileIngestionStrategy,
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
   pollIngestionRunCompletion,
@@ -667,7 +663,6 @@ export async function executeSubscribeFeedWithAutoTitle(params: {
 }
 
 registerBatchUploadExecutor(executeBatchUpload);
-registerFeedsTransportAdapter(feedsTransportBindings);
 registerFeedHydrationObserver({
   onServerFeedsHydrated: (feeds) => useFeedsStore.getState().hydrateFeeds(feeds),
   onReadEntriesHydrated: (entryIds) => useFeedsStore.getState().hydrateReadEntries(entryIds),

@@ -16,7 +16,7 @@ import {
   searchPdfPages,
   cyclePdfSearchMatch,
   type PdfTextMatch,
-} from '@/features/library/domain/reader-search-outline.domain';
+} from '@/features/library/domain/reader/search-outline';
 
 export interface PdfSearchDocumentProxy {
   numPages: number;

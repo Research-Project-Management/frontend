@@ -20,7 +20,7 @@ import type {
   CreatorRoleChange,
   TypeConversionPreview,
 } from '@/features/library/types/core.types';
-import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
+import { mapBackendItem } from '@/features/library/domain/metadata/mapper';
 import {
   itemKeys,
   savedSearchKeys,

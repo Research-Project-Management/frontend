@@ -19,14 +19,14 @@ import {
 import {
   normalizeNotes,
   type NormalizedNote,
-} from "@/features/library/domain/metadata.mapper";
+} from "@/features/library/domain/metadata/mapper";
 import { useNotes } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 import {
   useLibraryCommandStore,
   createAddNoteCommand,
   createUpdateNoteCommand,
   createDeleteNoteCommand,
-} from "@/features/library/core/manager/library-command.manager";
+} from "@/features/library/core/manager/command.manager";
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
 import { toast } from "sonner";

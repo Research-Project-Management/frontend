@@ -11,7 +11,7 @@ import {
 } from '../clients/curation.client';
 import { integrationService } from '@/features/settings/services/integration.service';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/types/core.types';
-import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser';
 import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 import {
   itemKeys,
@@ -76,22 +76,6 @@ export function fetchIngestionRunStatus(spaceId: string | undefined, runId: stri
 export function fetchIngestionRunProgress(spaceId: string | undefined, runId: string) {
   return IngestionService.getRunProgress(spaceId, runId);
 }
-
-export const feedsTransportBindings = {
-  getSubscriptions: () => FeedsService.getSubscriptions(),
-  subscribe: (payload: Parameters<typeof FeedsService.subscribe>[0]) =>
-    FeedsService.subscribe(payload),
-  updateSubscription: (
-    id: string,
-    payload: Parameters<typeof FeedsService.updateSubscription>[1],
-  ) => FeedsService.updateSubscription(id, payload),
-  unsubscribe: (id: string) => FeedsService.unsubscribe(id),
-  markItemRead: (entryId: string, isRead: boolean) =>
-    FeedsService.markItemRead(entryId, isRead),
-  markAllRead: (entryIds: string[]) => FeedsService.markAllRead(entryIds),
-  markFeedAllRead: (feedId: string) => FeedsService.markFeedAllRead(feedId),
-  getItems: (feedId: string) => FeedsService.getItems(feedId),
-};
 
 export function useTrackedIdentifierIngestion(spaceId: string) {
   const queryClient = useQueryClient();

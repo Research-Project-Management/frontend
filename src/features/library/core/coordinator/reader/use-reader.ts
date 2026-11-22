@@ -10,7 +10,7 @@ import {
   copyToClipboard,
   triggerBrowserTextDownload,
 } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
 import {
   fetchReaderDocumentBlob,
   prefetchReaderDocumentBlob,
@@ -26,12 +26,12 @@ import {
   LruTabPool,
   calculateAdaptiveTabPoolCapacity,
   warmViewerPool,
-} from '@/features/library/domain/reader-tab-pool.domain';
+} from '@/features/library/domain/reader/tab-pool';
 import { normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type {
   ReaderDocument,
@@ -40,7 +40,7 @@ import type {
   ReaderNavigationTarget,
   AnnotationType,
 } from '@/features/library/types/reader.types';
-import { formatAnnotationCitation } from '@/features/library/domain/reader.domain';
+import { formatAnnotationCitation } from '@/features/library/domain/reader/reader';
 
 export { useExportAnnotatedPdf, prefetchReaderDocumentBlob };
 

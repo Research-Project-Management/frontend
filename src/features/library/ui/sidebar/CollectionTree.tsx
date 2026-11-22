@@ -6,9 +6,9 @@ import { Folder, ChevronRight, FolderPlus, FolderOutput, FolderMinus, MoreVertic
 import { cn } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
-import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
+import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree';
 import type { Collection, CollectionActionHandlers } from '@/features/library/types/core.types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger } from '@/shared/components/ui/context-menu';

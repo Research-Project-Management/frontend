@@ -39,7 +39,7 @@ export {
   READER_ACTIVE_TAB_STORAGE_KEY,
   READER_BOOKMARKS_STORAGE_KEY,
   FEED_READ_IDS_STORAGE_KEY,
-} from './library-local-storage.adapter';
+} from './local-storage.adapter';
 
 interface LibraryProjectScope {
   id: string;

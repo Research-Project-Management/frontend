@@ -22,11 +22,11 @@ import {
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
 } from '@/features/library/sdk/queries/annotation-history.queries';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   dispatchContextualOrCommandUndo,
   dispatchContextualOrCommandRedo,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import type {
   ReaderAnnotation,
   ReaderDocument,

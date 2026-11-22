@@ -10,9 +10,10 @@ import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/core.types';
 import type { ReaderDocument } from '@/features/library/types/reader.types';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/ui.store';
 import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
-import { useInspectorItemResolver, usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import { InspectorHeader, InspectorTabs, INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps } from './InspectorHeader';
 
 export { INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps };

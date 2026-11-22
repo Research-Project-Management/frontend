@@ -15,7 +15,7 @@ import {
   getOutboxStorage,
   type OutboxMutationEntry,
   type EnqueueMutationInput,
-} from '@/features/library/core/adapters/library-outbox-storage.adapter';
+} from '@/features/library/core/adapters/outbox-storage.adapter';
 import {
   libraryKeys,
   itemKeys,

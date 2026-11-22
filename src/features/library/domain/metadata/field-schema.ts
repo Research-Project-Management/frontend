@@ -2,14 +2,14 @@ import type {
   Item,
   PreparedInspectorFieldContext,
 } from '@/features/library/types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/types/item-type-mappings.constants';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/metadata/item-type-mappings';
 import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type SchemaFieldDefinition } from '@/features/library/types/item-types.types';
-import { cleanDoi } from './identifiers.domain';
-import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './metadata.mapper';
-import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './metadata-extra-rules.domain';
-import { applyCoupledFieldSynchronization } from './item-field-descriptors.domain';
-import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './item-field-descriptors.domain';
-import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata.mapper';
+import { cleanDoi } from '../identifiers';
+import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './mapper';
+import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './extra-rules';
+import { applyCoupledFieldSynchronization } from './field-descriptors';
+import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './field-descriptors';
+import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata/mapper';
 
 /**
  * Single Source of Truth for Zotero Schema v42 Field Resolution, Alias Fallback Chains,

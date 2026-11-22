@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
-import { classifyAttachmentDescriptor } from '@/features/library/domain/reader.domain';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
+import { classifyAttachmentDescriptor } from '@/features/library/domain/reader/reader';
 import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   useAttachments,
@@ -16,7 +16,7 @@ import {
 import { useReResolveItemMetadataMutation } from '@/features/library/sdk/queries/catalog.queries';
 import { invalidateReaderDocumentBlob } from '@/features/library/sdk/queries/reader.queries';
 import { evictWarmObjectUrl } from '@/features/library/core/coordinator/reader/use-reader';
-import { warmViewerPool } from '@/features/library/domain/reader-tab-pool.domain';
+import { warmViewerPool } from '@/features/library/domain/reader/tab-pool';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import type {
   Item,

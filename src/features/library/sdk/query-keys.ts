@@ -439,7 +439,7 @@ const pendingBootstrapGates = new WeakMap<object, Map<string, BootstrapDeferredG
 /**
  * Synchronously pre-registers a short-lived bootstrap gate during the render phase
  * so sibling components that mount earlier in the React tree (e.g. `LibrarySidebar`
- * mounting before `ModernLibraryPage`) still await the upcoming `/bootstrap` request
+ * mounting before `LibraryPage`) still await the upcoming `/bootstrap` request
  * instead of firing duplicate individual HTTP requests.
  */
 export function prepareBootstrapScope(

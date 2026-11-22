@@ -21,15 +21,15 @@ import type {
   ParsedFeedEntry,
 } from '@/features/library/types/ingestion.types';
 import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
-import { parseCreatorName } from '@/features/library/domain/creators.domain';
+import { parseCreatorName } from '@/features/library/domain/creators';
 import {
   decodeXmlEntities,
   cleanText,
-} from '@/features/library/domain/citations.domain';
+} from '@/features/library/domain/citations';
 import {
   cleanDoi,
   normalizeArxivId,
-} from '@/features/library/domain/identifiers.domain';
+} from '@/features/library/domain/identifiers';
 
 export { decodeXmlEntities };
 

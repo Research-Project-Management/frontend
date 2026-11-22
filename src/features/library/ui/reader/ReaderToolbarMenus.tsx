@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/lib/utils";
-import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader.domain";
+import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader/reader";
 
 export const ZOOM_PRESETS = [
   { label: "50%", value: 0.5 },

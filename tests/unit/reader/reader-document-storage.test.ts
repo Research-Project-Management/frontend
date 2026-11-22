@@ -7,7 +7,7 @@ import {
   calculateAdaptiveReaderQuota,
   MIN_READER_DISK_FLOOR_BYTES,
   MAX_READER_DISK_CEILING_BYTES,
-} from '@/features/library/domain/reader-document-storage.domain';
+} from '@/features/library/core/adapters/reader-storage.adapter';
 
 function createMockJwt(payload: Record<string, unknown>, signatureSuffix: string): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');

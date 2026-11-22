@@ -18,15 +18,12 @@ import {
   filterFeedEntriesByReadAndQuery,
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
 import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { isEditableOrModalElementFocused } from '@/features/library/core/coordinator/keyboard-shortcuts.coordinator';
-import {
-  useFeedsStore,
-  isFeedEntryInLibrary,
-} from '@/features/library/core/store/reader.store';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {

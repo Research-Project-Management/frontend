@@ -8,7 +8,7 @@ import {
   hasExplicitUserStateInPayload,
   preserveMappedItemFlags,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata.mapper';
+} from '@/features/library/domain/metadata/mapper';
 import type { Item } from '@/features/library/types/core.types';
 import {
   itemKeys,

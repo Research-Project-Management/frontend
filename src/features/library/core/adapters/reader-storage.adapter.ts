@@ -380,17 +380,7 @@ class DocumentStorageService {
     if (this.isOpfsSupported && this.opfsRootDir) {
       try {
         const safeName = this.toSafeOpfsFileName(key);
-        let fileHandle: FileSystemFileHandle;
-        try {
-          fileHandle = await this.opfsRootDir.getFileHandle(safeName);
-        } catch {
-          const legacyName = encodeURIComponent(key);
-          if (legacyName !== safeName) {
-            fileHandle = await this.opfsRootDir.getFileHandle(legacyName);
-          } else {
-            throw new Error('Not found');
-          }
-        }
+        const fileHandle = await this.opfsRootDir.getFileHandle(safeName);
         const file = await fileHandle.getFile();
         const meta = await this.getMetaFromIndexedDb(key);
         void this.touchAccess(key);
@@ -442,15 +432,7 @@ class DocumentStorageService {
         await this.opfsRootDir.getFileHandle(safeName);
         return true;
       } catch {
-        const legacyName = encodeURIComponent(key);
-        if (legacyName !== this.toSafeOpfsFileName(key)) {
-          try {
-            await this.opfsRootDir.getFileHandle(legacyName);
-            return true;
-          } catch {
-            // Not in OPFS
-          }
-        }
+        // Not in OPFS
       }
     }
     const db = await this.openIndexedDb();
@@ -476,15 +458,6 @@ class DocumentStorageService {
         deleted = true;
       } catch {
         // Ignore
-      }
-      const legacyName = encodeURIComponent(key);
-      if (legacyName !== safeName) {
-        try {
-          await this.opfsRootDir.removeEntry(legacyName);
-          deleted = true;
-        } catch {
-          // Ignore
-        }
       }
     }
 

@@ -14,11 +14,11 @@ import {
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryNavigation, useActiveLibrarySpace } from '@/features/library/core/coordinator/navigation.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 import {
   useLibraryCommandStore,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import {
   clearGroupMergeDraft,
   computeDuplicateSetKey,
@@ -28,8 +28,8 @@ import {
 import {
   extractExplicitUserMergeOverrides,
   selectBestMasterItemId,
-} from '@/features/library/domain/diff.domain';
-import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
+} from '@/features/library/domain/diff';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
@@ -52,10 +52,10 @@ import {
   useDuplicateGroups,
   useIngestMutation,
 } from '@/features/library/core/coordinator/curation.coordinator';
-import { formatItemTypeLabel } from '@/features/library/domain/metadata.mapper';
-import { parseEmojiPrefix } from '@/features/library/domain/citations.domain';
-import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree.domain';
-import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { formatItemTypeLabel } from '@/features/library/domain/metadata/mapper';
+import { parseEmojiPrefix } from '@/features/library/domain/citations';
+import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
+import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
 import type { Item, DuplicateGroup, Collection } from '@/features/library/types/core.types';
 
@@ -102,7 +102,7 @@ const FILTER_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 
  * Modern Workspace Engine Library Page
  * Decoupled layout frame combining 5 autonomous UI zones.
  */
-export function ModernLibraryPage({
+export function LibraryPage({
   spaceId: propSpaceId,
   collectionId: propCollectionId,
   feedId: propFeedId,
@@ -738,4 +738,4 @@ export function ModernLibraryPage({
   );
 }
 
-export default ModernLibraryPage;
+export default LibraryPage;

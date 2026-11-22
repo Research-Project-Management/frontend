@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useFeedsStore } from '@/features/library/core/store/reader.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   mapFeedEntryToCreateItemPayload,
   filterFeedEntriesByRetention,
   type ParsedFeedEntry,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 
 describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save to Collection, Retention', () => {
   beforeEach(() => {

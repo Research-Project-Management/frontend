@@ -27,12 +27,12 @@ import {
 import {
   resolveMergeFieldOptionState,
   type ItemFieldDiff,
-} from "@/features/library/domain/diff.domain";
+} from "@/features/library/domain/diff";
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
-} from "@/features/library/domain/metadata.mapper";
-import { getItemAuthorsSummary } from "@/features/library/domain/creators.domain";
+} from "@/features/library/domain/metadata/mapper";
+import { getItemAuthorsSummary } from "@/features/library/domain/creators";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import type { Item } from "@/features/library/types/core.types";
 import { cn } from "@/shared/lib/utils";

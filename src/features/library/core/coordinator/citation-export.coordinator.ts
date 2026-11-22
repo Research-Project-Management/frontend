@@ -2,8 +2,8 @@ import { useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { buildReaderPaperUrl } from '@/features/library/domain/reader.domain';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { buildReaderPaperUrl } from '@/features/library/domain/reader/reader';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   formatCitationItem,
   batchFormatCitations,

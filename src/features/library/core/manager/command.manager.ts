@@ -3,15 +3,14 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { Item } from '@/features/library/types/core.types';
-import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff.domain';
+import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff';
 import { notifyDraftCacheCleared } from '@/features/library/sdk/query-keys';
-import { registerLibraryScopeChangeListener } from '@/features/library/core/store/library-ui.store';
 import {
   cloneSnapshotValue,
   buildInverseMetadataPatch,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
   buildPreConversionSnapshot,
-} from '../../domain/item-field-schema.domain';
+} from '../../domain/metadata/field-schema';
 
 export { cloneSnapshotValue, buildInverseMetadataPatch, PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, buildPreConversionSnapshot };
 
@@ -678,10 +677,6 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     set({ currentSpaceId: normalized });
   },
 }));
-
-registerLibraryScopeChangeListener(() => {
-  useLibraryCommandStore.getState().clearHistory();
-});
 
 export interface ContextualUndoRedoSource {
   readonly latestUndoTimestamp: number;

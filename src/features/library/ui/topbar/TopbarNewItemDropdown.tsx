@@ -55,8 +55,8 @@ import {
 import {
   useLibraryUIStore,
   type LibraryModalType,
-} from "@/features/library/core/store/library-ui.store";
-import { useFeedsStore } from "@/features/library/core/store/reader.store";
+} from "@/features/library/core/store/ui.store";
+import { useFeedsStore } from "@/features/library/core/store/feeds.store";
 import { useItemTypes } from "@/features/library/core/coordinator/item-action.coordinator";
 import {
   useExportOpmlFeedsMutation,

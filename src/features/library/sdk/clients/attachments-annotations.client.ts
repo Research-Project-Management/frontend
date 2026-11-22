@@ -2,7 +2,7 @@ import type { ItemAttachment, Note, FormattedCitation, CslStyle, ReferenceData, 
 import type { ReaderAnnotation, CreateAnnotationDto, UpdateAnnotationDto } from '@/features/library/types/reader.types';
 import { libraryClient, resolveLibraryUrl, getItemAttachmentUrl, getAttachmentUrl, unwrapList, isProjectScope, getCitationUrl, getExportsUrl, unwrapResolvedReference } from './http.client';
 import { NotesService, type ExtractNotesOptions } from './catalog-entities.client';
-import { normalizeCitationStyleId } from '@/features/library/domain/citations.domain';
+import { normalizeCitationStyleId } from '@/features/library/domain/citations';
 import { smartUpload } from '@/shared/lib/smart-upload-engine';
 
 export const AttachmentsService = {

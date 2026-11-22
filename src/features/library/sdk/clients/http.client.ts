@@ -2,12 +2,12 @@ import * as api from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
-import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers.domain';
-import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
+import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers';
+import { mapBackendItem } from '@/features/library/domain/metadata/mapper';
 import {
   documentStorage,
   extractStableUserNamespace,
-} from '@/features/library/domain/reader-document-storage.domain';
+} from '@/features/library/core/adapters/reader-storage.adapter';
 import type {
   Item,
   TagWithCount,

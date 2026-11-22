@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
-import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader.domain";
+import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader/reader";
 import {
   ZOOM_PRESETS,
   ToolbarIconButton,

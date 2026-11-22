@@ -1,7 +1,7 @@
 import type { Item } from '@/features/library/types/core.types';
 import {
   isValidValue,
-} from './metadata-sanitizers.domain';
+} from './sanitizers';
 import {
   ALLOWED_ITEM_EXTRA_LINE_KEYS,
   SYSTEM_INTERNAL_METADATA_KEYS,
@@ -18,7 +18,7 @@ import {
   getPublicationVenue,
   formatItemTypeLabel,
   getItemDisplayDate,
-} from './metadata-extra-rules.domain';
+} from './extra-rules';
 import {
   isSystemInternalExtraKey,
   isAllowedItemExtraKey,
@@ -27,7 +27,7 @@ import {
   stripOrUpdateExtraKeyLine,
   extractNormalizedExtraLines,
   parseItemExtraField,
-} from './extra-metadata.mapper';
+} from './extra-mapper';
 
 export {
   ALLOWED_ITEM_EXTRA_LINE_KEYS,

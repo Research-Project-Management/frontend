@@ -7,15 +7,15 @@ import { SearchService } from '../clients/catalog-entities.client';
 import type {
   Item, Collection, CursorPaginationMeta, ItemQueryParams, SearchFacets,
 } from '@/features/library/types/core.types';
-import { hydrateBibliographicSchema } from '@/features/library/domain/bibliographic-schema.domain';
-import { ALL_ITEM_TYPES_FLAT } from '@/features/library/types/item-type-mappings.constants';
-import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree.domain';
+import { hydrateBibliographicSchema } from '@/features/library/domain/metadata/schema';
+import { ALL_ITEM_TYPES_FLAT } from '@/features/library/domain/metadata/item-type-mappings';
+import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree';
 import {
   itemKeys, libraryKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, feedKeys,
   invalidateCollections, normalizeSpaceId, prepareBootstrapScope, registerBootstrapPromise, waitForBootstrapCache,
   getReaderBootstrapScope, notifyServerFeedsHydrated,
 } from '@/features/library/sdk/query-keys';
-import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser';
 import {
   resolveCachedItemVersion, useUpdateLibraryItemMutation, useToggleStarItemMutation,
   useImportFromUserMutation, useCreateLibraryItemMutation, useReResolveItemMetadataMutation,
@@ -388,7 +388,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const shouldFetchAllByDefault = !activeItemId && !collectionId;
   const allItemsQuery = useQuery({
-    queryKey: [...itemKeys.all(targetScope), 'legacy-all', { limit: effectiveLimit }] as const,
+    queryKey: [...itemKeys.all(targetScope), 'all-list', { limit: effectiveLimit }] as const,
     queryFn: ({ signal }) =>
       ItemsService.getAll(targetScope, { limit: effectiveLimit }, { signal }),
     enabled: options.enabled ?? shouldFetchAllByDefault,

@@ -4,7 +4,7 @@ import {
   INITIAL_ITEM_TYPE_FIELDS_MAP,
   ITEM_TYPE_FIELDS_MAP,
   humanizeFieldName,
-} from '@/features/library/types/item-type-mappings.constants';
+} from '@/features/library/domain/metadata/item-type-mappings';
 import {
   BASE_FIELD_MAPPINGS,
   registerSchemaRegistryUpdateListener,
@@ -15,7 +15,7 @@ import {
 import {
   isValidValue,
   stripLatexMarkup,
-} from './metadata-sanitizers.domain';
+} from './sanitizers';
 import type { Item } from '@/features/library/types/core.types';
 
 /**

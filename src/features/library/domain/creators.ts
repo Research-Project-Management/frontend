@@ -10,7 +10,7 @@
  * standardizing author display, and managing structured creator entries.
  */
 
-import { cleanValue, isValidValue, stripLatexMarkup, cleanText } from './metadata-sanitizers.domain';
+import { cleanValue, isValidValue, stripLatexMarkup, cleanText } from './metadata/sanitizers';
 import type { CreatorCredit, CreatorEntry, Item } from '@/features/library/types/core.types';
 import { getPrimaryCreatorType } from '@/features/library/types/item-types.types';
 

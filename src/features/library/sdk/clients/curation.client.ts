@@ -1,12 +1,12 @@
 import { type Item, type DuplicateGroup, type FlagRetractionInput, type RetractionStats, itemSchema, type UnifiedIngestionPayload, type UnifiedIngestionResponse, type IngestionRunSnapshotResponse, type FeedSubscriptionResponse, UnifiedIngestionPayloadSchema, UnifiedIngestionResponseSchema, IngestionRunSnapshotResponseSchema } from '@/features/library/types/core.types';
-import { preserveMappedItemFlags } from '@/features/library/domain/metadata.mapper';
+import { preserveMappedItemFlags } from '@/features/library/domain/metadata/mapper';
 import {
   resolveFeedVirtualizationPlan,
   mapOpenAlexWorksToFeedEntries,
   mapCrossRefWorksToFeedEntries,
   mapEuropePmcWorksToFeedEntries,
   type FeedEntryApiItem,
-} from '@/features/library/domain/feed-parser.domain';
+} from '@/features/library/domain/feed-parser';
 import { libraryClient, resolveLibraryUrl, getCurationUrl, getRetractionUrl, isProjectScope, mapBackendItem, getIngestionUrl, toIngestionSubmission } from './http.client';
 
 const CLIENT_FEED_CACHE_PREFIX = 'flux:feed-cache:v1:';

@@ -20,7 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { useReaderDocumentBlobLoader } from '@/features/library/core/coordinator/reader/use-reader';
-import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader.domain';
+import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader/reader';
 import type {
   ReaderNavigationTarget,
   ReaderAnnotation,

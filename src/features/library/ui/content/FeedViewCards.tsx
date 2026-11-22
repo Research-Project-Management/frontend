@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import type { Collection } from '@/features/library/types/core.types';
-import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser';
 import { cn } from '@/shared/lib/utils';
 
 interface FeedSubNavigationBarProps {

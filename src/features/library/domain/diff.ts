@@ -6,10 +6,10 @@ import type {
   ItemFieldDiff,
 } from '@/features/library/types/core.types';
 import { getItemTypeDefinition, getPrimaryCreatorType } from '@/features/library/types/item-types.types';
-import { isValidValue, normalizeTags } from './metadata-sanitizers.domain';
-import { getItemDisplayTitle, getItemDisplayDate, getPublicationVenue } from './metadata-extra.domain';
-import { splitAuthorString, buildStructuredCreatorsFromAuthors } from './creators.domain';
-import { prepareInspectorFieldContext, resolveInspectorFieldValue, EXTRA_FIELD_FALLBACKS, MULTI_KEY_SYNC_SETTERS, type PreparedInspectorFieldContext } from './item-field-schema.domain';
+import { isValidValue, normalizeTags } from './metadata/sanitizers';
+import { getItemDisplayTitle, getItemDisplayDate, getPublicationVenue } from './metadata/extra';
+import { splitAuthorString, buildStructuredCreatorsFromAuthors } from './creators';
+import { prepareInspectorFieldContext, resolveInspectorFieldValue, EXTRA_FIELD_FALLBACKS, MULTI_KEY_SYNC_SETTERS, type PreparedInspectorFieldContext } from './metadata/field-schema';
 
 export { buildStructuredCreatorsFromAuthors, EXTRA_FIELD_FALLBACKS };
 

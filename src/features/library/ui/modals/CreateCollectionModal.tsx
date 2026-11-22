@@ -23,7 +23,7 @@ import { useSearchCslStyles } from '@/features/library/core/coordinator/citation
 import {
   getCleanStyleLabel,
   normalizeCitationStyleId,
-} from '@/features/library/domain/citations.domain';
+} from '@/features/library/domain/citations';
 
 interface CreateCollectionModalProps {
   open: boolean;

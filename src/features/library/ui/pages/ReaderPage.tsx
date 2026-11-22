@@ -1,6 +1,6 @@
 "use client";
 
-import { buildReaderPaperUrl, resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
+import { buildReaderPaperUrl, resolveEpubOrSnapshot } from "@/features/library/domain/reader/reader";
 
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -15,11 +15,11 @@ import {
 } from "@/features/library/core/coordinator/reader/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import { useAiCompanionStore } from "@/features/ai";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
-import { warmViewerPool, type WarmViewerPoolItem } from "@/features/library/domain/reader-tab-pool.domain";
+import { warmViewerPool, type WarmViewerPoolItem } from "@/features/library/domain/reader/tab-pool";
 import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/features/library/types/reader.types";

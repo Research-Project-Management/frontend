@@ -44,8 +44,8 @@ vi.mock('@/features/library/sdk/queries/reader.queries', async (importOriginal) 
   };
 });
 
-vi.mock('@/features/library/core/store/library-ui.store', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/library/core/store/library-ui.store')>();
+vi.mock('@/features/library/core/store/ui.store', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/library/core/store/ui.store')>();
   return {
     ...actual,
     useLibraryUIStore: vi.fn((selector) =>
@@ -161,7 +161,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
       itemType: 'journalArticle',
     } as any;
 
-    const { useLibraryUIStore } = await import('@/features/library/core/store/library-ui.store');
+    const { useLibraryUIStore } = await import('@/features/library/core/store/ui.store');
     const mockedStore = vi.mocked(useLibraryUIStore);
 
     // Level 1: 'cite' -> only Citation section visible (1 bar)
@@ -241,7 +241,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
       itemType: 'journalArticle',
     } as any;
 
-    const { useLibraryUIStore } = await import('@/features/library/core/store/library-ui.store');
+    const { useLibraryUIStore } = await import('@/features/library/core/store/ui.store');
     const mockedStore = vi.mocked(useLibraryUIStore);
     const mockSetIsInspectorOpen = vi.fn();
     const mockSetActiveInspectorTab = vi.fn();

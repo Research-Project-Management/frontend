@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Plus, Minus, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { type CreatorEntry, normalizeAuthors, splitAuthorString, parseCreatorName, parseCreators, areCreatorsEqual, toItemCreators, buildCanonicalCreatorsPatch, isInstitutionName } from '@/features/library/domain/creators.domain';
+import { type CreatorEntry, normalizeAuthors, splitAuthorString, parseCreatorName, parseCreators, areCreatorsEqual, toItemCreators, buildCanonicalCreatorsPatch, isInstitutionName } from '@/features/library/domain/creators';
 import type { Item } from '@/features/library/types/core.types';
 import { type SchemaItemTypeDefinition, ALL_CREATOR_TYPES, getPrimaryCreatorType } from '@/features/library/types/item-types.types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';

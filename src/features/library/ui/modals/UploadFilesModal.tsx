@@ -8,7 +8,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
 import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { addLinkSchema, applyServerErrorToForm, type Collection, type AddLinkFormValues } from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';

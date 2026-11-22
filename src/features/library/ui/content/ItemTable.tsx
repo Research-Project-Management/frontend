@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/citation-export.coordinator";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import {
   useToggleStarItemMutation,
   useUpdateLibraryItemMutation,
@@ -21,8 +21,8 @@ import {
 import {
   useLibraryCommandStore,
   createBatchAssignCommand,
-} from "@/features/library/core/manager/library-command.manager";
-import { getAssignedCollectionIds } from "@/features/library/domain/metadata.mapper";
+} from "@/features/library/core/manager/command.manager";
+import { getAssignedCollectionIds } from "@/features/library/domain/metadata/mapper";
 import { toast } from "sonner";
 import { useTags } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 import {
@@ -31,7 +31,7 @@ import {
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "@/features/library/types/ingestion.types";
-import { sortLibraryItems } from "@/features/library/domain/extra-metadata.mapper";
+import { sortLibraryItems } from "@/features/library/domain/metadata/extra-mapper";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";

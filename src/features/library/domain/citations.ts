@@ -1,7 +1,7 @@
 import type { Item, CslStyle } from '@/features/library/types/core.types';
-import { parseCreatorName, getItemAuthorsSummary } from './creators.domain';
-import { stripLatexMarkup, isValidValue, parseItemExtraField, getItemDisplayTitle, getItemDisplayDate } from './metadata.mapper';
-import { foldDiacritics, cleanText } from './metadata-sanitizers.domain';
+import { parseCreatorName, getItemAuthorsSummary } from './creators';
+import { stripLatexMarkup, isValidValue, parseItemExtraField, getItemDisplayTitle, getItemDisplayDate } from './metadata/mapper';
+import { foldDiacritics, cleanText } from './metadata/sanitizers';
 
 export { foldDiacritics, cleanText };
 

@@ -6,8 +6,8 @@ import { ItemTableRow } from '@/features/library/ui/content/ItemTableRow';
 import { BatchBar } from '@/features/library/ui/content/BatchBar';
 import { DuplicatesContent } from '@/features/library/ui/content/DuplicatesContent';
 import { DEFAULT_COLLECTION_COLOR } from '@/features/library/core/coordinator/collection.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import type { Item, Collection, DuplicateGroup } from '@/features/library/domain/types/core.types';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
+import type { Item, Collection, DuplicateGroup } from '@/features/library/types/core.types';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({

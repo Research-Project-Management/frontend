@@ -12,17 +12,17 @@ import {
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 import { CollectionTree, SidebarNavItem, type TreeNode } from './CollectionTree';
-import { useFeedsStore } from '@/features/library/core/store/reader.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useFeedSubscriptionsQuery, useUnsubscribeFeedMutation } from '@/features/library/core/coordinator/curation.coordinator';
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import type { SavedFeedSubscription, SavedSearch } from '@/features/library/types/ingestion.types';
 import type { Collection, CollectionActionHandlers, LibraryScope, ProjectRole } from '@/features/library/types/core.types';
-import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
+import { getLibraryPermissions } from '@/features/library/domain/permissions.policy';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
-import { parseEmojiPrefix } from '@/features/library/domain/citations.domain';
+import { parseEmojiPrefix } from '@/features/library/domain/citations';
 
 interface FeedContextMenuProps {
   feed: SavedFeedSubscription;

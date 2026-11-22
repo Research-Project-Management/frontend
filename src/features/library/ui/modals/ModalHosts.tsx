@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import {
   useLibraryUIStore,
   type LibraryModalType,
-} from '@/features/library/core/store/library-ui.store';
+} from '@/features/library/core/store/ui.store';
 import {
   useCreateCollectionMutation,
   useCollections,
@@ -23,7 +23,7 @@ import {
   createRestoreCommand,
   buildPreConversionSnapshot,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import {
   useSavedSearches,
   useTrash,

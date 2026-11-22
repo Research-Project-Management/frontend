@@ -8,11 +8,11 @@ import {
   uploadLibraryFileMultipart,
   type UploadedMultipartFile,
 } from '@/features/library/sdk/queries/extraction.queries';
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
+import { cleanFilenameToTitle } from '@/features/library/domain/metadata/mapper';
 import {
   computeEdgeFileSha256,
   sniffPdfEdgeIdentifier,
-} from '@/features/library/domain/identifiers.domain';
+} from '@/features/library/domain/identifiers';
 import type { ProcessModalStoreApi } from '@/features/library/types/ingestion.types';
 
 interface BatchTask<TInput = unknown, TOutput = unknown> {
@@ -220,7 +220,7 @@ export interface FileIngestionStrategyContext {
   ) => void;
 }
 
-export interface IFileIngestionStrategy {
+export interface FileIngestionStrategy {
   readonly id: string;
   canHandle(file: File): boolean;
   execute(file: File, ctx: FileIngestionStrategyContext): Promise<void>;
@@ -271,7 +271,7 @@ async function ingestTextContent(
   return { extractedTitle, resolvedItemId, runId: bibRunId };
 }
 
-export const TextBibliographyFileStrategy: IFileIngestionStrategy = {
+export const TextBibliographyFileStrategy: FileIngestionStrategy = {
   id: 'text-bibliography',
   canHandle(file: File): boolean {
     const lowerName = file.name.toLowerCase();
@@ -514,7 +514,7 @@ const edgeUploadHashInFlight = new Map<
   { expiresAt: number; promise: Promise<UploadedMultipartFile> }
 >();
 
-export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
+export const BinaryAttachmentFileStrategy: FileIngestionStrategy = {
   id: 'binary-attachment',
   canHandle(_file: File): boolean {
     return true;
@@ -659,12 +659,12 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
   },
 };
 
-const FILE_INGESTION_STRATEGY_REGISTRY: ReadonlyArray<IFileIngestionStrategy> = [
+const FILE_INGESTION_STRATEGY_REGISTRY: ReadonlyArray<FileIngestionStrategy> = [
   TextBibliographyFileStrategy,
   BinaryAttachmentFileStrategy,
 ];
 
-export function resolveFileIngestionStrategy(file: File): IFileIngestionStrategy {
+export function resolveFileIngestionStrategy(file: File): FileIngestionStrategy {
   return (
     FILE_INGESTION_STRATEGY_REGISTRY.find((strategy) => strategy.canHandle(file)) ||
     BinaryAttachmentFileStrategy

@@ -70,8 +70,8 @@ import {
   invalidateLibraryCatalogDependencies,
   registerMultiTabQueryCacheSync,
 } from './cache-patcher.queries';
-import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
-import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader-search-outline.domain';
+import { PdfAnnotationEngine } from '@/features/library/domain/reader/reader';
+import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader/search-outline';
 import {
   ANNOTATION_HISTORY_HANDLERS,
   executeAnnotationBatchSync,

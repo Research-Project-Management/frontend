@@ -32,7 +32,7 @@ import { useCollections } from "@/features/library/core/coordinator/collection.c
 import {
   formatCreatorCompact,
   normalizeAuthors,
-} from "@/features/library/domain/creators.domain";
+} from "@/features/library/domain/creators";
 import type {
   Item,
 } from "@/features/library/types/core.types";

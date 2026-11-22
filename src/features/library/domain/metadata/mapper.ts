@@ -1,12 +1,12 @@
 import type { Item } from '@/features/library/types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/types/item-type-mappings.constants';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/metadata/item-type-mappings';
 import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener } from '@/features/library/types/item-types.types';
-import { normalizeAuthors } from './creators.domain';
-import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './metadata-sanitizers.domain';
-import { getItemDisplayTitle, getItemDisplayDate } from './metadata-extra.domain';
+import { normalizeAuthors } from '../creators';
+import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './sanitizers';
+import { getItemDisplayTitle, getItemDisplayDate } from './extra';
 
-export * from './metadata-sanitizers.domain';
-export * from './metadata-extra.domain';
+export * from './sanitizers';
+export * from './extra';
 
 const MUTABLE_SCHEMA_PROMOTE_KEYS: string[] = Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== 'title' && k !== 'extra');
 export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = MUTABLE_SCHEMA_PROMOTE_KEYS;

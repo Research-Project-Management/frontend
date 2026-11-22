@@ -32,7 +32,7 @@ import {
   normalizeReaderTheme,
   normalizeReaderTab,
   resolveNextActiveTabOnClose,
-} from '@/features/library/domain/reader-tab-pool.domain';
+} from '@/features/library/domain/reader/tab-pool';
 
 export {
   getSchemaRegistryVersion,

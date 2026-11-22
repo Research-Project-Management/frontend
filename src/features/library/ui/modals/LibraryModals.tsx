@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   useLibraryUIStore,
   type LibraryModalType,
-} from '@/features/library/core/store/library-ui.store';
+} from '@/features/library/core/store/ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import {
   useResumeBatchIngestionPolling,
@@ -22,7 +22,7 @@ import {
   useLibraryCommandStore,
   buildPreConversionSnapshot,
   createConvertItemTypeCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
 import { useItemTypeConversion } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
@@ -35,7 +35,7 @@ import {
 import { useSetMyPublicationMutation } from '@/features/library/core/coordinator/item-action.coordinator';
 import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 import type { AddFeedFormValues } from '@/features/library/types/core.types';
-import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers.domain';
+import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers';
 import {
   ALL_ITEM_TYPES_FLAT,
   type Item,

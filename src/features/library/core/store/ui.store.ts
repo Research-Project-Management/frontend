@@ -8,6 +8,7 @@ import {
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from '@/features/library/types/ingestion.types';
+import { useLibraryCommandStore } from '../manager/command.manager';
 
 export type QuickSearchMode = 'title_creator_year' | 'fields_tags' | 'everything';
 
@@ -28,15 +29,6 @@ export interface LibraryEphemeralFilters {
   orderBy?: LibraryOrderBy;
   orderDirection?: 'asc' | 'desc';
   page?: number;
-}
-
-const scopeChangeListeners = new Set<() => void>();
-
-export function registerLibraryScopeChangeListener(listener: () => void): () => void {
-  scopeChangeListeners.add(listener);
-  return () => {
-    scopeChangeListeners.delete(listener);
-  };
 }
 
 export type InspectorSectionId =
@@ -182,7 +174,7 @@ const createScopeSlice: StateCreator<
         }
         return { activeScope };
       }
-      scopeChangeListeners.forEach((listener) => listener());
+      useLibraryCommandStore.getState().clearHistory();
       return {
         activeScope,
         selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),

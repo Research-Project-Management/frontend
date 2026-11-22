@@ -27,7 +27,7 @@ import {
   ITEM_TYPE_LABELS,
   FIELD_LABELS,
   type SchemaFieldDefinition,
-} from '@/features/library/types/item-type-mappings.constants';
+} from '@/features/library/domain/metadata/item-type-mappings';
 import {
   LIBRARY_ITEM_TYPES,
   FIELD_DEFINITIONS,
@@ -59,7 +59,7 @@ import {
   getItemDisplayDate,
   formatItemTypeLabel,
   parseValidYear,
-} from './metadata-extra-rules.domain';
+} from './extra-rules';
 import {
   prepareInspectorFieldContext,
   resolveInspectorFieldValue,
@@ -67,27 +67,27 @@ import {
   buildInverseMetadataPatch,
   buildPreConversionSnapshot,
   MULTI_KEY_SYNC_SETTERS,
-} from './item-field-schema.domain';
+} from './field-schema';
 import {
   INSPECTOR_FIELD_DESCRIPTORS,
   applyCoupledFieldSynchronization,
   type FieldLookupSource,
   type InspectorFieldDescriptor,
-} from './item-field-descriptors.domain';
+} from './field-descriptors';
 import {
   buildExtraMetadataPatch,
   formatExtraDisplay,
   formatAndSanitizeExtraMetadata,
   parseItemExtraField,
   stripOrUpdateExtraKeyLine,
-} from './metadata-extra.domain';
+} from './extra';
 import {
   mapBackendItem,
   ALL_SCHEMA_PROMOTE_KEYS,
   createProvisionalUploadItem,
   getAssignedCollectionIds,
   hasExplicitUserStateInPayload,
-} from './metadata.mapper';
+} from './mapper';
 
 export interface BibliographicSchemaSnapshot extends LibrarySchemaRegistrySnapshot {
   readonly baseFieldMappings: Readonly<Record<string, Readonly<Record<string, string>>>>;

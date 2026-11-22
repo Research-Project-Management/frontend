@@ -38,8 +38,8 @@ import type {
 } from '@/features/library/types/ingestion.types';
 import { getDefaultSortDirection } from '@/features/library/types/ingestion.types';
 import type { Item } from '@/features/library/types/items.types';
-import type { ConditionRow } from '@/features/library/domain/saved-search-ast.domain';
-import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast.domain';
+import type { ConditionRow } from '@/features/library/domain/saved-search-ast';
+import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast';
 
 export type SavedSearchBuilderSortBy =
   | 'dateAdded'

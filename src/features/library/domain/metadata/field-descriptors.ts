@@ -4,9 +4,9 @@ import type {
   Item,
 } from '@/features/library/types/core.types';
 import { normalizeCanonicalItemType, getTitleFieldForType } from '@/features/library/types/item-types.types';
-import { cleanDoi, extractArxivId } from './identifiers.domain';
-import { isValidValue, cleanValue } from './metadata.mapper';
-import { parseValidYear } from './metadata-extra-rules.domain';
+import { cleanDoi, extractArxivId } from '../identifiers';
+import { isValidValue, cleanValue } from './mapper';
+import { parseValidYear } from './extra-rules';
 
 /**
  * Declarative Inspector Field Descriptors (`get`, `patch`, `formatDisplay`)

@@ -18,7 +18,7 @@ import {
   calculateFilterMatchScore,
   formatTypeFallback,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/extra-metadata.mapper';
+} from '@/features/library/domain/metadata/extra-mapper';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
 /** Standard Zotero 7 9-Color Tag Palette */

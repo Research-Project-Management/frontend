@@ -20,8 +20,8 @@ export {
   useCreateCollectionMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { canMoveCollection } from '@/features/library/domain/collection-tree';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type {
   Collection,

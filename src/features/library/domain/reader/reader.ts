@@ -27,7 +27,7 @@ import {
   type PdfTextMatch,
   type PdfSearchCycleResult,
   type PdfOutlineNode,
-} from './reader-search-outline.domain';
+} from './search-outline';
 
 export {
   normalizeReaderAuthors,

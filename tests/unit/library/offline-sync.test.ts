@@ -5,7 +5,7 @@ import {
   getOutboxStorage,
   setCustomOutboxStorageProvider,
   type OutboxMutationEntry,
-} from '@/features/library/core/adapters/library-outbox-storage.adapter';
+} from '@/features/library/core/adapters/outbox-storage.adapter';
 import {
   flushOfflineOutbox,
   enqueueOfflineMutation,

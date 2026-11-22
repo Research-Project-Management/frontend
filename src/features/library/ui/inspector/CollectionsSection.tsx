@@ -11,9 +11,9 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import { createUpdateItemMetadataCommand } from "@/features/library/core/manager/library-command.manager";
+import { createUpdateItemMetadataCommand } from "@/features/library/core/manager/command.manager";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import { resolveProjectRole } from "@/features/library/ui/sidebar/FeedsListSection";
 import {
   getCollectionAncestorPath,

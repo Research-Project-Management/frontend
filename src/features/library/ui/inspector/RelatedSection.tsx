@@ -5,7 +5,7 @@ import { FileText, X, ExternalLink, Loader2, Search, Plus, Folder, Library, } fr
 import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import { useViewItems, useLibraryCountsQuery } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanText, formatAuthors } from '@/features/library/domain/citations.domain';
+import { cleanText, formatAuthors } from '@/features/library/domain/citations';
 
 interface RelatedSectionProps {
   item?: Item;

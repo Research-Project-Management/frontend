@@ -32,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { useAttachmentCoordinator } from "@/features/library/core/coordinator/attachment.coordinator";
-import { classifyAttachmentDescriptor } from "@/features/library/domain/reader.domain";
+import { classifyAttachmentDescriptor } from "@/features/library/domain/reader/reader";
 import type { Item } from "@/features/library/types/core.types";
 import {
   PdfPageCanvas,

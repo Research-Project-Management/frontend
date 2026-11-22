@@ -6,18 +6,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { isProjectScope } from '@/features/library/domain/identifiers.domain';
+import { isProjectScope } from '@/features/library/domain/identifiers';
 import {
   isPersistedItemId,
   isPersistedLibraryItem,
-} from '@/features/library/domain/library-permissions.policy';
+} from '@/features/library/domain/permissions.policy';
 import {
   useLibraryCommandStore,
   createTrashCommand,
   createRestoreCommand,
   createMoveItemsCommand,
   createToggleStarCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher.queries';
 import {
   useCitationStyles,
@@ -50,7 +50,7 @@ export {
   useLibraryCacheSynchronizer,
   useLibraryBootstrapQuery,
 } from '@/features/library/sdk/queries/catalog.queries';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
 import {
   executeCopyMultiCite,
@@ -60,8 +60,8 @@ import {
 import {
   DEFAULT_CITATION_STYLES,
   getCleanStyleLabel,
-} from '@/features/library/domain/citations.domain';
-import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
+} from '@/features/library/domain/citations';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata/mapper';
 import type { Item, Collection, CslStyle } from '@/features/library/types/core.types';
 
 interface UseItemActionHandlersOptions {

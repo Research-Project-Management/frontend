@@ -36,21 +36,21 @@ import {
   useBatchRestoreItemsMutation,
   useLibraryCountsQuery,
 } from '@/features/library/core/coordinator/item-action.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   useLibraryCommandStore,
   createMoveItemsCommand,
   createBatchAssignCommand,
   createTrashCommand,
-} from '@/features/library/core/manager/library-command.manager';
+} from '@/features/library/core/manager/command.manager';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
 
-import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
-import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
+import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
 import { CollectionTree } from './CollectionTree';

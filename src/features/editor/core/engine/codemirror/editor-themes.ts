@@ -97,7 +97,7 @@ const latexLightStyle = EditorView.theme({
   },
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
     backgroundColor: 'var(--editor-active-line-gutter, #D6EAFF)',
-    color: '#0366d6',
+    color: '#005cc5',
     fontWeight: '600',
   },
 });

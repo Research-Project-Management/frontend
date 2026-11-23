@@ -161,7 +161,7 @@ export function WorkbenchShell({
   );
 
   return (
-    <div className={cn('h-screen w-screen flex flex-col bg-background', className)}>
+    <div className={cn('h-full w-full flex flex-col bg-background overflow-hidden', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 
@@ -183,7 +183,7 @@ export function WorkbenchShell({
             {sidebarLeftOpen && (
               <aside
                 style={{ width: `${sidebarLeftWidth}px`, minWidth: `${sidebarLeftWidth}px`, maxWidth: `${sidebarLeftWidth}px` }}
-                className="h-full shrink-0 flex flex-col bg-surface overflow-hidden z-20"
+                className="h-full shrink-0 flex flex-col bg-background overflow-hidden z-20"
               >
                 {leftSidebar}
               </aside>

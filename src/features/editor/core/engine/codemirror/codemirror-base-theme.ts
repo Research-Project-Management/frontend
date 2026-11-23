@@ -300,12 +300,30 @@ export function createConfiguredLineNumbers(): Extension {
 }
 
 export const visualModeTheme = EditorView.theme({
+  '&': {
+    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
+  },
+  '.cm-scroller': {
+    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
+  },
   '.cm-gutters': {
     display: 'none !important',
   },
   '.cm-content': {
-    paddingLeft: '24px',
-    paddingRight: '24px',
+    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif',
+    backgroundColor: 'var(--background, #ffffff)',
+    borderLeft: '1px solid var(--editor-gutter-border, #CFE3FA)',
+    borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
+    maxWidth: '760px',
+    minHeight: '100%',
+    margin: '0 auto',
+    paddingTop: '24px',
+    paddingBottom: '48px',
+    paddingLeft: '36px',
+    paddingRight: '36px',
+  },
+  '.cm-line': {
+    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif',
   },
 });
 

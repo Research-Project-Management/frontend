@@ -32,7 +32,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         className={cn(
           'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
           editorMode === 'code'
-            ? 'bg-canvas text-foreground border border-border/60 font-semibold'
+            ? 'bg-primary text-primary-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         )}
       >
@@ -47,7 +47,7 @@ export const SourceVisualSwitcher = React.memo(function SourceVisualSwitcher() {
         className={cn(
           'h-5 px-2.5 flex items-center justify-center text-xs font-medium rounded-sm transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
           editorMode === 'visual'
-            ? 'bg-canvas text-foreground border border-border/60 font-semibold'
+            ? 'bg-primary text-primary-foreground font-semibold'
             : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
         )}
       >

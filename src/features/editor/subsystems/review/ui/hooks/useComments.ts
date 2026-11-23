@@ -6,7 +6,7 @@
  * Reactive comment hooks wired to `/api/v1/pages/docs/:docId/comments`.
  */
 
-import { useMutation, useQuery, type QueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { CommentStatus, PageComment } from '@/features/editor/domain/types/comment.types';
 import { lruDocumentCache } from '@/features/editor/core';
@@ -78,6 +78,8 @@ function computeLineAnchors(
 export const commentKeys = {
   all: ['page-comments'] as const,
   byPage: (docId: string | null, status?: CommentStatus) => ['page-comments', docId, status] as const,
+  resolvedInfinite: (docId: string | null, limit = 20) =>
+    ['page-comments', docId, 'resolved', 'infinite', limit] as const,
 };
 
 const STALE_TIME = 30_000;
@@ -98,6 +100,34 @@ export const usePageComments = (
         return list || [];
       },
       enabled: Boolean(docId),
+      staleTime: STALE_TIME,
+      gcTime: GC_TIME,
+    },
+    effectiveClient,
+  );
+};
+
+export const useInfiniteResolvedComments = (
+  docId: string | null,
+  enabled: boolean,
+  limit = 20,
+  queryClient?: QueryClient,
+) => {
+  const effectiveClient = useSafeQueryClient(queryClient);
+  return useInfiniteQuery(
+    {
+      queryKey: commentKeys.resolvedInfinite(docId, limit),
+      initialPageParam: null as string | null,
+      queryFn: async ({ pageParam }) => {
+        if (!docId) return { comments: [], nextCursor: null, hasMore: false };
+        return pagesService.comments.getCommentsPage(docId, {
+          status: 'resolved',
+          cursor: pageParam,
+          limit,
+        });
+      },
+      getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+      enabled: Boolean(docId) && enabled,
       staleTime: STALE_TIME,
       gcTime: GC_TIME,
     },

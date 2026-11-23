@@ -71,7 +71,7 @@ function createCommentSvgIcon(): SVGSVGElement {
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('fill', 'none');
   svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '2');
+  svg.setAttribute('stroke-width', '1.5');
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');
@@ -91,26 +91,19 @@ function createCommentSvgIcon(): SVGSVGElement {
   return svg;
 }
 
-function createSparklesSvgIcon(): SVGSVGElement {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('width', '15');
-  svg.setAttribute('height', '15');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('fill', 'currentColor');
-  svg.setAttribute('aria-hidden', 'true');
-
-  const mainStar = document.createElementNS(SVG_NS, 'path');
-  mainStar.setAttribute('d', 'M10 3L11.8 8.2L17 10L11.8 11.8L10 17L8.2 11.8L3 10L8.2 8.2Z');
-
-  const accentStar = document.createElementNS(SVG_NS, 'path');
-  accentStar.setAttribute(
-    'd',
-    'M18.5 2L19.4 4.6L22 5.5L19.4 6.4L18.5 9L17.6 6.4L15 5.5L17.6 4.6Z',
-  );
-
-  svg.appendChild(mainStar);
-  svg.appendChild(accentStar);
-  return svg;
+function createAiLogoIcon(): HTMLImageElement {
+  const img = document.createElement('img');
+  img.src = '/Chat.svg';
+  img.alt = '';
+  img.width = 16;
+  img.height = 16;
+  img.setAttribute('aria-hidden', 'true');
+  img.draggable = false;
+  img.style.width = '16px';
+  img.style.height = '16px';
+  img.style.borderRadius = '9999px';
+  img.style.display = 'block';
+  return img;
 }
 
 const selectionGutterActionsTheme = EditorView.baseTheme({
@@ -118,14 +111,17 @@ const selectionGutterActionsTheme = EditorView.baseTheme({
     position: 'absolute',
     zIndex: '250',
     display: 'none',
-    flexDirection: 'column',
+    flexDirection: 'row',
     alignItems: 'center',
-    width: '28px',
+    width: 'auto',
+    height: '30px',
     padding: '2px',
+    gap: '2px',
     borderRadius: '6px',
-    backgroundColor: '#1e293b',
-    border: '1px solid rgba(255, 255, 255, 0.14)',
-    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.28)',
+    backgroundColor: 'var(--popover)',
+    color: 'var(--popover-foreground)',
+    border: '1px solid var(--border)',
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.10)',
     userSelect: 'none',
     boxSizing: 'border-box',
   },
@@ -133,8 +129,8 @@ const selectionGutterActionsTheme = EditorView.baseTheme({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '24px',
-    height: '24px',
+    width: '26px',
+    height: '26px',
     padding: '0',
     border: 'none',
     borderRadius: '4px',
@@ -143,23 +139,24 @@ const selectionGutterActionsTheme = EditorView.baseTheme({
     transition: 'background-color 120ms ease, color 120ms ease',
   },
   '.cm-selection-gutter-btn-comment': {
-    color: '#f8fafc',
+    color: 'var(--muted-foreground)',
     '&:hover': {
-      backgroundColor: 'rgba(255, 255, 255, 0.14)',
+      backgroundColor: 'var(--accent)',
+      color: 'var(--accent-foreground)',
     },
   },
   '.cm-selection-gutter-btn-ai': {
-    color: '#60a5fa',
+    color: 'var(--primary)',
     '&:hover, &[aria-expanded="true"]': {
-      backgroundColor: 'rgba(96, 165, 250, 0.2)',
-      color: '#93c5fd',
+      backgroundColor: 'var(--accent)',
+      color: 'var(--primary)',
     },
   },
   '.cm-selection-gutter-divider': {
-    width: '16px',
-    height: '1px',
-    margin: '2px 0',
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    width: '1px',
+    height: '14px',
+    margin: '0 1px',
+    backgroundColor: 'var(--border)',
   },
 });
 
@@ -181,6 +178,8 @@ function createSelectionGutterActionsPlugin() {
       private menuSelectedText = '';
       private menuListenersAttached = false;
       private destroyed = false;
+      private isPointerSelecting = false;
+      private showDelayTimer: ReturnType<typeof setTimeout> | null = null;
       private readonly measureSpec = {
         key: this,
         read: (view: EditorView): PillMeasureLayout => {
@@ -209,25 +208,35 @@ function createSelectionGutterActionsPlugin() {
             return { visible: false, top: 0, left: 0 };
           }
 
-          const rawTop =
-            coords !== null && editorRect.height > 0
-              ? coords.top - editorRect.top - 2
-              : this.computeFallbackLineTop(view, pos);
+          const pillHeight = this.pill.offsetHeight || 28;
+          const pillWidth = this.pill.offsetWidth || (this.isAiUnavailable() ? 28 : 59);
+          const gap = 6;
 
-          const pillHeight = this.pill.offsetHeight || (this.isAiUnavailable() ? 28 : 56);
+          const aboveTop =
+            coords !== null && editorRect.height > 0
+              ? coords.top - editorRect.top - pillHeight - gap
+              : this.computeFallbackLineTop(view, pos) - pillHeight - gap;
+          const belowTop =
+            coords !== null && editorRect.height > 0
+              ? coords.bottom - editorRect.top + gap
+              : this.computeFallbackLineTop(view, pos) + 22;
+
+          const rawTop = aboveTop >= 4 ? aboveTop : belowTop;
           const top =
             editorRect.height > 0
               ? Math.max(4, Math.min(rawTop, Math.max(4, editorRect.height - pillHeight - 4)))
               : Math.max(0, rawTop);
 
-          const pillWidth = 28;
+          const rawLeft =
+            coords !== null && editorRect.width > 0
+              ? coords.left - editorRect.left
+              : gutterRect && gutterRect.width > 0
+                ? gutterRect.right - editorRect.left + 4
+                : 6;
           const left =
-            gutterRect && gutterRect.width > 0
-              ? Math.max(
-                  2,
-                  gutterRect.left - editorRect.left + Math.round((gutterRect.width - pillWidth) / 2),
-                )
-              : 6;
+            editorRect.width > 0
+              ? Math.max(4, Math.min(rawLeft, Math.max(4, editorRect.width - pillWidth - 4)))
+              : Math.max(4, rawLeft);
 
           return { visible: true, top, left };
         },
@@ -278,7 +287,7 @@ function createSelectionGutterActionsPlugin() {
         this.aiBtn.title = 'AI writing tools';
         this.aiBtn.setAttribute('aria-haspopup', 'menu');
         this.aiBtn.setAttribute('aria-expanded', 'false');
-        this.aiBtn.appendChild(createSparklesSvgIcon());
+        this.aiBtn.appendChild(createAiLogoIcon());
 
         this.pill.appendChild(this.commentBtn);
         this.pill.appendChild(this.divider);
@@ -289,8 +298,10 @@ function createSelectionGutterActionsPlugin() {
         this.aiBtn.addEventListener('click', this.handleAiButtonClick);
 
         this.view.dom.appendChild(this.pill);
+        this.view.contentDOM.addEventListener('mousedown', this.handleContentMouseDown);
         this.view.scrollDOM.addEventListener('scroll', this.handleScroll, { passive: true });
         if (typeof window !== 'undefined') {
+          window.addEventListener('mouseup', this.handleWindowMouseUp);
           window.addEventListener('resize', this.handleWindowResize, { passive: true });
         }
 
@@ -298,6 +309,28 @@ function createSelectionGutterActionsPlugin() {
           this.scheduleMeasure();
         }
       }
+
+      private clearShowDelay(): void {
+        if (this.showDelayTimer !== null) {
+          clearTimeout(this.showDelayTimer);
+          this.showDelayTimer = null;
+        }
+      }
+
+      private handleContentMouseDown = (): void => {
+        this.isPointerSelecting = true;
+        this.clearShowDelay();
+        this.pill.style.display = 'none';
+        this.closeAiMenu();
+      };
+
+      private handleWindowMouseUp = (): void => {
+        if (!this.isPointerSelecting) return;
+        this.isPointerSelecting = false;
+        if (!this.destroyed && this.syncSelectionState()) {
+          this.scheduleMeasure();
+        }
+      };
 
       private handlePillMouseDown = (e: MouseEvent): void => {
         e.preventDefault();
@@ -594,14 +627,24 @@ function createSelectionGutterActionsPlugin() {
         if (update.selectionSet || update.docChanged || readOnlyChanged) {
           this.closeAiMenu();
         }
+        if (update.selectionSet) {
+          this.clearShowDelay();
+          if (this.isPointerSelecting) {
+            this.pill.style.display = 'none';
+            return;
+          }
+          if (this.syncSelectionState()) {
+            this.scheduleMeasure();
+          }
+          return;
+        }
         if (
-          update.selectionSet ||
           update.docChanged ||
           update.viewportChanged ||
           update.geometryChanged ||
           readOnlyChanged
         ) {
-          if (this.syncSelectionState()) {
+          if (!this.isPointerSelecting && this.syncSelectionState()) {
             this.scheduleMeasure();
           }
         }
@@ -609,12 +652,15 @@ function createSelectionGutterActionsPlugin() {
 
       destroy(): void {
         this.destroyed = true;
+        this.clearShowDelay();
         this.closeAiMenu();
         this.pill.removeEventListener('mousedown', this.handlePillMouseDown);
         this.commentBtn.removeEventListener('click', this.handleCommentClick);
         this.aiBtn.removeEventListener('click', this.handleAiButtonClick);
+        this.view.contentDOM.removeEventListener('mousedown', this.handleContentMouseDown);
         this.view.scrollDOM.removeEventListener('scroll', this.handleScroll);
         if (typeof window !== 'undefined') {
+          window.removeEventListener('mouseup', this.handleWindowMouseUp);
           window.removeEventListener('resize', this.handleWindowResize);
         }
         this.pill.remove();

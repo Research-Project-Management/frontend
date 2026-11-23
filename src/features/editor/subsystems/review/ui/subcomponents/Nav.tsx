@@ -35,6 +35,10 @@ export interface ReviewHeaderProps {
   onToggleResolved: () => void;
   activeResolvedCount: number;
   resolvedComments?: PageComment[];
+  hasMoreResolved?: boolean;
+  isLoadingMoreResolved?: boolean;
+  onLoadMoreResolved?: () => void;
+  onResolvedPopoverOpenChange?: (open: boolean) => void;
   currentFileName?: string;
   onReopenComment?: (commentId: string) => void;
   onDeleteComment?: (commentId: string) => void;
@@ -44,13 +48,24 @@ export interface ReviewHeaderProps {
 export function ReviewHeader({
   activeResolvedCount,
   resolvedComments = [],
+  hasMoreResolved = false,
+  isLoadingMoreResolved = false,
+  onLoadMoreResolved,
+  onResolvedPopoverOpenChange,
   currentFileName = 'main.tex',
   onReopenComment,
   onDeleteComment,
   onClose,
 }: ReviewHeaderProps) {
   const [popoverOpen, setPopoverOpen] = React.useState(false);
-  const resolvedCount = resolvedComments.length || activeResolvedCount;
+  const handlePopoverOpenChange = React.useCallback(
+    (open: boolean) => {
+      setPopoverOpen(open);
+      onResolvedPopoverOpenChange?.(open);
+    },
+    [onResolvedPopoverOpenChange],
+  );
+  const resolvedCount = Math.max(resolvedComments.length, activeResolvedCount);
 
   const tooltipLabel =
     resolvedCount === 0
@@ -64,7 +79,7 @@ export function ReviewHeader({
       onClose={onClose}
     >
       {/* Overleaf-style Resolved comments popover */}
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
         <Tooltip>
           <PopoverTrigger asChild>
             <TooltipTrigger asChild>
@@ -173,6 +188,16 @@ export function ReviewHeader({
                     </div>
                   );
                 })}
+                {hasMoreResolved && onLoadMoreResolved && (
+                  <button
+                    type="button"
+                    disabled={isLoadingMoreResolved}
+                    onClick={onLoadMoreResolved}
+                    className="w-full rounded-md border border-border bg-muted/40 py-1.5 text-center text-11 font-medium text-foreground hover:bg-muted disabled:opacity-50 cursor-pointer transition-colors"
+                  >
+                    {isLoadingMoreResolved ? 'Loading...' : 'Load more'}
+                  </button>
+                )}
               </div>
             </div>
           )}

@@ -1489,6 +1489,7 @@
 
 .manuscript-editor-view .cm-editor .cm-activeLineGutter {
   background-color: var(--editor-active-line-gutter, #D6EAFF) !important;
+  color: var(--editor-active-line-gutter-text, #005cc5) !important;
   font-weight: 600 !important;
 }
 

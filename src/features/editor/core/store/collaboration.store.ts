@@ -21,6 +21,8 @@ export interface DocumentCollaborationState {
   pendingComment: PendingComment | null;
   setPendingComment: (data: PendingComment) => void;
   clearPendingComment: () => void;
+  activeDraftComment: { startLine: number; endLine: number } | null;
+  setActiveDraftComment: (data: { startLine: number; endLine: number } | null) => void;
   unreadChatCount: number;
   incrementUnreadChatCount: () => void;
   resetUnreadChatCount: () => void;
@@ -37,6 +39,8 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
   pendingComment: null,
   setPendingComment: (data) => set({ pendingComment: data }),
   clearPendingComment: () => set({ pendingComment: null }),
+  activeDraftComment: null,
+  setActiveDraftComment: (data) => set({ activeDraftComment: data }),
   unreadChatCount: 0,
   incrementUnreadChatCount: () => set((state) => ({ unreadChatCount: state.unreadChatCount + 1 })),
   resetUnreadChatCount: () => set({ unreadChatCount: 0 }),

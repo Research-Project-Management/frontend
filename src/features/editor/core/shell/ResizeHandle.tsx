@@ -304,11 +304,11 @@ export function ResizeHandle({
         'group relative shrink-0 outline-none select-none z-20 flex items-center justify-center overflow-hidden transition-colors duration-150 touch-none',
         isHorizontal
           ? cn(
-              'h-[8px] w-full flex-row bg-muted/40 border-y border-border/70 cursor-row-resize',
+              'h-[8px] w-full flex-row bg-sidebar border-y border-border/70 cursor-row-resize',
               activeDragging && 'bg-muted/80 border-border',
             )
           : cn(
-              'w-[10px] h-full flex-col bg-muted/40 border-x border-border/70',
+              'w-[10px] h-full flex-col bg-sidebar border-x border-border/70',
               activeDragging && 'bg-muted/80 border-border',
               isCollapsed && !onDragX ? 'cursor-pointer' : 'cursor-col-resize',
             ),

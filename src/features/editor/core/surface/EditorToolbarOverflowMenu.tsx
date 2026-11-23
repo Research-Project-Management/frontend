@@ -44,17 +44,14 @@ export function OmegaIcon({ className }: { className?: string }) {
 
 export interface EditorToolbarOverflowMenuProps {
   readOnly: boolean;
-  showUnderline: boolean;
   showMath: boolean;
   showSymbol: boolean;
   showLink: boolean;
-  showComment: boolean;
   showCrossRef: boolean;
   showCitation: boolean;
   showFigure: boolean;
   showTable: boolean;
   showLists: boolean;
-  showCodeEnvs: boolean;
   onInlineFormat: (format: 'underline') => void;
   onInsertMath: () => void;
   onInsertSymbol: () => void;
@@ -69,17 +66,14 @@ export interface EditorToolbarOverflowMenuProps {
 
 export function EditorToolbarOverflowMenu({
   readOnly,
-  showUnderline,
   showMath,
   showSymbol,
   showLink,
-  showComment,
   showCrossRef,
   showCitation,
   showFigure,
   showTable,
   showLists,
-  showCodeEnvs,
   onInlineFormat,
   onInsertMath,
   onInsertSymbol,
@@ -91,6 +85,16 @@ export function EditorToolbarOverflowMenu({
   onInsertTable,
   onInsertEnvironment,
 }: EditorToolbarOverflowMenuProps) {
+  const hasHiddenMainItems =
+    !showMath ||
+    !showSymbol ||
+    !showLink ||
+    !showCrossRef ||
+    !showCitation ||
+    !showFigure ||
+    !showTable ||
+    !showLists;
+
   return (
     <DropdownMenu>
       <Tooltip delayDuration={300}>
@@ -112,12 +116,6 @@ export function EditorToolbarOverflowMenu({
         </TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="start" className="w-48 text-xs z-50">
-        {!showUnderline && (
-          <DropdownMenuItem onClick={() => onInlineFormat('underline')} className="flex items-center gap-2 cursor-pointer">
-            <Underline className="size-3.5 text-muted-foreground" />
-            <span>Underline (Mod-u)</span>
-          </DropdownMenuItem>
-        )}
         {!showMath && (
           <DropdownMenuItem onClick={onInsertMath} className="flex items-center gap-2 cursor-pointer">
             <Sigma className="size-3.5 text-muted-foreground" />
@@ -134,12 +132,6 @@ export function EditorToolbarOverflowMenu({
           <DropdownMenuItem onClick={onInsertLink} className="flex items-center gap-2 cursor-pointer">
             <Link2 className="size-3.5 text-muted-foreground" />
             <span>Insert link (Mod-k)</span>
-          </DropdownMenuItem>
-        )}
-        {!showComment && (
-          <DropdownMenuItem onClick={onAddComment} className="flex items-center gap-2 cursor-pointer">
-            <MessageSquarePlus className="size-3.5 text-muted-foreground" />
-            <span>Add Comment</span>
           </DropdownMenuItem>
         )}
         {!showCrossRef && (
@@ -166,54 +158,35 @@ export function EditorToolbarOverflowMenu({
             <span>Insert table</span>
           </DropdownMenuItem>
         )}
-
-        {(!showLists || !showCodeEnvs) && <DropdownMenuSeparator />}
-
         {!showLists && (
-          <>
-            <DropdownMenuItem onClick={() => onInsertEnvironment('itemize')} className="flex items-center gap-2 cursor-pointer">
-              <List className="size-3.5 text-muted-foreground" />
-              <span>Bulleted list</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onInsertEnvironment('enumerate')} className="flex items-center gap-2 cursor-pointer">
-              <ListOrdered className="size-3.5 text-muted-foreground" />
-              <span>Numbered list</span>
-            </DropdownMenuItem>
-          </>
-        )}
-        {!showCodeEnvs && (
-          <>
-            <DropdownMenuItem onClick={() => onInsertEnvironment('quote')} className="flex items-center gap-2 cursor-pointer">
-              <Quote className="size-3.5 text-muted-foreground" />
-              <span>Quote</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onInsertEnvironment('code')} className="flex items-center gap-2 cursor-pointer">
-              <Code className="size-3.5 text-muted-foreground" />
-              <span>Code block</span>
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem onClick={() => onInsertEnvironment('itemize')} className="flex items-center gap-2 cursor-pointer">
+            <List className="size-3.5 text-muted-foreground" />
+            <span>Bulleted list</span>
+          </DropdownMenuItem>
         )}
 
-        {showCodeEnvs && (
-          <>
-            <DropdownMenuItem onClick={onAddComment} className="flex items-center gap-2 cursor-pointer">
-              <MessageSquarePlus className="size-3.5 text-muted-foreground" />
-              <span>Add Comment</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onInsertCrossRef} className="flex items-center gap-2 cursor-pointer">
-              <Bookmark className="size-3.5 text-muted-foreground" />
-              <span>Cross-reference</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onInsertTable} className="flex items-center gap-2 cursor-pointer">
-              <TableIcon className="size-3.5 text-muted-foreground" />
-              <span>Insert table</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onInsertFigure} className="flex items-center gap-2 cursor-pointer">
-              <ImageIcon className="size-3.5 text-muted-foreground" />
-              <span>Insert figure</span>
-            </DropdownMenuItem>
-          </>
-        )}
+        {hasHiddenMainItems && <DropdownMenuSeparator />}
+
+        <DropdownMenuItem onClick={() => onInlineFormat('underline')} className="flex items-center gap-2 cursor-pointer">
+          <Underline className="size-3.5 text-muted-foreground" />
+          <span>Underline (Mod-u)</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsertEnvironment('enumerate')} className="flex items-center gap-2 cursor-pointer">
+          <ListOrdered className="size-3.5 text-muted-foreground" />
+          <span>Numbered list</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsertEnvironment('quote')} className="flex items-center gap-2 cursor-pointer">
+          <Quote className="size-3.5 text-muted-foreground" />
+          <span>Quote</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onInsertEnvironment('code')} className="flex items-center gap-2 cursor-pointer">
+          <Code className="size-3.5 text-muted-foreground" />
+          <span>Code block</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onAddComment} className="flex items-center gap-2 cursor-pointer">
+          <MessageSquarePlus className="size-3.5 text-muted-foreground" />
+          <span>Add Comment (Mod-Alt-m)</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

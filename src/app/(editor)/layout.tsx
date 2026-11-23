@@ -44,8 +44,8 @@ export default function EditorLayout({
       featureName="Document Editor"
       description="An issue occurred while rendering the document editor."
     >
-      <div className="h-dvh max-h-dvh w-full flex flex-row overflow-hidden relative" suppressHydrationWarning>
-        <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden relative">
+      <div className="h-dvh max-h-dvh w-full flex flex-row" suppressHydrationWarning>
+        <div className="flex-1 min-w-0 h-full flex flex-col">
           <Suspense fallback={<EditorSkeleton />}>
             {children}
           </Suspense>

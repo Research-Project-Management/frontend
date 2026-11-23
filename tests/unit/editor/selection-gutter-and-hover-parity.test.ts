@@ -263,7 +263,7 @@ describe('Overleaf Parity: Hover Removal, Selection Gutter Actions & Match Highl
       expect(pill.style.display).toBe('none');
     });
 
-    it('positions pill over the gutter after requestMeasure frame without console errors and hides when off-screen', async () => {
+    it('positions horizontal pill above the selection after requestMeasure frame without console errors and hides when off-screen', async () => {
       const originalGetClientRects = Range.prototype.getClientRects;
       const originalGetBoundingClientRect = Range.prototype.getBoundingClientRect;
       Range.prototype.getClientRects = (() => []) as unknown as typeof Range.prototype.getClientRects;
@@ -299,8 +299,8 @@ describe('Overleaf Parity: Hover Removal, Selection Gutter Actions & Match Highl
         const pill = view.dom.querySelector('[data-testid="selection-gutter-actions"]') as HTMLDivElement;
         expect(errorSpy).not.toHaveBeenCalled();
         expect(pill.style.display).toBe('flex');
-        expect(pill.style.top).toBe('44px');
-        expect(pill.style.left).toBe('8px');
+        expect(pill.style.top).toBe('12px');
+        expect(pill.style.left).toBe('60px');
 
         // When selection scrolls outside the viewport, next measure hides the pill
         coordsSpy.mockReturnValue({ top: 10, bottom: 30, left: 160, right: 168 });

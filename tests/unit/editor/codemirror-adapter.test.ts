@@ -89,10 +89,11 @@ describe('CodeMirrorEngineAdapter (IEditorEngine Implementation for CM6)', () =>
     expect(pos?.column).toBe(1);
   });
 
-  it('should jump to line and scroll into view', () => {
+  it('should jump to line and scroll into view with collapsed cursor (no text selection collision)', () => {
     adapter.jumpToLine(2, 'synctex');
     const pos = adapter.getCursorPosition();
     expect(pos?.line).toBe(2);
+    expect(adapter.getSelectedText()).toBe('');
   });
 
   it('should jump to line, offset by column and select exact range', () => {

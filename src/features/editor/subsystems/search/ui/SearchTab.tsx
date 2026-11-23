@@ -324,7 +324,7 @@ export default function SearchTab() {
         <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
       )}
       <FileCode2 className="size-3.5 text-foreground shrink-0" />
-      <span className="text-xs font-semibold text-foreground/90 flex-1 truncate font-mono">
+      <span className="text-xs font-semibold text-foreground/90 flex-1 min-w-0 truncate font-mono">
         {file.fileName}
       </span>
       {file.isCurrent && (

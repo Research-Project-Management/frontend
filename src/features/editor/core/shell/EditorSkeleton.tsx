@@ -31,7 +31,7 @@ export default function EditorSkeleton() {
         </div>
 
         {/* Primary sidebar: Files tree placeholder (220px) */}
-        <div className="hidden sm:flex w-56 flex-col border-r border-border bg-sidebar p-3 space-y-2.5">
+        <div className="hidden sm:flex w-56 flex-col border-r border-border bg-background p-3 space-y-2.5">
           <Skeleton className="h-4 w-20 rounded-sm mb-2" />
           <Skeleton className="h-5 w-full rounded-md" />
           <Skeleton className="h-5 w-4/5 rounded-md" />

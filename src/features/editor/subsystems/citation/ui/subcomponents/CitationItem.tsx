@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import React, { memo } from 'react';
+import { Check, Copy, Info } from 'lucide-react';
 import type { UnifiedCitation } from '@/features/editor/subsystems/citation/ui/hooks/useCitationTabState';
 
 interface CitationItemProps {
@@ -13,9 +14,25 @@ interface CitationItemProps {
 
 export const CitationItem = memo(function CitationItem({
   item,
+  isCopied,
   onSelect,
+  onCopy,
+  onInspect,
 }: CitationItemProps) {
-  const hasMetadata = Boolean(item.authorsSummary || item.journal || item.year);
+  const normalizedTitle = item.title?.trim() || '';
+  const hasDistinctTitle = Boolean(
+    normalizedTitle && normalizedTitle.toLowerCase() !== item.key.trim().toLowerCase(),
+  );
+  const cleanAuthor =
+    item.authorsSummary && item.authorsSummary.trim().toLowerCase() !== 'unknown author'
+      ? item.authorsSummary.trim()
+      : '';
+  const trailingMeta = [cleanAuthor, item.journal].filter(Boolean);
+  const metaParts = [
+    hasDistinctTitle ? item.key : item.source === 'bib' ? '.bib' : '',
+    ...trailingMeta,
+  ].filter(Boolean);
+  const hasActions = Boolean(onCopy || onInspect);
 
   return (
     <div
@@ -28,38 +45,75 @@ export const CitationItem = memo(function CitationItem({
           onSelect(item.key);
         }
       }}
-      className="group relative flex flex-col gap-1 p-2.5 rounded-md hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border text-left select-none border border-transparent hover:border-border/60"
+      className="group relative flex items-center justify-between gap-2 px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border text-left select-none"
     >
-      {/* 1. Header line: Citation Key + Type badge + Year */}
-      <div className="flex items-center justify-between gap-1.5 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-mono text-11 font-medium text-foreground bg-muted/60 border border-border/70 px-1.5 py-0.5 rounded truncate shrink-0 max-w-[170px]">
+      <div className="min-w-0 flex-1">
+        {hasDistinctTitle ? (
+          <p className="text-12 font-medium text-foreground truncate leading-snug">
+            {normalizedTitle}
+          </p>
+        ) : (
+          <p className="font-mono text-12 font-medium text-foreground truncate leading-snug">
             {item.key}
-          </span>
-          {item.source === 'bib' && (
-            <span className="text-10 font-mono px-1 py-0.5 rounded-xs text-muted-foreground border border-border/40 shrink-0">
-              .bib
-            </span>
-          )}
-        </div>
-        {item.year && (
-          <span className="text-11 text-muted-foreground font-mono shrink-0">
-            {item.year}
-          </span>
+          </p>
+        )}
+
+        {metaParts.length > 0 && (
+          <p className="text-11 text-muted-foreground truncate leading-snug mt-0.5">
+            {hasDistinctTitle ? (
+              <>
+                <span className="font-mono">{item.key}</span>
+                {trailingMeta.length > 0 ? ` · ${trailingMeta.join(' · ')}` : ''}
+              </>
+            ) : (
+              metaParts.join(' · ')
+            )}
+          </p>
         )}
       </div>
 
-      {/* 2. Title */}
-      <p className="text-13 font-medium text-foreground line-clamp-2 leading-snug tracking-tight">
-        {item.title}
-      </p>
-
-      {/* 3. Authors & Publication info */}
-      {hasMetadata && (
-        <p className="text-12 text-muted-foreground truncate">
-          {item.authorsSummary}
-          {item.journal ? (item.authorsSummary ? ` · ${item.journal}` : item.journal) : ''}
-        </p>
+      {(item.year || hasActions) && (
+        <div className="shrink-0 flex items-center gap-0.5">
+          {item.year && (
+            <span
+              className={`text-11 text-muted-foreground/80 tabular-nums${hasActions ? ' group-hover:hidden' : ''}`}
+            >
+              {item.year}
+            </span>
+          )}
+          {hasActions && (
+            <div className="hidden group-hover:flex items-center gap-0.5">
+              {onCopy && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopy(item.key);
+                  }}
+                  title="Copy citation key"
+                  aria-label={`Copy ${item.key}`}
+                  className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-background flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  {isCopied ? <Check className="size-3 text-foreground" /> : <Copy className="size-3" />}
+                </button>
+              )}
+              {onInspect && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onInspect(item.key);
+                  }}
+                  title="View citation details"
+                  aria-label={`Inspect ${item.key}`}
+                  className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-background flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <Info className="size-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

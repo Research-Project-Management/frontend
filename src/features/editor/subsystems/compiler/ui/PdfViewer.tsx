@@ -438,7 +438,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
               onClose={closeSearch}
             />
             {pdfViewer === 'browser' ? (
-              <div className="flex-1 w-full h-full bg-muted/10 flex flex-col items-center justify-center relative">
+              <div className="flex-1 w-full h-full bg-canvas flex flex-col items-center justify-center relative">
                 {pdfUrl ? (
                   <iframe
                     src={pdfUrl}

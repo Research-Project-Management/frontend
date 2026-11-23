@@ -95,7 +95,7 @@ export function DiffContentPane({
                 type="button"
                 onClick={() => setActiveFilePath(file.path)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
+                  'flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] max-w-[280px] rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer min-w-0 relative after:absolute after:-inset-1 after:content-[\'\']',
                   isActive
                     ? 'bg-background text-foreground border border-border font-semibold'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -103,7 +103,7 @@ export function DiffContentPane({
                 )}
               >
                 <FileText className={cn("size-3 shrink-0", isDeleted && "text-destructive")} />
-                <span className={cn(isDeleted && 'line-through decoration-destructive/60')}>
+                <span className={cn('truncate min-w-0', isDeleted && 'line-through decoration-destructive/60')}>
                   {file.path}
                 </span>
                 {isDeleted ? (

@@ -243,6 +243,111 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     align: ['\\begin{align}\n  ', '\n\\end{align}'],
   };
 
+  private static readonly TOGGLEABLE_INLINE_FORMATS: ReadonlySet<LatexFormatType> = new Set([
+    'bold',
+    'italic',
+    'underline',
+    'code',
+    'strikethrough',
+  ]);
+
+  private static readonly HEADING_FORMATS: ReadonlySet<LatexFormatType> = new Set([
+    'title',
+    'chapter',
+    'section',
+    'subsection',
+    'subsubsection',
+    'paragraph',
+    'subparagraph',
+  ]);
+
+  private static readonly HEADING_CMD_RE =
+    /\\(?:title|chapter|(?:sub){0,2}section|(?:sub)?paragraph)\*?\{([^}]*)\}/g;
+
+  private static stripHeadingCommands(sourceText: string): string {
+    const startRe = /\\(?:title|chapter|(?:sub){0,2}section|(?:sub)?paragraph)\*?\{/g;
+    let current = sourceText;
+    // Iterate so stacked commands (e.g. `\subsection{\section{Foo}}`) unwrap completely
+    for (let pass = 0; pass < 4; pass++) {
+      startRe.lastIndex = 0;
+      const match = startRe.exec(current);
+      if (!match) break;
+
+      let out = '';
+      let cursor = 0;
+      startRe.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = startRe.exec(current)) !== null) {
+        out += current.slice(cursor, m.index);
+        const contentStart = m.index + m[0].length;
+        let depth = 1;
+        let i = contentStart;
+        while (i < current.length && depth > 0) {
+          if (current[i] === '{') depth++;
+          else if (current[i] === '}') depth--;
+          if (depth > 0) i++;
+        }
+        if (depth === 0) {
+          out += current.slice(contentStart, i);
+          cursor = i + 1;
+          startRe.lastIndex = cursor;
+        } else {
+          out += current.slice(m.index);
+          cursor = current.length;
+          break;
+        }
+      }
+      out += current.slice(cursor);
+      const next = out.replace(CodeMirrorEngineAdapter.HEADING_CMD_RE, '$1');
+      if (next === current) break;
+      current = next;
+    }
+    return current;
+  }
+
+  private findEnclosingInlineCommand(
+    prefix: string,
+    suffix: string,
+    from: number,
+    to: number,
+  ): { start: number; end: number; contentStart: number; contentEnd: number } | null {
+    const doc = this.view.state.doc;
+    const fromLine = doc.lineAt(from);
+    const toLine = doc.lineAt(to);
+    if (fromLine.number !== toLine.number || !suffix.endsWith('}')) return null;
+
+    const lineText = fromLine.text;
+    const localFrom = from - fromLine.from;
+    const localTo = to - fromLine.from;
+    let searchFrom = 0;
+
+    while (searchFrom <= localFrom) {
+      const idx = lineText.indexOf(prefix, searchFrom);
+      if (idx === -1 || idx + prefix.length > localFrom) break;
+
+      const contentStart = idx + prefix.length;
+      let depth = 1;
+      let i = contentStart;
+      while (i < lineText.length && depth > 0) {
+        if (lineText[i] === '{') depth++;
+        else if (lineText[i] === '}') depth--;
+        if (depth > 0) i++;
+      }
+
+      if (depth === 0 && i >= localTo && lineText.slice(i, i + suffix.length) === suffix) {
+        return {
+          start: fromLine.from + idx,
+          end: fromLine.from + i + suffix.length,
+          contentStart: fromLine.from + contentStart,
+          contentEnd: fromLine.from + i,
+        };
+      }
+      searchFrom = idx + prefix.length;
+    }
+
+    return null;
+  }
+
   isReadOnly(): boolean {
     return Boolean(this.view.state?.readOnly);
   }
@@ -253,9 +358,10 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
       const { from, to } = this.view.state.selection.main;
       const hasSelection = from !== to;
       const range = hasSelection ? { from, to } : this.view.state.doc.lineAt(from);
-      const sourceText = hasSelection ? this.view.state.sliceDoc(from, to) : (range as { text: string }).text;
-      const unformatted = sourceText
-        .replace(/\\(?:title|chapter|(?:sub){0,2}section|(?:sub)?paragraph)\*?\{([^}]*)\}/g, '$1');
+      const sourceText = hasSelection
+        ? this.view.state.sliceDoc(from, to)
+        : (range as { text: string }).text;
+      const unformatted = CodeMirrorEngineAdapter.stripHeadingCommands(sourceText);
       if (hasSelection || unformatted !== sourceText) {
         this.view.dispatch({
           changes: { from: range.from, to: range.to, insert: unformatted },
@@ -265,6 +371,105 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     }
 
     const spec = CodeMirrorEngineAdapter.LATEX_WRAP_FORMAT_SPECS[type];
+
+    if (CodeMirrorEngineAdapter.TOGGLEABLE_INLINE_FORMATS.has(type) && spec) {
+      const [prefix, suffix] = spec;
+      const { from, to } = this.view.state.selection.main;
+      const selected = this.view.state.sliceDoc(from, to);
+
+      // Case 1: Selection itself includes the wrapper (e.g. `\textbf{foo}`)
+      if (
+        selected.startsWith(prefix) &&
+        selected.endsWith(suffix) &&
+        selected.length >= prefix.length + suffix.length
+      ) {
+        const inner = selected.slice(prefix.length, selected.length - suffix.length);
+        this.view.dispatch({
+          changes: { from, to, insert: inner },
+          selection: EditorSelection.range(from, from + inner.length),
+        });
+        return;
+      }
+
+      // Case 2: Wrapper immediately surrounds selection/cursor (e.g. `\textbf{|foo|}`)
+      const docLen = this.view.state.doc.length;
+      if (
+        from >= prefix.length &&
+        to + suffix.length <= docLen &&
+        this.view.state.sliceDoc(from - prefix.length, from) === prefix &&
+        this.view.state.sliceDoc(to, to + suffix.length) === suffix
+      ) {
+        const unwrapFrom = from - prefix.length;
+        const unwrapTo = to + suffix.length;
+        this.view.dispatch({
+          changes: { from: unwrapFrom, to: unwrapTo, insert: selected },
+          selection:
+            from === to
+              ? EditorSelection.cursor(unwrapFrom)
+              : EditorSelection.range(unwrapFrom, unwrapFrom + selected.length),
+        });
+        return;
+      }
+
+      // Case 3: Cursor or inner selection sits inside an enclosing command on the same line
+      const enclosing = this.findEnclosingInlineCommand(prefix, suffix, from, to);
+      if (enclosing) {
+        const inner = this.view.state.sliceDoc(enclosing.contentStart, enclosing.contentEnd);
+        const relFrom = from - enclosing.contentStart;
+        const relTo = to - enclosing.contentStart;
+        const newFrom = enclosing.start + relFrom;
+        const newTo = enclosing.start + relTo;
+        this.view.dispatch({
+          changes: { from: enclosing.start, to: enclosing.end, insert: inner },
+          selection:
+            from === to
+              ? EditorSelection.cursor(newFrom)
+              : EditorSelection.range(newFrom, newTo),
+        });
+        return;
+      }
+
+      // Otherwise wrap (keep selection if non-empty so repeated toggle unwraps cleanly)
+      const replacement = `${prefix}${selected}${suffix}`;
+      this.view.dispatch({
+        changes: { from, to, insert: replacement },
+        selection:
+          from === to
+            ? EditorSelection.cursor(from + prefix.length)
+            : EditorSelection.range(from + prefix.length, from + prefix.length + selected.length),
+      });
+      return;
+    }
+
+    if (CodeMirrorEngineAdapter.HEADING_FORMATS.has(type) && spec) {
+      const [prefix, suffix] = spec;
+      const { from, to } = this.view.state.selection.main;
+      const cleanSuffix = suffix.trimEnd();
+
+      if (from !== to) {
+        const selected = this.view.state.sliceDoc(from, to);
+        const stripped = CodeMirrorEngineAdapter.stripHeadingCommands(selected).trim();
+        const replacement = `${prefix}${stripped}${cleanSuffix}`;
+        this.view.dispatch({
+          changes: { from, to, insert: replacement },
+          selection: EditorSelection.cursor(from + prefix.length + stripped.length),
+        });
+      } else {
+        const lineObj = this.view.state.doc.lineAt(from);
+        const leadingWs = lineObj.text.match(/^(\s*)/)?.[1] ?? '';
+        const body = lineObj.text.slice(leadingWs.length);
+        const stripped = CodeMirrorEngineAdapter.stripHeadingCommands(body).trim();
+        const replacement = `${leadingWs}${prefix}${stripped}${cleanSuffix}`;
+        this.view.dispatch({
+          changes: { from: lineObj.from, to: lineObj.to, insert: replacement },
+          selection: EditorSelection.cursor(
+            lineObj.from + leadingWs.length + prefix.length + stripped.length,
+          ),
+        });
+      }
+      return;
+    }
+
     if (spec) {
       this.wrapSelection(spec[0], spec[1]);
       return;
@@ -277,14 +482,23 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     const targetLineNum = Math.max(1, Math.min(line, totalLines));
     const lineObj = this.view.state.doc.line(targetLineNum);
 
-    const fromPos = column !== undefined ? Math.min(lineObj.to, lineObj.from + Math.max(0, column)) : lineObj.from;
-    const toPos = length !== undefined ? Math.min(lineObj.to, fromPos + Math.max(0, length)) : fromPos;
+    let fromPos = column !== undefined ? Math.min(lineObj.to, lineObj.from + Math.max(0, column)) : lineObj.from;
+    let toPos = length !== undefined ? Math.min(lineObj.to, fromPos + Math.max(0, length)) : fromPos;
+
+    if (highlight === 'synctex' && length === undefined) {
+      const localOffset = fromPos - lineObj.from;
+      const slice = lineObj.text.slice(localOffset);
+      const leadingWs = slice.match(/^\s*/)?.[0].length ?? 0;
+      const wordStart = localOffset + leadingWs;
+      fromPos = lineObj.from + wordStart;
+      toPos = fromPos;
+    }
 
     const effects: StateEffect<unknown>[] = [
       EditorView.scrollIntoView(fromPos, { y: 'center' }),
     ];
 
-    if (highlight) {
+    if (highlight === 'error' || highlight === 'synctex') {
       effects.push(highlightLineEffect.of({ line: targetLineNum, type: highlight }));
       setTimeout(() => {
         try {
@@ -292,7 +506,7 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
             this.view.dispatch({ effects: [clearHighlightEffect.of()] });
           }
         } catch {}
-      }, 2500);
+      }, 2200);
     }
 
     this.view.dispatch({

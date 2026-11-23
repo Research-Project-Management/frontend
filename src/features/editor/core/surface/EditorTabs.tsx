@@ -181,12 +181,12 @@ const TabItem = React.memo(function TabItem({
           onKeyDown={handleKeyDown}
           onMouseEnter={handleMouseEnter}
           className={cn(
-            'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            'min-w-0 max-w-[220px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
+            'group/tab relative flex items-center gap-1.5 h-8 px-2.5 rounded-t-md cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'min-w-0 max-w-[220px] shrink-0 transition-colors motion-reduce:transition-none text-12',
             isDragging && 'opacity-60 z-30 bg-muted/60',
             isActive
-              ? 'bg-transparent text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20'
-              : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+              ? 'bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10'
+              : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
           )}
         >
           {/* File Document Icon */}
@@ -501,7 +501,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   if (tabs.length === 0) return null;
 
   return (
-    <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-1 relative">
+    <div className="flex items-end h-9 bg-sidebar select-none border-b border-border w-full px-0.5 pt-0.5 relative">
       {/* ── File tabs (Drag-and-drop sortable; root tab pinned first) ── */}
       <DndContext
         sensors={sensors}
@@ -515,7 +515,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
             aria-label="Open document tabs"
             onKeyDown={handleTabListKeyDown}
             onWheel={handleWheel}
-            className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
+            className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-end gap-1"
           >
             {tabs.map((tab, idx) => {
               const isRoot =

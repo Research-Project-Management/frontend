@@ -61,7 +61,7 @@ export function ActivityBar() {
   return (
     <aside
       aria-label="Activity Bar"
-      className="h-full w-12 shrink-0 flex flex-col items-center justify-between border-r border-border bg-sidebar py-2.5 select-none z-30"
+      className="h-full w-12 shrink-0 flex flex-col items-center justify-between border-r border-border bg-background py-2.5 select-none z-30"
     >
       <TooltipProvider delayDuration={150}>
         {/* Top Section: Primary Viewlets */}

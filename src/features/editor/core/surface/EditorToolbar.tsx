@@ -19,21 +19,17 @@ import {
   ChevronDown,
   Bold,
   Italic,
-  Underline,
   Sigma,
   Table as TableIcon,
   Image as ImageIcon,
   Link2,
   BookOpen,
   List,
-  ListOrdered,
-  Quote,
-  Code,
-  MessageSquarePlus,
   Search,
   Bookmark,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditingModeDropdown } from '../shell/topbar/EditingModeDropdown';
 import {
@@ -41,7 +37,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useContainerWidth } from './useContainerWidth';
 import { cn } from '@/shared/lib/utils';
@@ -63,19 +61,35 @@ const iconButtonClass =
 export function EditorToolbar({ className, readOnly = false }: EditorToolbarProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const actions = useEditorToolbarActions(readOnly);
+  const [linkOpen, setLinkOpen] = React.useState(false);
+  const [linkUrl, setLinkUrl] = React.useState('');
+  const [linkText, setLinkText] = React.useState('');
+  const [crossRefLabels, setCrossRefLabels] = React.useState<string[]>([]);
+
+  const handleLinkOpenChange = (open: boolean) => {
+    if (open) {
+      setLinkUrl('');
+      setLinkText(actions.getSelectedText());
+    }
+    setLinkOpen(open);
+  };
+
+  const handleLinkSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkUrl.trim()) return;
+    actions.handleInsertLink(linkUrl, linkText);
+    setLinkOpen(false);
+  };
 
   const effectiveWidth = containerWidth > 0 ? containerWidth : 600;
-  const showUnderline = effectiveWidth >= 560;
-  const showMath = effectiveWidth >= 600;
-  const showSymbol = effectiveWidth >= 580;
-  const showLink = effectiveWidth >= 680;
-  const showCrossRef = effectiveWidth >= 730;
-  const showCitation = effectiveWidth >= 780;
-  const showFigure = effectiveWidth >= 830;
-  const showTable = effectiveWidth >= 880;
-  const showLists = effectiveWidth >= 940;
-  const showCodeEnvs = effectiveWidth >= 1000;
-  const showComment = effectiveWidth >= 580;
+  const showMath = effectiveWidth >= 540;
+  const showSymbol = effectiveWidth >= 570;
+  const showLink = effectiveWidth >= 620;
+  const showCrossRef = effectiveWidth >= 660;
+  const showCitation = effectiveWidth >= 700;
+  const showFigure = effectiveWidth >= 740;
+  const showTable = effectiveWidth >= 780;
+  const showLists = effectiveWidth >= 820;
 
   return (
     <div
@@ -149,7 +163,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
 
       <ToolbarSeparator />
 
-      {/* ── 3. Text Formatting (Bold, Italic, Underline) ── */}
+      {/* ── 3. Text Formatting (Bold, Italic) ── */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInlineFormat('bold')} className={iconButtonClass} aria-label="Bold">
@@ -174,21 +188,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
         </TooltipContent>
       </Tooltip>
 
-      {showUnderline && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInlineFormat('underline')} className={iconButtonClass} aria-label="Underline">
-              <Underline className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Underline</span>
-            <span className="ml-1.5 opacity-60">(Mod-u)</span>
-          </TooltipContent>
-        </Tooltip>
-      )}
-
-      {showMath && <ToolbarSeparator />}
+      {(showMath || showSymbol) && <ToolbarSeparator />}
 
       {/* ── 4. Insert Elements: Math & Symbol ── */}
       {showMath && (
@@ -221,30 +221,97 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
 
       {/* ── 5. Insert Objects (Dynamic container-based) ── */}
       {showLink && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={actions.handleInsertLink} className={iconButtonClass} aria-label="Insert link">
-              <Link2 className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Insert link</span>
-            <span className="ml-1.5 opacity-60">(Mod-k)</span>
-          </TooltipContent>
-        </Tooltip>
+        <Popover open={linkOpen} onOpenChange={handleLinkOpenChange}>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={readOnly} className={iconButtonClass} aria-label="Insert link">
+                  <Link2 className="size-3.5" />
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              <span>Insert link</span>
+              <span className="ml-1.5 opacity-60">(Mod-k)</span>
+            </TooltipContent>
+          </Tooltip>
+          <PopoverContent align="start" className="w-72 p-3">
+            <form onSubmit={handleLinkSubmit} className="space-y-2.5">
+              <div className="space-y-1">
+                <label htmlFor="toolbar-link-url" className="text-11 font-medium text-muted-foreground">
+                  URL
+                </label>
+                <Input
+                  id="toolbar-link-url"
+                  type="text"
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  autoFocus
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="toolbar-link-text" className="text-11 font-medium text-muted-foreground">
+                  Display text
+                </label>
+                <Input
+                  id="toolbar-link-text"
+                  type="text"
+                  placeholder="Link text (optional)"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="flex justify-end">
+                <Button type="submit" size="sm" disabled={!linkUrl.trim()} className="h-7 px-3 text-xs">
+                  Insert link
+                </Button>
+              </div>
+            </form>
+          </PopoverContent>
+        </Popover>
       )}
 
       {showCrossRef && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={actions.handleInsertCrossRef} className={iconButtonClass} aria-label="Cross reference">
-              <Bookmark className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Cross-reference</span>
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenu onOpenChange={(open) => { if (open) setCrossRefLabels(actions.getDocumentLabels()); }}>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={readOnly} className={iconButtonClass} aria-label="Cross reference">
+                  <Bookmark className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              <span>Cross-reference</span>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="w-56 text-xs">
+            {crossRefLabels.length > 0 ? (
+              <div className="max-h-56 overflow-y-auto">
+                {crossRefLabels.map((label) => (
+                  <DropdownMenuItem
+                    key={label}
+                    onClick={() => actions.handleInsertCrossRef(label)}
+                    className="text-xs font-mono cursor-pointer"
+                  >
+                    <span className="truncate">{label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            ) : (
+              <div className="px-2 py-2 text-xs text-muted-foreground">
+                No \label{'{}'} found in file
+              </div>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => actions.handleInsertCrossRef()} className="text-xs cursor-pointer">
+              Insert empty \ref{'{}'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {showCitation && (
@@ -288,103 +355,48 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
         </Tooltip>
       )}
 
-      {showLists && <ToolbarSeparator />}
-
-      {/* ── 6. Lists & Environments ── */}
       {showLists && (
-        <>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('itemize')} className={iconButtonClass} aria-label="Bulleted list">
-                <List className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Bulleted list</span>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('enumerate')} className={iconButtonClass} aria-label="Numbered list">
-                <ListOrdered className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Numbered list</span>
-            </TooltipContent>
-          </Tooltip>
-        </>
+        <Tooltip delayDuration={300}>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('itemize')} className={iconButtonClass} aria-label="Bulleted list">
+              <List className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            <span>Bulleted list</span>
+          </TooltipContent>
+        </Tooltip>
       )}
 
-      {showCodeEnvs && (
-        <>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('quote')} className={iconButtonClass} aria-label="Quote environment">
-                <Quote className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Quote environment</span>
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('code')} className={iconButtonClass} aria-label="Code block">
-                <Code className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Code block</span>
-            </TooltipContent>
-          </Tooltip>
-        </>
-      )}
-
-      {/* ── 7. Overflow "More actions" Dropdown ── */}
+      {/* ── 6. Overflow "More actions" Dropdown ── */}
       <EditorToolbarOverflowMenu
         readOnly={readOnly}
-        showUnderline={showUnderline}
         showMath={showMath}
         showSymbol={showSymbol}
         showLink={showLink}
-        showComment={showComment}
         showCrossRef={showCrossRef}
         showCitation={showCitation}
         showFigure={showFigure}
         showTable={showTable}
         showLists={showLists}
-        showCodeEnvs={showCodeEnvs}
         onInlineFormat={actions.handleInlineFormat}
         onInsertMath={actions.handleInsertMath}
         onInsertSymbol={actions.handleInsertSymbol}
-        onInsertLink={actions.handleInsertLink}
+        onInsertLink={() => actions.handleInsertLink()}
         onAddComment={actions.handleAddComment}
-        onInsertCrossRef={actions.handleInsertCrossRef}
+        onInsertCrossRef={() => actions.handleInsertCrossRef()}
         onInsertCitation={actions.handleInsertCitation}
         onInsertFigure={actions.handleInsertFigure}
         onInsertTable={actions.handleInsertTable}
         onInsertEnvironment={actions.handleInsertEnvironment}
       />
 
-      {/* ── 8. Right Side Group ── */}
+      {/* ── 7. Right Side Group ── */}
       <div className="ml-auto flex items-center gap-1 shrink-0 pl-1">
-        {showComment && (
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={readOnly} onClick={actions.handleAddComment} className={iconButtonClass} aria-label="Add Comment">
-                <MessageSquarePlus className="size-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Add Comment</span>
-              <span className="ml-1.5 opacity-60">(Mod-Alt-m)</span>
-            </TooltipContent>
-          </Tooltip>
-        )}
-
+        <SourceVisualSwitcher />
+        <ToolbarSeparator />
+        <EditingModeDropdown />
+        <ToolbarSeparator />
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="sm" onClick={actions.handleFind} className={iconButtonClass} aria-label="Search in file (Ctrl+F)">
@@ -396,11 +408,6 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             <span className="ml-1.5 opacity-60">(Mod-f)</span>
           </TooltipContent>
         </Tooltip>
-
-        <ToolbarSeparator />
-        <EditingModeDropdown />
-        <ToolbarSeparator />
-        <SourceVisualSwitcher />
       </div>
     </div>
   );

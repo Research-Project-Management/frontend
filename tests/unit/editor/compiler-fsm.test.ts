@@ -428,4 +428,17 @@ describe('CompilerCoordinator & useCompileStore FSM Integration', () => {
     });
     expect(useCompileStore.getState().compileOutcome).toBe('success');
   });
+
+  it('ignores remote compiler:progress broadcasts when this user did not initiate an active compile (Overleaf local-compile-context.tsx:168 parity)', () => {
+    expect(useCompileStore.getState().compileStatus).toBe('idle');
+
+    editorCommandBus.dispatch({
+      type: 'compiler:progress',
+      status: 'compiling',
+      logs: ['[CLSI Queue] Another user started compiling...'],
+    });
+
+    expect(useCompileStore.getState().compileStatus).toBe('idle');
+    expect(useCompileStore.getState().compilePhase).toBe('idle');
+  });
 });

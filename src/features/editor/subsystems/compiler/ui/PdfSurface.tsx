@@ -278,12 +278,9 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
       clickFraction: number,
       ptX?: number,
       ptY?: number,
-      pixelX?: number,
-      pixelY?: number,
+      _pixelX?: number,
+      _pixelY?: number,
     ) => {
-      if (pixelX !== undefined && pixelY !== undefined) {
-        triggerClickIndicator(pageNum, pixelX, pixelY, undefined, undefined, 'backward');
-      }
       if (!onJumpToSource) return;
       const pageDims = perPageDimensions[pageNum] || effectiveDefaultDimensions;
       const heightPt = pageDims.heightPt > 0 ? pageDims.heightPt : DEFAULT_PDF_PAGE_HEIGHT_PT;
@@ -303,7 +300,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
         ptY,
       );
     },
-    [triggerClickIndicator, onJumpToSource, synctexMap, perPageDimensions, effectiveDefaultDimensions],
+    [onJumpToSource, synctexMap, perPageDimensions, effectiveDefaultDimensions],
   );
 
   const singlePageDims = perPageDimensions[effectivePageNumber] || effectiveDefaultDimensions;
@@ -316,7 +313,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
       aria-label="PDF document preview"
       onScroll={handleContainerScroll}
       className={cn(
-        'flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar',
+        'flex-1 h-full min-h-0 overflow-y-auto pb-6 flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar',
         autoFit ? 'overflow-x-hidden' : 'overflow-x-auto',
         invertColors ? 'dark bg-background text-foreground' : 'bg-canvas text-foreground',
       )}
@@ -348,13 +345,13 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
           {scrollMode ? (
             isSpreadView ? (
               <div
-                className="flex flex-col gap-3 transition-[filter] duration-200 items-center w-full"
+                className="flex flex-col gap-[10px] py-[10px] transition-[filter] duration-200 items-center w-full"
                 style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
               >
                 {pagePairs.map((pair: number[], rowIdx: number) => (
                   <div
                     key={`spread_row_${rowIdx}`}
-                    className="flex flex-row justify-center gap-3 w-full"
+                    className="flex flex-row justify-center gap-[10px] w-full"
                   >
                     {pair.map((pageIdx: number) => (
                       <OptimizedPDFPage
@@ -379,7 +376,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
               </div>
             ) : (
               <div
-                className="flex flex-col transition-[filter] duration-200 w-full items-center"
+                className="flex flex-col gap-[10px] py-[10px] transition-[filter] duration-200 w-full items-center"
                 style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
               >
                 {Array.from({ length: numPages }, (_, i) => (

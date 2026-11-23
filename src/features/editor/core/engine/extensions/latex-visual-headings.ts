@@ -9,7 +9,7 @@
  *
  * Supported Elements:
  * - \section, \subsection, \subsubsection, \chapter, \paragraph
- * - \textbf{...}, \textit{...}
+ * - \textbf{...}, \textit{...}, \emph{...}, \underline{...}, \texttt{...}
  * - Cursor-reveal: Dimmed/hidden syntax expands cleanly when the cursor enters the line.
  */
 
@@ -35,7 +35,7 @@ interface HeadingMatch {
 }
 
 interface InlineFormatMatch {
-  readonly type: 'bold' | 'italic';
+  readonly type: 'bold' | 'italic' | 'underline' | 'code';
   readonly from: number;
   readonly to: number;
   readonly openFrom: number;
@@ -72,8 +72,7 @@ export function findMatchingBrace(text: string, openBraceIndex: number): number 
 }
 
 const HEADING_PREFIX_REGEX = /\\(title|chapter|section|subsection|subsubsection|paragraph)\*?\{/g;
-const BOLD_PREFIX_REGEX = /\\textbf\{/g;
-const ITALIC_PREFIX_REGEX = /\\textit\{/g;
+const INLINE_CMD_PREFIX_REGEX = /\\(textbf|textit|emph|underline|texttt)\{/g;
 
 const LEVEL_CLASS_MAP = {
   chapter: 'cm-visual-line-chapter',
@@ -111,6 +110,16 @@ const DECO_SYNTAX_DIM = Decoration.mark({ class: 'cm-visual-syntax-dim' });
 const DECO_SYNTAX_ACTIVE = Decoration.mark({ class: 'cm-visual-syntax-active' });
 const DECO_BOLD_TEXT = Decoration.mark({ class: 'cm-visual-bold-text' });
 const DECO_ITALIC_TEXT = Decoration.mark({ class: 'cm-visual-italic-text' });
+const DECO_UNDERLINE_TEXT = Decoration.mark({ class: 'cm-visual-underline-text' });
+const DECO_CODE_TEXT = Decoration.mark({ class: 'cm-visual-code-text' });
+
+const INLINE_DECO_BY_CMD: Record<string, Decoration> = {
+  textbf: DECO_BOLD_TEXT,
+  textit: DECO_ITALIC_TEXT,
+  emph: DECO_ITALIC_TEXT,
+  underline: DECO_UNDERLINE_TEXT,
+  texttt: DECO_CODE_TEXT,
+};
 
 // ── Visual Decorations Theme ──────────────────────────────────────────────────
 
@@ -193,6 +202,18 @@ const visualHeadingsTheme = EditorView.baseTheme({
   },
   '.cm-visual-italic-text': {
     fontStyle: 'italic',
+  },
+  '.cm-visual-underline-text': {
+    textDecoration: 'underline',
+    textUnderlineOffset: '2px',
+  },
+  '.cm-visual-code-text': {
+    fontFamily:
+      'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.9em',
+    backgroundColor: 'var(--muted, #f1f5f9)',
+    padding: '0 3px',
+    borderRadius: '3px',
   },
 });
 
@@ -309,15 +330,18 @@ class VisualHeadingsPlugin {
           }
         }
 
-        // 2. Scan for \textbf{...} with balanced braces
-        BOLD_PREFIX_REGEX.lastIndex = 0;
-        let boldMatch: RegExpExecArray | null;
-        while ((boldMatch = BOLD_PREFIX_REGEX.exec(lineText)) !== null) {
-          const openBraceIndex = boldMatch.index + boldMatch[0].length - 1;
+        // 2. Scan for inline formatting commands (\textbf, \textit, \emph, \underline, \texttt)
+        INLINE_CMD_PREFIX_REGEX.lastIndex = 0;
+        let inlineMatch: RegExpExecArray | null;
+        while ((inlineMatch = INLINE_CMD_PREFIX_REGEX.exec(lineText)) !== null) {
+          const deco = INLINE_DECO_BY_CMD[inlineMatch[1]];
+          if (!deco) continue;
+
+          const openBraceIndex = inlineMatch.index + inlineMatch[0].length - 1;
           const closeBraceIndex = findMatchingBrace(lineText, openBraceIndex);
           if (closeBraceIndex === null) continue;
 
-          const matchStart = line.from + boldMatch.index;
+          const matchStart = line.from + inlineMatch.index;
           const matchEnd = line.from + closeBraceIndex + 1;
           const isCursorInMatch = selection.from <= matchEnd && selection.to >= matchStart;
 
@@ -328,43 +352,7 @@ class VisualHeadingsPlugin {
             pending.push({
               from: textStart,
               to: textEnd,
-              deco: DECO_BOLD_TEXT,
-            });
-          }
-
-          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
-          pending.push({
-            from: matchStart,
-            to: textStart,
-            deco: syntaxDeco,
-          });
-          pending.push({
-            from: textEnd,
-            to: matchEnd,
-            deco: syntaxDeco,
-          });
-        }
-
-        // 3. Scan for \textit{...} with balanced braces
-        ITALIC_PREFIX_REGEX.lastIndex = 0;
-        let italicMatch: RegExpExecArray | null;
-        while ((italicMatch = ITALIC_PREFIX_REGEX.exec(lineText)) !== null) {
-          const openBraceIndex = italicMatch.index + italicMatch[0].length - 1;
-          const closeBraceIndex = findMatchingBrace(lineText, openBraceIndex);
-          if (closeBraceIndex === null) continue;
-
-          const matchStart = line.from + italicMatch.index;
-          const matchEnd = line.from + closeBraceIndex + 1;
-          const isCursorInMatch = selection.from <= matchEnd && selection.to >= matchStart;
-
-          const textStart = line.from + openBraceIndex + 1;
-          const textEnd = line.from + closeBraceIndex;
-
-          if (textEnd > textStart) {
-            pending.push({
-              from: textStart,
-              to: textEnd,
-              deco: DECO_ITALIC_TEXT,
+              deco,
             });
           }
 

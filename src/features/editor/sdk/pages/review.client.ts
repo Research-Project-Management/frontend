@@ -41,6 +41,35 @@ export const comments = {
     }
   },
 
+  getCommentsPage: async (
+    docId: string,
+    options?: { status?: string; cursor?: string | null; limit?: number },
+  ): Promise<{
+    comments: PageComment[];
+    nextCursor: string | null;
+    hasMore: boolean;
+  }> => {
+    if (!docId) return { comments: [], nextCursor: null, hasMore: false };
+    try {
+      const params = new URLSearchParams();
+      if (options?.status) params.set('status', options.status);
+      if (options?.cursor) params.set('cursor', options.cursor);
+      params.set('limit', String(options?.limit ?? 20));
+      const data = await apiGet<{
+        comments: PageComment[];
+        nextCursor?: string | null;
+        hasMore?: boolean;
+      }>(`${PAGES_API_BASE}/docs/${docId}/comments?${params.toString()}`, { silent: true });
+      return {
+        comments: data.comments || [],
+        nextCursor: data.nextCursor ?? null,
+        hasMore: Boolean(data.hasMore),
+      };
+    } catch {
+      return { comments: [], nextCursor: null, hasMore: false };
+    }
+  },
+
   createComment: async (
     docId: string,
     payload: {

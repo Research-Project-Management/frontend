@@ -192,56 +192,40 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
   if (citedCount === 0) return null;
 
   return (
-    <div className="p-2.5 mb-2.5 rounded-md bg-muted/40 border border-border text-foreground space-y-2 select-none">
-      {/* Header Info */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-12 font-medium">
-          <BookOpen className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
-          <span>References ({citedCount})</span>
-        </div>
+    <div className="flex items-center justify-between gap-2 pb-2 mb-1.5 border-b border-border/60 select-none">
+      <span className="text-11 font-medium text-muted-foreground">
+        References{' '}
+        <span className="tabular-nums text-muted-foreground/70">({citedCount})</span>
+      </span>
 
-        {/* Auto-detect badge */}
-        <span
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-primary/10 text-primary border border-primary/20"
-          title="Automatically detects document syntax and normalizes author names"
-        >
-          <Check className="size-2.5 shrink-0" />
-          <span>Auto-detected</span>
-        </span>
-      </div>
-
-      <p className="text-11 leading-relaxed text-muted-foreground">
-        Automatically detects document format and normalizes author names.
-      </p>
-
-      {/* Action Buttons */}
-      <div className="flex items-center gap-1.5 pt-0.5">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={handleInsert}
           disabled={isInjecting}
-          className="flex-1 h-7 px-2.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-border"
+          title="Insert bibliography into document"
+          className="h-6 px-2 rounded text-11 font-medium text-foreground/80 hover:text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border"
         >
           {isInjecting ? (
             <RefreshCw className="size-3 animate-spin shrink-0" />
           ) : (
-            <BookOpen className="size-3 shrink-0" />
+            <BookOpen className="size-3 shrink-0 text-muted-foreground" strokeWidth={1.5} />
           )}
-          <span>{isInjecting ? 'Generating...' : 'Insert Bibliography'}</span>
+          <span>{isInjecting ? 'Inserting...' : 'Insert'}</span>
         </button>
 
         <button
           type="button"
           onClick={handleCopy}
-          className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-border"
-          title="Copy full bibliography to clipboard"
+          title="Copy bibliography"
+          aria-label="Copy bibliography"
+          className="size-6 rounded text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border"
         >
           {isCopied ? (
-            <Check className="size-3 text-primary shrink-0" />
+            <Check className="size-3 text-foreground shrink-0" />
           ) : (
-            <Copy className="size-3 shrink-0 text-muted-foreground" />
+            <Copy className="size-3 shrink-0" />
           )}
-          <span>{isCopied ? 'Copied' : 'Copy'}</span>
         </button>
       </div>
     </div>

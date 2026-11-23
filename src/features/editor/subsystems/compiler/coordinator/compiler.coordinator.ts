@@ -231,6 +231,14 @@ export class CompilerCoordinator {
     });
 
     editorCommandBus.subscribe('compiler:progress', (cmd) => {
+      // Citation: Overleaf `services/web/frontend/js/shared/context/local-compile-context.tsx` (line 168)
+      // & `services/web/frontend/js/features/pdf-preview/util/compiler.ts` (line 115):
+      // Compilation status is strictly scoped to the user/client session that initiated an active
+      // compile (`this.activeRunId !== null`). Collaborators viewing the same project must NOT
+      // have their screen hijacked into a `Compiling...` state when another user compiles.
+      if (this.activeRunId === null) {
+        return;
+      }
       const compileStore = useCompileStore.getState();
       if (cmd.status) {
         const mappedStatus =

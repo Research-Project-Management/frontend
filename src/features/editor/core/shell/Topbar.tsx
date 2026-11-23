@@ -19,10 +19,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
   History,
-  Loader2,
   PanelLeft,
   Home,
-  Cloud,
   ExternalLink,
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
@@ -45,15 +43,12 @@ import HelpMenu from './topbar/HelpMenu';
 import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
-import { EditingModeDropdown } from './topbar/EditingModeDropdown';
 
 import { editorCommandBus } from '../bus/command-bus';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import { useSettingsStore } from '../store/settings.store';
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
-import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 
@@ -80,9 +75,6 @@ export function Topbar() {
   );
 
   const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
-  const hasDirtyFiles = useCompileStore((s) => s.dirtyFileIds.size > 0);
-  const { updateTitle: updateTitleMutation } = usePageActions();
-  const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
   const githubLink = usePageStore((s) => s.githubLink);
 
@@ -97,7 +89,7 @@ export function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar shrink-0 z-30 select-none"
+        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-background border-b border-border shrink-0 z-30 select-none"
       >
         {/* ── Left: Back / Logo, Full Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1.5">
@@ -154,41 +146,8 @@ export function Topbar() {
           <ProjectTitleDropdown />
         </div>
 
-        {/* ── Right: Save Status, History, Layout, Collaborators ── */}
+        {/* ── Right: History, Layout, Collaborators ── */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Save Status Indicator (Overleaf Parity) */}
-          {isSaving ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className="flex items-center gap-1 px-1.5 py-1 text-xs text-muted-foreground mr-0.5 select-none"
-                  aria-label="Saving changes"
-                >
-                  <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0 motion-reduce:animate-none" />
-                  <span className="hidden xl:inline text-11 font-medium">Saving…</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                Saving changes...
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  className="flex items-center gap-1 px-1.5 py-1 text-xs text-muted-foreground/60 mr-0.5 select-none cursor-default"
-                  aria-label="All changes saved"
-                >
-                  <Cloud className="size-3.5 shrink-0 text-muted-foreground/60" />
-                  <span className="hidden xl:inline text-11 font-normal text-muted-foreground/60">Saved</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                All changes saved to cloud
-              </TooltipContent>
-            </Tooltip>
-          )}
-
           {/* GitHub Sync Status Indicator & Shortcut */}
           {githubLink && (
             <Tooltip>
@@ -265,9 +224,6 @@ export function Topbar() {
 
           {/* Layout Switcher (Overleaf Parity: Top Right) */}
           <LayoutSwitcher />
-
-          {/* Editing Mode Dropdown (Overleaf Parity: Top Right) */}
-          <EditingModeDropdown />
         </div>
       </nav>
     </TooltipProvider>

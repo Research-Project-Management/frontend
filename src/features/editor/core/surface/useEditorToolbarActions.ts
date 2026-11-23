@@ -4,12 +4,26 @@
  * State and formatting/insert/review action handlers for EditorToolbar.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { getActiveEditorEngine } from '@/features/editor/core/bus/engine-registry';
+import {
+  getActiveEditorEngine,
+  subscribeEditorEngineChanges,
+} from '@/features/editor/core/bus/engine-registry';
+import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+
+function detectStyleLabelFromLine(lineText: string): string {
+  const trimmed = lineText.trimStart();
+  if (/^\\title\*?\{/.test(trimmed)) return 'Title';
+  if (/^\\section\*?\{/.test(trimmed)) return 'Section';
+  if (/^\\subsection\*?\{/.test(trimmed)) return 'Subsection';
+  if (/^\\subsubsection\*?\{/.test(trimmed)) return 'Subsubsection';
+  if (/^\\paragraph\*?\{/.test(trimmed)) return 'Paragraph';
+  return 'Normal';
+}
 
 export interface StyleOption {
   id: string;
@@ -32,6 +46,48 @@ export const STYLE_OPTIONS: StyleOption[] = [
 export function useEditorToolbarActions(readOnly: boolean) {
   const editorMode = useSettingsStore((s) => s.editorMode);
   const [currentStyle, setCurrentStyle] = useState<string>('Normal');
+
+  useEffect(() => {
+    let unsubCursor: (() => void) | undefined;
+    let unsubContent: (() => void) | undefined;
+
+    const syncStyleFromEngine = (
+      engine: ReturnType<typeof getActiveEditorEngine>,
+      lineOverride?: number,
+    ) => {
+      if (!engine) {
+        setCurrentStyle('Normal');
+        return;
+      }
+      const line = lineOverride ?? engine.getCursorPosition()?.line ?? 1;
+      const lines = engine.getContent().split(/\r?\n/);
+      const lineText = lines[line - 1] ?? '';
+      setCurrentStyle(detectStyleLabelFromLine(lineText));
+    };
+
+    const bindEngine = (engine: ReturnType<typeof getActiveEditorEngine>) => {
+      unsubCursor?.();
+      unsubContent?.();
+      unsubCursor = undefined;
+      unsubContent = undefined;
+      syncStyleFromEngine(engine);
+      if (engine) {
+        unsubCursor = engine.onCursorChange((line) => syncStyleFromEngine(engine, line));
+        unsubContent = engine.onContentChange(() => syncStyleFromEngine(engine));
+      }
+    };
+
+    bindEngine(getActiveEditorEngine());
+    const unsubEngine = subscribeEditorEngineChanges(() => {
+      bindEngine(getActiveEditorEngine());
+    });
+
+    return () => {
+      unsubEngine();
+      unsubCursor?.();
+      unsubContent?.();
+    };
+  }, []);
 
   const handleUndo = () => {
     if (readOnly) return;
@@ -56,21 +112,10 @@ export function useEditorToolbarActions(readOnly: boolean) {
       return;
     }
 
-    if (option.id === 'normal') {
-      editorCommandBus.dispatch({
-        type: 'editor:format',
-        format: 'normal',
-      });
-      return;
-    }
-
-    if (option.latexPrefix) {
-      editorCommandBus.dispatch({
-        type: 'editor:wrap-selection',
-        prefix: option.latexPrefix,
-        suffix: option.latexSuffix,
-      });
-    }
+    editorCommandBus.dispatch({
+      type: 'editor:format',
+      format: option.id as LatexFormatType,
+    });
   };
 
   const handleInlineFormat = (format: 'bold' | 'italic' | 'underline') => {
@@ -114,13 +159,17 @@ export function useEditorToolbarActions(readOnly: boolean) {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'figure-wizard' });
   };
 
-  const handleInsertLink = () => {
+  const handleInsertLink = (url?: string, text?: string) => {
     if (readOnly) return;
-    if (editorMode === 'visual') {
-      const url = window.prompt('Enter link URL:');
-      if (url) {
-        editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'createLink', contentHtml: url });
-      }
+    if (typeof url === 'string') {
+      const cleanUrl = url.trim();
+      if (!cleanUrl) return;
+      const cleanText = typeof text === 'string' && text.trim() ? text.trim() : cleanUrl;
+      editorCommandBus.dispatch({
+        type: 'editor:insert-text',
+        text: `\\href{${cleanUrl}}{${cleanText}}`,
+      });
+      editorCommandBus.dispatch({ type: 'editor:focus' });
       return;
     }
     editorCommandBus.dispatch({
@@ -134,13 +183,41 @@ export function useEditorToolbarActions(readOnly: boolean) {
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
   };
 
-  const handleInsertCrossRef = () => {
+  const handleInsertCrossRef = (label?: string) => {
     if (readOnly) return;
+    if (typeof label === 'string' && label.length > 0) {
+      editorCommandBus.dispatch({
+        type: 'editor:insert-text',
+        text: `\\ref{${label}}`,
+      });
+      editorCommandBus.dispatch({ type: 'editor:focus' });
+      return;
+    }
     editorCommandBus.dispatch({
       type: 'editor:format',
       format: 'ref',
     });
   };
+
+  const getDocumentLabels = useCallback((): string[] => {
+    const content = getActiveEditorEngine()?.getContent?.() || '';
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    const regex = /\\label\{([^}]+)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(content)) !== null) {
+      const lbl = match[1]?.trim();
+      if (lbl && !seen.has(lbl)) {
+        seen.add(lbl);
+        labels.push(lbl);
+      }
+    }
+    return labels;
+  }, []);
+
+  const getSelectedText = useCallback((): string => {
+    return getActiveEditorEngine()?.getSelectedText?.() || '';
+  }, []);
 
   const handleInsertEnvironment = (env: 'itemize' | 'enumerate' | 'quote' | 'code') => {
     if (readOnly) return;
@@ -209,6 +286,8 @@ export function useEditorToolbarActions(readOnly: boolean) {
     handleInsertLink,
     handleInsertCitation,
     handleInsertCrossRef,
+    getDocumentLabels,
+    getSelectedText,
     handleInsertEnvironment,
     handleAddComment,
     handleFind,

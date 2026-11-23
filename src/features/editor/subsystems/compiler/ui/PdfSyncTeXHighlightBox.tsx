@@ -81,24 +81,5 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
     );
   }
 
-  return (
-    <div
-      key={indicator.id}
-      data-testid="synctex-pdf-backward-ripple"
-      role="presentation"
-      aria-hidden="true"
-      className="pointer-events-none absolute z-30 transition-opacity duration-300"
-      style={{
-        left: `${indicator.x}px`,
-        top: `${indicator.y}px`,
-        transform: 'translate(-50%, -50%)',
-      }}
-    >
-      <span className="relative flex size-9 items-center justify-center">
-        <span className="absolute inline-flex size-full rounded-full bg-primary/60 opacity-80" />
-        <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
-        <span className="relative inline-flex size-2 rounded-full bg-primary" />
-      </span>
-    </div>
-  );
+  return null;
 });

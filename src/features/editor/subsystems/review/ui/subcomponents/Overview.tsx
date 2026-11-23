@@ -103,10 +103,10 @@ const OverviewFileGroup = React.memo(function OverviewFileGroup({
         type="button"
         aria-label={`Jump to file ${file.title}`}
         onClick={() => onNavigateToFile(file.id)}
-        className="group sticky top-0 z-10 w-full flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-xs hover:bg-muted/50 cursor-pointer transition-colors text-left outline-none focus-visible:ring-1 focus-visible:ring-border"
+        className="group sticky top-0 z-10 w-full flex items-center gap-1.5 px-3 py-1.5 bg-background/95 backdrop-blur-xs hover:bg-muted/50 cursor-pointer transition-colors text-left outline-none focus-visible:ring-1 focus-visible:ring-border min-w-0"
       >
         <FileText className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" strokeWidth={1.5} />
-        <span className="text-12 font-mono font-medium text-muted-foreground group-hover:text-foreground truncate transition-colors">
+        <span className="text-12 font-mono font-medium text-muted-foreground group-hover:text-foreground truncate transition-colors min-w-0 flex-1">
           {file.title}
         </span>
       </button>

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { extractCitationKeys } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import {
   isLatexDocument, detectDocumentCitationStyle, buildBibliographySection, injectBibliographyIntoDocument, } from '@/features/editor/subsystems/citation/model/bibliography-generator';
-import { libraryServices } from '@/features/library/sdk';
+import { CitationService } from '@/features/library/sdk';
 
 describe('Live Editor Citation & Bibliography Walkthrough', () => {
   beforeEach(() => {
@@ -73,9 +73,9 @@ Chúng tôi áp dụng kiến trúc Transformer kết hợp cơ chế chú ý.`;
         ],
       };
 
-      vi.spyOn(libraryServices.citations, 'batchFormat').mockResolvedValueOnce(mockBatchResponse as any);
+      vi.spyOn(CitationService, 'batchFormat').mockResolvedValueOnce(mockBatchResponse as any);
 
-      const batchResult = await libraryServices.citations.batchFormat(
+      const batchResult = await CitationService.batchFormat(
         'project-1',
         mockLibraryItems.map((i) => i.id),
         'apa',
@@ -258,9 +258,9 @@ Nghiên cứu về mô hình thị giác [@tran2023deep] và trí tuệ nhân t�
         ],
       };
 
-      vi.spyOn(libraryServices.citations, 'batchFormat').mockResolvedValueOnce(mockTcvnResponse as any);
+      vi.spyOn(CitationService, 'batchFormat').mockResolvedValueOnce(mockTcvnResponse as any);
 
-      const batchResult = await libraryServices.citations.batchFormat(
+      const batchResult = await CitationService.batchFormat(
         'project-thesis',
         ['item-vn-1', 'item-vn-2'],
         'tcvn' as any,
@@ -334,10 +334,10 @@ Công nghệ ngôn ngữ tự nhiên đã có nhiều bước tiến mới [@ngu
         ],
       };
 
-      vi.spyOn(libraryServices.citations, 'batchFormat').mockResolvedValueOnce(mockAutoResponse as any);
+      vi.spyOn(CitationService, 'batchFormat').mockResolvedValueOnce(mockAutoResponse as any);
 
       // 3. User clicks 1-click button "Chèn vào đề cương" (zero dropdown interaction!)
-      const batchResult = await libraryServices.citations.batchFormat(
+      const batchResult = await CitationService.batchFormat(
         'project-1',
         ['item-vn-1', 'item-vn-2'],
         detectedStyle,
@@ -392,9 +392,9 @@ Machine learning advances \\cite{nguyen2024ai} have enabled new capabilities.
         ],
       };
 
-      vi.spyOn(libraryServices.citations, 'batchFormat').mockResolvedValueOnce(mockNumericResponse as any);
+      vi.spyOn(CitationService, 'batchFormat').mockResolvedValueOnce(mockNumericResponse as any);
 
-      const batchResult = await libraryServices.citations.batchFormat(
+      const batchResult = await CitationService.batchFormat(
         'project-1',
         ['item-vn-1'],
         detectedStyle,

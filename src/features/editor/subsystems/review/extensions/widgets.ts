@@ -305,8 +305,8 @@ export const reviewTheme = EditorView.baseTheme({
     cursor: 'pointer',
   },
   '.cm-comment-highlight': {
-    backgroundColor: 'color-mix(in srgb, var(--warning, #9A6700) 18%, transparent)',
-    borderBottom: '2px dashed var(--warning, #9A6700)',
+    backgroundColor: 'rgba(245, 158, 11, 0.22)',
+    borderBottom: '1px solid rgba(217, 119, 6, 0.45)',
     borderRadius: '2px',
     cursor: 'pointer',
   },

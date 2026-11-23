@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
@@ -58,8 +58,8 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
   };
 
   return (
-    <div className={cn("flex items-center gap-1.5 select-none shrink-0", className)}>
-      {/* 1. Prev page [<] */}
+    <div className={cn("flex items-center gap-1 select-none shrink-0", className)}>
+      {/* 1. Vertical navigation arrows [^] [v] */}
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -69,10 +69,25 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             aria-label="Previous page"
             className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
           >
-            <ChevronLeft className="size-3.5 shrink-0" />
+            <ChevronUp className="size-3.5 shrink-0" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={6}>Previous page</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onNextPage}
+            disabled={pageNumber >= numPages}
+            aria-label="Next page"
+            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <ChevronDown className="size-3.5 shrink-0" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>Next page</TooltipContent>
       </Tooltip>
 
       {/* 2. Direct page input */}
@@ -89,28 +104,12 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
           }}
           onBlur={handlePageCommit}
           aria-label="Current page number"
-          className="w-9 h-7 text-center rounded-md border border-border bg-sidebar text-foreground text-xs font-medium focus:bg-background focus:outline-none focus:ring-1 focus:ring-border tabular-nums shrink-0"
+          className="w-8 min-w-8 h-6 text-center rounded-sm border border-input bg-background text-foreground text-xs font-medium focus:outline-none focus:ring-1 focus:ring-ring tabular-nums shrink-0"
         />
-        <span className="text-muted-foreground font-mono text-xs whitespace-nowrap shrink-0 pr-1 select-none">
+        <span className="text-muted-foreground font-sans tabular-nums text-xs whitespace-nowrap shrink-0 pr-0.5 select-none">
           / {numPages || 1}
         </span>
       </div>
-
-      {/* 3. Next page [>] */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onNextPage}
-            disabled={pageNumber >= numPages}
-            aria-label="Next page"
-            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
-          >
-            <ChevronRight className="size-3.5 shrink-0" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={6}>Next page</TooltipContent>
-      </Tooltip>
     </div>
   );
 });

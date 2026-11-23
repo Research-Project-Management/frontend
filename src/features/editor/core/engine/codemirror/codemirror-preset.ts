@@ -12,6 +12,7 @@ import {
   rectangularSelection,
   crosshairCursor,
   keymap,
+  tooltips,
 } from '@codemirror/view';
 import {
   defaultKeymap,
@@ -191,6 +192,10 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
   const extensions: Extension[] = [
     editorCompartmentsFacet.of(compartments),
     editorBaseTheme,
+    tooltips({
+      parent: typeof document !== 'undefined' ? document.body : undefined,
+      position: 'fixed',
+    }),
     history(),
     EditorState.allowMultipleSelections.of(true),
     search({ top: false }),

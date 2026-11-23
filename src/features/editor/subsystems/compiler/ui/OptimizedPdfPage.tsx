@@ -204,9 +204,9 @@ export const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       className={cn(
         'relative flex items-center justify-center cursor-text shrink-0',
         isVisible
-          ? 'bg-canvas dark:bg-card'
-          : 'bg-background/50 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none',
-        isSpreadView ? 'my-0' : 'border-b border-border/60 last:border-b-0',
+          ? 'bg-background dark:bg-card shadow-sm ring-1 ring-border/60'
+          : 'bg-background/50 ring-1 ring-border/40 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none',
+        isSpreadView && 'my-0',
       )}
       style={{
         width: autoFit ? '100%' : pageWidth,

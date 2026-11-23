@@ -10,7 +10,7 @@
  * - NewCommentForm: full comment form with quote preview and @mention textarea
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -19,7 +19,6 @@ import {
   MoreVertical,
   RotateCcw,
   Trash2,
-  Send,
   X,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -43,6 +42,7 @@ import type { MentionMember } from '@/features/editor/domain/collaboration/menti
 import { MentionRenderer } from './Badges';
 import { MentionTextarea } from './MentionInput';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
+import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
 
 // â”€â”€ Reply Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -167,22 +167,10 @@ export const ReplyForm = React.memo(function ReplyForm({
                 handleSubmit(onSubmit)();
               }
             }}
-            className="w-full h-8 px-2.5 pr-8 rounded-md border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-border transition-colors disabled:opacity-50"
+            className="w-full h-8 px-2.5 rounded-md border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-border transition-colors disabled:opacity-50"
           />
         )}
       />
-      <button
-        type="submit"
-        disabled={isPending}
-        aria-label="Send reply"
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-primary hover:text-primary/80 transition-colors cursor-pointer disabled:opacity-40 after:absolute after:-inset-1.5 after:content-['']"
-      >
-        {isPending ? (
-          <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
-        ) : (
-          <Send className="size-3" />
-        )}
-      </button>
       {errors.content?.message && (
         <span className="block mt-1 text-11 text-destructive">
           {errors.content.message}
@@ -269,8 +257,16 @@ export const CommentCard = React.memo(function CommentCard({
     <div
       id={`comment-${comment.id}`}
       style={REVIEW_CARD_CONTAINMENT_STYLE}
+      onClick={(e) => {
+        if (comment.line == null || !onNavigate) return;
+        if ((e.target as HTMLElement).closest('button, input, textarea, a, [role="menuitem"]')) {
+          return;
+        }
+        onNavigate(comment.line);
+      }}
       className={cn(
         'rounded-md border p-3 bg-card text-card-foreground mb-2.5 transition-colors duration-150',
+        comment.line != null && onNavigate && 'cursor-pointer',
         isHighlighted
           ? 'border-primary ring-1 ring-primary/40'
           : 'border-border hover:border-border/80',
@@ -493,7 +489,6 @@ export function NewCommentForm({
   });
 
   const content = watch('content') || '';
-  const line = watch('line');
   const createMutation = useCreateComment();
 
   const handlePost = (data: CreateCommentInput) => {
@@ -520,34 +515,20 @@ export function NewCommentForm({
 
   const isPending = isSubmitting || createMutation.isPending;
 
+  useEffect(() => {
+    useDocumentCollaborationStore.getState().setActiveDraftComment(
+      initialLine != null
+        ? { startLine: initialLine, endLine: initialLineEnd ?? initialLine }
+        : null,
+    );
+    return () => {
+      useDocumentCollaborationStore.getState().setActiveDraftComment(null);
+    };
+  }, [initialLine, initialLineEnd]);
+
   return (
     <div className="mx-3 mt-3 rounded-lg border border-border bg-card p-3 shadow-xs">
       <form onSubmit={handleSubmit(handlePost)} className="flex flex-col gap-2.5">
-        {/* Form Header */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold text-foreground">New Comment</span>
-            <span className="rounded bg-muted px-1.5 py-0.5 text-10 font-mono text-muted-foreground">
-              {line ? `Line ${line}` : 'Document'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-['']"
-            aria-label="Close comment form"
-          >
-            <X className="size-3.5 shrink-0" />
-          </button>
-        </div>
-
-        {/* Selected Quote Preview */}
-        {pendingQuote && (
-          <div className="border-l-2 border-primary/60 bg-muted/50 px-2.5 py-1.5 text-11 font-mono text-muted-foreground truncate rounded-r-md">
-            {pendingQuote}
-          </div>
-        )}
-
         {/* Textarea with Mention autocomplete & Keyboard shortcuts */}
         <Controller
           name="content"
@@ -557,7 +538,7 @@ export function NewCommentForm({
               value={field.value || ''}
               onChange={field.onChange}
               members={members}
-              placeholder="Write a comment... (@ to mention, Ctrl+Enter to post)"
+              placeholder="Comment or @ mention someone"
               rows={3}
               autoFocus
               disabled={isPending}
@@ -567,7 +548,7 @@ export function NewCommentForm({
                   handleSubmit(handlePost)();
                 }
               }}
-              className="bg-background text-foreground border border-input focus:border-primary text-xs rounded-md"
+              className="bg-background text-foreground border border-input focus:border-input focus:ring-0 focus-visible:ring-0 focus-visible:outline-none shadow-none text-xs rounded-md"
             />
           )}
         />
@@ -580,33 +561,25 @@ export function NewCommentForm({
         )}
 
         {/* Form Footer */}
-        <div className="flex items-center justify-between gap-2 pt-0.5">
-          <span className="text-10 font-mono text-muted-foreground/80">
-            {content.length > 0 ? `${content.length}/10000` : ''}
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isPending}
-              className="h-7 px-2.5 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isPending || !content.trim()}
-              className="flex items-center gap-1.5 h-7 rounded-md bg-primary px-3 text-11 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-45 cursor-pointer transition-colors"
-            >
-              {isPending ? (
-                <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
-              ) : (
-                <Send className="size-3" />
-              )}
-              Post
-            </button>
-          </div>
+        <div className="flex items-center justify-end gap-1.5 pt-0.5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="h-7 px-2.5 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isPending || !content.trim()}
+            className="flex items-center gap-1.5 h-7 rounded-md bg-primary px-3 text-11 font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-45 cursor-pointer transition-colors"
+          >
+            {isPending && (
+              <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
+            )}
+            Comment
+          </button>
         </div>
       </form>
     </div>

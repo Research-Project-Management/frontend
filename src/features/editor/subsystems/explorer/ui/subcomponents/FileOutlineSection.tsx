@@ -11,7 +11,6 @@ import {
   parseDocumentOutline,
   dtoToOutlineEntries,
   cacheBackendOutline,
-  OUTLINE_INDENT,
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
 import { pagesService } from '@/features/editor/sdk/pages.service';
@@ -47,7 +46,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   const [outlineHeight, setOutlineHeight] = useState(200);
   const [activeLine, setActiveLine] = useState<number>(1);
   const [content, setContent] = useState<string>(() => docContent ?? '');
-  const activeItemRef = useRef<HTMLButtonElement | null>(null);
+  const activeItemRef = useRef<HTMLDivElement | null>(null);
 
   // Sync with prop changes when active file changes
   useEffect(() => {
@@ -137,12 +136,58 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   );
 
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
+  const [collapsedLines, setCollapsedLines] = useState<Set<number>>(() => new Set());
   const lastFetchedHashRef = useRef<string | null>(null);
   const outlineScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const isVirtualized = isOutlineOpen && outline.length >= FILE_OUTLINE_VIRTUAL_THRESHOLD;
+  const toggleSectionCollapse = useCallback((line: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCollapsedLines((prev) => {
+      const next = new Set(prev);
+      if (next.has(line)) next.delete(line);
+      else next.add(line);
+      return next;
+    });
+  }, []);
+
+  const sectionOutline = useMemo(
+    () => outline.filter((entry) => entry.type !== 'figure' && entry.type !== 'table'),
+    [outline],
+  );
+
+  const minLevel = useMemo(
+    () => (sectionOutline.length > 0 ? Math.min(...sectionOutline.map((e) => e.level)) : 0),
+    [sectionOutline],
+  );
+
+  const visibleEntries = useMemo(() => {
+    const result: Array<{ entry: OutlineEntry; hasChildren: boolean; isCollapsed: boolean }> = [];
+    const collapsedStack: number[] = [];
+
+    for (let i = 0; i < sectionOutline.length; i++) {
+      const entry = sectionOutline[i];
+      while (collapsedStack.length > 0 && entry.level <= collapsedStack[collapsedStack.length - 1]) {
+        collapsedStack.pop();
+      }
+      if (collapsedStack.length > 0) {
+        continue;
+      }
+
+      const nextEntry = sectionOutline[i + 1];
+      const hasChildren = Boolean(nextEntry && nextEntry.level > entry.level);
+      const isCollapsed = hasChildren && collapsedLines.has(entry.line);
+      result.push({ entry, hasChildren, isCollapsed });
+
+      if (isCollapsed) {
+        collapsedStack.push(entry.level);
+      }
+    }
+    return result;
+  }, [sectionOutline, collapsedLines]);
+
+  const isVirtualized = isOutlineOpen && visibleEntries.length >= FILE_OUTLINE_VIRTUAL_THRESHOLD;
   const rowVirtualizer = useVirtualizer({
-    count: outline.length,
+    count: visibleEntries.length,
     getScrollElement: () => outlineScrollRef.current,
     estimateSize: () => 30,
     overscan: 8,
@@ -229,17 +274,17 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
 
   // Active section heading containing the current cursor position
   const activeSectionIndex = useMemo(() => {
-    if (outline.length === 0) return -1;
+    if (visibleEntries.length === 0) return -1;
     let currentIdx = -1;
-    for (let i = 0; i < outline.length; i++) {
-      if (outline[i].line <= activeLine) {
+    for (let i = 0; i < visibleEntries.length; i++) {
+      if (visibleEntries[i].entry.line <= activeLine) {
         currentIdx = i;
       } else {
         break;
       }
     }
     return currentIdx >= 0 ? currentIdx : 0;
-  }, [outline, activeLine]);
+  }, [visibleEntries, activeLine]);
 
   // Scroll active item into view
   useEffect(() => {
@@ -273,43 +318,61 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     [engine],
   );
 
-  const renderOutlineRow = (entry: OutlineEntry, index: number) => {
+  const renderOutlineRow = (
+    item: { entry: OutlineEntry; hasChildren: boolean; isCollapsed: boolean },
+    index: number,
+  ) => {
+    const { entry, hasChildren, isCollapsed } = item;
     const isActive = index === activeSectionIndex;
-    const indent = OUTLINE_INDENT[entry.level] ?? (entry.level * 10);
+    const relativeDepth = Math.max(0, entry.level - minLevel);
     return (
-      <button
+      <div
         key={`${entry.line}-${index}`}
         ref={!isVirtualized && isActive ? activeItemRef : undefined}
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={() => handleOutlineClick(entry.line)}
-        style={{
-          paddingLeft: `${16 + indent}px`,
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleOutlineClick(entry.line);
+          }
         }}
         className={cn(
-          'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
+          'mx-1.5 flex h-7.5 items-center gap-1 rounded-md px-1.5 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
           isActive
             ? 'bg-primary/10 text-primary font-medium'
             : 'hover:bg-muted/60 text-foreground/85 font-normal',
         )}
       >
-        <ChevronRight
-          className={cn(
-            'shrink-0',
-            isActive ? 'text-primary' : 'text-muted-foreground',
-            entry.level === 0 ? 'size-3.5' : 'size-3',
-          )}
-          strokeWidth={isActive ? 2 : 1.5}
-        />
+        {Array.from({ length: relativeDepth }, (_, d) => (
+          <span
+            key={d}
+            className="w-3.5 self-stretch flex justify-center shrink-0"
+            aria-hidden="true"
+          >
+            <span className="w-px h-full bg-border/80" />
+          </span>
+        ))}
 
-        {entry.type === 'figure' && (
-          <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
-            Fig
-          </span>
-        )}
-        {entry.type === 'table' && (
-          <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
-            Tab
-          </span>
+        {hasChildren ? (
+          <button
+            type="button"
+            onClick={(e) => toggleSectionCollapse(entry.line, e)}
+            aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
+            className="size-4 flex items-center justify-center rounded-sm hover:bg-muted shrink-0 cursor-pointer"
+          >
+            <ChevronRight
+              className={cn(
+                'size-3.5 transition-transform duration-150',
+                isActive ? 'text-primary' : 'text-muted-foreground',
+                !isCollapsed && 'rotate-90',
+              )}
+              strokeWidth={1.75}
+            />
+          </button>
+        ) : (
+          <span className="w-4 shrink-0" aria-hidden="true" />
         )}
 
         <span
@@ -320,15 +383,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         >
           {entry.title}
         </span>
-        <span
-          className={cn(
-            'shrink-0 text-11 font-mono',
-            isActive ? 'text-primary/80 font-medium' : 'text-muted-foreground',
-          )}
-        >
-          :{entry.line}
-        </span>
-      </button>
+      </div>
     );
   };
 
@@ -353,7 +408,10 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         onClick={toggleFileOutline}
         aria-expanded={isOutlineOpen}
         aria-label={isOutlineOpen ? 'Collapse File Outline' : 'Expand File Outline'}
-        className="flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground border-b border-border transition-colors hover:bg-muted/40 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset"
+        className={cn(
+          'flex h-9 w-full items-center justify-between px-3 text-left text-13 font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/40 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset',
+          !isFileTreeOpen && 'border-t border-border',
+        )}
       >
         <div className="flex items-center gap-1.5 min-w-0">
           <ChevronRight
@@ -365,11 +423,6 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           />
           <span className="truncate">File Outline</span>
         </div>
-        {outline.length > 0 && (
-          <span className="rounded-sm bg-muted px-1.5 py-0.5 text-11 font-mono font-medium text-foreground">
-            {outline.length}
-          </span>
-        )}
       </button>
 
       {/* Outline content list */}
@@ -382,7 +435,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
             !isFileTreeOpen && 'flex-1 min-h-0',
           )}
         >
-          {outline.length === 0 ? (
+          {visibleEntries.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-center px-4 py-8 select-none">
               <p className="text-12 text-muted-foreground font-normal">
                 No sections or subsections found in this document.
@@ -402,11 +455,11 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const entry = outline[virtualRow.index];
-                if (!entry) return null;
+                const item = visibleEntries[virtualRow.index];
+                if (!item) return null;
                 return (
                   <div
-                    key={`${entry.line}-${virtualRow.index}`}
+                    key={`${item.entry.line}-${virtualRow.index}`}
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -416,13 +469,13 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    {renderOutlineRow(entry, virtualRow.index)}
+                    {renderOutlineRow(item, virtualRow.index)}
                   </div>
                 );
               })}
             </div>
           ) : (
-            outline.map((entry, index) => renderOutlineRow(entry, index))
+            visibleEntries.map((item, index) => renderOutlineRow(item, index))
           )}
         </div>
       )}

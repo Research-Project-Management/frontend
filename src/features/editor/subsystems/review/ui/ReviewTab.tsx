@@ -4,7 +4,11 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useReviewState } from './hooks/useReviewState';
-import { useDeleteComment, useResolveComment } from './hooks/useComments';
+import {
+  useDeleteComment,
+  useInfiniteResolvedComments,
+  useResolveComment,
+} from './hooks/useComments';
 import {
   ReviewHeader,
   ReviewBottomNav,
@@ -69,10 +73,19 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
 
   const resolveCommentMutation = useResolveComment();
   const deleteCommentMutation = useDeleteComment();
-  const resolvedComments = React.useMemo(
-    () => comments.filter((c) => c.status === 'resolved'),
-    [comments],
+  const [resolvedPopoverOpen, setResolvedPopoverOpen] = React.useState(false);
+  const resolvedInfiniteQuery = useInfiniteResolvedComments(
+    pageId ?? null,
+    resolvedPopoverOpen,
+    20,
   );
+  const resolvedComments = React.useMemo(() => {
+    const pages = resolvedInfiniteQuery.data?.pages;
+    if (pages && pages.length > 0) {
+      return pages.flatMap((p) => p.comments);
+    }
+    return comments.filter((c) => c.status === 'resolved');
+  }, [resolvedInfiniteQuery.data?.pages, comments]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden text-foreground select-none">
@@ -82,6 +95,12 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
         resolvedComments={resolvedComments}
+        hasMoreResolved={Boolean(resolvedInfiniteQuery.hasNextPage)}
+        isLoadingMoreResolved={resolvedInfiniteQuery.isFetchingNextPage}
+        onLoadMoreResolved={() => {
+          void resolvedInfiniteQuery.fetchNextPage();
+        }}
+        onResolvedPopoverOpenChange={setResolvedPopoverOpen}
         currentFileName={currentFileName}
         onReopenComment={(commentId) => {
           if (pageId) {
@@ -165,15 +184,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
               <EmptyReviewState
                 title="No open comments or suggestions"
                 subtitle="All comments and suggestions have been resolved."
-                action={
-                  <button
-                    type="button"
-                    onClick={() => setShowResolved(true)}
-                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-                  >
-                    Show resolved comments: {currentFileResolvedCount}
-                  </button>
-                }
               />
             ) : (
               <div className="flex flex-col">

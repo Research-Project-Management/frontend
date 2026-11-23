@@ -14,6 +14,7 @@ import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
+import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { reviewCoordinator } from '../../coordinator/review.coordinator';
@@ -94,6 +95,7 @@ export function useReviewState() {
 
   const pendingComment = useDocumentCollaborationStore((s) => s.pendingComment);
   const clearPendingComment = useDocumentCollaborationStore((s) => s.clearPendingComment);
+  const activeDraftComment = useDocumentCollaborationStore((s) => s.activeDraftComment);
 
   const { data: projectMembersData } = useQuery({
     queryKey: ['project-members', projectId],
@@ -260,16 +262,34 @@ export function useReviewState() {
   const reviewMode = useSettingsStore((s) => s.reviewMode);
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
 
+  const effectiveComments = useMemo<PageComment[]>(() => {
+    if (!pageId || !activeDraftComment) return comments;
+    const draftComment: PageComment = {
+      id: '__draft-comment__',
+      page: pageId,
+      projectPageId: pageId,
+      author: { id: '', name: '' },
+      content: '',
+      status: 'open',
+      line: activeDraftComment.startLine,
+      lineEnd: activeDraftComment.endLine,
+      replies: [],
+      createdAt: '',
+      updatedAt: '',
+    };
+    return [...comments, draftComment];
+  }, [comments, pageId, activeDraftComment]);
+
   useEffect(() => {
     reviewCoordinator.syncEditorDecorations(
       null,
       suggestions,
-      comments,
+      effectiveComments,
       trackChangesViewMode,
       Boolean(reviewMode),
       pageId,
     );
-  }, [suggestions, comments, trackChangesViewMode, reviewMode, pageId]);
+  }, [suggestions, effectiveComments, trackChangesViewMode, reviewMode, pageId]);
 
   const currentFileResolvedCount = resolvedComments.length + resolvedSuggestions.length;
   const activeResolvedCount = scope === 'current' ? currentFileResolvedCount : overviewResolvedCount;

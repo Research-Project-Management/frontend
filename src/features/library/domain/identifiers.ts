@@ -437,13 +437,13 @@ export function resolveAllItemAttachmentUrls(
   if (primary) urls.add(primary);
 
   if (Array.isArray(item.attachments)) {
-    for (const att of item.attachments) {
-      if (!att) continue;
-      const attUrl = getItemFileUrl(
-        { fileUrl: att.fileUrl || att.url, url: att.url, fileId: att.fileId },
+    for (const attachment of item.attachments) {
+      if (!attachment) continue;
+      const attachmentUrl = getItemFileUrl(
+        { fileUrl: attachment.fileUrl || attachment.url, url: attachment.url, fileId: attachment.fileId },
         spaceId,
       );
-      if (attUrl) urls.add(attUrl);
+      if (attachmentUrl) urls.add(attachmentUrl);
     }
   }
   return Array.from(urls);

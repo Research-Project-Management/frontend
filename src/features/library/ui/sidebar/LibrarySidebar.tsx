@@ -49,7 +49,7 @@ import { useWorkspaceContextStore } from '@/features/shell/store/workspace-conte
 
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
 
-import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
+import { buildCollectionTree, filterCollections } from '@/features/library/domain/collection-tree';
 import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
@@ -370,12 +370,12 @@ export function LibrarySidebar() {
   );
 
   const userTree = useMemo(
-    () => buildTree(filterCollections(userCollections, searchQuery)),
+    () => buildCollectionTree(filterCollections(userCollections, searchQuery)),
     [userCollections, searchQuery],
   );
 
   const projectTree = useMemo(
-    () => buildTree(filterCollections(projectCollections, searchQuery)),
+    () => buildCollectionTree(filterCollections(projectCollections, searchQuery)),
     [projectCollections, searchQuery],
   );
 
@@ -733,7 +733,6 @@ export function LibrarySidebar() {
     );
   }
 
-export { LibrarySidebar as Sidebar };
 export default LibrarySidebar;
 
 

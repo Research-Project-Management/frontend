@@ -215,13 +215,13 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       cleanupUnreadAfter: unreadDays,
     })
       .then((res) => {
-        const sub = (res?.data as { feedId?: string; id?: string; feed?: { id?: string; url?: string } }) || {};
-        const serverId = sub.feedId || sub.id || sub.feed?.id;
+        const subscription = (res?.data as { feedId?: string; id?: string; feed?: { id?: string; url?: string } }) || {};
+        const serverId = subscription.feedId || subscription.id || subscription.feed?.id;
         if (serverId && serverId !== localId) {
           createdFeed.id = serverId;
-          if (sub.feed?.url) createdFeed.url = sub.feed.url;
+          if (subscription.feed?.url) createdFeed.url = subscription.feed.url;
           set((state) => ({
-            feeds: state.feeds.map((f) => (f.id === localId ? { ...f, id: serverId, url: sub.feed?.url || f.url } : f)),
+            feeds: state.feeds.map((f) => (f.id === localId ? { ...f, id: serverId, url: subscription.feed?.url || f.url } : f)),
             activeFeedId: state.activeFeedId === localId ? serverId : state.activeFeedId,
           }));
         }

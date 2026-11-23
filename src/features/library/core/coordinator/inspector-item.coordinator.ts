@@ -35,7 +35,7 @@ import { getCollectionAncestorPath } from '@/features/library/domain/collection-
 import type {
   Item,
   Collection,
-  CreateCollectionDTO,
+  CreateCollectionDto,
 } from '@/features/library/types/core.types';
 
 export {
@@ -370,7 +370,7 @@ export function useItemCollectionsManager(
   canEdit: boolean,
   externalCollections?: Collection[],
   externalCreateCollection?: (
-    data: CreateCollectionDTO & { spaceId?: string },
+    data: CreateCollectionDto & { spaceId?: string },
   ) => Promise<unknown>,
   onUpdateItem?: (
     payload: Partial<Item>,

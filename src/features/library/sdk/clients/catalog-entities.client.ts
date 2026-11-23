@@ -1,7 +1,7 @@
 import type {
   Collection,
-  CreateCollectionDTO,
-  UpdateCollectionDTO,
+  CreateCollectionDto,
+  UpdateCollectionDto,
   TagWithCount,
   Note,
   CreateNoteDTO,
@@ -60,13 +60,13 @@ export const CollectionsService = {
   get: (spaceId: string | undefined, collectionId: string) =>
     CollectionsService.getById(spaceId, collectionId),
 
-  create: (spaceId: string | undefined, data: CreateCollectionDTO) =>
+  create: (spaceId: string | undefined, data: CreateCollectionDto) =>
     libraryClient.post<{ collection: Collection }>(
       resolveLibraryUrl('catalog', '/collections', spaceId),
       data,
     ),
 
-  update: (spaceId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
+  update: (spaceId: string | undefined, collectionId: string, data: UpdateCollectionDto) =>
     libraryClient.put<{ collection: Collection }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, spaceId),
       data,

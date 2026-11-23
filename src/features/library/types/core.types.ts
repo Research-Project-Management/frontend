@@ -211,8 +211,8 @@ export interface CollectionInput {
   version?: number;
 }
 
-export type CreateCollectionDTO = CollectionInput;
-export type UpdateCollectionDTO = Partial<CollectionInput> & {
+export type CreateCollectionDto = CollectionInput;
+export type UpdateCollectionDto = Partial<CollectionInput> & {
   expectedVersion?: number;
   version?: number;
 };

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { ItemsService } from '../clients/items.client';
 import { StateService } from '../clients/catalog-entities.client';
 import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata/mapper';
-import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/types/core.types';
+import type { Item, CreateItemDto, UpdateItemDto } from '@/features/library/types/core.types';
 import { itemKeys, libraryKeys, invalidateCollections, normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher.queries';
 import { isItemStarred } from '@/features/library/domain/system-views.policy';
@@ -26,7 +26,7 @@ export function resolveCachedItemVersion(
 
 function buildServerSuccessCachePatch(
   serverItem: Partial<Item> | undefined,
-  rawData: Partial<UpdateItemDTO>,
+  rawData: Partial<UpdateItemDto>,
   existingCached: Item | null | undefined,
 ): Partial<Item> {
   const patchData: Partial<Item> = {
@@ -75,7 +75,7 @@ export function useUpdateLibraryItemMutation(spaceId?: string) {
       expectedVersion,
     }: {
       itemId: string;
-      data: UpdateItemDTO;
+      data: UpdateItemDto;
       expectedVersion?: number;
       silent?: boolean;
     }) => {
@@ -359,11 +359,11 @@ export function useImportFromUserMutation(spaceId?: string) {
 }
 
 type CreateLibraryItemMutationInput =
-  | (Partial<Item> & Partial<CreateItemDTO> & { collectionId?: string; silent?: boolean })
+  | (Partial<Item> & Partial<CreateItemDto> & { collectionId?: string; silent?: boolean })
   | {
       collectionId?: string;
       silent?: boolean;
-      data: (Partial<Item> & Partial<CreateItemDTO> & { silent?: boolean }) | Record<string, unknown>;
+      data: (Partial<Item> & Partial<CreateItemDto> & { silent?: boolean }) | Record<string, unknown>;
     };
 
 export function useCreateLibraryItemMutation(
@@ -389,7 +389,7 @@ export function useCreateLibraryItemMutation(
         ? (input as { data: Record<string, unknown> }).data
         : (input as Record<string, unknown>);
       const { silent: _silent, collectionId: _cid, ...payload } = rawPayload;
-      return ItemsService.create(effectiveScope, collectionId, payload as CreateItemDTO);
+      return ItemsService.create(effectiveScope, collectionId, payload as CreateItemDto);
     },
     onSuccess: (newItem, variables) => {
       const targetCollection =

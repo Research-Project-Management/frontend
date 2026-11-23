@@ -582,8 +582,8 @@ export type Identifier = z.infer<typeof identifierSchema>;
 export type Provenance = z.infer<typeof provenanceSchema>;
 
 export type Item = z.infer<typeof baseItemSchema>;
-export type CreateItemDTO = z.infer<typeof createItemSchema>;
-export type UpdateItemDTO = z.infer<typeof updateItemSchema>;
+export type CreateItemDto = z.infer<typeof createItemSchema>;
+export type UpdateItemDto = z.infer<typeof updateItemSchema>;
 
 export type CursorPaginationMeta = z.infer<typeof cursorPaginationMetaSchema>;
 export type PaginatedItemsResponse = z.infer<typeof paginatedItemsResponseSchema>;

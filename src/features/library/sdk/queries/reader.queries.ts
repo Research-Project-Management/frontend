@@ -93,8 +93,7 @@ import type {
   ReaderDocument,
 } from '@/features/library/types/reader.types';
 
-type CreateAnnotationDTO = CreateAnnotationDto;
-type UpdateAnnotationDTO = UpdateAnnotationDto & {
+type UpdateAnnotationPayload = UpdateAnnotationDto & {
   rects?: AnnotationRect[];
   boundingRect?: AnnotationRect;
 };
@@ -121,23 +120,23 @@ function hydrateReaderBootstrapPayload(
     const rawAttachments = Array.isArray(res.item.attachments)
       ? res.item.attachments
       : [];
-    for (const att of rawAttachments) {
-      const attRec = att as unknown as Record<string, unknown>;
-      const attId =
-        typeof att.id === 'string'
-          ? att.id
-          : typeof attRec.attachmentId === 'string'
-            ? attRec.attachmentId
+    for (const attachment of rawAttachments) {
+      const attachmentRecord = attachment as unknown as Record<string, unknown>;
+      const attachmentId =
+        typeof attachment.id === 'string'
+          ? attachment.id
+          : typeof attachmentRecord.attachmentId === 'string'
+            ? attachmentRecord.attachmentId
             : undefined;
-      if (attId && Array.isArray(attRec.annotations)) {
-        const normalizedAttAnns = (
-          attRec.annotations as Array<
+      if (attachmentId && Array.isArray(attachmentRecord.annotations)) {
+        const normalizedAttachmentAnns = (
+          attachmentRecord.annotations as Array<
             ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }
           >
         ).map(normalizeAnnotationEntity);
         queryClient.setQueryData<ReaderAnnotation[]>(
-          annotationKeys.byAttachment(targetScope, attId),
-          normalizedAttAnns,
+          annotationKeys.byAttachment(targetScope, attachmentId),
+          normalizedAttachmentAnns,
         );
       }
     }
@@ -348,7 +347,7 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (dto: CreateAnnotationDTO) => {
+    mutationFn: async (dto: CreateAnnotationDto) => {
       if (!attachmentId) throw new Error('Attachment ID required to create annotation.');
       const id = dto.id || uuidv7();
 
@@ -391,7 +390,7 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
 
       return AnnotationsService.create(spaceId, attachmentId, { ...dto, id });
     },
-    onMutate: async (dto: CreateAnnotationDTO) => {
+    onMutate: async (dto: CreateAnnotationDto) => {
       if (!attachmentId) return undefined;
       const id = dto.id || uuidv7();
       const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
@@ -489,7 +488,7 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
     }: {
       annotationId: string;
       expectedVersion?: number;
-      dto: UpdateAnnotationDTO;
+      dto: UpdateAnnotationPayload;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to update annotation.');
 
@@ -769,14 +768,14 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
-    createAnnotation: (dto: CreateAnnotationDTO) => {
+    createAnnotation: (dto: CreateAnnotationDto) => {
       const id = dto.id || crypto.randomUUID();
       return createMutation.mutateAsync({ ...dto, id });
     },
     updateAnnotation: (
       annotationId: string,
       expectedVersion: number | undefined,
-      dto: UpdateAnnotationDTO & {
+      dto: UpdateAnnotationPayload & {
         rects?: AnnotationRect[];
         boundingRect?: AnnotationRect;
       },

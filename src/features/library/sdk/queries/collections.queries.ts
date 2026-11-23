@@ -21,8 +21,8 @@ export function exportCollectionBundle(spaceId: string | undefined, collectionId
 }
 import type {
   Collection,
-  CreateCollectionDTO,
-  UpdateCollectionDTO,
+  CreateCollectionDto,
+  UpdateCollectionDto,
 } from '@/features/library/types/core.types';
 import {
   itemKeys,
@@ -101,11 +101,11 @@ export function useCollections(spaceIdOrOptions?: UseCollectionsScopeInput) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateCollectionDTO & { spaceId?: string }) => {
+    mutationFn: (data: CreateCollectionDto & { spaceId?: string }) => {
       const targetScope = normalizeSpaceId(data.spaceId || spaceId);
       const rawParent = data.parentId ?? null;
       const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
-      const payload: CreateCollectionDTO = {
+      const payload: CreateCollectionDto = {
         name: data.name?.trim() || 'Untitled',
         description: data.description?.trim() || '',
         color: data.color || '#2563eb',
@@ -129,7 +129,7 @@ export function useCollections(spaceIdOrOptions?: UseCollectionsScopeInput) {
 
   const updateMutation = useMutation({
     mutationFn: (
-      data: UpdateCollectionDTO & { collectionId: string; spaceId?: string },
+      data: UpdateCollectionDto & { collectionId: string; spaceId?: string },
     ) => {
       const { collectionId, spaceId: overrideScope, ...rest } = data;
       const targetScope = normalizeSpaceId(overrideScope || spaceId);
@@ -144,7 +144,7 @@ export function useCollections(spaceIdOrOptions?: UseCollectionsScopeInput) {
         rest.version,
       );
 
-      const payload: UpdateCollectionDTO = {
+      const payload: UpdateCollectionDto = {
         name: rest.name !== undefined ? rest.name.trim() : undefined,
         description:
           rest.description !== undefined ? rest.description.trim() : undefined,
@@ -345,10 +345,10 @@ export function useCreateCollectionMutation(spaceId?: string) {
   const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
-    mutationFn: (data: CreateCollectionDTO) => {
+    mutationFn: (data: CreateCollectionDto) => {
       const rawParent = data.parentId ?? null;
       const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
-      const payload: CreateCollectionDTO = {
+      const payload: CreateCollectionDto = {
         name: data.name?.trim() || 'Untitled',
         description: data.description?.trim() || '',
         color: data.color || '#2563eb',

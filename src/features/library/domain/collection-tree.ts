@@ -80,7 +80,7 @@ function isDescendantOf(
  * Uses 3-color DFS state memoization (0 = unvisited, 1 = visiting, 2 = safe/acyclic)
  * so ancestor cycle verification across the entire forest runs in strict O(N) time instead of O(N * D).
  */
-function buildCollectionTree(collections: Collection[]): CollectionHierarchyNode[] {
+export function buildCollectionTree(collections: Collection[]): CollectionHierarchyNode[] {
   const map = new Map<string, CollectionHierarchyNode>();
   const roots: CollectionHierarchyNode[] = [];
 
@@ -257,8 +257,6 @@ export function canMoveCollection(
 
   return !isDescendantOf(collections, targetParentId, sourceId);
 }
-
-export { buildCollectionTree as buildTree };
 
 /**
  * Returns collections that are valid targets for moving/copying

@@ -114,8 +114,8 @@ export function openInNewTab(url: string): void {
  * Stateless Citation & Bibliography Export Application Service.
  *
  * Delegates all citation formatting and BibTeX synthesis strictly to the
- * authoritative Backend Library Services (`libraryServices.citations` and
- * `libraryServices.exports`), handling retraction safety alerts, clipboard
+ * authoritative Backend Library Services (`CitationService` and
+ * `ExportsService`), handling retraction safety alerts, clipboard
  * feedback, and browser file downloads on the client.
  */
 

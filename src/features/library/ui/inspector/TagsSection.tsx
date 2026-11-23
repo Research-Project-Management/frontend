@@ -458,5 +458,3 @@ export default function TagsSection({
     </div>
   );
 }
-
-export { TagsSection as LabelsSection };

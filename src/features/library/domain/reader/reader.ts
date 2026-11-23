@@ -576,10 +576,10 @@ export function resolveEpubOrSnapshot(
     }
   }
 
-  for (const att of rawAtts) {
-    const desc = classifyAttachmentDescriptor(att);
+  for (const attachment of rawAtts) {
+    const desc = classifyAttachmentDescriptor(attachment);
     if (desc.isEpub || desc.isSnapshot) {
-      const url = (att.fileUrl || att.url || '') as string;
+      const url = (attachment.fileUrl || attachment.url || '') as string;
       if (url) return { mode: desc.isEpub ? 'epub' : 'snapshot', url };
     }
   }

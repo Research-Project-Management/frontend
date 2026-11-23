@@ -484,9 +484,9 @@ function extractFallbackYear(item: Item): number | null {
     item.issueDate,
     getItemDisplayDate(item),
   ];
-  for (const cand of candidates) {
-    if (typeof cand === 'string' && isValidValue(cand)) {
-      const m = FOUR_DIGIT_YEAR_RE.exec(cand);
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && isValidValue(candidate)) {
+      const m = FOUR_DIGIT_YEAR_RE.exec(candidate);
       if (m) {
         const num = Number(m[1]);
         if (!Number.isNaN(num) && num > 0) return num;

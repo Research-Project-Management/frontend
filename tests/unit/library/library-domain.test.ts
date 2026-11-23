@@ -309,7 +309,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
   describe("Tree Structure & Cycle Guard (tree-helpers.ts)", () => {
     it("should build a nested tree from a flat collection array", async () => {
-      const { buildTree } =
+      const { buildCollectionTree } =
         await import("@/features/library/domain/collection-tree");
       const collections: any[] = [
         { id: "c1", name: "Root 1", parentId: null },
@@ -318,7 +318,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         { id: "c4", name: "Root 2", parentId: null },
       ];
 
-      const tree = buildTree(collections);
+      const tree = buildCollectionTree(collections);
       expect(tree.length).toBe(2);
       expect(tree[0].id).toBe("c1");
       expect(tree[0].children.length).toBe(1);
@@ -328,7 +328,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
     });
 
     it("should break circular parent cycles gracefully without stack overflow", async () => {
-      const { buildTree } =
+      const { buildCollectionTree } =
         await import("@/features/library/domain/collection-tree");
       // Create a circular dependency: A -> B -> A and self-reference: C -> C
       const collections: any[] = [
@@ -337,7 +337,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         { id: "cC", name: "Self Cyclic C", parentId: "cC" },
       ];
 
-      const tree = buildTree(collections);
+      const tree = buildCollectionTree(collections);
       // All cyclic nodes must be safely converted to root nodes to prevent infinite recursion
       expect(tree.length).toBeGreaterThanOrEqual(2);
       // Ensure children do not reference their ancestor

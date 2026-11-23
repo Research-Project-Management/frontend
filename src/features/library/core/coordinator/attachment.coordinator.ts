@@ -123,12 +123,12 @@ export function useAttachmentCoordinator({
     });
 
     const deduped: AttachmentLike[] = [];
-    for (const att of list) {
-      if (att.id && seenIds.has(att.id)) continue;
-      if (att.fileId && seenFileIds.has(att.fileId)) continue;
-      if (att.id) seenIds.add(att.id);
-      if (att.fileId) seenFileIds.add(att.fileId);
-      deduped.push(att);
+    for (const attachment of list) {
+      if (attachment.id && seenIds.has(attachment.id)) continue;
+      if (attachment.fileId && seenFileIds.has(attachment.fileId)) continue;
+      if (attachment.id) seenIds.add(attachment.id);
+      if (attachment.fileId) seenFileIds.add(attachment.fileId);
+      deduped.push(attachment);
     }
 
     return deduped;
@@ -137,19 +137,19 @@ export function useAttachmentCoordinator({
   const primaryAttachment = useMemo(() => {
     return (
       allAttachments.find(
-        (att) =>
-          att.attachmentType === 'primary_pdf' ||
-          att.type === 'primary_pdf' ||
-          (paperFilename && (att.filename === paperFilename || att.name === paperFilename)),
+        (attachment) =>
+          attachment.attachmentType === 'primary_pdf' ||
+          attachment.type === 'primary_pdf' ||
+          (paperFilename && (attachment.filename === paperFilename || attachment.name === paperFilename)),
       ) ||
-      allAttachments.find((att) => classifyAttachmentDescriptor(att).isPdf) ||
+      allAttachments.find((attachment) => classifyAttachmentDescriptor(attachment).isPdf) ||
       null
     );
   }, [allAttachments, paperFilename]);
 
   const activePreviewAttachment = useMemo(() => {
     if (selectedAttachmentId) {
-      const found = allAttachments.find((att) => att.id === selectedAttachmentId);
+      const found = allAttachments.find((attachment) => attachment.id === selectedAttachmentId);
       if (found && classifyAttachmentDescriptor(found).isPdf) {
         return found;
       }

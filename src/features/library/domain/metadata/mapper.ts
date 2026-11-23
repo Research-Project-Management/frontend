@@ -399,9 +399,9 @@ function projectCanonicalBaseFields(
     ...SUBTYPE_CANDIDATE_KEYS.filter((k) => k !== 'type').flatMap((k) => [rec[k], ef[k]]),
   ];
   let resolvedSubtype: string | undefined;
-  for (const cand of subtypeCandidates) {
-    if (typeof cand === 'string' && isValidValue(cand)) {
-      const trimmed = cand.trim();
+  for (const candidate of subtypeCandidates) {
+    if (typeof candidate === 'string' && isValidValue(candidate)) {
+      const trimmed = candidate.trim();
       const lower = trimmed.toLowerCase();
       if (lower && lower !== resolvedItemTypeLower && lower !== canonicalItemTypeLower) {
         resolvedSubtype = trimmed;

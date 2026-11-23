@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import type {
   Item,
   Collection,
-  CreateCollectionDTO,
+  CreateCollectionDto,
 } from "@/features/library/types/core.types";
 
 export {
@@ -53,7 +53,7 @@ interface CollectionPickerContentProps {
   align?: "start" | "center" | "end";
   collections?: Collection[];
   createCollection?: (
-    data: CreateCollectionDTO & { spaceId?: string },
+    data: CreateCollectionDto & { spaceId?: string },
   ) => Promise<unknown>;
   onUpdateItem?: (
     payload: Partial<Item>,
@@ -303,7 +303,7 @@ interface CollectionPickerPopoverProps {
   align?: "start" | "center" | "end";
   collections?: Collection[];
   createCollection?: (
-    data: CreateCollectionDTO & { spaceId?: string },
+    data: CreateCollectionDto & { spaceId?: string },
   ) => Promise<unknown>;
   onUpdateItem?: (
     payload: Partial<Item>,

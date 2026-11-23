@@ -227,6 +227,17 @@ export function useAiThread({
     [engine],
   );
 
+  const trimMessages = useCallback(
+    (count: number) => {
+      const cur = engine.getSnapshot();
+      engine.hydrateMessages(
+        [...cur.messages.slice(0, Math.max(0, count))],
+        { chatId: cur.chatId, spaceId: cur.spaceId },
+      );
+    },
+    [engine],
+  );
+
   return {
     ...snapshot,
     send,
@@ -234,5 +245,6 @@ export function useAiThread({
     stop,
     retry,
     reset,
+    trimMessages,
   };
 }

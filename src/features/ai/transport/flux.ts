@@ -1,4 +1,4 @@
-import { apiPost, apiRawFetch } from '@/shared/lib/api';
+import { apiGet, apiPost, apiRawFetch } from '@/shared/lib/api';
 import { logger } from '@/shared/lib/logger';
 import type { AiStreamEvent } from '../types/event';
 import type {
@@ -22,6 +22,48 @@ const PERSONAL_SCOPE_SENTINELS = new Set([
   'null',
   'undefined',
 ]);
+
+export interface AiModelInfo {
+  id: string;
+  label: string;
+  provider: string;
+  tier: 'auto' | 'fast' | 'balanced' | 'pro';
+  description: string;
+  is_default: boolean;
+}
+
+export const AI_SELECTED_MODEL_KEY = 'flux:ai:selected-model';
+const modelSubscribers = new Set<() => void>();
+
+export function getStoredModelId(): string {
+  if (typeof window === 'undefined') return 'auto';
+  try {
+    return window.localStorage.getItem(AI_SELECTED_MODEL_KEY)?.trim() || 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+export function setStoredModelId(modelId: string): void {
+  const clean = modelId.trim() || 'auto';
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(AI_SELECTED_MODEL_KEY, clean);
+    } catch {
+      // Ignore storage quota / private mode failures
+    }
+  }
+  for (const listener of modelSubscribers) {
+    listener();
+  }
+}
+
+export function subscribeStoredModelId(listener: () => void): () => void {
+  modelSubscribers.add(listener);
+  return () => {
+    modelSubscribers.delete(listener);
+  };
+}
 
 export function normalizeSpaceId(value?: string | null): string | undefined {
   if (!value || typeof value !== 'string') return undefined;
@@ -113,6 +155,15 @@ export class FluxHttpTransport implements AiTransportPort {
     }
 
     const ed = context.editor;
+    const contextPayload: Record<string, unknown> = {};
+    if (context.attachedSources && context.attachedSources.length > 0) {
+      contextPayload.attached_sources = context.attachedSources;
+    }
+    const selectedModelId = context.modelId ?? getStoredModelId();
+    if (selectedModelId && selectedModelId !== 'auto') {
+      contextPayload.model_id = selectedModelId;
+    }
+
     const body: Record<string, unknown> = {
       messages: wireMessages,
       spaceId: spaceId ?? undefined,
@@ -127,9 +178,7 @@ export class FluxHttpTransport implements AiTransportPort {
           : undefined,
       intentHint: context.intentHint ?? undefined,
       context:
-        context.attachedSources && context.attachedSources.length > 0
-          ? { attached_sources: context.attachedSources }
-          : undefined,
+        Object.keys(contextPayload).length > 0 ? contextPayload : undefined,
     };
 
     if (context.paper?.quotedPassage) {
@@ -255,6 +304,7 @@ export class FluxHttpTransport implements AiTransportPort {
   async revertTurn(
     traceId: string,
     spaceId?: string | null,
+    entityIds?: string[],
   ): Promise<{
     trace_id: string;
     space_id: string;
@@ -273,8 +323,73 @@ export class FluxHttpTransport implements AiTransportPort {
       : '';
     return apiPost(
       `/api/ai/turns/${encodeURIComponent(traceId)}/revert${qs}`,
-      {},
+      entityIds?.length ? { entityIds } : {},
     );
+  }
+
+  async listCheckpoints(
+    chatId: string,
+    spaceId?: string | null,
+    limit?: number,
+  ): Promise<{
+    chat_id: string;
+    space_id: string;
+    checkpoints: Array<{
+      checkpoint_id: string;
+      parent_checkpoint_id?: string | null;
+      created_at?: string | null;
+      step?: number | null;
+      message_count: number;
+      route?: string | null;
+      preview: string;
+    }>;
+  }> {
+    const cleanSpaceId = normalizeSpaceId(spaceId);
+    const params = new URLSearchParams();
+    if (cleanSpaceId) params.set('spaceId', cleanSpaceId);
+    if (limit !== undefined) params.set('limit', String(limit));
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return apiGet(
+      `/api/ai/chat/${encodeURIComponent(chatId)}/checkpoints${qs}`,
+    );
+  }
+
+  async rewindThread(
+    chatId: string,
+    checkpointId: string,
+    spaceId?: string | null,
+    revertTraceIds?: string[],
+  ): Promise<{
+    chat_id: string;
+    space_id: string;
+    target_checkpoint_id: string;
+    new_checkpoint_id: string;
+    message_count: number;
+    reverted_count: number;
+    revert_results: Array<{
+      tool: string;
+      entity_id: string;
+      label?: string;
+      status: 'reverted' | 'already_gone' | 'failed';
+      error?: string;
+    }>;
+  }> {
+    const cleanSpaceId = normalizeSpaceId(spaceId);
+    const qs = cleanSpaceId
+      ? `?spaceId=${encodeURIComponent(cleanSpaceId)}`
+      : '';
+    return apiPost(
+      `/api/ai/chat/${encodeURIComponent(chatId)}/rewind${qs}`,
+      {
+        checkpointId,
+        ...(revertTraceIds?.length ? { revertTraceIds } : {}),
+      },
+    );
+  }
+
+  async listModels(): Promise<AiModelInfo[]> {
+    const res = await apiGet<{ models?: AiModelInfo[] }>('/api/ai/models');
+    return Array.isArray(res.models) ? res.models : [];
   }
 }
 

@@ -43,6 +43,7 @@ export type {
   StreamRequest,
   StreamResult,
 } from './transport/transport.port';
+export type { AiModelInfo } from './transport/flux';
 export { FluxHttpTransport, fluxTransport, normalizeSpaceId } from './transport/flux';
 export {
   clearPageChat,
@@ -74,10 +75,12 @@ export {
   invalidateAiSessions,
   useAiDocumentContent,
   useAiDocuments,
+  useAiModelsQuery,
   useAiSessions,
   useDeleteAiDocument,
   useDeleteAiSession,
   useRenameAiSession,
+  useSelectedAiModel,
 } from './engine/queries';
 export {
   useAiCompanionStore,

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useSyncExternalStore } from 'react';
 import {
   useMutation,
   useQuery,
@@ -7,7 +8,14 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { fluxTransport, normalizeSpaceId } from '../transport/flux';
+import {
+  fluxTransport,
+  getStoredModelId,
+  normalizeSpaceId,
+  setStoredModelId,
+  subscribeStoredModelId,
+  type AiModelInfo,
+} from '../transport/flux';
 import {
   deleteSession,
   fetchSessions,
@@ -28,6 +36,7 @@ function keyScope(spaceId?: string | null): string {
 
 export const aiKeys = {
   all: ['ai'] as const,
+  models: () => [...aiKeys.all, 'models'] as const,
   sessions: (spaceId?: string | null) =>
     [...aiKeys.all, 'sessions', keyScope(spaceId)] as const,
   session: (chatId: string) => [...aiKeys.all, 'session', chatId] as const,
@@ -156,7 +165,70 @@ export function useDeleteAiDocument(spaceId?: string | null) {
   });
 }
 
-/** Revert all reversible AI mutations recorded for a specific turn trace ID. */
-export async function revertAiTurn(traceId: string, spaceId?: string | null) {
-  return fluxTransport.revertTurn(traceId, normalizeSpaceId(spaceId) ?? undefined);
+/** Revert all or selected AI mutations recorded for a specific turn trace ID. */
+export async function revertAiTurn(
+  traceId: string,
+  spaceId?: string | null,
+  entityIds?: string[],
+) {
+  return fluxTransport.revertTurn(
+    traceId,
+    normalizeSpaceId(spaceId) ?? undefined,
+    entityIds,
+  );
+}
+
+/** Fetch recent LangGraph checkpoint history for a chat thread. */
+export async function fetchAiCheckpoints(
+  chatId: string,
+  spaceId?: string | null,
+  limit?: number,
+) {
+  return fluxTransport.listCheckpoints(
+    chatId,
+    normalizeSpaceId(spaceId) ?? undefined,
+    limit,
+  );
+}
+
+/** Rewind a chat thread to a prior LangGraph checkpoint and optionally undo turn effects. */
+export async function rewindAiThread(
+  chatId: string,
+  checkpointId: string,
+  spaceId?: string | null,
+  revertTraceIds?: string[],
+) {
+  return fluxTransport.rewindThread(
+    chatId,
+    checkpointId,
+    normalizeSpaceId(spaceId) ?? undefined,
+    revertTraceIds,
+  );
+}
+
+export type { AiModelInfo };
+
+/** Fetch the platform-managed LLM Model Catalog options for the AI selector. */
+export function useAiModelsQuery() {
+  return useQuery<AiModelInfo[]>({
+    queryKey: aiKeys.models(),
+    queryFn: () => fluxTransport.listModels(),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+const getServerModelSnapshot = () => 'auto';
+
+/** Synced selected AI model ID backed by `localStorage` across mounted Composers. */
+export function useSelectedAiModel(): readonly [string, (modelId: string) => void] {
+  const modelId = useSyncExternalStore(
+    subscribeStoredModelId,
+    getStoredModelId,
+    getServerModelSnapshot,
+  );
+  const setModelId = useCallback((nextId: string) => {
+    setStoredModelId(nextId);
+  }, []);
+  return [modelId, setModelId] as const;
 }

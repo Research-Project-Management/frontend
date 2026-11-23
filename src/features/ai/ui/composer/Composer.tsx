@@ -43,6 +43,7 @@ import {
 } from '../../context/source.port';
 import type { QuotedPassageData } from '../../engine/shell';
 import { AttachmentBar } from './AttachmentBar';
+import { ModelSelector } from './ModelSelector';
 
 export type ReaderDocScope = 'current' | 'open-tabs' | 'all';
 
@@ -656,6 +657,8 @@ export function Composer({
                   </TooltipContent>
                 </Tooltip>
               ))}
+
+            <ModelSelector compact={compact} disabled={isStreaming || disabled} />
           </div>
 
           {/* Right tools: Voice + Send/Stop */}

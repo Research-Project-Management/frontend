@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import {
-  buildTree,
+  buildCollectionTree,
   type TreeNode,
 } from '@/features/library/domain/collection-tree';
 import { isProjectScope } from '@/features/library/domain/identifiers';
@@ -258,7 +258,7 @@ export function useLibraryContextItems({
   });
 
   const tree = useMemo(
-    () => mapCollectionTree(buildTree(collections)),
+    () => mapCollectionTree(buildCollectionTree(collections)),
     [collections],
   );
 

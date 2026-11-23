@@ -53,6 +53,7 @@ export interface TurnContext {
   attachments?: MessageAttachment[];
   webSearchSites?: string[] | null;
   intentHint?: string | null;
+  modelId?: string | null;
   editor?: EditorTurnContext;
   paper?: PaperTurnContext;
 }

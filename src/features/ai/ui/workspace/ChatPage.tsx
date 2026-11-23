@@ -26,6 +26,7 @@ import { useAiThread } from '../../engine/use-thread';
 import { Composer } from '../composer/Composer';
 import { ContextPicker } from '../context/ContextPicker';
 import { AgentBadge, MessageParts } from '../parts/MessageParts';
+import { RewindMenu } from '../parts/RewindMenu';
 import { shouldShowAgentBadge } from '../registry/agents';
 
 const WORKSPACE_SUGGESTIONS = [
@@ -277,6 +278,16 @@ export function ChatPage() {
 
   return (
     <div className="h-full flex flex-col relative">
+      {effectiveChatId && thread.messages.length >= 2 && (
+        <div className="flex items-center justify-end px-4 sm:px-6 pt-2">
+          <RewindMenu
+            chatId={effectiveChatId}
+            spaceId={effectiveSpaceId}
+            disabled={thread.isStreaming}
+            onRewound={(msgCount) => thread.trimMessages(msgCount)}
+          />
+        </div>
+      )}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}

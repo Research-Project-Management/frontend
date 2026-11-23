@@ -449,6 +449,7 @@ export interface OutlineNodeItemProps {
   isCurrent: boolean;
   isCollapsed: boolean;
   isSearchingOutline: boolean;
+  showChevronSlot?: boolean;
   onToggleCollapse: (sectionId: string, e: React.MouseEvent) => void;
   onSelect: (section: FlattenedOutlineSection) => void;
 }
@@ -458,11 +459,12 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
   isCurrent,
   isCollapsed,
   isSearchingOutline,
+  showChevronSlot = true,
   onToggleCollapse,
   onSelect,
 }: OutlineNodeItemProps) {
   const level = section.level ?? 1;
-  const indentPx = (level - 1) * 12 + 2;
+  const indentPx = (level - 1) * 12 + (showChevronSlot ? 4 : 8);
 
   return (
     <div
@@ -474,26 +476,28 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
       )}
       style={{ paddingLeft: `${indentPx}px` }}
     >
-      {section.hasChildren && !isSearchingOutline ? (
-        <button
-          type="button"
-          onClick={(e) => onToggleCollapse(section.id, e)}
-          aria-label={
-            isCollapsed ? `Expand ${section.title}` : `Collapse ${section.title}`
-          }
-          aria-expanded={!isCollapsed}
-          className="size-3.5 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
-        >
-          <ChevronRight
-            className={cn(
-              "size-3 shrink-0 transition-transform duration-150",
-              !isCollapsed && "rotate-90",
-            )}
-            strokeWidth={1.5}
-          />
-        </button>
-      ) : (
-        <span className="size-3.5 shrink-0" aria-hidden="true" />
+      {showChevronSlot && (
+        section.hasChildren && !isSearchingOutline ? (
+          <button
+            type="button"
+            onClick={(e) => onToggleCollapse(section.id, e)}
+            aria-label={
+              isCollapsed ? `Expand ${section.title}` : `Collapse ${section.title}`
+            }
+            aria-expanded={!isCollapsed}
+            className="size-3.5 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
+          >
+            <ChevronRight
+              className={cn(
+                "size-3 shrink-0 transition-transform duration-150",
+                !isCollapsed && "rotate-90",
+              )}
+              strokeWidth={1.5}
+            />
+          </button>
+        ) : (
+          <span className="size-3.5 shrink-0" aria-hidden="true" />
+        )
       )}
       <button
         type="button"
@@ -540,6 +544,7 @@ export function OutlineTreeView({
 }: OutlineTreeViewProps) {
   if (filteredSections.length > 0) {
     const isSearchingOutline = Boolean(outlineFilter.trim());
+    const showChevronSlot = !isSearchingOutline && filteredSections.some((s) => s.hasChildren);
     return (
       <div className="space-y-0.5">
         {filteredSections.map((s, idx) => (
@@ -549,6 +554,7 @@ export function OutlineTreeView({
             isCurrent={s.id === activeOutlineSectionId}
             isCollapsed={collapsedOutlineIds.has(s.id)}
             isSearchingOutline={isSearchingOutline}
+            showChevronSlot={showChevronSlot}
             onToggleCollapse={onToggleCollapse}
             onSelect={onSelectSection}
           />

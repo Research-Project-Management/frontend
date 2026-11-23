@@ -210,7 +210,7 @@ function isValidOutlineSection(
   seenReferences: boolean,
 ): boolean {
   const title = (s.title || '').trim();
-  if (!title || title.length < 2) return false;
+  if (!title || title.length < 2 || title.length > 72) return false;
 
   // Check 4-digit year or list index incorrectly parsed as section number
   if (s.num && /^\d{4}$/.test(s.num)) return false;
@@ -222,34 +222,27 @@ function isValidOutlineSection(
     if (!isAppendix) return false;
   }
 
-  // Heading should not end with sentence-ending punctuation like period, comma, or colon
-  if (/[.,;:]$/.test(title)) return false;
+  // Heading should not end with sentence-ending punctuation
+  if (/[.,;:!?]$/.test(title)) return false;
 
-  // Heading should not be an entire sentence (too many words)
   const words = title.split(/\s+/).filter(Boolean);
-  if (words.length > 10) return false;
+  const hasDottedSubnum = Boolean(s.num && s.num.includes('.'));
+  const maxWords = hasDottedSubnum ? 10 : 8;
+  if (words.length > maxWords) return false;
 
-  // Common body-text sentence starter phrases that heuristic regex falsely caught
-  const lower = title.toLowerCase();
-  const falseStarters = [
-    'in all cases',
-    'we note that',
-    'the vector',
-    'for example',
-    'the glue',
-    'the triviaqa',
-    'note that',
-    'question:',
-    'does bert',
-    'in addition',
-    'furthermore',
-    'however',
-    'as shown in',
-    'as described in',
-    'we also',
-    'we find that',
-  ];
-  if (falseStarters.some((prefix) => lower.startsWith(prefix))) {
+  // Reject inline clause punctuation (e.g., "During testing, we adopted...")
+  if (words.length >= 4 && /,\s+\w/.test(title)) return false;
+
+  // Reject math/dimension expressions (e.g., "1 × 1 convolutions are used...")
+  if (/[×=<>±≈≤≥]/.test(title) || /^\d+\s*[×x]\s*\d+/i.test(title)) return false;
+
+  // Reject prose sentences containing finite/auxiliary verbs or personal pronouns
+  if (
+    words.length >= 4 &&
+    /\b(is|are|was|were|have|has|had|been|being|will|would|should|could|must|used\s+to|we\s+\w+|they\s+\w+|it\s+\w+)\b/i.test(
+      title,
+    )
+  ) {
     return false;
   }
 
@@ -297,6 +290,7 @@ export function buildOutlineSections(
   // 2. Fallback: Fulltext extracted sections (sanitized to remove false sentence/reference matches)
   if (fulltextSections && fulltextSections.length > 0) {
     let seenReferences = false;
+    let maxTopLevelNum = 0;
     const sanitized = fulltextSections.filter((s) => {
       const isRef = /^(?:references|bibliography|tài liệu tham khảo)\b/i.test(s.title.trim());
       if (seenReferences && !/^(?:appendix|appendices|supplementary|phụ lục|[A-Z]\b)/i.test(s.title.trim())) {
@@ -306,7 +300,13 @@ export function buildOutlineSections(
         seenReferences = true;
         return true;
       }
-      return isValidOutlineSection(s, seenReferences);
+      if (!isValidOutlineSection(s, seenReferences)) return false;
+      const topNum = s.num && /^\d+$/.test(s.num) ? parseInt(s.num, 10) : null;
+      if (topNum !== null) {
+        if (maxTopLevelNum >= 3 && topNum < maxTopLevelNum) return false;
+        if (topNum > maxTopLevelNum) maxTopLevelNum = topNum;
+      }
+      return true;
     });
 
     const raw = sanitized.map((s, idx) => ({

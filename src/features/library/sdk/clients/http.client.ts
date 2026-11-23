@@ -446,7 +446,7 @@ export const fetchPdfBlob = async (
     let response: Response;
     try {
       response = await fetch(resolvedUrl, {
-        credentials: trustedTargetOrigin && !isLocalStatic ? 'include' : 'same-origin',
+        credentials: trustedTargetOrigin && !isLocalStatic && !token ? 'include' : 'omit',
         headers,
         signal: fetchTimeoutController.signal,
       });

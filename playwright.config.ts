@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'list',
   timeout: 60000,
   use: {
-    baseURL: 'http://127.0.0.1:2915',
+    baseURL: 'http://127.0.0.1:18295',
     trace: 'on-first-retry',
   },
   projects: [

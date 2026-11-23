@@ -13,10 +13,10 @@ const nextConfig: NextConfig = {
   output: isStandalone ? 'standalone' : undefined,
   serverExternalPackages: ['pdfjs-dist'],
   allowedDevOrigins: [
-    'localhost:2915',
-    '127.0.0.1:2915',
-    'localhost:3000',
-    '127.0.0.1:3000',
+    'localhost:18295',
+    '127.0.0.1:18295',
+    'localhost:18300',
+    '127.0.0.1:18300',
     'localhost',
     '127.0.0.1',
   ],
@@ -306,7 +306,7 @@ const nextConfig: NextConfig = {
     const backendUrl =
       process.env.INTERNAL_API_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
-      'http://127.0.0.1:3000';
+      'http://127.0.0.1:18300';
     const realtimeUrl =
       process.env.INTERNAL_REALTIME_URL ||
       process.env.NEXT_PUBLIC_REALTIME_URL ||

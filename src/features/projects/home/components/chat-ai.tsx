@@ -47,6 +47,11 @@ export default function ChatAi({ onSend }: ChatAiProps) {
               id: a.id,
               name: a.name,
               size: a.size,
+              type: a.type,
+              sourceType: a.sourceType,
+              hasPdf: a.hasPdf,
+              itemId: a.itemId,
+              fileId: a.fileId,
             }))
           : undefined,
       webSearch: turnCtx.webSearchEnabled,

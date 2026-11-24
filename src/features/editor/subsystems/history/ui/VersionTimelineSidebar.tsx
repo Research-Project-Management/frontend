@@ -280,7 +280,7 @@ export function VersionTimelineSidebar({
                       <span>{v.fileCount || 1} files</span>
                       {onSelectBaseVersion && (
                         <>
-                          <span className="text-border/70">â€¢</span>
+                          <span className="text-border/70">•</span>
                           <button
                             type="button"
                             onClick={(e) => {

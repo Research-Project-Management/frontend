@@ -162,7 +162,7 @@ function SymbolPaletteModal({
             <TabsTrigger value="greek-upper" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Greek (Î”)</TabsTrigger>
             <TabsTrigger value="operators" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Operators (âˆ«)</TabsTrigger>
             <TabsTrigger value="relations" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Relations (â‰¤)</TabsTrigger>
-            <TabsTrigger value="arrows" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Arrows (â†’)</TabsTrigger>
+            <TabsTrigger value="arrows" className="flex-1 shrink-0 whitespace-nowrap cursor-pointer rounded-sm text-11 h-7 min-w-fit px-2 relative after:absolute after:-inset-1 after:content-['']">Arrows (→)</TabsTrigger>
           </TabsList>
 
           {/* Symbol Grid */}

@@ -56,7 +56,7 @@ export {
   type PdfBlobResult,
 };
 
-// â”€â”€ Thumbnail Generator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Thumbnail Generator ───────────────────────────────────────────────────────
 
 async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   if (typeof window === 'undefined') return null;
@@ -100,7 +100,7 @@ async function generateThumbnail(pdfBlob: Blob): Promise<string | null> {
   }
 }
 
-// â”€â”€ Compile Engine Execution Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Compile Engine Execution Types ────────────────────────────────────────────
 
 export type { CompilerDiagnostic, ForwardSyncResult };
 
@@ -192,7 +192,7 @@ export interface CompilerPort {
 let activeCompileController: AbortController | null = null;
 let activeCompileTargetId: string | null = null;
 
-// â”€â”€ Deep Compile Pipeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Deep Compile Pipeline ─────────────────────────────────────────────────────
 
 export const CompilePipeline = {
   /**

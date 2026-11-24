@@ -3,8 +3,7 @@
 /**
  * FileMenu.tsx
  *
- * Topbar File Dropdown Menu (Block 7: UI Shell Layer).
- * Location: `features/editor/core/shell/topbar/FileMenu.tsx`
+ * Topbar File dropdown menu.
  */
 
 import React from 'react';
@@ -155,7 +154,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
           className="cursor-pointer flex items-center gap-2"
         >
           <Settings className="size-3.5 text-foreground/80 shrink-0" />
-          <span className="whitespace-nowrap">Project settings</span>
+          <span className="whitespace-nowrap">Settings</span>
         </MenubarItem>
 
         <MenubarSeparator />
@@ -177,17 +176,14 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               <span>Download</span>
             </span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-[280px] text-xs select-none">
+          <MenubarSubContent className="min-w-48 text-xs select-none">
             <MenubarItem
               onClick={handleDownloadZip}
               disabled={isZipping}
               className="cursor-pointer flex items-center gap-2"
             >
               <FileArchive className="size-3.5 text-foreground/80 shrink-0" />
-              <div className="flex flex-col">
-                <span className="font-medium whitespace-nowrap">Download Source (.zip)</span>
-                <span className="text-11 text-muted-foreground whitespace-nowrap">Download all LaTeX source files & assets</span>
-              </div>
+              <span className="whitespace-nowrap">Source (.zip)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadArxiv}
@@ -195,10 +191,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               className="cursor-pointer flex items-center gap-2"
             >
               <Archive className="size-3.5 text-foreground/80 shrink-0" />
-              <div className="flex flex-col">
-                <span className="font-medium whitespace-nowrap">Download arXiv submission (.zip)</span>
-                <span className="text-11 text-muted-foreground whitespace-nowrap">Standardized package for arXiv / journal submission</span>
-              </div>
+              <span className="whitespace-nowrap">arXiv (.zip)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleDownloadPdf}
@@ -206,12 +199,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               className="cursor-pointer flex items-center gap-2"
             >
               <FileText className="size-3.5 text-foreground/80 shrink-0" />
-              <div className="flex flex-col">
-                <span className="font-medium whitespace-nowrap">Download PDF</span>
-                <span className="text-11 text-muted-foreground whitespace-nowrap">
-                  {pdfUrl ? 'Latest compiled PDF document' : 'Compile document first'}
-                </span>
-              </div>
+              <span className="whitespace-nowrap">PDF</span>
             </MenubarItem>
             <MenubarSeparator />
             <MenubarItem
@@ -219,21 +207,21 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
               className="cursor-pointer flex items-center gap-2"
             >
               <FileText className="size-3.5 text-foreground/80 shrink-0" />
-              <span className="whitespace-nowrap">Export as Word document (.docx)</span>
+              <span className="whitespace-nowrap">Word (.docx)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportMarkdown}
               className="cursor-pointer flex items-center gap-2"
             >
               <FileCode className="size-3.5 text-foreground/80 shrink-0" />
-              <span className="whitespace-nowrap">Export as Markdown (.md)</span>
+              <span className="whitespace-nowrap">Markdown (.md)</span>
             </MenubarItem>
             <MenubarItem
               onClick={handleExportHtml}
               className="cursor-pointer flex items-center gap-2"
             >
               <FileCode className="size-3.5 text-foreground/80 shrink-0" />
-              <span className="whitespace-nowrap">Export as HTML (.html)</span>
+              <span className="whitespace-nowrap">HTML (.html)</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>

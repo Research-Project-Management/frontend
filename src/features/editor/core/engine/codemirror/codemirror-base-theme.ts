@@ -34,11 +34,11 @@ export const editorBaseTheme = EditorView.theme({
     boxSizing: 'border-box',
   },
   '.cm-line': {
-    padding: '0 8px',
+    padding: '1px 8px',
     boxSizing: 'border-box',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    padding: '0 8px',
+    padding: '1px 8px',
     boxSizing: 'border-box',
   },
   '.cm-gutters': {

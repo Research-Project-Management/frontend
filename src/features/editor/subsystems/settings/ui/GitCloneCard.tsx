@@ -1,10 +1,10 @@
-/**
- * ProjectGitSmartHttpCard.tsx
- *
- * Git Clone URL & Smart-HTTP Personal Access Token card inside ProjectSettingsModal.
- */
-
 'use client';
+
+/**
+ * GitCloneCard.tsx
+ *
+ * Git clone URL and access token management card.
+ */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, GitBranch } from 'lucide-react';
@@ -12,15 +12,15 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
-export interface ProjectGitSmartHttpCardProps {
+export interface GitCloneCardProps {
   projectId: string;
   open: boolean;
 }
 
-export function ProjectGitSmartHttpCard({
+export function GitCloneCard({
   projectId,
   open,
-}: ProjectGitSmartHttpCardProps) {
+}: GitCloneCardProps) {
   const [copiedGitUrl, setCopiedGitUrl] = useState(false);
   const [gitToken, setGitToken] = useState<string | null>(null);
   const [gitTokensList, setGitTokensList] = useState<
@@ -76,7 +76,7 @@ export function ProjectGitSmartHttpCard({
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(`git clone ${gitCloneUrl}`);
       setCopiedGitUrl(true);
-      toast.success('Git clone command copied to clipboard!', { id: 'copy-git-url' });
+      toast.success('Copied git clone command', { id: 'copy-git-url' });
       if (copyGitUrlTimerRef.current) clearTimeout(copyGitUrlTimerRef.current);
       copyGitUrlTimerRef.current = setTimeout(() => {
         copyGitUrlTimerRef.current = null;
@@ -94,13 +94,13 @@ export function ProjectGitSmartHttpCard({
           ? res.token
           : (res?.token as unknown as { token?: string })?.token || '';
       setGitToken(rawToken);
-      toast.success('Git Access Token generated successfully!', { id: 'git-token-action' });
+      toast.success('Git token created', { id: 'git-token-action' });
       const updated = await pagesService.git.listTokens().catch(() => null);
       if (updated && Array.isArray(updated.tokens)) {
         setGitTokensList(updated.tokens);
       }
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to generate Git Token', {
+      toast.error((err as Error)?.message || 'Failed to create token', {
         id: 'git-token-action',
       });
     } finally {
@@ -113,9 +113,9 @@ export function ProjectGitSmartHttpCard({
     try {
       await pagesService.git.revokeToken(tokenId);
       setGitTokensList((prev) => prev.filter((t) => t.id !== tokenId));
-      toast.success('Git Access Token revoked', { id: 'git-token-revoke' });
+      toast.success('Git token revoked', { id: 'git-token-revoke' });
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to revoke Git Token', {
+      toast.error((err as Error)?.message || 'Failed to revoke token', {
         id: 'git-token-revoke',
       });
     } finally {
@@ -127,7 +127,7 @@ export function ProjectGitSmartHttpCard({
     if (gitToken && typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(gitToken);
       setCopiedGitToken(true);
-      toast.success('Git Token copied to clipboard!', { id: 'copy-git-token' });
+      toast.success('Copied token', { id: 'copy-git-token' });
       if (copyGitTokenTimerRef.current) clearTimeout(copyGitTokenTimerRef.current);
       copyGitTokenTimerRef.current = setTimeout(() => {
         copyGitTokenTimerRef.current = null;
@@ -137,20 +137,18 @@ export function ProjectGitSmartHttpCard({
   };
 
   return (
-    <div className="p-2.5 rounded-md border border-border bg-card/40 space-y-2">
+    <div className="p-3.5 rounded-lg border border-border bg-card/40 space-y-2.5">
       <div className="flex items-center gap-2">
         <GitBranch className="size-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium text-foreground">Git Clone URL</span>
+        <span className="text-[13px] font-medium text-foreground">Git Clone URL</span>
         {gitRepoInfo?.branch && (
-          <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+          <span className="text-[11px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {gitRepoInfo.branch}
           </span>
         )}
-        <span className="text-[10px] font-medium text-success bg-success/10 border border-success/20 px-1.5 py-0.5 rounded-sm ml-auto">
-          Smart-HTTP
-        </span>
       </div>
-      <div className="flex items-center gap-1.5 bg-background border border-border rounded-md px-2 py-1">
+
+      <div className="flex items-center gap-1.5 bg-background border border-border rounded-md px-2.5 py-1">
         <code className="text-[11px] font-mono text-muted-foreground truncate flex-1 select-all">
           git clone {gitCloneUrl}
         </code>
@@ -158,46 +156,49 @@ export function ProjectGitSmartHttpCard({
           variant="ghost"
           size="sm"
           onClick={handleCopyGitUrl}
-          className="h-6 min-h-[26px] px-2 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+          className="h-6 px-2 text-[11px] cursor-pointer"
         >
-          {copiedGitUrl ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+          {copiedGitUrl ? <Check className="size-3" /> : <Copy className="size-3" />}
           <span className="ml-1">{copiedGitUrl ? 'Copied' : 'Copy'}</span>
         </Button>
       </div>
-      <div className="pt-1 border-t border-border/40 text-[11px] text-muted-foreground space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span>Authentication: HTTP Basic (Password = Git Token)</span>
+
+      <div className="pt-2 border-t border-border/40 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Access tokens</span>
           <Button
             variant="outline"
             size="sm"
             onClick={handleCreateGitToken}
             disabled={isCreatingToken}
-            className="min-h-[26px] h-6 px-2.5 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+            className="h-7 px-2.5 text-xs cursor-pointer"
           >
-            {isCreatingToken ? 'Generating...' : 'Generate Git Token'}
+            {isCreatingToken ? 'Generating...' : 'Generate token'}
           </Button>
         </div>
+
         {gitToken && (
-          <div className="flex items-center gap-1.5 bg-muted/60 border border-border rounded-md px-2 py-1">
-            <code className="font-mono text-[10px] text-foreground truncate flex-1 select-all">
+          <div className="flex items-center gap-1.5 bg-muted/60 border border-border rounded-md px-2.5 py-1">
+            <code className="font-mono text-[11px] text-foreground truncate flex-1 select-all">
               {gitToken}
             </code>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCopyGitToken}
-              className="min-h-[26px] h-6 px-2 text-[11px] cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+              className="h-6 px-2 text-[11px] cursor-pointer"
             >
-              {copiedGitToken ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+              {copiedGitToken ? <Check className="size-3" /> : <Copy className="size-3" />}
             </Button>
           </div>
         )}
+
         {gitTokensList.length > 0 && (
-          <div className="space-y-1 pt-1">
+          <div className="space-y-1">
             {gitTokensList.slice(0, 3).map((tok) => (
               <div
                 key={tok.id}
-                className="flex items-center justify-between text-[10px] bg-background/60 border border-border/60 rounded px-2 py-0.5"
+                className="flex items-center justify-between text-[11px] bg-background border border-border/60 rounded px-2.5 py-1"
               >
                 <span className="truncate font-mono text-foreground">
                   {tok.label} ({tok.prefix}…)
@@ -206,7 +207,7 @@ export function ProjectGitSmartHttpCard({
                   type="button"
                   disabled={revokingTokenId === tok.id}
                   onClick={() => handleRevokeGitToken(tok.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer ml-2 shrink-0 relative after:absolute after:-inset-1.5 after:content-[''] py-0.5"
+                  className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer ml-2 shrink-0"
                   aria-label={`Revoke ${tok.label}`}
                 >
                   {revokingTokenId === tok.id ? 'Revoking…' : 'Revoke'}

@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 
-// â”€â”€ File Management & Import Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── File Management & Import Modals ──────────────────────────────────────────
 
 export const newFileModalSchema = z.object({
   fileName: z
@@ -53,7 +53,7 @@ export const libraryBibtexModalSchema = z.object({
 
 export type LibraryBibtexModalFormValues = z.infer<typeof libraryBibtexModalSchema>;
 
-// â”€â”€ Figure & Media Wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Figure & Media Wizard ───────────────────────────────────────────────────
 
 export const figureWizardSchema = z.object({
   selectedFilename: z.string().min(1, 'Please select or upload an image'),
@@ -67,7 +67,7 @@ export const figureWizardSchema = z.object({
 
 export type FigureWizardFormValues = z.infer<typeof figureWizardSchema>;
 
-// â”€â”€ Table Matrix Wizard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Table Matrix Wizard ─────────────────────────────────────────────────────
 
 const tableWizardSchema = z.object({
   tableStyle: z.enum(['booktabs', 'bordered', 'minimal']).default('booktabs'),
@@ -81,7 +81,7 @@ const tableWizardSchema = z.object({
 
 export type TableWizardFormValues = z.infer<typeof tableWizardSchema>;
 
-// â”€â”€ GitHub & Git Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── GitHub & Git Sync ───────────────────────────────────────────────────────
 
 export const pushChangesSchema = z.object({
   commitMessage: z.string().trim().min(1, 'Commit message is required'),
@@ -108,7 +108,7 @@ export const createRepoSchema = z.object({
 
 export type CreateRepoFormValues = z.infer<typeof createRepoSchema>;
 
-// â”€â”€ Project Settings & Spelling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Project Settings & Spelling ─────────────────────────────────────────────
 
 const learnedWordSchema = z.object({
   word: z
@@ -121,7 +121,7 @@ const learnedWordSchema = z.object({
 
 export type LearnedWordFormValues = z.infer<typeof learnedWordSchema>;
 
-// â”€â”€ Topbar / Project Identity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Topbar / Project Identity ───────────────────────────────────────────────
 
 export const projectRenameSchema = z.object({
   name: z.string().trim().min(1, 'Project name cannot be empty').max(150, 'Project name is too long'),

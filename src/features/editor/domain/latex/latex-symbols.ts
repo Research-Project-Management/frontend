@@ -41,7 +41,7 @@ export interface MathSymbol {
 }
 
 export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
-  // â”€â”€ Basic Operations & Delimiters â”€â”€
+  // ── Basic Operations & Delimiters ──
   { id: 'frac', command: '\\frac{a}{b}', display: 'a/b', previewLatex: '\\frac{a}{b}', name: 'Fraction', modalCategory: 'delimiters', visualCategory: 'basic', keywords: ['frac', 'division', 'over'] },
   { id: 'sqrt', command: '\\sqrt{x}', display: 'âˆšx', previewLatex: '\\sqrt{x}', name: 'Square Root', modalCategory: 'delimiters', visualCategory: 'basic', keywords: ['sqrt', 'root'] },
   { id: 'nth-sqrt', command: '\\sqrt[n]{x}', display: 'â¿âˆšx', previewLatex: '\\sqrt[n]{x}', name: 'N-th Root', modalCategory: 'delimiters', visualCategory: 'basic', keywords: ['root', 'radical', 'cbrt'] },
@@ -54,7 +54,7 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'cdot', command: '\\cdot', display: 'Â·', previewLatex: '\\cdot', name: 'Center Dot', modalCategory: 'operators', visualCategory: 'basic', keywords: ['dot', 'multiply', 'point'] },
   { id: 'ast', command: '\\ast', display: 'âˆ—', previewLatex: '\\ast', name: 'Asterisk', modalCategory: 'operators', visualCategory: 'basic', keywords: ['ast', 'star', 'multiply'] },
   { id: 'circ', command: '\\circ', display: 'âˆ˜', previewLatex: '\\circ', name: 'Compose Circle', modalCategory: 'operators', visualCategory: 'basic', keywords: ['compose', 'circle'] },
-  { id: 'bullet', command: '\\bullet', display: 'â€¢', previewLatex: '\\bullet', name: 'Bullet', modalCategory: 'operators', visualCategory: 'basic', keywords: ['bullet', 'dot'] },
+  { id: 'bullet', command: '\\bullet', display: '•', previewLatex: '\\bullet', name: 'Bullet', modalCategory: 'operators', visualCategory: 'basic', keywords: ['bullet', 'dot'] },
   { id: 'oplus', command: '\\oplus', display: 'âŠ•', previewLatex: '\\oplus', name: 'Direct Sum', modalCategory: 'operators', visualCategory: 'operators', keywords: ['oplus', 'direct sum'] },
   { id: 'otimes', command: '\\otimes', display: 'âŠ—', previewLatex: '\\otimes', name: 'Tensor Product', modalCategory: 'operators', visualCategory: 'operators', keywords: ['otimes', 'tensor product'] },
   { id: 'neq', command: '\\neq', display: 'â‰ ', previewLatex: '\\neq', name: 'Not Equal', modalCategory: 'relations', visualCategory: 'basic', keywords: ['neq', 'not equal', 'different'] },
@@ -78,7 +78,7 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'ddot', command: '\\ddot{x}', display: 'áº', previewLatex: '\\ddot{x}', name: 'Double Dot Derivative', modalCategory: 'delimiters', visualCategory: 'basic', keywords: ['ddot', 'second derivative'] },
   { id: 'tilde', command: '\\tilde{x}', display: 'xÌƒ', previewLatex: '\\tilde{x}', name: 'Tilde', modalCategory: 'delimiters', visualCategory: 'basic', keywords: ['tilde'] },
 
-  // â”€â”€ Greek Lowercase â”€â”€
+  // ── Greek Lowercase ──
   { id: 'alpha', command: '\\alpha', display: 'Î±', name: 'alpha', modalCategory: 'greek-lower', visualCategory: 'greek', keywords: ['alpha', 'greek'] },
   { id: 'beta', command: '\\beta', display: 'Î²', name: 'beta', modalCategory: 'greek-lower', visualCategory: 'greek', keywords: ['beta', 'greek'] },
   { id: 'gamma', command: '\\gamma', display: 'Î³', name: 'gamma', modalCategory: 'greek-lower', visualCategory: 'greek', keywords: ['gamma', 'greek'] },
@@ -109,7 +109,7 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'psi', command: '\\psi', display: 'Ïˆ', name: 'psi', modalCategory: 'greek-lower', visualCategory: 'greek', keywords: ['psi', 'wavefunction'] },
   { id: 'omega', command: '\\omega', display: 'Ï‰', name: 'omega', modalCategory: 'greek-lower', visualCategory: 'greek', keywords: ['omega', 'frequency'] },
 
-  // â”€â”€ Greek Uppercase â”€â”€
+  // ── Greek Uppercase ──
   { id: 'Gamma', command: '\\Gamma', display: 'Î“', name: 'Gamma', modalCategory: 'greek-upper', visualCategory: 'greek', keywords: ['gamma', 'capital'] },
   { id: 'Delta', command: '\\Delta', display: 'Î”', name: 'Delta', modalCategory: 'greek-upper', visualCategory: 'greek', keywords: ['delta', 'laplace', 'difference'] },
   { id: 'Theta', command: '\\Theta', display: 'Î˜', name: 'Theta', modalCategory: 'greek-upper', visualCategory: 'greek', keywords: ['theta', 'capital'] },
@@ -122,7 +122,7 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'Psi', command: '\\Psi', display: 'Î¨', name: 'Psi', modalCategory: 'greek-upper', visualCategory: 'greek', keywords: ['psi', 'capital'] },
   { id: 'Omega', command: '\\Omega', display: 'Î©', name: 'Omega', modalCategory: 'greek-upper', visualCategory: 'greek', keywords: ['omega', 'ohm', 'capital'] },
 
-  // â”€â”€ Calculus & Big Operators â”€â”€
+  // ── Calculus & Big Operators ──
   { id: 'int', command: '\\int_{a}^{b} f(x)\\,dx', display: 'âˆ«', previewLatex: '\\int', name: 'Definite Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['integral', 'calculus', 'int'] },
   { id: 'iint', command: '\\iint_{D} f(x,y)\\,dx\\,dy', display: 'âˆ¬', previewLatex: '\\iint', name: 'Double Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['double', 'integral', 'iint'], requiredPackage: 'amsmath' },
   { id: 'iiint', command: '\\iiint', display: 'âˆ­', previewLatex: '\\iiint', name: 'Triple Integral', modalCategory: 'operators', visualCategory: 'operators', keywords: ['triple', 'integral'], requiredPackage: 'amsmath' },
@@ -134,7 +134,7 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'partial', command: '\\frac{\\partial y}{\\partial x}', display: 'âˆ‚', previewLatex: '\\partial', name: 'Partial Derivative', modalCategory: 'operators', visualCategory: 'operators', keywords: ['partial', 'derivative', 'gradient'] },
   { id: 'nabla', command: '\\nabla', display: 'âˆ‡', previewLatex: '\\nabla', name: 'Nabla (Gradient)', modalCategory: 'operators', visualCategory: 'operators', keywords: ['nabla', 'del', 'gradient', 'divergence', 'curl'] },
 
-  // â”€â”€ Relations & Sets â”€â”€
+  // ── Relations & Sets ──
   { id: 'in', command: '\\in', display: 'âˆˆ', previewLatex: '\\in', name: 'Element of', modalCategory: 'relations', visualCategory: 'arrows', keywords: ['in', 'element', 'belongs', 'set'] },
   { id: 'notin', command: '\\notin', display: 'âˆ‰', previewLatex: '\\notin', name: 'Not in', modalCategory: 'relations', visualCategory: 'arrows', keywords: ['notin', 'not in', 'set'] },
   { id: 'ni', command: '\\ni', display: 'âˆ‹', previewLatex: '\\ni', name: 'Contains', modalCategory: 'relations', visualCategory: 'arrows', keywords: ['ni', 'contains', 'owns'] },
@@ -149,8 +149,8 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'perp', command: '\\perp', display: 'âŠ¥', previewLatex: '\\perp', name: 'Perpendicular', modalCategory: 'relations', visualCategory: 'arrows', keywords: ['perp', 'perpendicular', 'orthogonal'] },
   { id: 'parallel', command: '\\parallel', display: 'âˆ¥', previewLatex: '\\parallel', name: 'Parallel', modalCategory: 'relations', visualCategory: 'arrows', keywords: ['parallel'] },
 
-  // â”€â”€ Arrows & Logic â”€â”€
-  { id: 'to', command: '\\to', display: 'â†’', previewLatex: '\\to', name: 'Right Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['to', 'arrow', 'right', 'limit'] },
+  // ── Arrows & Logic ──
+  { id: 'to', command: '\\to', display: '→', previewLatex: '\\to', name: 'Right Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['to', 'arrow', 'right', 'limit'] },
   { id: 'leftarrow', command: '\\leftarrow', display: 'â†', previewLatex: '\\leftarrow', name: 'Left Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['leftarrow', 'left'] },
   { id: 'leftrightarrow', command: '\\leftrightarrow', display: 'â†”', previewLatex: '\\leftrightarrow', name: 'Left-Right Arrow', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['leftrightarrow', 'both'] },
   { id: 'implies', command: '\\implies', display: 'â‡’', previewLatex: '\\implies', name: 'Implies', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['implies', 'implication', 'arrow'], requiredPackage: 'amsmath' },
@@ -164,12 +164,12 @@ export const CANONICAL_MATH_SYMBOLS: CanonicalMathSymbol[] = [
   { id: 'land', command: '\\land', display: 'âˆ§', previewLatex: '\\land', name: 'Logical And', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['land', 'and', 'wedge'] },
   { id: 'lor', command: '\\lor', display: 'âˆ¨', previewLatex: '\\lor', name: 'Logical Or', modalCategory: 'arrows', visualCategory: 'arrows', keywords: ['lor', 'or', 'vee'] },
 
-  // â”€â”€ AMS Symbols â”€â”€
+  // ── AMS Symbols ──
   { id: 'mathbb-R', command: '\\mathbb{R}', display: 'â„', previewLatex: '\\mathbb{R}', name: 'Real Numbers (R)', modalCategory: 'operators', visualCategory: 'basic', keywords: ['mathbb', 'real', 'numbers', 'set'], requiredPackage: 'amssymb' },
   { id: 'blacksquare', command: '\\blacksquare', display: 'â– ', previewLatex: '\\blacksquare', name: 'Black Square (QED)', modalCategory: 'operators', visualCategory: 'basic', keywords: ['qed', 'square', 'proof'], requiredPackage: 'amssymb' },
   { id: 'checkmark', command: '\\checkmark', display: 'âœ“', previewLatex: '\\checkmark', name: 'Checkmark', modalCategory: 'operators', visualCategory: 'basic', keywords: ['check', 'tick'], requiredPackage: 'amssymb' },
 
-  // â”€â”€ Matrices & Advanced Environments â”€â”€
+  // ── Matrices & Advanced Environments ──
   { id: 'pmatrix', command: '\\begin{pmatrix}\n  a & b \\\\\n  c & d\n\\end{pmatrix}', display: '(matrix)', previewLatex: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', name: '2x2 Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'pmatrix', 'round', '2x2'], requiredPackage: 'amsmath' },
   { id: 'bmatrix', command: '\\begin{bmatrix}\n  a & b \\\\\n  c & d\n\\end{bmatrix}', display: '[matrix]', previewLatex: '\\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}', name: 'Bracket Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'bmatrix', 'square', '2x2'], requiredPackage: 'amsmath' },
   { id: 'vmatrix', command: '\\begin{vmatrix}\n  a & b \\\\\n  c & d\n\\end{vmatrix}', display: '|det|', previewLatex: '\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix}', name: 'Determinant Matrix', modalCategory: 'operators', visualCategory: 'matrix', keywords: ['matrix', 'vmatrix', 'det', 'determinant'], requiredPackage: 'amsmath' },

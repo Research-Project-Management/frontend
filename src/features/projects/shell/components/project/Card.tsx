@@ -20,7 +20,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { ProjectAvatar } from "@/shared/components/icons";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { cn } from "@/shared/lib/utils";
+import { copyToClipboard, cn } from "@/shared/lib/utils";
 import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useArchiveProject, useDeleteProject } from '../../hooks/use-project';
 import {
@@ -68,7 +68,7 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
     e.stopPropagation();
     if (typeof window !== 'undefined') {
       const url = `${window.location.origin}/projects/${projectId}/work-items`;
-      navigator.clipboard.writeText(url);
+      void copyToClipboard(url);
     }
   };
 

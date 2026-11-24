@@ -14,7 +14,7 @@ import {
   ChevronRight,
   FileText,
   FileCode,
-  BookMarked,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -118,7 +118,7 @@ export function CitationCollectionTreePane({
                 : 'text-foreground hover:bg-muted',
             )}
           >
-            <BookMarked className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
+            <BookOpen className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
             <span className="truncate flex-1">Workspace Library</span>
             <span className="text-10 font-mono opacity-70">{navCounts.library}</span>
           </button>

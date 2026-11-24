@@ -13,7 +13,7 @@ import { AtSign } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { parseMentionTokens } from '@/features/editor/domain/collaboration/mention';
 
-// â”€â”€ Review Icons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Review Icons ────────────────────────────────────────────────────────────
 
 export function ReviewIcon({
   className = 'size-4',
@@ -57,7 +57,7 @@ export function ResolvedCommentsIcon({
   );
 }
 
-// â”€â”€ Mention Badges & Renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Mention Badges & Renderer ───────────────────────────────────────────────
 
 interface MentionBadgeProps {
   name: string;

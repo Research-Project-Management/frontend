@@ -6,6 +6,7 @@ import { Plus, Globe, MoreVertical, Pencil, ExternalLink, Link2, Trash2, FileTex
 import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import dynamic from 'next/dynamic';
+import { copyToClipboard } from '@/shared/lib/utils';
 import { useQuicklinks } from '../hooks/use-quicklinks';
 
 const QuicklinkModal = dynamic(
@@ -135,7 +136,7 @@ export default function Quicklinks() {
                       <ExternalLink className="mr-2 size-3.5 text-foreground shrink-0" />
                       Open in new tab
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(link.url)} className="cursor-pointer text-12">
+                    <DropdownMenuItem onClick={() => void copyToClipboard(link.url)} className="cursor-pointer text-12">
                       <Link2 className="mr-2 size-3.5 text-foreground shrink-0" />
                       Copy link
                     </DropdownMenuItem>

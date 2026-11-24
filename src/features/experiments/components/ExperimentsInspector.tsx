@@ -24,7 +24,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/shared/lib/utils';
+import { copyToClipboard, cn } from '@/shared/lib/utils';
 import {
   Tooltip,
   TooltipContent,
@@ -455,18 +455,15 @@ export function ExperimentsInspector() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (
-                        typeof navigator !== 'undefined' &&
-                        navigator.clipboard
-                      ) {
-                        void navigator.clipboard.writeText(
-                          selectedRun.datasetSha,
-                        );
+                    onClick={async () => {
+                      const ok = await copyToClipboard(selectedRun.datasetSha);
+                      if (ok) {
+                        setCopiedSha(true);
+                        setTimeout(() => setCopiedSha(false), 1500);
+                        toast.success('Copied SHA256');
+                      } else {
+                        toast.error('Copy failed');
                       }
-                      setCopiedSha(true);
-                      setTimeout(() => setCopiedSha(false), 1500);
-                      toast.success('Copied dataset SHA256 digest');
                     }}
                     className="size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0"
                     aria-label="Copy SHA256"

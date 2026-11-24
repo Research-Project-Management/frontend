@@ -20,6 +20,7 @@ import {
   type ContextTab,
   type MessageCodeActions,
   type SourceEntry,
+  type SourceType,
 } from '@/features/ai';
 import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 import {
@@ -228,7 +229,16 @@ export default function AiTab({ onClose }: AiTabProps) {
         spaceId?: string | null;
         webSearchSites?: string[] | null;
         documentIds?: string[] | null;
-        attachedFiles?: Array<{ id: string; name: string; size?: number }>;
+        attachedFiles?: Array<{
+          id: string;
+          name: string;
+          size?: number;
+          type?: string;
+          sourceType?: SourceType;
+          hasPdf?: boolean;
+          itemId?: string;
+          fileId?: string;
+        }>;
         selectedText?: string;
         isExternalHandoff?: boolean;
       },
@@ -244,7 +254,10 @@ export default function AiTab({ onClose }: AiTabProps) {
             name: f.name,
             size: f.size,
             enabled: true,
-            sourceType: 'upload',
+            sourceType: f.sourceType || 'upload',
+            ...(f.itemId ? { itemId: f.itemId } : {}),
+            ...(f.fileId ? { fileId: f.fileId } : {}),
+            ...(f.hasPdf !== undefined ? { hasPdf: f.hasPdf } : {}),
           });
         }
       } else {
@@ -631,7 +644,7 @@ export default function AiTab({ onClose }: AiTabProps) {
                   ? {
                       text: selectionContext,
                       label: activeFilename
-                        ? `Selected LaTeX â€¢ ${activeFilename}`
+                        ? `Selected LaTeX • ${activeFilename}`
                         : 'Selected LaTeX',
                     }
                   : null

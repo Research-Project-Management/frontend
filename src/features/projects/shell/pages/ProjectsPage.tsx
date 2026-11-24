@@ -68,7 +68,7 @@ import {
 } from '../hooks/use-project';
 import { useUserProjectLabels } from '../hooks/use-project-labels';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { cn } from "@/shared/lib/utils";
+import { copyToClipboard, cn } from "@/shared/lib/utils";
 import type { Project } from '../types/project.types';
 
 type ViewMode = 'grid' | 'list';
@@ -212,7 +212,7 @@ export function ProjectsPage() {
     e.stopPropagation();
     if (typeof window !== 'undefined') {
       const url = `${window.location.origin}/projects/${projectId}/work-items`;
-      navigator.clipboard.writeText(url);
+      void copyToClipboard(url);
     }
   }, []);
 

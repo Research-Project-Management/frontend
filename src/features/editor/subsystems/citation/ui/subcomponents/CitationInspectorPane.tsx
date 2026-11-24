@@ -9,6 +9,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   ChevronRight,
+  ChevronDown,
   FileText,
   Copy,
   Check,
@@ -26,6 +27,9 @@ import {
   formatCitationSnippet,
   formatBibEntryToBibtex,
   cleanAbstractText,
+  cleanBibtexTitle,
+  formatCitationTypeBadge,
+  parseBibtexAuthors,
 } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { editorCommandBus } from '@/features/editor/core';
@@ -98,6 +102,21 @@ export function CitationInspectorPane({
       : `https://doi.org/${selectedEntry.doi}`;
   }, [selectedEntry]);
 
+  const authorList = useMemo(() => {
+    if (!selectedEntry) return [];
+    return parseBibtexAuthors(
+      selectedEntry.authors && selectedEntry.authors.length > 0
+        ? selectedEntry.authors
+        : selectedEntry.author
+          ? [selectedEntry.author]
+          : undefined,
+    );
+  }, [selectedEntry]);
+
+  const cleanTitle = useMemo(() => {
+    return cleanBibtexTitle(selectedEntry?.title) || 'Untitled reference';
+  }, [selectedEntry?.title]);
+
   const cleanAbstract = useMemo(() => {
     return cleanAbstractText(selectedEntry?.abstract);
   }, [selectedEntry?.abstract]);
@@ -150,8 +169,8 @@ export function CitationInspectorPane({
                 </button>
               </span>
 
-              <span className="font-mono text-10 px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border font-medium">
-                {(selectedEntry.type || 'article').toLowerCase()}
+              <span className="text-10 px-2 py-0.5 rounded bg-muted text-foreground border border-border font-medium">
+                {formatCitationTypeBadge(selectedEntry.type)}
               </span>
 
               {selectedEntry.year && (
@@ -160,15 +179,10 @@ export function CitationInspectorPane({
                 </span>
               )}
 
-              {(selectedEntry.source === 'library' ||
-                selectedEntry.sourceFile === 'workspace-library') && (
-                <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
-                  Library
-                </span>
-              )}
               {(selectedEntry.source === 'bib' ||
                 (selectedEntry.sourceFile &&
-                  selectedEntry.sourceFile !== 'workspace-library')) && (
+                  selectedEntry.sourceFile !== 'workspace-library' &&
+                  selectedEntry.sourceFile !== 'server')) && (
                 <span className="text-10 font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                   .bib
                 </span>
@@ -182,14 +196,14 @@ export function CitationInspectorPane({
 
             {/* Title */}
             <h3 className="text-15 font-semibold text-foreground leading-snug tracking-tight">
-              {selectedEntry.title || 'Untitled reference'}
+              {cleanTitle}
             </h3>
 
             {/* Authors */}
-            {selectedEntry.authors && selectedEntry.authors.length > 0 && (
+            {authorList.length > 0 && (
               <div className="text-xs text-muted-foreground leading-relaxed">
                 <span className="font-medium text-foreground">Authors: </span>
-                {selectedEntry.authors.join(', ')}
+                {authorList.join(', ')}
               </div>
             )}
 
@@ -250,46 +264,57 @@ export function CitationInspectorPane({
             )}
           </div>
 
-          {/* 2. Quick Actions Row (Citation snippet style selector) */}
+          {/* 2. Quick Actions Row (Citation snippet format selector & copy) */}
           <div className="flex items-center gap-2 pt-2 border-t border-border flex-wrap">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-                >
-                  {copiedSnippet ? (
-                    <Check className="size-3 text-primary" />
-                  ) : (
-                    <Code2 className="size-3 text-foreground" />
-                  )}
-                  <span>Copy {selectedOption.label}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48 p-1">
-                {STYLE_OPTIONS.map((opt) => (
-                  <DropdownMenuItem
-                    key={opt.id}
-                    onClick={() => {
-                      onSelectStyle(opt.id);
-                      const snippet = formatCitationSnippet(selectedEntry.key, opt.id);
-                      copyCitationSnippet(snippet);
-                      setCopiedSnippet(true);
-                      setTimeout(() => setCopiedSnippet(false), 1500);
-                    }}
-                    className={cn(
-                      'flex items-center justify-between px-2.5 py-1.5 text-xs font-mono rounded-md cursor-pointer text-foreground',
-                      selectedStyle === opt.id && 'bg-muted font-medium text-foreground',
-                    )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-11 text-muted-foreground font-medium">Format:</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-7 px-2.5 text-11 font-mono rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <span>{opt.label}</span>
-                    <span className="text-10 text-muted-foreground font-sans">
-                      {opt.preview}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <span>{selectedOption.label}</span>
+                    <ChevronDown className="size-3 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48 p-1">
+                  {STYLE_OPTIONS.map((opt) => (
+                    <DropdownMenuItem
+                      key={opt.id}
+                      onClick={() => onSelectStyle(opt.id)}
+                      className={cn(
+                        'flex items-center justify-between px-2.5 py-1.5 text-xs font-mono rounded-md cursor-pointer text-foreground',
+                        selectedStyle === opt.id && 'bg-muted font-medium text-foreground',
+                      )}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="text-10 text-muted-foreground font-sans">
+                        {opt.preview}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const snippet = formatCitationSnippet(selectedEntry.key, selectedStyle);
+                copyCitationSnippet(snippet);
+                setCopiedSnippet(true);
+                setTimeout(() => setCopiedSnippet(false), 1500);
+              }}
+              className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              {copiedSnippet ? (
+                <Check className="size-3 text-primary" />
+              ) : (
+                <Copy className="size-3 text-foreground" />
+              )}
+              <span>Copy snippet</span>
+            </button>
 
             <button
               type="button"
@@ -306,7 +331,7 @@ export function CitationInspectorPane({
                   },
                 });
               }}
-              className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+              className="h-7 px-2.5 text-11 rounded border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer ml-auto"
             >
               <span>Rename Key</span>
             </button>

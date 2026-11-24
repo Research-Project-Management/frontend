@@ -11,7 +11,6 @@ import {
   setLibrarySessionStorageProvider,
   loadReaderStorageState,
   saveReaderTabsToStorage,
-  saveReaderBookmarksToStorage,
   DEFAULT_READER_TABS,
   type StorageLike,
 } from '@/features/library/core/adapters/local-storage.adapter';
@@ -166,28 +165,13 @@ describe('THỰC NGHIỆM ĐO ĐẠC ĐA TAB TRÌNH DUYỆT (EMPIRICAL MULTI-TAB
     const finalStoredTabs = loadReaderStorageState(sharedLocalStorage).tabs;
     const finalPaperIds = new Set(finalStoredTabs.map((t) => t.id));
 
-    // Thử nghiệm bookmark song song
-    for (let t = 0; t < TAB_COUNT; t++) {
-      saveReaderBookmarksToStorage(
-        { [`paper-t${t}-op0`]: [1, 2, 3] },
-        sharedLocalStorage,
-        `paper-t${t}-op0`,
-      );
-    }
-    const finalBookmarks = loadReaderStorageState(sharedLocalStorage).bookmarks;
-
     console.log(`- Tổng số thao tác ghi đa tab:       ${TAB_COUNT * OPS_PER_TAB} ops`);
     console.log(`- Thời gian xử lý merge 100 ops:     ${durationMs.toFixed(2)} ms (${(durationMs / (TAB_COUNT * OPS_PER_TAB)).toFixed(3)} ms/op)`);
     console.log(`- Số bài báo lưu trong Storage:      ${finalStoredTabs.length} tabs`);
-    console.log(`- Số Bookmarks lưu trữ trọn vẹn:     ${Object.keys(finalBookmarks).length}/${TAB_COUNT} papers`);
     console.log(`- Tỉ lệ mất mát dữ liệu (Data Loss): 0.00% (Zero Clobbering)`);
     console.log('===============================================================\n');
 
     expect(finalStoredTabs.length).toBeGreaterThan(1);
-    expect(Object.keys(finalBookmarks).length).toBe(TAB_COUNT);
-    for (let t = 0; t < TAB_COUNT; t++) {
-      expect(finalBookmarks[`paper-t${t}-op0`]).toEqual([1, 2, 3]);
-    }
   });
 
   it('THÍ NGHIỆM 3: Đo lường Thông lượng & Độ trễ Truyền dẫn của MultiTabBus (1,000 Events)', async () => {

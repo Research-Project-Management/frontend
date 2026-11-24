@@ -150,7 +150,7 @@ export function EditorPane({
       onClick={handleSyncFocus}
       className="flex-1 h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
     >
-      {/* â”€â”€ Pane Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Pane Header ────────────────────────────────────────────────────── */}
       {isSplitActive ? (
         <div className="flex items-center justify-between h-9 px-3 bg-surface border-b border-border shrink-0 select-none">
           <div className="flex items-center gap-2 min-w-0">
@@ -250,7 +250,7 @@ export function EditorPane({
         </div>
       ) : null}
 
-      {/* â”€â”€ Editor Body Surface â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Editor Body Surface ────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
         {isAsset && file ? (
           <ImagePanel

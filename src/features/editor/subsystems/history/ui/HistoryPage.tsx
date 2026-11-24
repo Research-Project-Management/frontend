@@ -167,7 +167,7 @@ export function HistoryPage({
     };
   }, [activeFilePath, selectedBaseVersion, selectedTargetVersion]);
 
-  // â”€â”€ Queries â”€â”€
+  // ── Queries ──
   const {
     data: versions = [],
     isLoading: isLoadingVersions,
@@ -255,7 +255,7 @@ export function HistoryPage({
     }
   }, [diffData, activeFilePath]);
 
-  // â”€â”€ Mutations â”€â”€
+  // ── Mutations ──
   const addLabelMutation = useMutation({
     mutationFn: ({ version, label }: { version: number; label: string }) =>
       pagesService.history.labelProjectVersion(
@@ -527,7 +527,7 @@ export function HistoryPage({
       aria-label="Project Version History"
       className="fixed inset-0 z-50 flex flex-col w-screen h-screen bg-background overflow-hidden select-none font-sans"
     >
-      {/* â”€â”€ Top Header Bar (Overleaf Parity) â”€â”€ */}
+      {/* ── Top Header Bar (Overleaf Parity) ── */}
       <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b border-border bg-background shrink-0 select-none overflow-x-auto overflow-y-hidden scrollbar-none gap-3">
         <div className="flex items-center gap-3 shrink-0">
           <Button
@@ -548,7 +548,7 @@ export function HistoryPage({
                 <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
                 {selectedTargetVersion != null && selectedBaseVersion != null ? (
                   <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
-                    v{selectedBaseVersion} â†’ v{selectedTargetVersion}
+                    v{selectedBaseVersion} → v{selectedTargetVersion}
                   </Badge>
                 ) : null}
               </div>
@@ -690,7 +690,7 @@ export function HistoryPage({
         </div>
       </header>
 
-      {/* â”€â”€ Snapshot Creation Inline Banner â”€â”€ */}
+      {/* ── Snapshot Creation Inline Banner ── */}
       {isCreatingSnapshot && (
         <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-border shrink-0 animate-in fade-in duration-150">
           <Bookmark className="size-4 text-muted-foreground shrink-0" />
@@ -734,7 +734,7 @@ export function HistoryPage({
         </div>
       )}
 
-      {/* â”€â”€ Main Body (2 Columns) â”€â”€ */}
+      {/* ── Main Body (2 Columns) ── */}
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
         {/* Left Column: Timeline Versions Sidebar */}
         <VersionTimelineSidebar

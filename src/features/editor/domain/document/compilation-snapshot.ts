@@ -212,7 +212,7 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
     }
   }
 
-  // 5. Overlay active editor buffer (highest priority â€” live keystrokes)
+  // 5. Overlay active editor buffer (highest priority — live keystrokes)
   let activeFilePath = 'main.tex';
   if (params.activeDoc) {
     activeFilePath = resolveSnapshotFilePath(

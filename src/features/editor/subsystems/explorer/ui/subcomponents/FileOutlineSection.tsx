@@ -318,6 +318,11 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     [engine],
   );
 
+  const hasAnyCollapsible = useMemo(
+    () => visibleEntries.some((v) => v.hasChildren),
+    [visibleEntries],
+  );
+
   const renderOutlineRow = (
     item: { entry: OutlineEntry; hasChildren: boolean; isCollapsed: boolean },
     index: number,
@@ -339,9 +344,10 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
           }
         }}
         className={cn(
-          'mx-1.5 flex h-7.5 items-center gap-1 rounded-md px-1.5 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
+          'mx-1.5 flex h-7.5 items-center gap-1 rounded-md pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
+          hasAnyCollapsible ? 'pl-1.5' : 'pl-2.5',
           isActive
-            ? 'bg-primary/10 text-primary font-medium'
+            ? 'bg-muted text-foreground font-medium'
             : 'hover:bg-muted/60 text-foreground/85 font-normal',
         )}
       >
@@ -365,20 +371,20 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
             <ChevronRight
               className={cn(
                 'size-3.5 transition-transform duration-150',
-                isActive ? 'text-primary' : 'text-muted-foreground',
+                isActive ? 'text-foreground' : 'text-muted-foreground',
                 !isCollapsed && 'rotate-90',
               )}
               strokeWidth={1.75}
             />
           </button>
-        ) : (
+        ) : hasAnyCollapsible ? (
           <span className="w-4 shrink-0" aria-hidden="true" />
-        )}
+        ) : null}
 
         <span
           className={cn(
             'min-w-0 flex-1 truncate',
-            isActive ? 'text-primary font-medium' : 'text-foreground',
+            isActive ? 'text-foreground font-medium' : 'text-foreground/85',
           )}
         >
           {entry.title}

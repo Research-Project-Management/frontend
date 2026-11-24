@@ -57,13 +57,16 @@ const AI_PROVIDER_PRESETS: Record<
   },
 };
 
+const DEFAULT_BYOK_PROVIDER = 'openai';
+
 export function AiByokTab() {
   const queryClient = useQueryClient();
+  const defaultPreset = AI_PROVIDER_PRESETS[DEFAULT_BYOK_PROVIDER];
 
   const [byokEnabled, setByokEnabled] = useState(false);
-  const [byokProvider, setByokProvider] = useState('openai');
-  const [byokModel, setByokModel] = useState('gpt-4o');
-  const [byokBaseUrl, setByokBaseUrl] = useState('https://api.openai.com/v1');
+  const [byokProvider, setByokProvider] = useState(DEFAULT_BYOK_PROVIDER);
+  const [byokModel, setByokModel] = useState(defaultPreset.defaultModel);
+  const [byokBaseUrl, setByokBaseUrl] = useState(defaultPreset.baseUrl);
   const [byokApiKeyInput, setByokApiKeyInput] = useState('');
 
   const { data: userSettingsData } = useQuery({

@@ -372,13 +372,122 @@ export function formatBibliographyPreview(entry: {
 }
 
 /**
+ * Normalizes and parses raw BibTeX or contributor author strings into an array of clean author names.
+ * Handles single string ("Shaoqing Ren and Kaiming He and Ross Girshick"),
+ * array of strings (including unparsed composite entries), and "Last, First" formats.
+ */
+export function parseBibtexAuthors(input?: string | string[] | null): string[] {
+  if (!input) return [];
+  const rawList: string[] = Array.isArray(input) ? input : [input];
+  const results: string[] = [];
+
+  for (const item of rawList) {
+    if (!item || typeof item !== 'string') continue;
+    const splitTokens = item.split(/\s+and\s+|;\s*/i);
+    for (const token of splitTokens) {
+      const cleanToken = token.replace(/[{}]/g, '').trim();
+      if (!cleanToken) continue;
+
+      if (cleanToken.includes(',')) {
+        const [lastName, firstName] = cleanToken.split(',').map((s) => s.trim());
+        if (lastName && firstName) {
+          if (isVietnameseAuthorName(lastName)) {
+            results.push(`${lastName} ${firstName}`);
+          } else {
+            results.push(`${firstName} ${lastName}`);
+          }
+          continue;
+        }
+      }
+
+      results.push(cleanToken);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Cleans LaTeX formatting artifacts, curly braces, and spaced hyphens from paper titles.
+ * E.g. "{Faster R-CNN: Towards Real - Time ...}" -> "Faster R-CNN: Towards Real-Time ..."
+ */
+export function cleanBibtexTitle(title?: string | null): string {
+  if (!title) return '';
+  return title
+    .replace(/[{}]/g, '')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Humanizes raw machine item types / BibTeX entries into clean academic labels.
+ * E.g. "journalarticle" -> "Journal Article", "inproceedings" -> "Conference Paper"
+ */
+export function formatCitationTypeBadge(type?: string | null): string {
+  if (!type) return 'Article';
+  const lower = type.toLowerCase().replace(/[^a-z]/g, '');
+  switch (lower) {
+    case 'journalarticle':
+    case 'article':
+      return 'Journal Article';
+    case 'inproceedings':
+    case 'conference':
+    case 'proceedings':
+    case 'conferencepaper':
+      return 'Conference Paper';
+    case 'book':
+      return 'Book';
+    case 'booksection':
+    case 'incollection':
+    case 'inbook':
+      return 'Book Section';
+    case 'phdthesis':
+      return 'PhD Thesis';
+    case 'mastersthesis':
+      return "Master's Thesis";
+    case 'thesis':
+      return 'Thesis';
+    case 'techreport':
+    case 'report':
+      return 'Report';
+    case 'preprint':
+    case 'unpublished':
+      return 'Preprint';
+    case 'dataset':
+      return 'Dataset';
+    case 'webpage':
+    case 'website':
+    case 'online':
+    case 'misc':
+      return 'Document';
+    default:
+      return type
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/^[a-z]/, (c) => c.toUpperCase());
+  }
+}
+
+/**
  * Returns a human-readable author summary string for a BibEntry.
  */
-export function formatBibEntryAuthorSummary(entry: Pick<BibEntry, 'authors'>): string {
-  if (entry.authors && entry.authors.length > 0) {
-    return entry.authors.length <= 2
-      ? entry.authors.join(' & ')
-      : `${entry.authors[0]} et al.`;
+export function formatBibEntryAuthorSummary(
+  entry: Pick<BibEntry, 'authors'> & Partial<Pick<BibEntry, 'author'>>,
+): string {
+  const raw = resolveRawAuthorString(entry);
+  if (raw) {
+    const short = formatShortAuthor(raw);
+    if (short) return short;
+  }
+  const parsed = parseBibtexAuthors(entry.authors || (entry.author ? [entry.author] : undefined));
+  if (parsed.length === 1) {
+    return parsed[0];
+  }
+  if (parsed.length === 2) {
+    return `${parsed[0]} & ${parsed[1]}`;
+  }
+  if (parsed.length > 2) {
+    return `${parsed[0]} et al.`;
   }
   return 'Unknown author';
 }
@@ -481,7 +590,7 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
 
 /**
  * Cleans raw abstract text:
- * - Strips leading 'Abstract:', 'Abstract â€” ', 'BACKGROUND:' or redundant labels
+ * - Strips leading 'Abstract:', 'Abstract — ', 'BACKGROUND:' or redundant labels
  * - Cleans excessive whitespace and trims
  */
 export function cleanAbstractText(rawAbstract?: string): string {

@@ -124,7 +124,7 @@ function buildDecorationsFromRanges(ranges: CompilerDiagnosticRange[]): Decorati
       class: `${severityClass}${staleClass}`,
     };
     if (entry.item.stale) {
-      attrs.title = 'Line modified â€” recompile to verify';
+      attrs.title = 'Line modified — recompile to verify';
     }
     builder.add(entry.from, entry.to, Decoration.mark({ attributes: attrs }));
   }
@@ -240,7 +240,7 @@ class CompilerGutterMarker extends GutterMarker {
     dot.className = `cm-compiler-gutter-marker cm-compiler-gutter-${this.severity}${this.stale ? ' cm-compiler-gutter-stale' : ''}`;
     dot.textContent = this.count > 1 ? String(Math.min(this.count, 99)) : '';
     dot.title = this.stale
-      ? `${this.summary} (Line modified â€” recompile to verify; click to open Logs)`
+      ? `${this.summary} (Line modified — recompile to verify; click to open Logs)`
       : `${this.summary} (Click to open Logs)`;
     dot.setAttribute('aria-label', `${this.severity}: ${this.summary}`);
     return dot;

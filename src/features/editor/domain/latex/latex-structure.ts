@@ -1,5 +1,5 @@
 ﻿/**
- * latex-structure.ts â€” Lightweight LaTeX Outline, Environment & Diagnostic helpers.
+ * latex-structure.ts — Lightweight LaTeX Outline, Environment & Diagnostic helpers.
  * Authoritative full-document AST outline parsing is handled by `/structure/outline`.
  */
 

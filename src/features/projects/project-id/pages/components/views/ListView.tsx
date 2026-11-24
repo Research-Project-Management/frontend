@@ -25,7 +25,7 @@ import { usePageActions } from '../../hooks/use-page';
 import type { Page } from '../../types/page.types';
 import { formatDate } from '@/shared/lib/utils';
 import { toast } from 'sonner';
-import { cn } from '@/shared/lib/utils';
+import { copyToClipboard, cn } from '@/shared/lib/utils';
 
 interface ListViewProps {
   pages: Page[];
@@ -82,11 +82,12 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
     });
   }, [pages, sortColumn, sortDirection]);
 
-  const handleCopyLink = (url: string) => {
+  const handleCopyLink = async (url: string) => {
     if (typeof window !== 'undefined') {
       const fullUrl = `${window.location.origin}${url}`;
-      navigator.clipboard.writeText(fullUrl);
-      toast.success('Page link copied to clipboard');
+      const ok = await copyToClipboard(fullUrl);
+      if (ok) toast.success('Copied link');
+      else toast.error('Copy failed');
     }
   };
 

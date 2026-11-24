@@ -1,24 +1,23 @@
 ﻿'use client';
 
 /**
- * ProjectDictionaryTab.tsx
+ * DictionaryTab.tsx
  *
- * Personal Spelling Dictionary sub-view inside the Overleaf Menu Drawer.
+ * Spellcheck dictionary tab inside SettingsModal.
  */
 
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Badge } from '@/shared/components/ui/badge';
-import { useSpellingDictionary } from '@/features/editor/subsystems/project-settings/ui/hooks/useSpelling';
+import { useSpellingDictionary } from '@/features/editor/subsystems/settings/ui/hooks/useSpelling';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 
-export interface ProjectDictionaryTabProps {
+export interface DictionaryTabProps {
   projectId?: string;
 }
 
-export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictionaryTabProps = {}) {
+export function DictionaryTab({ projectId: propProjectId }: DictionaryTabProps = {}) {
   const storeSpaceId = usePageStore((s) => s.projectId || s.spaceId || '');
   const projectId = propProjectId || storeSpaceId || undefined;
   const { userWords, projectWords, addWord, removeWord } = useSpellingDictionary(projectId, true);
@@ -36,24 +35,24 @@ export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictio
   };
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
-      <div className="flex items-start justify-between gap-2">
+    <div className="flex-1 min-h-0 overflow-y-scroll p-5 space-y-4">
+      <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Learned Words</h3>
+          <h3 className="text-[13px] font-medium text-foreground">Dictionary</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
             {scope === 'project' && projectId
-              ? "Words added to this project's dictionary won't be flagged for any collaborator."
-              : "Words added to your personal spellcheck dictionary won't be flagged across your projects."}
+              ? 'Ignored words for this project'
+              : 'Ignored words across all your projects'}
           </p>
         </div>
         {projectId && (
-          <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-xs shrink-0">
+          <div className="flex items-center rounded-md bg-muted p-0.5 border border-border shrink-0">
             <button
               type="button"
               onClick={() => setScope('project')}
-              className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-sm text-xs transition-colors cursor-pointer ${
                 scope === 'project'
-                  ? 'bg-background text-foreground font-semibold'
+                  ? 'bg-background text-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -62,9 +61,9 @@ export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictio
             <button
               type="button"
               onClick={() => setScope('user')}
-              className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer ${
+              className={`px-2.5 py-1 rounded-sm text-xs transition-colors cursor-pointer ${
                 scope === 'user'
-                  ? 'bg-background text-foreground font-semibold'
+                  ? 'bg-background text-foreground font-medium'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -78,8 +77,8 @@ export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictio
         <Input
           value={newDictionaryWord}
           onChange={(e) => setNewDictionaryWord(e.target.value)}
-          aria-label="Add new word to dictionary"
-          placeholder={scope === 'project' && projectId ? 'Add word to project dictionary...' : 'Add new word...'}
+          aria-label="Add word to dictionary"
+          placeholder="Add word..."
           className="h-8 text-xs bg-background"
         />
         <Button type="submit" size="sm" className="h-8 px-3 text-xs shrink-0 cursor-pointer">
@@ -88,29 +87,28 @@ export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictio
         </Button>
       </form>
 
-      <div className="flex flex-wrap gap-1.5 pt-2 max-h-[300px] overflow-y-auto">
+      <div className="flex flex-wrap gap-1.5 pt-1">
         {activeWords && activeWords.length > 0 ? (
           activeWords.map((word) => (
-            <Badge
+            <span
               key={word}
-              variant="secondary"
-              className="flex items-center gap-1 text-xs py-1 px-2.5 font-normal"
+              className="inline-flex items-center gap-1.5 text-xs py-1 px-2.5 rounded-md bg-muted text-foreground"
             >
               <span>{word}</span>
               <button
                 type="button"
-                onClick={() => removeWord({ word, isProject: scope === 'project' && Boolean(projectId) })}
+                onClick={() =>
+                  removeWord({ word, isProject: scope === 'project' && Boolean(projectId) })
+                }
                 aria-label={`Remove ${word}`}
-                className="hover:text-destructive cursor-pointer ml-0.5"
+                className="text-muted-foreground hover:text-destructive cursor-pointer"
               >
                 <X className="size-3" />
               </button>
-            </Badge>
+            </span>
           ))
         ) : (
-          <p className="text-xs text-muted-foreground italic py-2">
-            No learned words yet. Words you add from spellcheck suggestions will appear here.
-          </p>
+          <p className="text-xs text-muted-foreground py-2">No words added yet.</p>
         )}
       </div>
     </div>

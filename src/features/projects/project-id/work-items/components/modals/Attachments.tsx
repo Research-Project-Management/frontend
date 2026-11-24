@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { copyToClipboard } from '@/shared/lib/utils';
 import {
   FileText,
   BookOpen,
@@ -468,9 +469,7 @@ export function Attachments({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                                  navigator.clipboard.writeText(paper.citationKey!);
-                                }
+                                void copyToClipboard(paper.citationKey!);
                               }}
                               className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer select-all"
                               title="Click to copy citation key"
@@ -483,9 +482,7 @@ export function Attachments({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                                  navigator.clipboard.writeText(paper.doi!);
-                                }
+                                void copyToClipboard(paper.doi!);
                               }}
                               className="font-mono text-11 px-1.5 py-0.5 rounded-sm bg-muted border border-border text-foreground hover:bg-muted/80 transition-colors cursor-pointer select-all"
                               title="Click to copy DOI"

@@ -44,7 +44,7 @@ import { MentionTextarea } from './MentionInput';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
 
-// â”€â”€ Reply Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reply Row ───────────────────────────────────────────────────────────────
 
 interface ReplyRowProps {
   reply: CommentReply;
@@ -105,7 +105,7 @@ const ReplyRow = React.memo(function ReplyRow({
   );
 });
 
-// â”€â”€ Reply Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reply Form ──────────────────────────────────────────────────────────────
 
 interface ReplyFormProps {
   commentId: string;
@@ -185,7 +185,7 @@ const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {
   containIntrinsicSize: 'auto 140px',
 };
 
-// â”€â”€ Comment Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Comment Card ────────────────────────────────────────────────────────────
 
 export interface CommentCardProps {
   comment: PageComment;
@@ -447,7 +447,7 @@ export const CommentCard = React.memo(function CommentCard({
   );
 });
 
-// â”€â”€ New Comment Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── New Comment Form ────────────────────────────────────────────────────────
 
 export interface NewCommentFormProps {
   pageId: string;

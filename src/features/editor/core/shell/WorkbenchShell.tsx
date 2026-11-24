@@ -161,7 +161,7 @@ export function WorkbenchShell({
   );
 
   return (
-    <div className={cn('h-full w-full flex flex-col bg-background overflow-hidden', className)}>
+    <div className={cn('h-full w-full flex flex-col bg-background min-h-0', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 

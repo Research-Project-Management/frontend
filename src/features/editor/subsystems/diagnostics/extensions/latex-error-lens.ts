@@ -36,7 +36,7 @@ export interface ErrorLensPayload {
 export const setErrorLensDiagnosticsEffect = StateEffect.define<IndexedDiagnosticItem[] | ErrorLensPayload>();
 export const clearErrorLensDiagnosticsEffect = StateEffect.define<void>();
 
-// â”€â”€ Error Lens Widget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Error Lens Widget ─────────────────────────────────────────────────────────
 
 export class ErrorLensWidget extends WidgetType {
   public readonly line: number;
@@ -76,7 +76,7 @@ export class ErrorLensWidget extends WidgetType {
     wrap.setAttribute('data-severity', severity);
     if (isStale) {
       wrap.setAttribute('data-stale', 'true');
-      wrap.title = 'Line modified â€” recompile to verify';
+      wrap.title = 'Line modified — recompile to verify';
     }
 
     // 1. Icon Indicator
@@ -123,7 +123,7 @@ export class ErrorLensWidget extends WidgetType {
   }
 }
 
-// â”€â”€ StateField for Error Lens Decorations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── StateField for Error Lens Decorations ─────────────────────────────────────
 
 const DECO_LINE_BY_SEVERITY: Record<string, Decoration> = {
   error: Decoration.line({ class: 'cm-error-lens-line cm-error-lens-line-error' }),
@@ -219,7 +219,7 @@ export const errorLensField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// â”€â”€ Error Lens Theme & Styles (Flux Design System Standard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Error Lens Theme & Styles (Flux Design System Standard) ───────────────────
 
 const errorLensTheme = EditorView.baseTheme({
   '.cm-error-lens': {
@@ -289,7 +289,7 @@ const errorLensTheme = EditorView.baseTheme({
   },
 });
 
-// â”€â”€ Extension Factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Extension Factory ─────────────────────────────────────────────────────────
 
 export interface ErrorLensOptions {
   enabled?: boolean;

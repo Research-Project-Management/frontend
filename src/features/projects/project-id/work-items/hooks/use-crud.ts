@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/shared/lib/utils';
 import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type {
   Item,
@@ -823,44 +824,13 @@ export const useCopyItemText = () => {
       text = `${itemOrText.identifier ? `[${itemOrText.identifier}] ` : ''}${itemOrText.title || ''}`;
     }
     if (!text.trim()) return;
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          itemToast.success(message || 'Copied to clipboard', 'clipboard');
-        })
-        .catch(() => {
-          try {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            itemToast.success(message || 'Copied to clipboard', 'clipboard');
-          } catch {
-            itemToast.error('Could not copy to clipboard', 'clipboard');
-          }
-        });
-    } else {
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
+    void copyToClipboard(text).then((ok) => {
+      if (ok) {
         itemToast.success(message || 'Copied to clipboard', 'clipboard');
-      } catch {
-        itemToast.error('Clipboard access unavailable', 'clipboard');
+      } else {
+        itemToast.error('Could not copy to clipboard', 'clipboard');
       }
-    }
+    });
   }, []);
 };
 

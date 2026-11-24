@@ -55,9 +55,6 @@ export type MultiTabEventPayload =
       type: 'READER_TABS_SYNC';
     }
   | {
-      type: 'READER_BOOKMARKS_SYNC';
-    }
-  | {
       type: 'FEEDS_READ_IDS_SYNC';
     }
   | {

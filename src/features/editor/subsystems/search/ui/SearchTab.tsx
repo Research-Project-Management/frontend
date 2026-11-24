@@ -182,7 +182,7 @@ export default function SearchTab() {
     };
   }, [setQuery, setShowReplace]);
 
-  // â”€â”€â”€ BACKEND SEARCH QUERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
   const {
     data: backendSearchData,
     isFetching,

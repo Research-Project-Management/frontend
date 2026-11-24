@@ -58,7 +58,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
 }: FileTreeToolbarProps) {
   return (
     <div className="relative flex h-9 shrink-0 items-center justify-between px-3 select-none">
-      {/* â”€â”€ Title / Collapse Button â”€â”€ */}
+      {/* ── Title / Collapse Button ── */}
       <Tooltip delayDuration={300}>
         <TooltipTrigger asChild>
           <button
@@ -83,7 +83,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
         </TooltipContent>
       </Tooltip>
 
-      {/* â”€â”€ Actions: Plus (New/Upload) & Filter (Sort by) â”€â”€ */}
+      {/* ── Actions: Plus (New/Upload) & Filter (Sort by) ── */}
       <div className="flex items-center gap-0.5">
         {isFileTreeOpen && (
           <>

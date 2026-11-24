@@ -5,10 +5,14 @@
  * and adaptive browser storage quota calculation for the editor's offline stores.
  */
 
+import { openDB, unwrap } from 'idb';
+import { isQuotaExceededError } from '@/shared/utils/storage-error.util';
 import {
   EDITOR_LIMITS,
   EDITOR_STORAGE_KEYS,
 } from '@/features/editor/domain/constants/editor.constants';
+
+export { isQuotaExceededError };
 
 export const OFFLINE_DB_STORES = {
   UNSYNCED_EDITS: 'unsynced_edits',
@@ -66,21 +70,6 @@ export function calculateAdaptiveEditorQuota(
     maxSyncedDocCacheCount: EDITOR_LIMITS.MAX_SYNCED_DOC_CACHE_COUNT,
     originQuotaBytes,
   };
-}
-
-/**
- * Returns true when a storage write failure was caused by exceeding browser quota.
- */
-export function isQuotaExceededError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const domErr = err as { name?: string; code?: number; message?: string };
-  return (
-    domErr.name === 'QuotaExceededError' ||
-    domErr.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    domErr.code === 22 ||
-    domErr.code === 1014 ||
-    Boolean(domErr.message && domErr.message.toLowerCase().includes('quota'))
-  );
 }
 
 /**
@@ -145,16 +134,11 @@ export class OfflineDbConnection {
       return Promise.resolve(null);
     }
 
-    this.dbPromise = new Promise((resolve) => {
-      try {
-        const req = window.indexedDB.open(
-          EDITOR_STORAGE_KEYS.EDITOR_OFFLINE_DB,
-          OFFLINE_DB_VERSION,
-        );
-
-        req.onupgradeneeded = (e) => {
-          const db = (e.target as IDBOpenDBRequest).result;
-
+    this.dbPromise = openDB(
+      EDITOR_STORAGE_KEYS.EDITOR_OFFLINE_DB,
+      OFFLINE_DB_VERSION,
+      {
+        upgrade(db) {
           if (!db.objectStoreNames.contains(OFFLINE_DB_STORES.UNSYNCED_EDITS)) {
             const store = db.createObjectStore(OFFLINE_DB_STORES.UNSYNCED_EDITS, {
               keyPath: 'fileId',
@@ -180,35 +164,24 @@ export class OfflineDbConnection {
             outboxStore.createIndex('createdAt', 'createdAt', { unique: false });
             outboxStore.createIndex('status', 'status', { unique: false });
           }
-        };
-
-        req.onsuccess = () => {
-          const db = req.result;
-          db.onversionchange = () => {
-            try {
-              db.close();
-            } catch {
-              // Ignore close errors during version upgrade
-            }
-            this.dbPromise = null;
-          };
-          resolve(db);
-        };
-
-        req.onerror = () => {
-          console.warn('[OfflineDbConnection] IndexedDB unavailable, falling back to memory');
-          resolve(null);
-        };
-
-        req.onblocked = () => {
-          console.warn('[OfflineDbConnection] IndexedDB open blocked');
-          resolve(null);
-        };
-      } catch (err) {
-        console.warn('[OfflineDbConnection] Failed to open IndexedDB:', err);
-        resolve(null);
-      }
-    });
+        },
+        blocked: () => {
+          this.dbPromise = null;
+        },
+        blocking: () => {
+          this.dbPromise?.then((db) => db?.close()).catch(() => {});
+          this.dbPromise = null;
+        },
+        terminated: () => {
+          this.dbPromise = null;
+        },
+      },
+    )
+      .then((db) => unwrap(db))
+      .catch(() => {
+        this.dbPromise = null;
+        return null;
+      });
 
     return this.dbPromise;
   }

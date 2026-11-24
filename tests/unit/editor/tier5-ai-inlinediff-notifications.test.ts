@@ -262,23 +262,29 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
   });
 
   describe('3. SSE Metadata Filtering & Page Chat Payload', () => {
-    it('decodeFluxSseFrame decodes [META] and ignores metadata JSON objects without content', () => {
-      const metaEvents = decodeFluxSseFrame('message', '[META]{"chatId":"chat-99","title":"Proof"}');
+    it('decodeFluxSseFrame decodes canonical events and drops unknown JSON frames', () => {
+      const metaEvents = decodeFluxSseFrame(
+        'message',
+        '{"type":"meta","chatId":"chat-99","title":"Proof"}',
+      );
       expect(metaEvents).toEqual([
         {
           type: 'meta',
           chatId: 'chat-99',
           title: 'Proof',
-          agent: undefined,
-          intent: undefined,
-          sources: undefined,
         },
       ]);
 
-      const statusEvents = decodeFluxSseFrame('message', '{"trace_id":"t-1","chat_id":"chat-99"}');
-      expect(statusEvents).toEqual([{ type: 'meta', chatId: 'chat-99' }]);
+      const unknownEvents = decodeFluxSseFrame(
+        'message',
+        '{"trace_id":"t-1","chat_id":"chat-99"}',
+      );
+      expect(unknownEvents).toEqual([]);
 
-      const contentEvents = decodeFluxSseFrame('message', '{"content":"Hello LaTeX"}');
+      const contentEvents = decodeFluxSseFrame(
+        'message',
+        '{"type":"text-delta","delta":"Hello LaTeX"}',
+      );
       expect(contentEvents).toEqual([{ type: 'text-delta', delta: 'Hello LaTeX' }]);
     });
 
@@ -286,10 +292,10 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       const encoder = new TextEncoder();
       const streamBody = new ReadableStream({
         start(c) {
-          c.enqueue(encoder.encode('data: [META]{"chatId":"chat-1"}\n\n'));
+          c.enqueue(encoder.encode('data: {"type":"meta","chatId":"chat-1"}\n\n'));
           c.enqueue(encoder.encode('data: {"trace_id":"tr-1"}\n\n'));
-          c.enqueue(encoder.encode('data: {"content":"Done"}\n\n'));
-          c.enqueue(encoder.encode('data: [DONE]\n\n'));
+          c.enqueue(encoder.encode('data: {"type":"text-delta","delta":"Done"}\n\n'));
+          c.enqueue(encoder.encode('data: {"type":"done"}\n\n'));
           c.close();
         },
       });

@@ -39,7 +39,7 @@ export {
   LATEX_COMMANDS,
 };
 
-// â”€â”€ 5. Helper Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 5. Helper Functions ──────────────────────────────────────────────────────
 
 
 const citationInfoCache = new WeakMap<BibEntry, string>();
@@ -105,7 +105,7 @@ function formatCitationInfo(entry: BibEntry): string {
     entry.journal ? `${entry.journal}` : '',
     entry.type ? `@${entry.type}` : '',
   ].filter(Boolean);
-  if (metaParts.length > 0) lines.push(metaParts.join('  â€¢  '));
+  if (metaParts.length > 0) lines.push(metaParts.join('  •  '));
   if (entry.doi) lines.push(`DOI: ${entry.doi}`);
   if (entry.sourceFile) lines.push(`Source: ${entry.sourceFile}`);
   const formatted = lines.join('\n');
@@ -163,10 +163,10 @@ function findUnclosedEnvironments(docText: string): string[] {
   return stack;
 }
 
-// â”€â”€ 6. Main Autocomplete Source â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 6. Main Autocomplete Source ──────────────────────────────────────────────
 
 function latexAutocompleteSource(context: CompletionContext): CompletionResult | null {
-  // â”€â”€ A. Smart \end{...} Environment Closing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── A. Smart \end{...} Environment Closing ──────────────────────────────────
   const endMatch = context.matchBefore(END_MATCH_REGEX);
   if (endMatch) {
     const from = endMatch.from + 5; // after \end{
@@ -242,7 +242,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ B. \begin{...} Environment Completion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── B. \begin{...} Environment Completion ───────────────────────────────────
   const beginMatch = context.matchBefore(BEGIN_MATCH_REGEX);
   if (beginMatch) {
     const from = beginMatch.from + 7; // after \begin{
@@ -269,7 +269,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ C. Package Completion (\usepackage{...}) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── C. Package Completion (\usepackage{...}) ────────────────────────────────
   const packageMatch = context.matchBefore(PACKAGE_MATCH_REGEX);
   if (packageMatch) {
     const lastDelim = Math.max(packageMatch.text.lastIndexOf('{'), packageMatch.text.lastIndexOf(','));
@@ -284,7 +284,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ D. Document Class Completion (\documentclass{...}) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── D. Document Class Completion (\documentclass{...}) ─────────────────────
   const docClassMatch = context.matchBefore(DOCCLASS_MATCH_REGEX);
   if (docClassMatch) {
     const lastBrace = docClassMatch.text.lastIndexOf('{');
@@ -297,7 +297,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ E. Cross-File BibTeX Citations (\cite{...}, \citep{...}, [@key], etc.) â”€
+  // ── E. Cross-File BibTeX Citations (\cite{...}, \citep{...}, [@key], etc.) ─
   const citeMatch = context.matchBefore(CITE_MATCH_REGEX);
   const pandocMatch = !citeMatch ? context.matchBefore(PANDOC_CITE_REGEX) : null;
 
@@ -344,7 +344,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ F. Cross-File Labels (\ref{...}, \eqref{...}, \cref{...}, \hyperref[...]) â”€
+  // ── F. Cross-File Labels (\ref{...}, \eqref{...}, \cref{...}, \hyperref[...]) ─
   const refMatch = context.matchBefore(REF_MATCH_REGEX);
   const hyperrefMatch = !refMatch ? context.matchBefore(HYPERREF_MATCH_REGEX) : null;
 
@@ -394,7 +394,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ G. File Inclusions (\input{...}, \include{...}, \subfile{...}) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── G. File Inclusions (\input{...}, \include{...}, \subfile{...}) ──────────
   const inputMatch = context.matchBefore(INPUT_MATCH_REGEX);
   if (inputMatch) {
     const lastBrace = inputMatch.text.lastIndexOf('{');
@@ -415,7 +415,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ G2. Image Inclusions (\includegraphics[...]{...} - Overleaf 1:1 Parity) â”€â”€
+  // ── G2. Image Inclusions (\includegraphics[...]{...} - Overleaf 1:1 Parity) ──
   const imageMatch = context.matchBefore(IMAGE_MATCH_REGEX);
   if (imageMatch) {
     const lastBrace = imageMatch.text.lastIndexOf('{');
@@ -436,7 +436,7 @@ function latexAutocompleteSource(context: CompletionContext): CompletionResult |
     };
   }
 
-  // â”€â”€ H. Standard Commands, Math Symbols & Dynamic Project Macros â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── H. Standard Commands, Math Symbols & Dynamic Project Macros ─────────────
   const word = context.matchBefore(WORD_MATCH_REGEX);
   if (!word || (word.from === word.to && !context.explicit)) {
     return null;
@@ -478,7 +478,7 @@ export function createLatexAutocompleteExtension() {
   });
 }
 
-// â”€â”€ 7. Factory for Test & Subsystem Overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 7. Factory for Test & Subsystem Overrides ─────────────────────────────────
 
 interface LatexBibEntryInput {
   key?: string;

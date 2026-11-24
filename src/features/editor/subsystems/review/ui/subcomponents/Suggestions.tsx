@@ -24,7 +24,7 @@ const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {
   containIntrinsicSize: 'auto 140px',
 };
 
-// â”€â”€ Suggestion Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Suggestion Card ─────────────────────────────────────────────────────────
 
 export interface SuggestionCardProps {
   suggestion: PageSuggestion;
@@ -166,7 +166,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
   );
 });
 
-// â”€â”€ Suggestion Bulk Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Suggestion Bulk Actions ─────────────────────────────────────────────────
 
 export interface SuggestionBulkActionsProps {
   count: number;
@@ -212,7 +212,7 @@ export function SuggestionBulkActions({
   );
 }
 
-// â”€â”€ Track Changes Control Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Track Changes Control Bar ───────────────────────────────────────────────
 
 interface TrackChangesControlBarProps {
   reviewMode?: boolean;

@@ -88,13 +88,13 @@ export function diagnosticsToParsedLog(
       typeof item.line === 'number' && !isNaN(item.line) ? item.line : undefined;
     const rawExcerpt = item.context || undefined;
     const entry: LogEntry = {
-      message: (item.message || '').replace(/â€”/g, '-'),
+      message: (item.message || '').replace(/—/g, '-'),
       file: file || undefined,
       line,
       ...(item.code ? { code: item.code } : {}),
       ...(item.source ? { source: item.source } : {}),
       ...(item.highlightCommand ? { highlightCommand: item.highlightCommand } : {}),
-      rawExcerpt: rawExcerpt ? rawExcerpt.replace(/â€”/g, '-') : undefined,
+      rawExcerpt: rawExcerpt ? rawExcerpt.replace(/—/g, '-') : undefined,
       quickFix: item.quickFix,
       explanation: item.explanation
         ? {

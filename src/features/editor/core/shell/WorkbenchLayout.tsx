@@ -44,7 +44,7 @@ import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.con
 
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
-const ProjectSettingsModal = dynamic(() => import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal'), { ssr: false });
+const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings/ui/SettingsModal'), { ssr: false });
 const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
 const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationPickerModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
@@ -329,7 +329,7 @@ export function WorkbenchLayout() {
       />
 
       {/* Global Modals */}
-      <ProjectSettingsModal />
+      <SettingsModal />
 
       {wordCountOpen && (
         <ConnectedWordCountModal

@@ -30,7 +30,7 @@ export const EDITOR_THEMES: EditorThemeDefinition[] = [
   { id: 'eclipse', name: 'Eclipse', type: 'light' },
 ];
 
-// â”€â”€ 1. Auto (Adapts to Workspace CSS Variables) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 1. Auto (Adapts to Workspace CSS Variables) ──────────────────────────────
 const autoThemeStyle = EditorView.theme({
   '&': {
     color: 'var(--foreground, #1e293b)',
@@ -75,7 +75,7 @@ const autoTheme: Extension = [
   syntaxHighlighting(autoHighlightStyle),
 ];
 
-// â”€â”€ 2. Overleaf Light (Default LaTeX Light) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 2. Overleaf Light (Default LaTeX Light) ──────────────────────────────────
 const latexLightStyle = EditorView.theme({
   '&': {
     color: '#24292e',
@@ -116,7 +116,7 @@ const latexLightTheme: Extension = [
   syntaxHighlighting(latexLightHighlight),
 ];
 
-// â”€â”€ 3. Overleaf Dark â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 3. Overleaf Dark ─────────────────────────────────────────────────────────
 const latexDarkStyle = EditorView.theme({
   '&': {
     color: '#d4d4d4',
@@ -157,7 +157,7 @@ const latexDarkTheme: Extension = [
   syntaxHighlighting(latexDarkHighlight),
 ];
 
-// â”€â”€ 4. Dracula â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 4. Dracula ───────────────────────────────────────────────────────────────
 const draculaStyle = EditorView.theme({
   '&': {
     color: '#f8f8f2',
@@ -197,7 +197,7 @@ const draculaTheme: Extension = [
   syntaxHighlighting(draculaHighlight),
 ];
 
-// â”€â”€ 5. Monokai â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 5. Monokai ───────────────────────────────────────────────────────────────
 const monokaiStyle = EditorView.theme({
   '&': {
     color: '#f8f8f2',
@@ -237,7 +237,7 @@ const monokaiTheme: Extension = [
   syntaxHighlighting(monokaiHighlight),
 ];
 
-// â”€â”€ 6. Solarized Light â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 6. Solarized Light ───────────────────────────────────────────────────────
 const solarizedLightStyle = EditorView.theme({
   '&': {
     color: '#657b83',
@@ -277,7 +277,7 @@ const solarizedLightTheme: Extension = [
   syntaxHighlighting(solarizedLightHighlight),
 ];
 
-// â”€â”€ 7. Solarized Dark â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 7. Solarized Dark ────────────────────────────────────────────────────────
 const solarizedDarkStyle = EditorView.theme({
   '&': {
     color: '#839496',
@@ -308,13 +308,13 @@ const solarizedDarkTheme: Extension = [
   syntaxHighlighting(solarizedLightHighlight),
 ];
 
-// â”€â”€ 8. GitHub Light â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 8. GitHub Light ──────────────────────────────────────────────────────────
 const githubLightTheme: Extension = [
   latexLightStyle,
   syntaxHighlighting(latexLightHighlight),
 ];
 
-// â”€â”€ 9. GitHub Dark â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 9. GitHub Dark ───────────────────────────────────────────────────────────
 const githubDarkStyle = EditorView.theme({
   '&': {
     color: '#c9d1d9',
@@ -354,7 +354,7 @@ const githubDarkTheme: Extension = [
   syntaxHighlighting(githubDarkHighlight),
 ];
 
-// â”€â”€ 10. Cobalt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 10. Cobalt ───────────────────────────────────────────────────────────────
 const cobaltStyle = EditorView.theme({
   '&': {
     color: '#ffffff',
@@ -394,7 +394,7 @@ const cobaltTheme: Extension = [
   syntaxHighlighting(cobaltHighlight),
 ];
 
-// â”€â”€ 11. Eclipse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── 11. Eclipse ──────────────────────────────────────────────────────────────
 const eclipseStyle = EditorView.theme({
   '&': {
     color: '#000000',

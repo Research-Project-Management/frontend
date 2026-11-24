@@ -105,7 +105,7 @@ export interface WordCountResult {
   mathFormulas?: number;
 }
 
-// â”€â”€ Compiler Diagnostics & Log Viewer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Compiler Diagnostics & Log Viewer ────────────────────────────────────────
 
 export interface ErrorExplanationDto {
   code?: string;

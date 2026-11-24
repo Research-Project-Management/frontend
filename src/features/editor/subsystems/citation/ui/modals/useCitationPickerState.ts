@@ -18,6 +18,8 @@ import {
   formatCitationSnippet,
   formatBibEntryToBibtex,
   formatItemToBibtex,
+  parseBibtexAuthors,
+  cleanBibtexTitle,
 } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import { validateIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
 import {
@@ -187,8 +189,9 @@ export function useCitationPickerState({
     const mapped: BibEntry[] = citationsFromIndex.map((c) => ({
       key: c.key,
       type: c.type || 'article',
-      title: c.title,
-      authors: c.author ? [c.author] : undefined,
+      title: cleanBibtexTitle(c.title),
+      authors: parseBibtexAuthors(c.author),
+      author: c.author,
       year: c.year,
       journal: c.journal,
       booktitle: c.booktitle,
@@ -213,8 +216,10 @@ export function useCitationPickerState({
         const existing = mapped[existingIdx];
         mapped[existingIdx] = {
           ...existing,
-          title: existing.title || lib.title,
-          authors: existing.authors && existing.authors.length > 0 ? existing.authors : lib.authors,
+          title: cleanBibtexTitle(existing.title || lib.title),
+          authors: parseBibtexAuthors(
+            existing.authors && existing.authors.length > 0 ? existing.authors : lib.authors,
+          ),
           year: existing.year || (lib.year ? String(lib.year) : undefined),
           journal: existing.journal || lib.publicationTitle,
           doi: existing.doi || lib.doi,
@@ -228,8 +233,8 @@ export function useCitationPickerState({
         mapped.push({
           key: k,
           type: lib.itemType || 'article',
-          title: lib.title,
-          authors: lib.authors,
+          title: cleanBibtexTitle(lib.title),
+          authors: parseBibtexAuthors(lib.authors),
           year: lib.year ? String(lib.year) : undefined,
           journal: lib.publicationTitle,
           doi: lib.doi,
@@ -278,8 +283,9 @@ export function useCitationPickerState({
           const mapped: BibEntry[] = results.map((r: BibEntryDto) => ({
             key: r.key,
             type: r.type || 'article',
-            title: r.title,
-            authors: r.author ? [r.author] : undefined,
+            title: cleanBibtexTitle(r.title),
+            authors: parseBibtexAuthors(r.author),
+            author: r.author,
             year: r.year,
             journal: r.journal,
             doi: r.doi,

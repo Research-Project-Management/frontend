@@ -13,7 +13,6 @@ import {
   setLibrarySessionStorageProvider,
   loadReaderStorageState,
   saveReaderTabsToStorage,
-  saveReaderBookmarksToStorage,
   DEFAULT_READER_TABS,
   type StorageLike,
 } from '@/features/library/core/adapters/local-storage.adapter';
@@ -207,26 +206,6 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
       const hydratedTab2 = loadReaderStorageState(sharedLocalStorage, tab2SessionStorage);
       expect(hydratedTab1.activeTabId).toBe('paper-a');
       expect(hydratedTab2.activeTabId).toBe('paper-b');
-    });
-
-    it('merges bookmarks across tabs without clobbering bookmarks added on other papers', () => {
-      const sharedLocalStorage = createMemoryStorage();
-      setLibraryStorageProvider(sharedLocalStorage);
-
-      // Tab 1 bookmarks Paper A page 3
-      saveReaderBookmarksToStorage({ 'paper-a': [3] }, sharedLocalStorage, 'paper-a');
-
-      // Tab 2 bookmarks Paper B page 10 (even if Tab 2's stale memory didn't have paper-a)
-      const merged = saveReaderBookmarksToStorage(
-        { 'paper-b': [10] },
-        sharedLocalStorage,
-        'paper-b',
-      );
-
-      expect(merged).toEqual({
-        'paper-a': [3],
-        'paper-b': [10],
-      });
     });
   });
 

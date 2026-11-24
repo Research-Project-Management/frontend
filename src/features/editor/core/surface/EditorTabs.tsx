@@ -215,15 +215,6 @@ const TabItem = React.memo(function TabItem({
             </span>
           )}
 
-          {/* Reactive Unsaved Dirty Indicator Dot */}
-          {isDirty && (
-            <span
-              data-testid={`tab-dirty-dot-${tab.id}`}
-              aria-label="Unsaved changes"
-              className="size-1.5 rounded-full bg-warning shrink-0"
-            />
-          )}
-
           {/* Close button */}
           {canClose && (
             <button

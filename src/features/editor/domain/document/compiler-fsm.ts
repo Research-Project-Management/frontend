@@ -233,7 +233,7 @@ export function compilerFsmTransition(
       }
       const offlineReport: CompileReport = {
         outcome: 'offline-queued',
-        errorMessage: 'Offline â€” compile queued',
+        errorMessage: 'Offline — compile queued',
         diagnostics: [],
         summary: createEmptyDiagnosticsSummary(),
         validationIssues: [],

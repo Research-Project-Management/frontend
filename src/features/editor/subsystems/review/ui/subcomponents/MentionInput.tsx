@@ -228,7 +228,7 @@ export const MentionTextarea = React.forwardRef<
 
   return (
     <div className="relative w-full">
-      {/* â”€â”€ Autocomplete Popover Dropdown â”€â”€ */}
+      {/* ── Autocomplete Popover Dropdown ── */}
       {isOpen && (
         <div
           ref={popoverRef}
@@ -301,7 +301,7 @@ export const MentionTextarea = React.forwardRef<
         </div>
       )}
 
-      {/* â”€â”€ Input or Textarea â”€â”€ */}
+      {/* ── Input or Textarea ── */}
       {singleLine ? (
         <input
           ref={inputRef as React.RefObject<HTMLInputElement>}

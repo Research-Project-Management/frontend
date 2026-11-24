@@ -179,27 +179,43 @@ export default function CitationPickerModal({
           />
         </div>
 
-        <div className="h-12 px-6 flex items-center justify-end gap-2 shrink-0 bg-background">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="h-8 px-3 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            disabled={!s.selectedEntry}
-            onClick={() => s.selectedEntry && s.handleSelectItem(s.selectedEntry)}
-            className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
-          >
-            <Check className="size-3.5" />
-            <span>Insert Citation</span>
-          </Button>
+        <div className="h-12 px-6 flex items-center justify-between shrink-0 bg-background border-t border-border/40">
+          <div className="text-11 text-muted-foreground select-none">
+            {s.selectedEntry ? (
+              <span>
+                Insert command:{' '}
+                <code className="font-mono text-foreground font-medium px-1.5 py-0.5 rounded bg-muted border border-border">
+                  {s.selectedStyle === 'markdown-bracket'
+                    ? '[@key]'
+                    : `\\${s.selectedStyle.replace('latex-', '')}`}
+                </code>
+              </span>
+            ) : (
+              <span>Select a reference to insert</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 px-3 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              disabled={!s.selectedEntry}
+              onClick={() => s.selectedEntry && s.handleSelectItem(s.selectedEntry)}
+              className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
+            >
+              <Check className="size-3.5" />
+              <span>Insert Citation</span>
+            </Button>
+          </div>
         </div>
       </DialogContent>
 

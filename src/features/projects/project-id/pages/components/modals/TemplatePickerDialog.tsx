@@ -30,7 +30,7 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { cn } from '@/shared/lib/utils';
+import { copyToClipboard, cn } from '@/shared/lib/utils';
 import { pagesService } from '@/features/editor/core';
 import { pageKeys } from '../../hooks/use-page';
 
@@ -180,12 +180,16 @@ export function TemplatePickerDialog({
     return resolvedFiles.some((f) => f.path.endsWith('.bib'));
   }, [resolvedFiles]);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!previewContent) return;
-    navigator.clipboard.writeText(previewContent);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-    toast.success('Code copied to clipboard');
+    const ok = await copyToClipboard(previewContent);
+    if (ok) {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+      toast.success('Copied code');
+    } else {
+      toast.error('Copy failed');
+    }
   };
 
   const handleScaffold = async () => {

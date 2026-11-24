@@ -1042,11 +1042,39 @@
   right: 0 !important;
   bottom: 0 !important;
   z-index: 3 !important;
+  pointer-events: none !important;
+}
+
+.react-pdf__Page__annotationLayer .linkAnnotation > a,
+.annotationLayer .linkAnnotation > a {
+  pointer-events: auto;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+
+.react-pdf__Page__annotationLayer .linkAnnotation > a:hover,
+.annotationLayer .linkAnnotation > a:hover {
+  background: rgba(59, 130, 246, 0.14) !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  border-radius: 2px;
+}
+
+.pdf-disable-links .react-pdf__Page__annotationLayer a,
+.pdf-disable-links .annotationLayer a {
+  pointer-events: none !important;
 }
 
 .react-pdf__Page__textLayer ::selection,
 .textLayer ::selection {
   background: color-mix(in oklch, var(--primary) 25%, transparent) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.pdf-custom-selection .react-pdf__Page__textLayer ::selection,
+.pdf-custom-selection .textLayer ::selection {
+  background: transparent !important;
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
 }

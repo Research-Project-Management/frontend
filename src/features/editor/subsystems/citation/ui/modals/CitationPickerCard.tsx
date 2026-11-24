@@ -3,7 +3,10 @@
 import React, { memo } from 'react';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { formatBibEntryAuthorSummary } from '@/features/editor/subsystems/citation/model/citation-formatter';
+import {
+  formatBibEntryAuthorSummary,
+  cleanBibtexTitle,
+} from '@/features/editor/subsystems/citation/model/citation-formatter';
 
 interface CitationPickerCardProps {
   entry: BibEntry;
@@ -23,6 +26,7 @@ export const CitationPickerCard = memo(function CitationPickerCard({
   onDoubleClick,
 }: CitationPickerCardProps) {
   const authorSummary = formatBibEntryAuthorSummary(entry);
+  const cleanTitle = cleanBibtexTitle(entry.title) || entry.key;
 
   return (
     <div
@@ -31,7 +35,7 @@ export const CitationPickerCard = memo(function CitationPickerCard({
       tabIndex={0}
       data-index={idx}
       aria-selected={isSelected}
-      aria-label={`${entry.title || entry.key} by ${authorSummary}`}
+      aria-label={`${cleanTitle} by ${authorSummary}`}
       onClick={() => onSelect(entry)}
       onDoubleClick={() => onDoubleClick(entry)}
       onKeyDown={(e) => {
@@ -49,35 +53,33 @@ export const CitationPickerCard = memo(function CitationPickerCard({
     >
       {/* Title */}
       <p className="text-xs font-medium line-clamp-2 leading-snug text-foreground">
-        {entry.title || entry.key}
+        {cleanTitle}
       </p>
 
       {/* Author + Year */}
       <p className="text-11 text-muted-foreground truncate leading-normal">
         {authorSummary}
-        {entry.year ? ` (${entry.year})` : ''}
+        {entry.year ? ` · ${entry.year}` : ''}
       </p>
 
       {/* Badges / Key row */}
       <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
         <span className="font-mono text-10 px-1.5 py-0.5 rounded bg-background border border-border text-foreground truncate max-w-[140px]">
-          {entry.key}
+          @{entry.key}
         </span>
 
-        {(entry.source === 'library' || entry.sourceFile === 'workspace-library') && (
-          <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-foreground border border-border">
-            Library
-          </span>
-        )}
-        {(entry.source === 'bib' || (entry.sourceFile && entry.sourceFile !== 'workspace-library')) && (
-          <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-foreground border border-border">
+        {(entry.source === 'bib' ||
+          (entry.sourceFile &&
+            entry.sourceFile !== 'workspace-library' &&
+            entry.sourceFile !== 'server')) && (
+          <span className="text-10 font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border">
             .bib
           </span>
         )}
 
         {isCited && (
           <span className="text-10 font-mono font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 ml-auto">
-            Cited
+            In Document
           </span>
         )}
       </div>

@@ -3,8 +3,7 @@
 /**
  * HelpMenu.tsx
  *
- * Topbar Help Dropdown Menu (Overleaf Parity).
- * Location: `features/editor/core/shell/topbar/HelpMenu.tsx`
+ * Topbar Help dropdown menu.
  */
 
 import React from 'react';
@@ -56,7 +55,7 @@ function HelpMenu({ value = 'help' }: { value?: string } = {}) {
         >
           <span className="flex items-center gap-2">
             <BookOpen className="size-3.5 text-foreground/80 shrink-0" />
-            <span className="whitespace-nowrap">Documentation & Tutorials</span>
+            <span className="whitespace-nowrap">Documentation</span>
           </span>
           <ExternalLink className="size-3 text-muted-foreground shrink-0" />
         </MenubarItem>
@@ -67,7 +66,7 @@ function HelpMenu({ value = 'help' }: { value?: string } = {}) {
         >
           <span className="flex items-center gap-2">
             <HelpCircle className="size-3.5 text-foreground/80 shrink-0" />
-            <span className="whitespace-nowrap">LaTeX Quick Guide</span>
+            <span className="whitespace-nowrap">LaTeX Guide</span>
           </span>
           <ExternalLink className="size-3 text-muted-foreground shrink-0" />
         </MenubarItem>

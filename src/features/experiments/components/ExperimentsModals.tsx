@@ -11,6 +11,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { copyToClipboard } from '@/shared/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -597,13 +598,15 @@ ${targetRunsForLatex
               <Button
                 type="button"
                 size="sm"
-                onClick={() => {
-                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    void navigator.clipboard.writeText(latexCode);
+                onClick={async () => {
+                  const ok = await copyToClipboard(latexCode);
+                  if (ok) {
+                    setCopiedLatex(true);
+                    setTimeout(() => setCopiedLatex(false), 1800);
+                    toast.success('Copied LaTeX table');
+                  } else {
+                    toast.error('Copy failed');
                   }
-                  setCopiedLatex(true);
-                  setTimeout(() => setCopiedLatex(false), 1800);
-                  toast.success('Copied LaTeX table');
                 }}
                 className="h-8 px-3 text-12 gap-1.5"
               >

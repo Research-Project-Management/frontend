@@ -14,7 +14,11 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { formatBibEntryToBibtex } from '@/features/editor/subsystems/citation/model/citation-formatter';
+import {
+  formatBibEntryToBibtex,
+  parseBibtexAuthors,
+  cleanBibtexTitle,
+} from '@/features/editor/subsystems/citation/model/citation-formatter';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 
 export function useCitationPickerActions() {
@@ -59,8 +63,9 @@ export function useCitationPickerActions() {
           const newEntry: BibEntry = {
             key: res.entry.key,
             type: res.entry.type || 'article',
-            title: res.entry.title,
-            authors: res.entry.author ? [res.entry.author] : undefined,
+            title: cleanBibtexTitle(res.entry.title),
+            authors: parseBibtexAuthors(res.entry.author),
+            author: res.entry.author,
             year: res.entry.year,
             journal: res.entry.journal,
             doi: res.entry.doi,

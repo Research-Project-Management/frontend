@@ -18,7 +18,7 @@ interface EditorGithubLinkInfo {
 }
 
 export interface DocumentEditorState {
-  // â”€â”€ Coordinate Model (spaceId -> pageId -> activeDocId) â”€â”€
+  // ── Coordinate Model (spaceId -> pageId -> activeDocId) ──
   spaceId: string;
   spaceType: 'personal' | 'project';
   projectId: string;
@@ -39,7 +39,7 @@ export interface DocumentEditorState {
   permissions: { role: string; canEdit: boolean; canCompile: boolean } | null;
   githubLink: EditorGithubLinkInfo | null;
 
-  // â”€â”€ Setters & Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: Page | PageFile | null | ((prev: Page | PageFile | null) => Page | PageFile | null)) => void;
   setSpaceId: (id: string) => void;
   setProjectId: (id: string) => void;
@@ -72,7 +72,7 @@ export interface DocumentEditorState {
   }) => void;
   resetPageState: () => void;
 
-  // â”€â”€ Canonical Manuscript & LaTeX Accessors (Overleaf Parity) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Canonical Manuscript & LaTeX Accessors (Overleaf Parity) ────────────
   getActiveDocument: () => Page | PageFile | null;
   getActiveDocumentId: () => string | null;
   getActiveDocumentTitle: () => string;
@@ -278,7 +278,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
       githubLink: null,
     }),
 
-  // â”€â”€ Canonical Manuscript Accessor Implementations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Canonical Manuscript Accessor Implementations ───────────────────────
   getActiveDocument: () => get().activeFilePage || get().currentPage,
   getActiveDocumentId: () => get().activeDocId || get().activePageId || (get().activeFilePage || get().currentPage)?.id || null,
   getActiveDocumentTitle: () => (get().activeFilePage || get().currentPage)?.title || 'main.tex',

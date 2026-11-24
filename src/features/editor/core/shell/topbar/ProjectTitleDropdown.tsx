@@ -246,7 +246,7 @@ function ProjectTitleDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* â”€â”€ Rename Project Modal â”€â”€ */}
+      {/* ── Rename Project Modal ── */}
       <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
         <DialogContent
           showCloseButton={false}

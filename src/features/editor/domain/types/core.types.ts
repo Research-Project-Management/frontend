@@ -134,7 +134,7 @@ export interface PageFile {
   url?: string;
 }
 
-// â”€â”€ Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────
 
 export interface TextDocument {
   id: string;

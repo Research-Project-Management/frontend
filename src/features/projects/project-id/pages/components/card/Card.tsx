@@ -23,7 +23,7 @@ import { usePageActions } from '../../hooks/use-page';
 import type { Page } from '../../types/page.types';
 import { formatDate } from "@/shared/lib/utils";
 import { toast } from 'sonner';
-import { cn } from '@/shared/lib/utils';
+import { copyToClipboard, cn } from '@/shared/lib/utils';
 
 interface CardProps {
   page: Page;
@@ -87,13 +87,14 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const displayStatus = isArchived ? 'Archived' : 'Active';
   const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
 
-  const handleCopyLink = (e: React.MouseEvent) => {
+  const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (typeof window !== 'undefined') {
       const fullUrl = `${window.location.origin}${linkHref}`;
-      navigator.clipboard.writeText(fullUrl);
-      toast.success('Page link copied to clipboard');
+      const ok = await copyToClipboard(fullUrl);
+      if (ok) toast.success('Copied link');
+      else toast.error('Copy failed');
     }
   };
 

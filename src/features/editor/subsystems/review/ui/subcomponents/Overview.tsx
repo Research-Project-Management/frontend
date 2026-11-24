@@ -26,7 +26,7 @@ import { CommentCard } from './Comments';
 import { SuggestionCard } from './Suggestions';
 import { EmptyReviewState } from './Nav';
 
-// â”€â”€ Overview File Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Overview File Group ─────────────────────────────────────────────────────
 
 interface OverviewFileGroupProps {
   file: { id: string; title: string };
@@ -148,7 +148,7 @@ const OverviewFileGroup = React.memo(function OverviewFileGroup({
   );
 });
 
-// â”€â”€ Overview View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Overview View ───────────────────────────────────────────────────────────
 
 export interface OverviewViewProps {
   files: Array<{ id: string; title: string }>;

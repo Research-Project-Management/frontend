@@ -3,8 +3,7 @@
 /**
  * ViewMenu.tsx
  *
- * Topbar View Dropdown Menu (Block 7: UI Shell Layer).
- * Location: `features/editor/core/shell/topbar/ViewMenu.tsx`
+ * Topbar View dropdown menu.
  */
 
 import React from 'react';
@@ -98,7 +97,7 @@ function ViewMenu() {
       </MenubarTrigger>
 
       <MenubarContent className="min-w-64 text-xs select-none">
-        {/* â”€â”€ Section 1: Layout options â”€â”€ */}
+        {/* ── Section 1: Layout options ── */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Layout options
         </div>
@@ -188,7 +187,7 @@ function ViewMenu() {
 
         <MenubarSeparator />
 
-        {/* â”€â”€ Section 2: Editor display mode (Source vs Visual) â”€â”€ */}
+        {/* ── Section 2: Editor display mode (Source vs Visual) ── */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editor display mode</span>
@@ -225,7 +224,7 @@ function ViewMenu() {
           </MenubarSubContent>
         </MenubarSub>
 
-        {/* â”€â”€ Section 3: Editing mode â”€â”€ */}
+        {/* ── Section 3: Editing mode ── */}
         <MenubarSub>
           <MenubarSubTrigger className="cursor-pointer">
             <span>Editing mode</span>
@@ -279,7 +278,7 @@ function ViewMenu() {
         {/* Divider */}
         <MenubarSeparator />
 
-        {/* â”€â”€ Section 3: Editor settings â”€â”€ */}
+        {/* ── Section 3: Editor settings ── */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none whitespace-nowrap">
           Editor settings
         </div>
@@ -324,7 +323,7 @@ function ViewMenu() {
         {/* Divider */}
         <MenubarSeparator />
 
-        {/* â”€â”€ Section 4: PDF preview â”€â”€ */}
+        {/* ── Section 4: PDF preview ── */}
         <div className="text-12 font-medium text-muted-foreground px-2.5 py-1.5 select-none">
           PDF preview
         </div>

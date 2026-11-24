@@ -56,10 +56,11 @@ export const CitationPickerCard = memo(function CitationPickerCard({
         {cleanTitle}
       </p>
 
-      {/* Author + Year */}
+      {/* Author + Year + Journal (Overleaf Advanced Reference Search parity) */}
       <p className="text-11 text-muted-foreground truncate leading-normal">
         {authorSummary}
         {entry.year ? ` · ${entry.year}` : ''}
+        {entry.journal || entry.booktitle ? ` · ${entry.journal || entry.booktitle}` : ''}
       </p>
 
       {/* Badges / Key row */}

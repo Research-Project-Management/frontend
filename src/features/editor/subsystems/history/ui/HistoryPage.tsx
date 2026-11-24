@@ -168,6 +168,7 @@ export function HistoryPage({
   // Restore confirmation state
   const [confirmingRestore, setConfirmingRestore] = useState(false);
   const [confirmingFileRestore, setConfirmingFileRestore] = useState(false);
+  const skipNextRestoreResetRef = React.useRef(false);
 
   const prevSelectionRef = React.useRef({
     file: activeFilePath,
@@ -183,7 +184,11 @@ export function HistoryPage({
       (prev.target !== null && prev.target !== selectedTargetVersion)
     ) {
       setConfirmingFileRestore(false);
-      setConfirmingRestore(false);
+      if (skipNextRestoreResetRef.current) {
+        skipNextRestoreResetRef.current = false;
+      } else {
+        setConfirmingRestore(false);
+      }
     }
     prevSelectionRef.current = {
       file: activeFilePath,
@@ -962,7 +967,10 @@ export function HistoryPage({
           onDeleteLabel={(labelId) => deleteLabelMutation.mutate(labelId)}
           onDownloadVersion={(v) => void handleDownloadVersionZip(v)}
           onRestoreVersion={(v) => {
-            handleSelectVersion(v);
+            if (v !== selectedTargetVersion) {
+              skipNextRestoreResetRef.current = true;
+              handleSelectVersion(v);
+            }
             setConfirmingRestore(true);
           }}
           isAddingLabelLoading={addLabelMutation.isPending}

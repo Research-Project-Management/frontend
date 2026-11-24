@@ -14,14 +14,8 @@ import {
   DialogTitle,
   DialogClose,
 } from '@/shared/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
-import { X, Check, ChevronDown } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { CitationCollectionTreePane } from '../subcomponents/CitationCollectionTreePane';
@@ -81,9 +75,6 @@ export function CitationModal({
     initialKey,
     citedKeys: propsCitedKeys,
   });
-
-  const selectedOption =
-    STYLE_OPTIONS.find((opt) => opt.id === s.selectedStyle) || STYLE_OPTIONS[0];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,41 +191,14 @@ export function CitationModal({
           />
         </div>
 
-        {/* Footer with clear dividing line and intuitive format + insert flow */}
+        {/* Footer with clean, focused actions (Cancel & Insert Citation) */}
         <div className="h-13 px-6 flex items-center justify-between shrink-0 bg-background border-t border-border">
-          {/* Format selector placed in natural footer workflow */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium select-none">
-              Format:
-            </span>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="h-8 px-2.5 text-xs font-mono rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
-                >
-                  <span>{selectedOption.label}</span>
-                  <ChevronDown className="size-3 text-muted-foreground" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48 p-1">
-                {STYLE_OPTIONS.map((opt) => (
-                  <DropdownMenuItem
-                    key={opt.id}
-                    onClick={() => s.setSelectedStyle(opt.id)}
-                    className={cn(
-                      'flex items-center justify-between px-2.5 py-1.5 text-xs font-mono rounded-md cursor-pointer text-foreground',
-                      s.selectedStyle === opt.id && 'bg-muted font-medium text-foreground',
-                    )}
-                  >
-                    <span>{opt.label}</span>
-                    <span className="text-10 text-muted-foreground font-sans">
-                      {opt.preview}
-                    </span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="text-11 text-muted-foreground select-none">
+            {s.filteredItems.length > 0 && (
+              <span>
+                {s.filteredItems.length} reference{s.filteredItems.length === 1 ? '' : 's'}
+              </span>
+            )}
           </div>
 
           {/* Action buttons */}

@@ -74,7 +74,7 @@ export function CitationPickerListPane({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search title, author, key, DOI..."
+            placeholder="Search by title, author, year or key..."
             className="pl-8 pr-7 h-8 text-xs bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border rounded-md"
           />
           {search && (
@@ -99,10 +99,10 @@ export function CitationPickerListPane({
             <div className="flex items-center gap-1">
               <Binary className="size-3 text-foreground" />
               <p className="text-11 font-medium text-foreground truncate">
-                Academic identifier
+                {search.trim().startsWith('10.') ? 'DOI detected' : 'Identifier detected'}
               </p>
             </div>
-            <p className="text-10 font-mono text-foreground opacity-80 truncate">
+            <p className="text-10 font-mono text-muted-foreground truncate">
               {search.trim()}
             </p>
           </div>
@@ -117,10 +117,10 @@ export function CitationPickerListPane({
             {isResolving ? (
               <>
                 <Loader2 className="size-3 animate-spin mr-1 text-foreground motion-reduce:animate-none" />
-                Resolving...
+                Fetching...
               </>
             ) : (
-              'Resolve'
+              'Fetch BibTeX'
             )}
           </Button>
         </div>

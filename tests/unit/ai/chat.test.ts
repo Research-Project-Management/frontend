@@ -5,7 +5,12 @@ import {
   ThinkTagSplitter,
 } from '@/features/ai/transport/sse';
 import { FluxHttpTransport } from '@/features/ai/transport/flux';
-import { createVercelThreadEngine } from '@/features/ai/engine/vercel';
+import {
+  createFluxThreadEngine,
+  createStreamTurnState,
+  finalizeStreamTurn,
+  reduceStreamEvent,
+} from '@/features/ai/engine/flux-engine';
 import { ThreadPool } from '@/features/ai/engine/pool';
 import { mapStoredMessagesToFlux } from '@/features/ai/engine/history';
 import type { AiTransportPort } from '@/features/ai/transport/transport.port';
@@ -34,7 +39,7 @@ function createMockSseResponse(
   };
 }
 
-describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
+describe('AI SSE Protocol, Transport, FluxThreadEngine & ThreadPool', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
@@ -45,20 +50,20 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
     global.fetch = originalFetch;
   });
 
-  describe('1. SSE Frame Parser, Action Decoding & ThinkTagSplitter', () => {
-    it('parses split SSE chunks, [META], [ACTION], HITL interrupt, error events, and [DONE]', () => {
+  describe('1. SSE Frame Parser, Canonical Event Decoding & ThinkTagSplitter', () => {
+    it('parses split SSE chunks, meta, tool-start, error, HITL interrupt, and done', () => {
       const parser = new SseFrameParser();
       const enc = new TextEncoder();
 
       const part1 = enc.encode(
-        'data: [META]{"chatId":"chat-123","title":"Quantum","agent":"rag_agent"}\n\n' +
-          'data: [ACTION]{"type":"tool_start","tool":"search_documents"}\n\n' +
-          'event: er',
+        'data: {"type":"meta","chatId":"chat-123","title":"Quantum","agent":"rag_agent"}\n\n' +
+          'data: {"type":"tool-start","tool":"search_documents"}\n\n' +
+          'data: {"type":"er',
       );
       const part2 = enc.encode(
-        'ror\ndata: {"error":"Upstream rate limited"}\n\n' +
-          'data: [ACTION]{"type":"tool_call","needs_confirm":true,"input":{"interrupts":[{"id":"int-1","tool":"create_work_item","description":"Create high priority task"}]}}\n\n' +
-          'data: [DONE]\n\n',
+        'ror","message":"Upstream rate limited"}\n\n' +
+          'data: {"type":"hitl-interrupt","interruptId":"int-1","interrupts":[{"id":"int-1","tool":"create_work_item","description":"Create high priority task","allowedDecisions":["approve","reject"]}]}\n\n' +
+          'data: {"type":"done"}\n\n',
       );
 
       const frames = [...parser.feed(part1), ...parser.feed(part2), ...parser.flush()];
@@ -69,14 +74,10 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
         chatId: 'chat-123',
         title: 'Quantum',
         agent: 'rag_agent',
-        intent: undefined,
-        sources: undefined,
       });
       expect(events[1]).toEqual({
         type: 'tool-start',
         tool: 'search_documents',
-        agent: undefined,
-        input: undefined,
       });
       expect(events[2]).toEqual({
         type: 'error',
@@ -96,10 +97,10 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
       expect(events[4]).toEqual({ type: 'done' });
     });
 
-    it('unescapes literal newlines and splits <think>...</think> across chunk boundaries', () => {
+    it('decodes text-delta newlines and splits <think>...</think> across chunk boundaries', () => {
       const textEvents = decodeFluxSseFrame(
         'message',
-        '{"delta":"Line 1\\n\\nLine 2"}',
+        '{"type":"text-delta","delta":"Line 1\\n\\nLine 2"}',
       );
       expect(textEvents).toEqual([
         { type: 'text-delta', delta: 'Line 1\n\nLine 2' },
@@ -134,9 +135,9 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
       const fetchMock = vi.fn().mockResolvedValue(
         createMockSseResponse(
           [
-            'data: {"delta":"Quantum qubits"}\n\n',
-            'data: [META]{"agent":"rag_agent"}\n\n',
-            'data: [DONE]\n\n',
+            'data: {"type":"text-delta","delta":"Quantum qubits"}\n\n',
+            'data: {"type":"meta","agent":"rag_agent"}\n\n',
+            'data: {"type":"done"}\n\n',
           ],
           200,
           { 'x-chat-id': 'hdr-chat-9' },
@@ -170,7 +171,9 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
       const transport = new FluxHttpTransport();
 
       const resumeMock = vi.fn().mockResolvedValue(
-        createMockSseResponse(['data: {"delta":"Resumed ok"}\n\ndata: [DONE]\n\n']),
+        createMockSseResponse([
+          'data: {"type":"text-delta","delta":"Resumed ok"}\n\ndata: {"type":"done"}\n\n',
+        ]),
       );
       global.fetch = resumeMock;
       const resumed = await transport.resume({
@@ -248,7 +251,7 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
 
       const onChatCreated = vi.fn();
       const pool = new ThreadPool(2);
-      const engine = createVercelThreadEngine(
+      const engine = createFluxThreadEngine(
         {
           threadKey: 'draft:test',
           spaceId: 'sp-1',
@@ -328,6 +331,197 @@ describe('AI SSE Protocol, Transport, VercelThreadEngine & ThreadPool', () => {
 
       unsubscribe();
       pool.clearAll();
+    });
+
+    it('preserves historical FluxMessage object references across streamed token deltas and non-message meta updates', async () => {
+      // 1. Direct reduceStreamEvent pure reducer check (reasoning -> text -> tool -> finalize)
+      let turn = createStreamTurnState('a-2');
+      turn = reduceStreamEvent(turn, { type: 'reasoning-delta', delta: 'Step 1' });
+      expect(turn.message.parts[0]).toEqual({
+        type: 'reasoning',
+        text: 'Step 1',
+        streaming: true,
+      });
+      turn = reduceStreamEvent(turn, { type: 'text-delta', delta: 'Hello' });
+      expect(turn.message.parts[0]).toEqual({
+        type: 'reasoning',
+        text: 'Step 1',
+        streaming: false,
+      });
+      expect(turn.message.parts[1]).toEqual({
+        type: 'text',
+        text: 'Hello',
+        streaming: true,
+      });
+      const prevMsg = turn.message;
+      turn = reduceStreamEvent(turn, { type: 'text-delta', delta: ' world' });
+      expect(turn.message).not.toBe(prevMsg);
+      expect(turn.message.content).toBe('Hello world');
+      turn = finalizeStreamTurn(turn);
+      expect(turn.message.parts[1]).toEqual({
+        type: 'text',
+        text: 'Hello world',
+        streaming: false,
+      });
+
+      // 2. End-to-end VercelThreadEngine streaming delta snapshot identity check
+      let turnCount = 0;
+      const mockTransport: AiTransportPort = {
+        async stream() {
+          turnCount += 1;
+          const currentTurn = turnCount;
+          async function* gen(): AsyncGenerator<AiStreamEvent> {
+            if (currentTurn === 1) {
+              yield { type: 'text-delta', delta: 'Turn 1 reply.' };
+              yield { type: 'done' };
+            } else {
+              yield { type: 'text-delta', delta: 'Chunk 1 ' };
+              await Promise.resolve();
+              yield { type: 'text-delta', delta: 'Chunk 2 ' };
+              await Promise.resolve();
+              yield { type: 'text-delta', delta: 'Chunk 3' };
+              yield { type: 'done' };
+            }
+          }
+          return { chatIdHeader: 'chat-ref-1', events: gen() };
+        },
+        async resume() {
+          async function* gen(): AsyncGenerator<AiStreamEvent> {
+            yield { type: 'done' };
+          }
+          return { events: gen() };
+        },
+        cancel: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const engine = createFluxThreadEngine(
+        { threadKey: 'chat-ref-1', spaceId: 'sp-1' },
+        mockTransport,
+      );
+
+      await engine.send('Turn 1 question');
+      const afterTurn1 = engine.getSnapshot();
+      expect(afterTurn1.messages).toHaveLength(2);
+      const [turn1UserRef, turn1AssistantRef] = afterTurn1.messages;
+
+      // Capture every snapshot emitted during turn 2 streaming
+      const streamingSnapshots: Array<ReturnType<typeof engine.getSnapshot>> = [];
+      const unsub = engine.subscribe(() => {
+        streamingSnapshots.push(engine.getSnapshot());
+      });
+
+      await engine.send('Turn 2 question');
+      unsub();
+
+      // Verify we observed multiple streaming updates and historical messages kept exact identity
+      const assistantSnapshots = streamingSnapshots.filter(
+        (s) => s.messages.length === 4,
+      );
+      expect(assistantSnapshots.length).toBeGreaterThanOrEqual(2);
+
+      for (const snap of assistantSnapshots) {
+        expect(snap.messages[0]).toBe(turn1UserRef);
+        expect(snap.messages[1]).toBe(turn1AssistantRef);
+      }
+
+      const finalSnap = engine.getSnapshot();
+      expect(finalSnap.messages[0]).toBe(turn1UserRef);
+      expect(finalSnap.messages[1]).toBe(turn1AssistantRef);
+      expect(finalSnap.messages[3].content).toBe('Chunk 1 Chunk 2 Chunk 3');
+
+      // Non-message meta update should reuse the exact messages array reference
+      engine.setMeta({ title: 'Updated Title' });
+      expect(engine.getSnapshot().messages).toBe(finalSnap.messages);
+
+      await engine.dispose();
+    });
+
+    it('handles stream error -> retry, agent-handoff/done, sources, and abort via stop()', async () => {
+      let attempt = 0;
+      const cancelSpy = vi.fn().mockResolvedValue(undefined);
+      const mockTransport: AiTransportPort = {
+        async stream({ signal }) {
+          attempt += 1;
+          if (attempt === 1) {
+            throw new Error('Upstream 503');
+          }
+          if (attempt === 2) {
+            async function* gen(): AsyncGenerator<AiStreamEvent> {
+              yield { type: 'agent-handoff', to: 'rag_agent' };
+              yield { type: 'tool-start', tool: 'search_documents', input: { q: 'flux' } };
+              yield { type: 'tool-end', tool: 'search_documents', status: 'done', output: { hits: 2 } };
+              yield { type: 'agent-done', agent: 'rag_agent', status: 'done' };
+              yield {
+                type: 'meta',
+                agent: 'rag_agent',
+                sources: [{ id: 'doc-1', title: 'Spec.pdf' }],
+              };
+              yield { type: 'text-delta', delta: 'Recovered answer' };
+              yield { type: 'done' };
+            }
+            return { chatIdHeader: 'chat-retry-1', events: gen() };
+          }
+          async function* slowGen(): AsyncGenerator<AiStreamEvent> {
+            yield { type: 'text-delta', delta: 'Partial' };
+            await new Promise<void>((_, reject) => {
+              signal?.addEventListener('abort', () => {
+                const err = new Error('Aborted');
+                err.name = 'AbortError';
+                reject(err);
+              });
+            });
+          }
+          return { chatIdHeader: 'chat-retry-1', events: slowGen() };
+        },
+        async resume() {
+          async function* gen(): AsyncGenerator<AiStreamEvent> {
+            yield { type: 'done' };
+          }
+          return { events: gen() };
+        },
+        cancel: cancelSpy,
+      };
+
+      const engine = createFluxThreadEngine(
+        { threadKey: 'draft:retry', spaceId: 'sp-1' },
+        mockTransport,
+      );
+
+      // 1. First attempt fails -> status is 'error', retry recovers without duplicating user message
+      await engine.send('Retry me');
+      expect(engine.getSnapshot().status).toBe('error');
+      expect(engine.getSnapshot().error?.message).toBe('Upstream 503');
+
+      await engine.retry();
+      const recovered = engine.getSnapshot();
+      expect(recovered.status).toBe('idle');
+      expect(recovered.error).toBeNull();
+      expect(recovered.messages).toHaveLength(2);
+      expect(recovered.messages[1].content).toBe('Recovered answer');
+      expect(recovered.messages[1].sources).toEqual([{ id: 'doc-1', title: 'Spec.pdf' }]);
+      expect(recovered.messages[1].parts.map((p) => p.type)).toEqual([
+        'agent-handoff',
+        'tool',
+        'sources',
+        'text',
+      ]);
+
+      // 2. Cooperative stop aborts in-flight stream cleanly without setting error
+      const pendingSend = engine.send('Slow request');
+      await Promise.resolve();
+      await Promise.resolve();
+      await engine.stop();
+      await pendingSend;
+
+      const afterStop = engine.getSnapshot();
+      expect(afterStop.status).toBe('idle');
+      expect(afterStop.error).toBeNull();
+      expect(cancelSpy).toHaveBeenCalledWith('chat-retry-1', 'sp-1');
+
+      engine.reset();
+      expect(engine.getSnapshot().messages).toHaveLength(0);
+      expect(engine.getSnapshot().chatId).toBeNull();
+      await engine.dispose();
     });
   });
 });

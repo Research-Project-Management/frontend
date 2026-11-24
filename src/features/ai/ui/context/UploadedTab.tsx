@@ -174,7 +174,7 @@ export function UploadedTab({
                 enabled: true,
                 sourceType: 'upload',
               };
-              const meta = getFileCategoryMeta(entry.name, 'upload', entry.size);
+              const meta = getFileCategoryMeta(entry);
               const IconComp = meta.icon;
               const isChecked =
                 pending.has(entry.id) || Boolean(selectedIds?.has(entry.id));

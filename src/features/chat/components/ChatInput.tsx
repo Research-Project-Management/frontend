@@ -5,7 +5,7 @@ import { Send, Paperclip, Smile, X, FileText, ImageIcon, Loader2, AlertCircle } 
 import { Button } from '@/shared/components/ui/button';
 import { useChatStore } from '../store/chat.store';
 import { ChatMessage, ChatAttachment } from '../types/chat.types';
-import { chatService } from '../services/chat.service';
+import { chatService, CHAT_UPLOAD_LIMITS } from '../services/chat.service';
 import {
   Popover,
   PopoverContent,
@@ -35,8 +35,6 @@ interface PendingAttachment {
 }
 
 const COMMON_EMOJIS = ['👍', '❤️', '😂', '🎉', '🔥', '💡', '🚀', '👀', '✨', '👏'];
-const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB max
-const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB max
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -104,13 +102,13 @@ export function ChatInput({
         /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(file.name);
 
       // 1. Client-side File Size Limit Validation
-      if (isImg && file.size > MAX_IMAGE_BYTES) {
+      if (isImg && file.size > CHAT_UPLOAD_LIMITS.MAX_IMAGE_BYTES) {
         setErrorMessage(
           `Ảnh "${file.name}" (${formatBytes(file.size)}) vượt quá giới hạn tối đa 20MB.`,
         );
         continue;
       }
-      if (!isImg && file.size > MAX_FILE_BYTES) {
+      if (!isImg && file.size > CHAT_UPLOAD_LIMITS.MAX_FILE_BYTES) {
         setErrorMessage(
           `Tệp "${file.name}" (${formatBytes(file.size)}) vượt quá giới hạn tối đa 50MB.`,
         );

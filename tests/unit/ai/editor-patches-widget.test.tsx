@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { createVercelThreadEngine } from '@/features/ai/engine/vercel';
+import { createFluxThreadEngine } from '@/features/ai/engine/flux-engine';
 import { decodeFluxSseFrame } from '@/features/ai/transport/sse';
 import type { AiTransportPort } from '@/features/ai/transport/transport.port';
 import type { AiStreamEvent } from '@/features/ai/types/event';
@@ -17,10 +17,11 @@ afterEach(() => {
 });
 
 describe('SSE meta widget decoding & EditorPatchesCard', () => {
-  it('decodes [META] frames containing editor_patches widgets', () => {
+  it('decodes meta frames containing editor_patches widgets', () => {
     const events = decodeFluxSseFrame(
       'message',
-      `[META]${JSON.stringify({
+      JSON.stringify({
+        type: 'meta',
         agent: 'editor_agent',
         sources: [],
         widgets: [
@@ -42,7 +43,7 @@ describe('SSE meta widget decoding & EditorPatchesCard', () => {
             ],
           },
         ],
-      })}`,
+      }),
     );
 
     expect(events).toHaveLength(1);
@@ -119,11 +120,11 @@ describe('SSE meta widget decoding & EditorPatchesCard', () => {
     expect(onApplyAll).toHaveBeenCalledWith(patches);
   });
 
-  it('decodes [ACTION] editor_patch_preview frames and toggles Live preview badge by streaming state', () => {
+  it('decodes editor-patch-preview frames and toggles Live preview badge by streaming state', () => {
     const events = decodeFluxSseFrame(
       'message',
-      `[ACTION]${JSON.stringify({
-        type: 'editor_patch_preview',
+      JSON.stringify({
+        type: 'editor-patch-preview',
         agent: 'editor_agent',
         totalPatches: 1,
         patch: {
@@ -137,7 +138,7 @@ describe('SSE meta widget decoding & EditorPatchesCard', () => {
           fromLine: 4,
           toLine: 4,
         },
-      })}`,
+      }),
     );
 
     expect(events).toEqual([
@@ -247,7 +248,7 @@ describe('SSE meta widget decoding & EditorPatchesCard', () => {
       cancel: vi.fn().mockResolvedValue(undefined),
     };
 
-    const engine = createVercelThreadEngine(
+    const engine = createFluxThreadEngine(
       { threadKey: 'draft:ed-p3', spaceId: 'sp-1', mode: 'editor' },
       transport,
     );

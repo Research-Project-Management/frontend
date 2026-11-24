@@ -10,6 +10,11 @@ import {
   ChatAttachment,
 } from '../types/chat.types';
 
+export const CHAT_UPLOAD_LIMITS = {
+  MAX_IMAGE_BYTES: 20 * 1024 * 1024,
+  MAX_FILE_BYTES: 50 * 1024 * 1024,
+} as const;
+
 export const chatService = {
   // ─── Conversations & Channels ───────────────────────────────────────────────
   async getConversations(): Promise<ConversationsData> {
@@ -162,13 +167,10 @@ export const chatService = {
     const isImage =
       file.type.startsWith('image/') ||
       /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(file.name);
-    const MAX_IMAGE_BYTES = 20 * 1024 * 1024; // 20 MB
-    const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
-
-    if (isImage && file.size > MAX_IMAGE_BYTES) {
+    if (isImage && file.size > CHAT_UPLOAD_LIMITS.MAX_IMAGE_BYTES) {
       throw new Error(`Ảnh "${file.name}" vượt quá dung lượng tối đa 20MB.`);
     }
-    if (!isImage && file.size > MAX_FILE_BYTES) {
+    if (!isImage && file.size > CHAT_UPLOAD_LIMITS.MAX_FILE_BYTES) {
       throw new Error(`Tệp "${file.name}" vượt quá dung lượng tối đa 50MB.`);
     }
 

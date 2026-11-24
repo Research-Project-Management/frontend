@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, ChevronDown, Sparkles } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,13 +18,15 @@ import {
 const FALLBACK_MODELS: readonly AiModelInfo[] = [
   {
     id: 'auto',
-    label: 'Auto (Tối ưu)',
+    label: 'Auto',
     provider: 'Flux Gateway',
     tier: 'auto',
-    description: 'Tự động chọn model tối ưu theo từng bước',
+    description: '',
     is_default: true,
   },
 ];
+
+const cleanLabel = (label: string) => label.replace(/\s*\([^)]*\)/g, '').trim();
 
 export interface ModelSelectorProps {
   compact?: boolean;
@@ -44,7 +46,7 @@ export function ModelSelector({
     models.find((m) => m.is_default) ??
     models[0];
 
-  const triggerLabel = active?.id === 'auto' ? 'Auto' : (active?.label ?? 'Auto');
+  const triggerLabel = active ? cleanLabel(active.label) || 'Auto' : 'Auto';
 
   return (
     <DropdownMenu>
@@ -59,7 +61,6 @@ export function ModelSelector({
             disabled && 'opacity-40 cursor-not-allowed',
           )}
         >
-          <Sparkles className="size-3.5 shrink-0 text-ai" aria-hidden="true" />
           <span className="truncate font-medium">{triggerLabel}</span>
           <ChevronDown className="size-3 shrink-0 opacity-70" aria-hidden="true" />
         </button>
@@ -69,7 +70,7 @@ export function ModelSelector({
         align="start"
         side="top"
         sideOffset={8}
-        className="w-72 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
+        className="w-52 p-1 rounded-lg shadow-lg border border-border bg-popover text-foreground select-none space-y-0.5"
       >
         {models.map((item) => {
           const isSelected = active?.id === item.id;
@@ -77,21 +78,13 @@ export function ModelSelector({
             <DropdownMenuItem
               key={item.id}
               onClick={() => setSelectedModelId(item.id)}
-              className="flex items-start justify-between gap-2 px-2.5 py-2 rounded-md cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
+              className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
             >
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-12 font-medium truncate">{item.label}</span>
-                  <span className="text-10 text-muted-foreground px-1 py-0.2 rounded bg-muted">
-                    {item.provider}
-                  </span>
-                </div>
-                <p className="text-11 text-muted-foreground line-clamp-1">
-                  {item.description}
-                </p>
-              </div>
+              <span className="text-12 font-medium truncate">
+                {cleanLabel(item.label)}
+              </span>
               {isSelected && (
-                <Check className="size-3.5 text-ai shrink-0 mt-0.5" aria-hidden="true" />
+                <Check className="size-3.5 text-ai shrink-0" aria-hidden="true" />
               )}
             </DropdownMenuItem>
           );

@@ -12,7 +12,6 @@ import { cn } from '@/shared/lib/utils';
 import type { EditorPatchItem, FluxMessage, HitlDecision } from '../../types/message';
 import { CompanionHero } from '../parts/CompanionHero';
 import { MessageParts, type MessageCodeActions } from '../parts/MessageParts';
-import { getAgentMeta, shouldShowAgentBadge } from '../registry/agents';
 
 export interface CompanionSuggestionItem {
   id: string;
@@ -244,11 +243,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
                     className="size-3 animate-spin motion-reduce:animate-none text-ai shrink-0"
                     aria-hidden="true"
                   />
-                  <span>
-                    {activeAgent && shouldShowAgentBadge(activeAgent)
-                      ? `${getAgentMeta(activeAgent).label} thinking...`
-                      : 'Thinking...'}
-                  </span>
+                  <span>Thinking...</span>
                 </div>
               </div>
             </div>

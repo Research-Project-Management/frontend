@@ -125,16 +125,3 @@ export function getToolMeta(toolName: string): ToolMeta {
   }
   return { label, icon: Settings2, category: 'read' };
 }
-
-const customToolRegistry = new Map<string, ToolUIComponent>();
-
-export function registerToolUI(
-  toolName: string,
-  component: ToolUIComponent,
-): void {
-  customToolRegistry.set(toolName, component);
-}
-
-export function getToolUI(toolName: string): ToolUIComponent | undefined {
-  return customToolRegistry.get(toolName);
-}

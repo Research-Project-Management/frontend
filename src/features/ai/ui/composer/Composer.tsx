@@ -45,7 +45,8 @@ import type { QuotedPassageData } from '../../engine/shell';
 import { AttachmentBar } from './AttachmentBar';
 import { ModelSelector } from './ModelSelector';
 
-export type ReaderDocScope = 'current' | 'open-tabs' | 'all';
+// Derived from backend retrieval budget: _MAX_MULTI_DOC_TOP_K (16) / _MIN_CHUNKS_PER_SCOPED_DOC (2)
+export const MAX_READER_SCOPE_DOCS = 8;
 
 export interface ComposerProps {
   variant?: 'workspace' | 'companion' | 'inline';
@@ -71,8 +72,11 @@ export interface ComposerProps {
   isReaderContext?: boolean;
   readerPaper?: { id: string; title: string } | null;
   openReaderPapers?: ReadonlyArray<{ id: string; title: string }>;
-  readerDocScope?: ReaderDocScope;
-  onReaderDocScopeChange?: (scope: ReaderDocScope) => void;
+  selectedReaderPaperIds?: readonly string[];
+  onSelectedReaderPaperIdsChange?: (ids: string[]) => void;
+  activeTabDriftPaper?: { id: string; title: string } | null;
+  onAddDriftPaperToChat?: () => void;
+  onNewChatForDriftPaper?: () => void;
 
   quotedPassage?: QuotedPassageData | null;
   onClearQuotedPassage?: () => void;
@@ -107,8 +111,11 @@ export function Composer({
   isReaderContext = false,
   readerPaper = null,
   openReaderPapers = [],
-  readerDocScope = 'current',
-  onReaderDocScopeChange,
+  selectedReaderPaperIds = [],
+  onSelectedReaderPaperIdsChange,
+  activeTabDriftPaper = null,
+  onAddDriftPaperToChat,
+  onNewChatForDriftPaper,
 
   quotedPassage = null,
   onClearQuotedPassage,
@@ -272,6 +279,31 @@ export function Composer({
     </button>
   );
 
+  const extraEnabledCount = sources.filter(
+    (s) => s.enabled && !selectedReaderPaperIds.includes(s.id),
+  ).length;
+  const totalSelected = selectedReaderPaperIds.length + extraEnabledCount;
+  const atDocLimit = totalSelected >= MAX_READER_SCOPE_DOCS;
+
+  const readerTabsForPopover =
+    openReaderPapers.length > 0
+      ? openReaderPapers
+      : readerPaper
+        ? [readerPaper]
+        : [];
+
+  const resolvePaperTitle = (id: string) =>
+    openReaderPapers.find((p) => p.id === id)?.title ||
+    (readerPaper?.id === id ? readerPaper.title : undefined) ||
+    'Current tab';
+
+  const scopeTriggerLabel =
+    selectedReaderPaperIds.length === 1
+      ? resolvePaperTitle(selectedReaderPaperIds[0])
+      : selectedReaderPaperIds.length > 1
+        ? `${selectedReaderPaperIds.length} selected`
+        : 'Add source';
+
   return (
     <div
       className={cn(
@@ -281,6 +313,38 @@ export function Composer({
         className,
       )}
     >
+      {activeTabDriftPaper && (
+        <div className="flex items-center justify-between gap-2 mb-1.5 px-2.5 py-1.5 rounded-md border border-border bg-muted/50 text-11">
+          <span className="truncate text-muted-foreground min-w-0">
+            Viewing:{' '}
+            <span className="font-medium text-foreground">
+              {activeTabDriftPaper.title}
+            </span>
+          </span>
+          <div className="flex items-center gap-1 shrink-0">
+            {onAddDriftPaperToChat && (
+              <button
+                type="button"
+                onClick={onAddDriftPaperToChat}
+                disabled={atDocLimit}
+                className="px-1.5 py-0.5 rounded border border-border bg-background hover:bg-muted text-10 font-medium text-foreground disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer transition-colors"
+              >
+                + Add to chat
+              </button>
+            )}
+            {onNewChatForDriftPaper && (
+              <button
+                type="button"
+                onClick={onNewChatForDriftPaper}
+                className="px-1.5 py-0.5 rounded bg-foreground text-background hover:opacity-90 text-10 font-medium cursor-pointer transition-opacity"
+              >
+                New chat
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -314,7 +378,7 @@ export function Composer({
         {(isReaderContext || sources.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
             {/* Reader Document Scope Selector */}
-            {isReaderContext && onReaderDocScopeChange && (
+            {isReaderContext && onSelectedReaderPaperIdsChange && (
               <Popover open={readerScopeOpen} onOpenChange={setReaderScopeOpen}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -322,26 +386,22 @@ export function Composer({
                       <button
                         type="button"
                         className="inline-flex h-6 max-w-[200px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0"
-                        aria-label="Paper context scope"
+                        aria-label="Select sources"
                       >
-                        {readerDocScope === 'current' ? (
+                        {selectedReaderPaperIds.length <= 1 ? (
                           <FileText className="size-3 shrink-0 text-foreground" />
                         ) : (
                           <BookOpen className="size-3 shrink-0 text-foreground" />
                         )}
                         <span className="truncate font-medium">
-                          {readerDocScope === 'current'
-                            ? readerPaper?.title || 'This paper'
-                            : readerDocScope === 'open-tabs'
-                              ? `Open tabs (${openReaderPapers.length || 1})`
-                              : 'Entire library'}
+                          {scopeTriggerLabel}
                         </span>
                         <ChevronDown className="size-2.5 text-muted-foreground shrink-0 opacity-70" />
                       </button>
                     </PopoverTrigger>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={4}>
-                    Switch single-paper or multi-paper Q&A
+                    Choose sources
                   </TooltipContent>
                 </Tooltip>
 
@@ -349,65 +409,99 @@ export function Composer({
                   align="start"
                   side="top"
                   sideOffset={6}
-                  className="w-64 p-1.5 rounded-md shadow-md z-50 border border-border bg-popover flex flex-col gap-0.5 select-none"
+                  className="w-72 p-1.5 rounded-md shadow-md z-50 border border-border bg-popover flex flex-col gap-0.5 select-none"
                 >
-                  <div className="px-2 py-1 text-10 font-medium text-muted-foreground">
-                    Document scope
-                  </div>
-                  {readerPaper?.id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onReaderDocScopeChange('current');
-                        setReaderScopeOpen(false);
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
-                        readerDocScope === 'current'
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'hover:bg-muted text-foreground',
-                      )}
-                    >
-                      <span className="truncate">This paper only</span>
-                      {readerDocScope === 'current' && <Check className="size-3 shrink-0" />}
-                    </button>
-                  )}
                   {openReaderPapers.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onReaderDocScopeChange('open-tabs');
-                        setReaderScopeOpen(false);
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
-                        readerDocScope === 'open-tabs'
-                          ? 'bg-muted text-foreground font-medium'
-                          : 'hover:bg-muted text-foreground',
-                      )}
-                    >
-                      <span className="truncate">
-                        All open tabs ({openReaderPapers.length})
+                    <div className="px-2 py-1 flex items-center justify-between gap-2 text-10 text-muted-foreground">
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        {readerPaper?.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectedReaderPaperIdsChange([readerPaper.id]);
+                              setReaderScopeOpen(false);
+                            }}
+                            className="hover:text-foreground cursor-pointer transition-colors"
+                          >
+                            Current
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const remainingCap = Math.max(
+                              0,
+                              MAX_READER_SCOPE_DOCS - extraEnabledCount,
+                            );
+                            const nextIds = openReaderPapers
+                              .slice(0, remainingCap)
+                              .map((p) => p.id);
+                            onSelectedReaderPaperIdsChange(nextIds);
+                          }}
+                          className="hover:text-foreground cursor-pointer transition-colors"
+                        >
+                          All
+                        </button>
+                      </div>
+                      <span className="tabular-nums">
+                        {totalSelected}/{MAX_READER_SCOPE_DOCS}
                       </span>
-                      {readerDocScope === 'open-tabs' && <Check className="size-3 shrink-0" />}
-                    </button>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onReaderDocScopeChange('all');
-                      setReaderScopeOpen(false);
-                    }}
-                    className={cn(
-                      'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
-                      readerDocScope === 'all'
-                        ? 'bg-muted text-foreground font-medium'
-                        : 'hover:bg-muted text-foreground',
-                    )}
-                  >
-                    <span className="truncate">Entire project library</span>
-                    {readerDocScope === 'all' && <Check className="size-3 shrink-0" />}
-                  </button>
+                  <div className="max-h-52 overflow-y-auto flex flex-col gap-0.5">
+                    {readerTabsForPopover.map((tab) => {
+                      const isChecked = selectedReaderPaperIds.includes(tab.id);
+                      const isDisabled = !isChecked && atDocLimit;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          role="checkbox"
+                          aria-checked={isChecked}
+                          disabled={isDisabled}
+                          onClick={() => {
+                            if (isChecked) {
+                              onSelectedReaderPaperIdsChange(
+                                selectedReaderPaperIds.filter((id) => id !== tab.id),
+                              );
+                            } else if (!atDocLimit) {
+                              onSelectedReaderPaperIdsChange([
+                                ...selectedReaderPaperIds,
+                                tab.id,
+                              ]);
+                            }
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-11 text-left transition-colors',
+                            isDisabled
+                              ? 'opacity-45 cursor-not-allowed text-muted-foreground'
+                              : isChecked
+                                ? 'bg-muted text-foreground font-medium cursor-pointer'
+                                : 'hover:bg-muted text-foreground cursor-pointer',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'size-3.5 rounded-[3px] border flex items-center justify-center shrink-0 transition-colors',
+                              isChecked
+                                ? 'bg-foreground border-foreground text-background'
+                                : 'border-border bg-background',
+                            )}
+                          >
+                            {isChecked && (
+                              <Check className="size-2.5" strokeWidth={2.5} />
+                            )}
+                          </span>
+                          <span className="truncate flex-1">{tab.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {atDocLimit && (
+                    <p className="px-2 pt-1 text-[10px] text-muted-foreground">
+                      Limit: {MAX_READER_SCOPE_DOCS}
+                    </p>
+                  )}
                   {onOpenPicker && (
                     <>
                       <div className="my-1 border-t border-border/60" />
@@ -420,7 +514,7 @@ export function Composer({
                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-11 text-left cursor-pointer hover:bg-muted text-foreground transition-colors"
                       >
                         <Plus className="size-3.5 shrink-0" />
-                        <span>Select from Library...</span>
+                        <span>Add from Library</span>
                       </button>
                     </>
                   )}
@@ -738,7 +832,7 @@ export function Composer({
       </div>
 
       {showDisclaimer && (
-        <p className="text-10 text-muted-foreground text-center mt-1.5 select-none">
+        <p className="text-11 text-muted-foreground text-center mt-1.5 select-none">
           Flux AI can make mistakes, please double-check responses.
         </p>
       )}

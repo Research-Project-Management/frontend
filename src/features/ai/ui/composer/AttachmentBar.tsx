@@ -72,18 +72,18 @@ export function AttachmentBar({
       })}
 
       {sources.map((src) => {
-        const meta = getFileCategoryMeta(src.name, src.sourceType, src.size);
+        const meta = getFileCategoryMeta(src);
         const isLibrary =
           src.sourceType === 'library' || src.sourceType === 'paper';
-        const IconComp = isLibrary ? BookOpen : meta.icon;
+        const IconComp = isLibrary && meta.typeLabel === 'Paper' ? BookOpen : meta.icon;
         const readiness = getLibraryReadiness(src);
         const readinessLabel =
           readiness === 'indexed'
-            ? 'Full-text indexed'
+            ? 'Ready to read'
             : readiness === 'pdf'
-              ? 'PDF (auto-index on ask)'
+              ? 'PDF attached'
               : readiness === 'metadata'
-                ? 'Metadata & notes'
+                ? 'Summary & notes'
                 : meta.typeLabel;
         const canToggle = Boolean(onToggleSource) && !compact;
 

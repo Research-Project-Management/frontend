@@ -2,7 +2,7 @@ import {
   type ThreadEngine,
   type ThreadEngineInit,
 } from './engine.port';
-import { createVercelThreadEngine } from './vercel';
+import { createFluxThreadEngine } from './flux-engine';
 
 const DEFAULT_MAX_THREADS = 12;
 
@@ -29,7 +29,7 @@ export class ThreadPool {
       return existing;
     }
 
-    const engine = createVercelThreadEngine({
+    const engine = createFluxThreadEngine({
       ...init,
       threadKey,
     });

@@ -45,9 +45,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
   if (webSources.length === 0 && groupedRag.length === 0) return null;
 
   return (
-    <div className="mt-2.5 pt-2 border-t border-border space-y-1.5">
-      <p className="text-11 font-semibold text-muted-foreground/80">Sources</p>
-      <div className="flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-wrap gap-1.5">
         {webSources.map((s, i) => (
           <a
             key={s.id || s.url || i}
@@ -134,7 +132,6 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
             </span>
           );
         })}
-      </div>
     </div>
   );
 }

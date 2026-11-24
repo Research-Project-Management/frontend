@@ -6,6 +6,7 @@ import {
   Check,
   Copy,
   GitCompare,
+  Loader2,
   Replace,
 } from 'lucide-react';
 import type { Components } from 'react-markdown';
@@ -19,8 +20,6 @@ import type {
   MessageAttachment,
   MessagePart,
 } from '../../types/message';
-import { getAgentMeta, shouldShowAgentBadge } from '../registry/agents';
-import { getPartRenderer } from '../registry/parts';
 import {
   buildCitationLookup,
   parseCitationHref,
@@ -33,59 +32,44 @@ import { ThinkingPart, parseThinkingContent } from './ThinkingPart';
 import { ToolTraceGroup, type TracePartData } from './ToolPart';
 import { WidgetsPart } from './WidgetsPart';
 
-export function AgentBadge({ agent }: { agent: string }) {
-  if (!shouldShowAgentBadge(agent)) return null;
-  const info = getAgentMeta(agent);
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 h-5 text-11 font-medium px-1.5 rounded-sm',
-        info.badgeClass,
-      )}
-    >
-      {info.label}
-    </span>
-  );
-}
-
 function AttachmentChips({
   attachments,
 }: {
   attachments: MessageAttachment[];
 }) {
   return (
-    <div className="flex flex-wrap justify-end gap-1.5">
+    <div className="flex flex-wrap justify-end gap-2 my-1">
       {attachments.map((att, idx) => {
-        const meta = getFileCategoryMeta(att.name, att.sourceType, att.size);
+        const meta = getFileCategoryMeta(att);
         const Icon = meta.icon;
+
         return (
           <div
             key={att.id || idx}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-panel/70 border border-border max-w-xs select-none"
+            className="group relative flex items-center gap-2.5 px-3 py-2 rounded-md bg-card border border-border shadow-xs hover:bg-muted/40 transition-colors max-w-[340px] select-none"
           >
-            <div
-              className={cn(
-                'size-6 rounded-md flex items-center justify-center shrink-0 border',
-                meta.badgeClassName,
-              )}
-            >
-              <Icon className="size-3" aria-hidden="true" />
+            <div className="size-8 rounded-md flex items-center justify-center shrink-0 border border-border/60 bg-muted/40">
+              <Icon className={cn('size-4', meta.iconClassName)} aria-hidden="true" />
             </div>
             <div className="min-w-0 flex-1">
               <p
-                className="text-11 font-medium text-foreground truncate"
+                className="text-12 font-medium text-foreground truncate leading-snug"
                 title={att.name}
               >
                 {att.name}
               </p>
-              <div className="flex items-center gap-1 text-11 text-muted-foreground">
-                <span>{meta.typeLabel}</span>
-                {meta.sizeText && (
+              <div className="flex items-center gap-1.5 text-11 text-muted-foreground mt-0.5">
+                <span className="font-medium uppercase tracking-wide">
+                  {meta.typeLabel}
+                </span>
+                {meta.sizeText ? (
                   <>
-                    <span aria-hidden="true">•</span>
-                    <span>{meta.sizeText}</span>
+                    <span aria-hidden="true" className="text-muted-foreground/60">
+                      •
+                    </span>
+                    <span className="tabular-nums">{meta.sizeText}</span>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -325,6 +309,11 @@ export const MessageParts = memo(function MessageParts({
     return components;
   }, [citationLookup, isStreaming, codeActions]);
 
+  const segments = useMemo(
+    () => groupPartsChronologically(effectiveParts),
+    [effectiveParts],
+  );
+
   if (isUser) {
     const hasAttachments = Boolean(
       message.attachments && message.attachments.length > 0,
@@ -363,7 +352,35 @@ export const MessageParts = memo(function MessageParts({
     );
   }
 
-  const segments = groupPartsChronologically(effectiveParts);
+  if (segments.length === 0) {
+    if (!isStreaming) return null;
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          'flex flex-col w-full items-start',
+          compact ? 'gap-1 text-13' : 'gap-1.5 text-14',
+        )}
+      >
+        <div
+          className={cn(
+            compact
+              ? 'relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-muted/50 text-foreground text-13'
+              : 'w-full text-14 leading-[1.625]',
+          )}
+        >
+          <div className="text-11 text-muted-foreground flex items-center gap-1.5">
+            <Loader2
+              className="size-3 animate-spin motion-reduce:animate-none text-ai shrink-0"
+              aria-hidden="true"
+            />
+            <span>Thinking...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -372,12 +389,6 @@ export const MessageParts = memo(function MessageParts({
         compact ? 'gap-1 text-13' : 'gap-1.5 text-14',
       )}
     >
-      {message.agent && shouldShowAgentBadge(message.agent) && (
-        <div>
-          <AgentBadge agent={message.agent} />
-        </div>
-      )}
-
       <div
         className={cn(
           compact
@@ -397,17 +408,6 @@ export const MessageParts = memo(function MessageParts({
           }
 
           const { part } = segment;
-          const CustomRenderer = getPartRenderer(part.type);
-          if (CustomRenderer) {
-            return (
-              <CustomRenderer
-                key={`custom-${idx}`}
-                part={part}
-                compact={compact}
-                onResumeHitl={onResumeHitl}
-              />
-            );
-          }
 
           switch (part.type) {
             case 'reasoning':

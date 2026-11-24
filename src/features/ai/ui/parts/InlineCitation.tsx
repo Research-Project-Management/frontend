@@ -7,6 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
+import { useReaderStore } from '@/features/library/core/store/reader.store';
 import type { SourceItem } from '../../types/message';
 import {
   cleanSourceSnippet,
@@ -28,6 +29,8 @@ export function InlineCitation({
   isMultiDocument,
   isStreaming = false,
 }: InlineCitationProps) {
+  const requestCitationNavigate = useReaderStore((s) => s.requestCitationNavigate);
+
   if (!source) {
     if (!isStreaming) return null;
     return (
@@ -46,6 +49,7 @@ export function InlineCitation({
   });
   const fullTitle = extractSourceDocumentLabel(source);
   const page = extractSourcePage(source);
+  const sourceId = source.id?.trim();
   const cleanedSnippet = source.snippet
     ? cleanSourceSnippet(source.snippet)
     : '';
@@ -87,11 +91,21 @@ export function InlineCitation({
               Open
             </a>
           ) : (
-            page !== undefined && (
+            page !== undefined &&
+            (sourceId ? (
+              <button
+                type="button"
+                onClick={() => requestCitationNavigate(sourceId, page)}
+                aria-label={`Jump to page ${page}`}
+                className="text-[11px] font-medium text-ai hover:underline shrink-0 tabular-nums cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai rounded-xs"
+              >
+                Page {page} →
+              </button>
+            ) : (
               <span className="text-[11px] font-medium text-ai/85 shrink-0 tabular-nums">
                 Page {page}
               </span>
-            )
+            ))
           )}
         </div>
         {cleanedSnippet && (

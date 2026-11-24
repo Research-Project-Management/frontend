@@ -1,5 +1,5 @@
 import {
-  File,
+  BookOpen,
   FileCode,
   FileImage,
   FileSpreadsheet,
@@ -77,55 +77,170 @@ export interface FileCategoryMeta {
   badgeClassName: string;
 }
 
+export interface FileCategoryMetaInput {
+  name: string;
+  sourceType?: string;
+  size?: number;
+  hasPdf?: boolean;
+  type?: string;
+  itemId?: string;
+  fileId?: string;
+}
+
 export function getFileCategoryMeta(
-  name: string,
-  sourceType?: string,
-  size?: number,
+  input: string | MessageAttachment | SourceEntry | FileCategoryMetaInput,
+  sourceTypeArg?: string,
+  sizeArg?: number,
+  extra?: { hasPdf?: boolean; type?: string; itemId?: string; fileId?: string },
 ): FileCategoryMeta {
-  const parts = (name || '').split('.');
-  const ext = (parts.length > 1 ? parts.pop() || '' : '').toLowerCase();
-  const extLabel = ext ? ext.toUpperCase() : 'FILE';
+  const isObj = typeof input === 'object' && input !== null;
+  const name = (isObj ? input.name : input) || '';
+  const sourceType =
+    (isObj ? (input as FileCategoryMetaInput).sourceType : sourceTypeArg) ??
+    sourceTypeArg;
+  const size =
+    (isObj ? (input as FileCategoryMetaInput).size : sizeArg) ?? sizeArg;
+  const hasPdfProp =
+    isObj && 'hasPdf' in (input as unknown as Record<string, unknown>)
+      ? (input as unknown as Record<string, unknown>).hasPdf
+      : extra?.hasPdf;
+  const hasPdf = typeof hasPdfProp === 'boolean' ? hasPdfProp : undefined;
+
+  const rawType = (
+    (isObj ? (input as FileCategoryMetaInput).type : extra?.type) ??
+    extra?.type ??
+    ''
+  ).trim();
+  const hasItemId = Boolean(
+    (isObj
+      ? (input as unknown as Record<string, unknown>).itemId
+      : extra?.itemId) ?? extra?.itemId,
+  );
+
+  const parts = name.split('.');
+  let ext = (parts.length > 1 ? parts.pop() || '' : '').toLowerCase().trim();
+  // If rawType is a short format token (e.g. "pdf", "docx", "tex"), use it when filename lacks extension
+  if (!ext && rawType && rawType.length <= 10 && !rawType.includes(' ')) {
+    ext = rawType.toLowerCase().replace(/^\./, '');
+  }
+
+  const isLibraryOrPaper =
+    sourceType === 'library' ||
+    sourceType === 'paper' ||
+    hasItemId ||
+    rawType === 'paper';
+
   const sizeText = size ? formatBytes(size) : '';
 
-  if (ext === 'pdf') {
+  // 1. PDF Documents (explicit .pdf extension or explicit hasPdf === true)
+  if (ext === 'pdf' || hasPdf === true) {
     return {
       typeLabel: 'PDF',
       sizeText,
       icon: FileText,
-      iconClassName: 'text-destructive',
-      badgeClassName: 'text-destructive bg-destructive/10 border-destructive/20',
+      iconClassName: 'text-red-600 dark:text-red-400',
+      badgeClassName:
+        'text-red-600 bg-red-500/10 border-red-500/20 dark:text-red-400 dark:bg-red-500/15',
     };
   }
-  if (IMAGE_EXTS.has(ext)) {
+
+  // 2. Research Papers / Library items
+  if (isLibraryOrPaper) {
+    // If hasPdf is not explicitly false, treat as PDF paper; if hasPdf === false, treat as metadata-only Paper
+    if (hasPdf !== false && (!ext || ext === 'pdf')) {
+      return {
+        typeLabel: 'PDF',
+        sizeText,
+        icon: FileText,
+        iconClassName: 'text-red-600 dark:text-red-400',
+        badgeClassName:
+          'text-red-600 bg-red-500/10 border-red-500/20 dark:text-red-400 dark:bg-red-500/15',
+      };
+    }
     return {
-      typeLabel: extLabel,
+      typeLabel: 'Paper',
       sizeText,
-      icon: FileImage,
-      iconClassName: 'text-primary',
-      badgeClassName: 'text-primary bg-primary/10 border-primary/20',
+      icon: BookOpen,
+      iconClassName: 'text-sky-600 dark:text-sky-400',
+      badgeClassName:
+        'text-sky-600 bg-sky-500/10 border-sky-500/20 dark:text-sky-400 dark:bg-sky-500/15',
     };
   }
-  if (SHEET_EXTS.has(ext)) {
+
+  // 3. Word Documents
+  if (ext === 'doc' || ext === 'docx') {
     return {
-      typeLabel: 'Spreadsheet',
+      typeLabel: 'DOCX',
       sizeText,
-      icon: FileSpreadsheet,
-      iconClassName: 'text-success',
-      badgeClassName: 'text-success bg-success/10 border-success/20',
+      icon: FileText,
+      iconClassName: 'text-blue-600 dark:text-blue-400',
+      badgeClassName:
+        'text-blue-600 bg-blue-500/10 border-blue-500/20 dark:text-blue-400 dark:bg-blue-500/15',
     };
   }
-  if (CODE_EXTS.has(ext)) {
+
+  // 4. LaTeX / TeX / BibTeX
+  if (ext === 'tex' || ext === 'latex' || ext === 'sty' || ext === 'cls') {
     return {
-      typeLabel: extLabel,
+      typeLabel: 'LaTeX',
       sizeText,
       icon: FileCode,
-      iconClassName: 'text-warning',
-      badgeClassName: 'text-warning bg-warning/10 border-warning/20',
+      iconClassName: 'text-teal-600 dark:text-teal-400',
+      badgeClassName:
+        'text-teal-600 bg-teal-500/10 border-teal-500/20 dark:text-teal-400 dark:bg-teal-500/15',
     };
   }
-  if (sourceType === 'library') {
+  if (ext === 'bib') {
     return {
-      typeLabel: 'Library Paper',
+      typeLabel: 'BibTeX',
+      sizeText,
+      icon: FileText,
+      iconClassName: 'text-teal-600 dark:text-teal-400',
+      badgeClassName:
+        'text-teal-600 bg-teal-500/10 border-teal-500/20 dark:text-teal-400 dark:bg-teal-500/15',
+    };
+  }
+
+  // 5. Spreadsheets / Tables
+  if (SHEET_EXTS.has(ext)) {
+    const sheetLabel =
+      ext === 'csv' ? 'CSV' : ext === 'tsv' ? 'TSV' : 'Excel';
+    return {
+      typeLabel: sheetLabel,
+      sizeText,
+      icon: FileSpreadsheet,
+      iconClassName: 'text-emerald-600 dark:text-emerald-400',
+      badgeClassName:
+        'text-emerald-600 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-400 dark:bg-emerald-500/15',
+    };
+  }
+
+  // 6. Images
+  if (IMAGE_EXTS.has(ext)) {
+    return {
+      typeLabel: ext ? ext.toUpperCase() : 'Image',
+      sizeText,
+      icon: FileImage,
+      iconClassName: 'text-purple-600 dark:text-purple-400',
+      badgeClassName:
+        'text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-400 dark:bg-purple-500/15',
+    };
+  }
+
+  // 7. Markdown & Text
+  if (ext === 'md' || ext === 'markdown') {
+    return {
+      typeLabel: 'Markdown',
+      sizeText,
+      icon: FileText,
+      iconClassName: 'text-indigo-600 dark:text-indigo-400',
+      badgeClassName:
+        'text-indigo-600 bg-indigo-500/10 border-indigo-500/20 dark:text-indigo-400 dark:bg-indigo-500/15',
+    };
+  }
+  if (ext === 'txt') {
+    return {
+      typeLabel: 'TXT',
       sizeText,
       icon: FileText,
       iconClassName: 'text-muted-foreground',
@@ -133,10 +248,44 @@ export function getFileCategoryMeta(
     };
   }
 
+  // 8. Code & Data
+  if (CODE_EXTS.has(ext)) {
+    const codeLabel =
+      ext === 'ts' || ext === 'tsx'
+        ? 'TypeScript'
+        : ext === 'js' || ext === 'jsx'
+          ? 'JavaScript'
+          : ext === 'py'
+            ? 'Python'
+            : ext === 'json'
+              ? 'JSON'
+              : ext.toUpperCase();
+    return {
+      typeLabel: codeLabel,
+      sizeText,
+      icon: FileCode,
+      iconClassName: 'text-amber-600 dark:text-amber-400',
+      badgeClassName:
+        'text-amber-600 bg-amber-500/10 border-amber-500/20 dark:text-amber-400 dark:bg-amber-500/15',
+    };
+  }
+
+  // 9. Known other extension
+  if (ext) {
+    return {
+      typeLabel: ext.toUpperCase(),
+      sizeText,
+      icon: FileText,
+      iconClassName: 'text-muted-foreground',
+      badgeClassName: 'text-muted-foreground bg-muted border-border',
+    };
+  }
+
+  // 10. Fallback with no extension: clean "Document" (never "FILE"!)
   return {
-    typeLabel: extLabel,
+    typeLabel: 'Document',
     sizeText,
-    icon: File,
+    icon: FileText,
     iconClassName: 'text-muted-foreground',
     badgeClassName: 'text-muted-foreground bg-muted border-border',
   };
@@ -194,15 +343,25 @@ export function sourcesToAttachments(
 ): MessageAttachment[] {
   return sources
     .filter((s) => s.enabled)
-    .map((s) => ({
-      id: s.id,
-      name: s.name,
-      size: s.size,
-      type: s.name.split('.').pop() || '',
-      sourceType: s.sourceType,
-      ...(s.itemId ? { itemId: s.itemId } : {}),
-      ...(s.fileId ? { fileId: s.fileId } : {}),
-      ...(s.hasPdf !== undefined ? { hasPdf: s.hasPdf } : {}),
-      ...(s.indexed !== undefined ? { indexed: s.indexed } : {}),
-    }));
+    .map((s) => {
+      const parts = s.name.split('.');
+      const ext = parts.length > 1 ? parts.pop() || '' : '';
+      const fallbackType =
+        s.hasPdf === true ||
+        (s.hasPdf !== false &&
+          (s.sourceType === 'library' || s.sourceType === 'paper'))
+          ? 'pdf'
+          : '';
+      return {
+        id: s.id,
+        name: s.name,
+        size: s.size,
+        type: ext || fallbackType,
+        sourceType: s.sourceType,
+        ...(s.itemId ? { itemId: s.itemId } : {}),
+        ...(s.fileId ? { fileId: s.fileId } : {}),
+        ...(s.hasPdf !== undefined ? { hasPdf: s.hasPdf } : {}),
+        ...(s.indexed !== undefined ? { indexed: s.indexed } : {}),
+      };
+    });
 }

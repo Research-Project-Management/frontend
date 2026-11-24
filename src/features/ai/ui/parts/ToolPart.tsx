@@ -11,11 +11,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import type { MessagePart } from '../../types/message';
 import { getAgentMeta } from '../registry/agents';
-import {
-  getToolMeta,
-  getToolUI,
-  type ToolPartData,
-} from '../registry/tools';
+import { getToolMeta, type ToolPartData } from '../registry/tools';
 
 export type TracePartData =
   | ToolPartData
@@ -45,10 +41,6 @@ function formatToolContext(input?: Record<string, unknown>): string | null {
 
 export function ToolPart({ part }: { part: ToolPartData }) {
   const [open, setOpen] = useState(false);
-  const CustomUI = getToolUI(part.toolName);
-  if (CustomUI) {
-    return <CustomUI part={part} />;
-  }
 
   const meta = getToolMeta(part.toolName);
   const Icon = meta.icon;

@@ -112,24 +112,22 @@ export {
   sourcesToAttachments,
 } from './context/source.port';
 export { useActiveAiSpace, type ActiveAiSpace } from './context/space';
+export {
+  buildTurnPayload,
+  buildWebSearchSites,
+  type BuildTurnPayloadInput,
+} from './context/turn-payload';
 export { useFileUpload } from './context/upload';
 export { useTurnContext, type UseTurnContextOptions } from './context/use-context';
 
-export {
-  getAgentMeta,
-  shouldShowAgentBadge,
-  type AgentMeta,
-} from './ui/registry/agents';
+export { getAgentMeta, type AgentMeta } from './ui/registry/agents';
 export {
   getToolMeta,
-  getToolUI,
-  registerToolUI,
   type ToolCategory,
   type ToolMeta,
   type ToolPartData,
   type ToolUIComponent,
 } from './ui/registry/tools';
-export { getPartRenderer, registerPartRenderer } from './ui/registry/parts';
 
 export {
   buildCitationLookup,
@@ -140,7 +138,6 @@ export { CompanionHero } from './ui/parts/CompanionHero';
 export { HitlApprovalPart } from './ui/parts/HitlApprovalPart';
 export { InlineCitation } from './ui/parts/InlineCitation';
 export {
-  AgentBadge,
   MessageParts,
   type MessageCodeActions,
 } from './ui/parts/MessageParts';

@@ -158,6 +158,8 @@ export type KnownAgentId =
   | 'rag_agent'
   | 'web_search_agent'
   | 'library_agent'
+  | 'editor_agent'
+  | 'project_agent'
   | 'direct';
 
 export type ThreadStatus =

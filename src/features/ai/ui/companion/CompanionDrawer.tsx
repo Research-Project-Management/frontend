@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useShallow } from 'zustand/react/shallow';
 import {
   Tooltip,
   TooltipContent,
@@ -24,17 +25,18 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useActiveAiSpace } from '../../context/space';
-import {
-  getRagDocumentId,
-  sourceEntryToAttachedPayload,
-  type ContextTab,
-  type SourceEntry,
+import type {
+  ContextTab,
+  SourceEntry,
+  SourceType,
 } from '../../context/source.port';
+import { buildTurnPayload } from '../../context/turn-payload';
 import { useTurnContext } from '../../context/use-context';
 import { threadPool } from '../../engine/pool';
 import { useAiCompanionStore } from '../../engine/shell';
 import { useAiThread } from '../../engine/use-thread';
-import { Composer, type ReaderDocScope } from '../composer/Composer';
+import type { HitlDecision } from '../../types/message';
+import { Composer, MAX_READER_SCOPE_DOCS } from '../composer/Composer';
 import { ContextPicker } from '../context/ContextPicker';
 import { CompanionHistory } from './CompanionHistory';
 import { CompanionMessages } from './CompanionMessages';
@@ -81,17 +83,29 @@ function CompanionDrawerInner() {
     setPendingPrompt,
     quotedPassage,
     setQuotedPassage,
-  } = useAiCompanionStore();
+  } = useAiCompanionStore(
+    useShallow((s) => ({
+      setOpen: s.setOpen,
+      width: s.width,
+      setWidth: s.setWidth,
+      isHistoryView: s.isHistoryView,
+      toggleHistoryView: s.toggleHistoryView,
+      setHistoryView: s.setHistoryView,
+      activeChatId: s.activeChatId,
+      setActiveChatId: s.setActiveChatId,
+      pendingPrompt: s.pendingPrompt,
+      setPendingPrompt: s.setPendingPrompt,
+      quotedPassage: s.quotedPassage,
+      setQuotedPassage: s.setQuotedPassage,
+    })),
+  );
 
   const { spaceId: activeSpaceId } = useActiveAiSpace();
-  const [readerDocScope, setReaderDocScope] =
-    useState<ReaderDocScope>('current');
+  const [selectedReaderPaperIds, setSelectedReaderPaperIds] = useState<string[]>(
+    () => (readerPaper?.id ? [readerPaper.id] : []),
+  );
   const [pickerTab, setPickerTab] = useState<ContextTab | null>(null);
   const [promptToFill, setPromptToFill] = useState('');
-
-  useEffect(() => {
-    setReaderDocScope('current');
-  }, [readerPaper?.id]);
 
   const threadKey = activeChatId || 'draft:companion';
   const thread = useAiThread({
@@ -108,12 +122,41 @@ function CompanionDrawerInner() {
   });
 
   const turnCtx = useTurnContext({ spaceId: activeSpaceId });
+  const clearTurnSources = turnCtx.clearSources;
+
+  useEffect(() => {
+    if (!isPaperReader || !readerPaper?.id || thread.messages.length > 0) return;
+    setSelectedReaderPaperIds([readerPaper.id]);
+  }, [isPaperReader, readerPaper?.id, thread.messages.length]);
+
+  useEffect(() => {
+    if (
+      !isPaperReader ||
+      thread.messages.length > 0 ||
+      openReaderPapers.length === 0
+    ) {
+      return;
+    }
+    const openIdSet = new Set(openReaderPapers.map((p) => p.id));
+    setSelectedReaderPaperIds((prev) => {
+      const filtered = prev.filter(
+        (id) => id === readerPaper?.id || openIdSet.has(id),
+      );
+      if (filtered.length > 0) {
+        return filtered.length === prev.length ? prev : filtered;
+      }
+      return readerPaper?.id ? [readerPaper.id] : [];
+    });
+  }, [isPaperReader, openReaderPapers, readerPaper?.id, thread.messages.length]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollContainerRef.current;
+    if (!el || thread.messages.length === 0) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 160;
+    if (nearBottom || !thread.isStreaming) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
   }, [thread.messages, thread.isStreaming]);
 
@@ -124,7 +167,16 @@ function CompanionDrawerInner() {
         spaceId?: string | null;
         webSearchSites?: string[] | null;
         documentIds?: string[] | null;
-        attachedFiles?: Array<{ id: string; name: string; size?: number }>;
+        attachedFiles?: Array<{
+          id: string;
+          name: string;
+          size?: number;
+          type?: string;
+          sourceType?: SourceType;
+          hasPdf?: boolean;
+          itemId?: string;
+          fileId?: string;
+        }>;
       },
     ) => {
       if (thread.isStreaming) return;
@@ -140,7 +192,10 @@ function CompanionDrawerInner() {
             name: f.name,
             size: f.size,
             enabled: true,
-            sourceType: 'upload',
+            sourceType: f.sourceType || 'upload',
+            ...(f.itemId ? { itemId: f.itemId } : {}),
+            ...(f.fileId ? { fileId: f.fileId } : {}),
+            ...(f.hasPdf !== undefined ? { hasPdf: f.hasPdf } : {}),
           });
         }
       } else {
@@ -149,34 +204,24 @@ function CompanionDrawerInner() {
         }
       }
 
+      const explicitTurnSources = [...extraSources];
+
       if (isPaperReader) {
-        if (
-          readerDocScope === 'current' &&
-          readerPaper?.id &&
-          !extraSources.some((f) => f.id === readerPaper.id)
-        ) {
-          extraSources.unshift({
-            id: readerPaper.id,
-            name: readerPaper.title || 'Current Paper',
-            enabled: true,
-            sourceType: 'paper',
-          });
-        } else if (readerDocScope === 'open-tabs') {
-          const tabsToAdd =
-            openReaderPapers.length > 0
-              ? openReaderPapers
-              : readerPaper
-                ? [readerPaper]
-                : [];
-          for (const tab of [...tabsToAdd].reverse()) {
-            if (!extraSources.some((f) => f.id === tab.id)) {
-              extraSources.unshift({
-                id: tab.id,
-                name: tab.title || 'Open Paper',
-                enabled: true,
-                sourceType: 'paper',
-              });
-            }
+        const orderedTabs = selectedReaderPaperIds.map((id) => ({
+          id,
+          title:
+            openReaderPapers.find((p) => p.id === id)?.title ||
+            (readerPaper?.id === id ? readerPaper.title : undefined) ||
+            'Paper',
+        }));
+        for (const tab of [...orderedTabs].reverse()) {
+          if (!extraSources.some((f) => f.id === tab.id)) {
+            extraSources.unshift({
+              id: tab.id,
+              name: tab.title,
+              enabled: true,
+              sourceType: 'paper',
+            });
           }
         }
       } else if (
@@ -191,16 +236,9 @@ function CompanionDrawerInner() {
         });
       }
 
-      const combinedDocIds = Array.from(
-        new Set([
-          ...(overrides?.documentIds ?? []),
-          ...extraSources
-            .map(getRagDocumentId)
-            .filter((id): id is string => Boolean(id)),
-        ]),
-      ).filter(Boolean);
-
-      const attachedSources = extraSources.map(sourceEntryToAttachedPayload);
+      const cappedSources = isPaperReader
+        ? extraSources.slice(0, MAX_READER_SCOPE_DOCS)
+        : extraSources;
 
       let finalMessageText = rawText.trim();
       if (quotedPassage?.text && !overrides) {
@@ -213,43 +251,28 @@ function CompanionDrawerInner() {
           : `${quoteBlock}\n\nExplain this passage, its methodology or context, and why it is important in the paper.`;
       }
 
-      if (!finalMessageText && extraSources.length === 0) return;
+      if (!finalMessageText && cappedSources.length === 0) return;
 
       const usePaperEndpoint =
-        isPaperReader && readerDocScope === 'current' && Boolean(readerPaper?.id);
-
-      const webSites =
-        overrides?.webSearchSites !== undefined
-          ? overrides.webSearchSites
-          : turnCtx.webSearchEnabled
-            ? turnCtx.webSearchSites.length > 0
-              ? turnCtx.webSearchSites
-              : ['*']
-            : undefined;
+        isPaperReader &&
+        cappedSources.length === 1 &&
+        cappedSources[0].id === readerPaper?.id;
 
       if (!overrides) {
         setQuotedPassage(null);
         setPromptToFill('');
       }
 
-      const sendOptions = {
-        mode: (usePaperEndpoint ? 'paper' : 'chat') as 'paper' | 'chat',
+      const sendOptions = buildTurnPayload({
+        mode: usePaperEndpoint ? 'paper' : 'chat',
         spaceId: effectiveSpaceId,
         chatId: activeChatId,
-        documentIds: combinedDocIds.length > 0 ? combinedDocIds : undefined,
-        attachedSources:
-          attachedSources.length > 0 ? attachedSources : undefined,
-        attachments: extraSources.map((s) => ({
-          id: s.id,
-          name: s.name,
-          size: s.size,
-          sourceType: s.sourceType,
-          ...(s.itemId ? { itemId: s.itemId } : {}),
-          ...(s.fileId ? { fileId: s.fileId } : {}),
-          ...(s.hasPdf !== undefined ? { hasPdf: s.hasPdf } : {}),
-          ...(s.indexed !== undefined ? { indexed: s.indexed } : {}),
-        })),
-        webSearchSites: webSites ?? undefined,
+        sources: cappedSources,
+        attachmentSources: explicitTurnSources,
+        extraDocumentIds: overrides?.documentIds,
+        webSearchEnabled: turnCtx.webSearchEnabled,
+        webSearchSites: turnCtx.webSearchSites,
+        webSearchSitesOverride: overrides?.webSearchSites,
         paper:
           usePaperEndpoint && readerPaper
             ? {
@@ -266,10 +289,10 @@ function CompanionDrawerInner() {
                   pageNumber: quotedPassage.pageNumber,
                 }
               : undefined,
-      };
+      });
 
-      if (!overrides) {
-        turnCtx.clearSources();
+      if (!overrides && !isPaperReader) {
+        clearTurnSources();
       }
       await thread.send(finalMessageText, sendOptions);
     },
@@ -277,8 +300,9 @@ function CompanionDrawerInner() {
       thread,
       activeSpaceId,
       turnCtx,
+      clearTurnSources,
       isPaperReader,
-      readerDocScope,
+      selectedReaderPaperIds,
       readerPaper,
       openReaderPapers,
       quotedPassage,
@@ -302,12 +326,67 @@ function CompanionDrawerInner() {
     }
   }, [pendingPrompt, thread.isStreaming, setPendingPrompt, handleSend]);
 
+  const { resume: resumeThread, retry: retryThread } = thread;
+
+  const handleResumeHitl = useCallback(
+    (decisions: HitlDecision[]) => {
+      void resumeThread(decisions, activeSpaceId);
+    },
+    [resumeThread, activeSpaceId],
+  );
+
+  const handleRetry = useCallback(() => {
+    void retryThread();
+  }, [retryThread]);
+
   const startNewChat = useCallback(() => {
     threadPool.get('draft:companion')?.reset();
     setActiveChatId(null);
     setHistoryView(false);
     setPromptToFill('');
-  }, [setActiveChatId, setHistoryView]);
+    clearTurnSources();
+    setSelectedReaderPaperIds(
+      isPaperReader && readerPaper?.id ? [readerPaper.id] : [],
+    );
+  }, [
+    setActiveChatId,
+    setHistoryView,
+    clearTurnSources,
+    isPaperReader,
+    readerPaper?.id,
+  ]);
+
+  const activeTabDriftPaper = useMemo(() => {
+    if (!isPaperReader || !readerPaper?.id || thread.messages.length === 0) {
+      return null;
+    }
+    const isInScope =
+      selectedReaderPaperIds.includes(readerPaper.id) ||
+      turnCtx.sources.some((s) => s.enabled && s.id === readerPaper.id);
+    return isInScope ? null : readerPaper;
+  }, [
+    isPaperReader,
+    readerPaper,
+    thread.messages.length,
+    selectedReaderPaperIds,
+    turnCtx.sources,
+  ]);
+
+  const handleAddDriftPaperToChat = useCallback(() => {
+    if (!readerPaper?.id) return;
+    setSelectedReaderPaperIds((prev) => {
+      if (prev.includes(readerPaper.id)) return prev;
+      const extraCount = turnCtx.sources.filter(
+        (s) => s.enabled && !prev.includes(s.id),
+      ).length;
+      if (prev.length + extraCount >= MAX_READER_SCOPE_DOCS) return prev;
+      return [...prev, readerPaper.id];
+    });
+  }, [readerPaper?.id, turnCtx.sources]);
+
+  const handleNewChatForDriftPaper = useCallback(() => {
+    startNewChat();
+  }, [startNewChat]);
 
   // ── Resize Drag State ──────────────────────────────────────────────────────
   const [isResizing, setIsResizing] = useState(false);
@@ -394,8 +473,12 @@ function CompanionDrawerInner() {
   const currentWidth = Math.min(liveWidth ?? width, maxWidth);
 
   const selectedIdSet = useMemo(
-    () => new Set(turnCtx.sources.map((s) => s.id)),
-    [turnCtx.sources],
+    () =>
+      new Set([
+        ...(isPaperReader ? selectedReaderPaperIds : []),
+        ...turnCtx.sources.map((s) => s.id),
+      ]),
+    [isPaperReader, selectedReaderPaperIds, turnCtx.sources],
   );
 
   return (
@@ -605,10 +688,8 @@ function CompanionDrawerInner() {
                 messagesEndRef={messagesEndRef}
                 scrollContainerRef={scrollContainerRef}
                 onSelectPrompt={setPromptToFill}
-                onResumeHitl={(decisions) =>
-                  void thread.resume(decisions, activeSpaceId)
-                }
-                onRetry={() => void thread.retry()}
+                onResumeHitl={handleResumeHitl}
+                onRetry={handleRetry}
                 isReaderContext={isPaperReader}
               />
 
@@ -637,8 +718,11 @@ function CompanionDrawerInner() {
                 isReaderContext={isPaperReader}
                 readerPaper={isPaperReader ? readerPaper : null}
                 openReaderPapers={isPaperReader ? openReaderPapers : []}
-                readerDocScope={readerDocScope}
-                onReaderDocScopeChange={setReaderDocScope}
+                selectedReaderPaperIds={selectedReaderPaperIds}
+                onSelectedReaderPaperIdsChange={setSelectedReaderPaperIds}
+                activeTabDriftPaper={activeTabDriftPaper}
+                onAddDriftPaperToChat={handleAddDriftPaperToChat}
+                onNewChatForDriftPaper={handleNewChatForDriftPaper}
                 quotedPassage={quotedPassage}
                 onClearQuotedPassage={() => setQuotedPassage(null)}
                 isStreaming={thread.isStreaming}

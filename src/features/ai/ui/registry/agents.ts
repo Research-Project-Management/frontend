@@ -8,7 +8,7 @@ export interface AgentMeta {
 const KNOWN_AGENTS: Record<string, AgentMeta> = {
   rag_agent: {
     id: 'rag_agent',
-    label: 'Knowledge RAG',
+    label: 'Documents',
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Search and synthesize uploaded & library documents',
   },
@@ -50,20 +50,20 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
   },
   project_agent: {
     id: 'project_agent',
-    label: 'Project Agent',
+    label: 'Projects',
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Manage project settings and members',
   },
   workspace_agent: {
     id: 'workspace_agent',
-    label: 'Workspace Agent',
+    label: 'Workspace',
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Workspace search, pages, and stickies',
   },
   // Legacy compatibility labels
   rag: {
     id: 'rag',
-    label: 'Knowledge RAG',
+    label: 'Documents',
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Search and synthesize documents',
   },
@@ -75,7 +75,7 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
   },
   action: {
     id: 'action',
-    label: 'Workspace Agent',
+    label: 'Workspace',
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Execute workspace actions',
   },
@@ -104,11 +104,6 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
     description: 'General assistant',
   },
 };
-
-export function shouldShowAgentBadge(agentId?: string | null): boolean {
-  void agentId;
-  return false;
-}
 
 export function getAgentMeta(agentId: string): AgentMeta {
   const key = (agentId || '').trim();

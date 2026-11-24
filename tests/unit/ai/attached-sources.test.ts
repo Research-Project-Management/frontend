@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fromPartial } from '@total-typescript/shoehorn';
 import {
+  getFileCategoryMeta,
   getLibraryReadiness,
   getRagDocumentId,
   sourceEntryToAttachedPayload,
+  sourcesToAttachments,
 } from '@/features/ai/context/source.port';
 import {
   librarySourceAdapter,
@@ -40,14 +43,14 @@ describe('Attached Sources, ID Separation, Collection Loading & Storage Removal'
   });
 
   it('separates item_id, file_id, and Qdrant source_id across indexed, pdf, and metadata-only papers', () => {
-    const indexedItem = {
+    const indexedItem = fromPartial<Item>({
       id: 'item-indexed',
       title: 'Indexed Attention Paper',
       primaryFile: { fileId: 'file-indexed', size: 2048 },
       metadata: { ragStatus: 'indexed', ragDocId: 'file-indexed' },
-    } as unknown as Item;
+    });
 
-    const pdfOnlyItem = {
+    const pdfOnlyItem = fromPartial<Item>({
       id: 'item-pdf',
       title: 'Unindexed PDF Paper',
       attachments: [
@@ -60,12 +63,12 @@ describe('Attached Sources, ID Separation, Collection Loading & Storage Removal'
           size: 4096,
         },
       ],
-    } as unknown as Item;
+    });
 
-    const metadataItem = {
+    const metadataItem = fromPartial<Item>({
       id: 'item-meta',
       title: 'DOI Metadata Paper',
-    } as unknown as Item;
+    });
 
     const indexedEntry = librarySourceAdapter.toSourceEntry(indexedItem)!;
     const pdfEntry = librarySourceAdapter.toSourceEntry(pdfOnlyItem)!;
@@ -133,21 +136,21 @@ describe('Attached Sources, ID Separation, Collection Loading & Storage Removal'
     const mockGet = vi
       .spyOn(ItemsService, 'getByCollection')
       .mockResolvedValue([
-        {
+        fromPartial<Item>({
           id: 'item-a',
           title: 'Indexed Paper A',
           metadata: { ragStatus: 'indexed', ragDocId: 'file-a' },
           primaryFile: { fileId: 'file-a', size: 100 },
-        },
-        {
+        }),
+        fromPartial<Item>({
           id: 'item-b',
           title: 'Metadata Paper B',
-        },
-        {
+        }),
+        fromPartial<Item>({
           id: 'item-c',
           title: 'Over Cap C',
-        },
-      ] as unknown as Item[]);
+        }),
+      ]);
 
     const entries = await loadCollectionSources('col-1', 'space-1', {
       maxItems: 2,
@@ -232,5 +235,64 @@ describe('Attached Sources, ID Separation, Collection Loading & Storage Removal'
       sourceType: 'storage',
     });
     expect(legacy.sourceType).toBe('upload');
+  });
+
+  describe('getFileCategoryMeta & Format Normalization', () => {
+    it('normalizes research paper titles without extension to PDF when hasPdf is true', () => {
+      const meta = getFileCategoryMeta({
+        id: 'p-1',
+        name: 'Deep Residual Learning for Image Recognition',
+        sourceType: 'paper',
+        hasPdf: true,
+        size: 2500000,
+      });
+
+      expect(meta.typeLabel).toBe('PDF');
+      expect(meta.sizeText).toBe('2.4 MB');
+      expect(meta.iconClassName).toContain('text-red');
+      expect(meta.badgeClassName).toContain('bg-red');
+    });
+
+    it('identifies library paper without explicit extension or pdf as Paper with BookOpen icon', () => {
+      const meta = getFileCategoryMeta({
+        id: 'p-2',
+        name: 'Attention Is All You Need',
+        sourceType: 'library',
+        hasPdf: false,
+      });
+
+      expect(meta.typeLabel).toBe('Paper');
+      expect(meta.iconClassName).toContain('text-sky');
+    });
+
+    it('correctly categorizes standard document extensions (pdf, docx, tex, bib, csv, md)', () => {
+      expect(getFileCategoryMeta('thesis.pdf').typeLabel).toBe('PDF');
+      expect(getFileCategoryMeta('draft.docx').typeLabel).toBe('DOCX');
+      expect(getFileCategoryMeta('main.tex').typeLabel).toBe('LaTeX');
+      expect(getFileCategoryMeta('references.bib').typeLabel).toBe('BibTeX');
+      expect(getFileCategoryMeta('results.csv').typeLabel).toBe('CSV');
+      expect(getFileCategoryMeta('readme.md').typeLabel).toBe('Markdown');
+    });
+
+    it('never defaults to raw uppercase FILE on unknown titles without extension', () => {
+      const meta = getFileCategoryMeta('Untyped Document');
+      expect(meta.typeLabel).toBe('Document');
+      expect(meta.typeLabel).not.toBe('FILE');
+    });
+
+    it('prevents sourcesToAttachments from setting type to full title when filename lacks dot', () => {
+      const attachments = sourcesToAttachments([
+        {
+          id: 'src-1',
+          name: 'Deep Residual Learning for Image Recognition',
+          enabled: true,
+          sourceType: 'paper',
+          hasPdf: true,
+        },
+      ]);
+
+      expect(attachments[0].type).toBe('pdf');
+      expect(attachments[0].type).not.toBe('Deep Residual Learning for Image Recognition');
+    });
   });
 });

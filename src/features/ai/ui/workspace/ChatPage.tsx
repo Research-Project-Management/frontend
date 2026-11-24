@@ -21,13 +21,14 @@ import { cn } from '@/shared/lib/utils';
 import { loadCollectionSources } from '../../context/library';
 import type { ContextTab } from '../../context/source.port';
 import { useActiveAiSpace } from '../../context/space';
+import { buildTurnPayload } from '../../context/turn-payload';
 import { useTurnContext } from '../../context/use-context';
 import { useAiThread } from '../../engine/use-thread';
+import type { HitlDecision } from '../../types/message';
 import { Composer } from '../composer/Composer';
 import { ContextPicker } from '../context/ContextPicker';
-import { AgentBadge, MessageParts } from '../parts/MessageParts';
+import { MessageParts } from '../parts/MessageParts';
 import { RewindMenu } from '../parts/RewindMenu';
-import { shouldShowAgentBadge } from '../registry/agents';
 
 const WORKSPACE_SUGGESTIONS = [
   {
@@ -122,32 +123,33 @@ export function ChatPage() {
       });
   }, [collectionId, effectiveSpaceId, turnCtx]);
 
+  const { resume: resumeThread, retry: retryThread } = thread;
+
+  const handleResumeHitl = useCallback(
+    (decisions: HitlDecision[]) => {
+      void resumeThread(decisions, effectiveSpaceId);
+    },
+    [resumeThread, effectiveSpaceId],
+  );
+
+  const handleRetry = useCallback(() => {
+    void retryThread();
+  }, [retryThread]);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (thread.isStreaming) return;
       const trimmed = text.trim();
       if (!trimmed && turnCtx.attachments.length === 0) return;
 
-      const sendOptions = {
-        mode: 'chat' as const,
+      const sendOptions = buildTurnPayload({
+        mode: 'chat',
         spaceId: effectiveSpaceId,
         chatId: effectiveChatId,
-        documentIds:
-          turnCtx.enabledDocumentIds.length > 0
-            ? turnCtx.enabledDocumentIds
-            : undefined,
-        attachedSources:
-          turnCtx.attachedSources.length > 0
-            ? turnCtx.attachedSources
-            : undefined,
-        attachments:
-          turnCtx.attachments.length > 0 ? turnCtx.attachments : undefined,
-        webSearchSites: turnCtx.webSearchEnabled
-          ? turnCtx.webSearchSites.length > 0
-            ? turnCtx.webSearchSites
-            : ['*']
-          : undefined,
-      };
+        sources: turnCtx.sources,
+        webSearchEnabled: turnCtx.webSearchEnabled,
+        webSearchSites: turnCtx.webSearchSites,
+      });
 
       turnCtx.clearSources();
       await thread.send(trimmed, sendOptions);
@@ -155,17 +157,19 @@ export function ChatPage() {
     [thread, turnCtx, effectiveSpaceId, effectiveChatId],
   );
 
-  // Auto-send ?q= on initial entry
+  // Auto-send ?q= on initial entry (use ref so timer isn't dropped on callback churn)
   const autoSentQRef = useRef<string | null>(null);
+  const sendMessageRef = useRef(sendMessage);
+  sendMessageRef.current = sendMessage;
   useEffect(() => {
     if (initialQ && !effectiveChatId && autoSentQRef.current !== initialQ) {
       autoSentQRef.current = initialQ;
       const timer = setTimeout(() => {
-        void sendMessage(initialQ);
+        void sendMessageRef.current(initialQ);
       }, 250);
       return () => clearTimeout(timer);
     }
-  }, [initialQ, effectiveChatId, sendMessage]);
+  }, [initialQ, effectiveChatId]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -316,20 +320,13 @@ export function ChatPage() {
                   key={msg.id || i}
                   message={msg}
                   isStreaming={isLast && thread.isStreaming && msg.role === 'assistant'}
-                  onResumeHitl={(decisions) =>
-                    void thread.resume(decisions, effectiveSpaceId)
-                  }
+                  onResumeHitl={handleResumeHitl}
                 />
               );
             })}
 
             {isWaitingFirstChunk && (
               <div className="space-y-1.5">
-                {thread.activeAgent && shouldShowAgentBadge(thread.activeAgent) && (
-                  <div>
-                    <AgentBadge agent={thread.activeAgent} />
-                  </div>
-                )}
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-panel/70 border border-border">
                   <Loader2 className="size-3.5 animate-spin text-ai shrink-0" />
                   <span className="text-xs text-muted-foreground">
@@ -351,7 +348,7 @@ export function ChatPage() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => void thread.retry()}
+                  onClick={handleRetry}
                   className="h-7 px-2.5 gap-1 border-destructive/30 text-destructive hover:bg-destructive/15 shrink-0"
                 >
                   <RotateCcw className="size-3" />

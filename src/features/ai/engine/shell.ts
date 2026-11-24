@@ -8,7 +8,16 @@ export interface PendingPromptData {
   spaceId?: string | null;
   projectId?: string | null;
   documentIds?: string[] | null;
-  attachedFiles?: Array<{ id: string; name: string; size?: number }>;
+  attachedFiles?: Array<{
+    id: string;
+    name: string;
+    size?: number;
+    type?: string;
+    sourceType?: 'library' | 'upload' | 'paper';
+    hasPdf?: boolean;
+    itemId?: string;
+    fileId?: string;
+  }>;
   webSearch?: boolean;
   webSearchSites?: string[] | null;
 }

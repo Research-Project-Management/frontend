@@ -106,7 +106,7 @@ const DECO_HEADING_TEXT_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
   paragraph: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.paragraph }),
 };
 
-const DECO_SYNTAX_DIM = Decoration.mark({ class: 'cm-visual-syntax-dim' });
+const DECO_SYNTAX_HIDE = Decoration.replace({});
 const DECO_SYNTAX_ACTIVE = Decoration.mark({ class: 'cm-visual-syntax-active' });
 const DECO_BOLD_TEXT = Decoration.mark({ class: 'cm-visual-bold-text' });
 const DECO_ITALIC_TEXT = Decoration.mark({ class: 'cm-visual-italic-text' });
@@ -307,8 +307,8 @@ class VisualHeadingsPlugin {
           const closeBraceStart = textEnd;
           const closeBraceEnd = matchEnd;
 
-          // Stable syntax decorations for \section{ and } (0px layout shift)
-          const syntaxDeco = isCursorOnLine ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
+          // Collapse \section{ and } when unfocused; reveal syntax when cursor is on the line
+          const syntaxDeco = isCursorOnLine ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_HIDE;
           pending.push({
             from: openCmdStart,
             to: openCmdEnd,
@@ -356,7 +356,7 @@ class VisualHeadingsPlugin {
             });
           }
 
-          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
+          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_HIDE;
           pending.push({
             from: matchStart,
             to: textStart,

@@ -46,7 +46,7 @@ const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
 const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings/ui/SettingsModal'), { ssr: false });
 const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
-const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationPickerModal'), { ssr: false });
+const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
 const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
 const TableWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/table-wizard/TableWizardModal'), { ssr: false });
@@ -341,7 +341,7 @@ export function WorkbenchLayout() {
       )}
 
       {citationPickerOpen && (
-        <CitationPickerModal
+        <CitationModal
           open={citationPickerOpen}
           onOpenChange={(open) => {
             if (!open) {

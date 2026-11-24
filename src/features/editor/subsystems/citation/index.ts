@@ -48,8 +48,9 @@ export {
 // 2. Presentation Layer (Thin Views)
 export { default as CitationTab } from './ui/CitationTab';
 export {
-  default as CitationPickerModal,
-} from './ui/modals/CitationPickerModal';
+  default as CitationModal,
+  CitationPickerModal,
+} from './ui/modals/CitationModal';
 export {
   default as RenameCitationModal,
 } from './ui/modals/RenameCitationModal';

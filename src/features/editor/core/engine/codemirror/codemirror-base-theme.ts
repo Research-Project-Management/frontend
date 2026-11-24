@@ -11,6 +11,8 @@ import { foldGutter } from '@codemirror/language';
 import { latexVisualHeadings } from '@/features/editor/core/engine/extensions/latex-visual-headings';
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
 import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
+import { latexVisualDocumentShell } from '@/features/editor/core/engine/extensions/latex-visual-document-shell';
+import { latexVisualEnvironments } from '@/features/editor/core/engine/extensions/latex-visual-environments';
 
 export const editorBaseTheme = EditorView.theme({
   '&': {
@@ -310,7 +312,7 @@ export const visualModeTheme = EditorView.theme({
     display: 'none !important',
   },
   '.cm-content': {
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif',
+    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif !important',
     backgroundColor: 'var(--background, #ffffff)',
     borderLeft: '1px solid var(--editor-gutter-border, #CFE3FA)',
     borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
@@ -323,14 +325,18 @@ export const visualModeTheme = EditorView.theme({
     paddingRight: '36px',
   },
   '.cm-line': {
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif',
+    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif !important',
   },
 });
 
 export function createVisualModeExtensions(): Extension[] {
   return [
     visualModeTheme,
-    latexVisualHeadings(),
+    [
+      latexVisualDocumentShell(),
+      latexVisualHeadings(),
+      latexVisualEnvironments(),
+    ],
     latexVisualMath(),
     latexVisualCitations(),
   ];

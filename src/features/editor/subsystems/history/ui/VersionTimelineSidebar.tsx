@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import {
@@ -10,9 +10,19 @@ import {
   Clock,
   Loader2,
   User,
+  MoreVertical,
+  Download,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectVersionListItem } from '@/features/editor/domain/types/history.types';
 
@@ -35,6 +45,8 @@ function formatVersionTime(dateStr?: string | null): string {
 export interface VersionTimelineSidebarProps {
   versions: ProjectVersionListItem[];
   isLoadingVersions: boolean;
+  historyMode: 'single' | 'compare';
+  onHistoryModeChange: (mode: 'single' | 'compare') => void;
   filter: 'all' | 'labelled';
   setFilter: (filter: 'all' | 'labelled') => void;
   searchQuery: string;
@@ -45,12 +57,16 @@ export interface VersionTimelineSidebarProps {
   onSelectBaseVersion?: (version: number) => void;
   onAddLabel: (version: number, label: string) => void;
   onDeleteLabel: (labelId: string) => void;
+  onDownloadVersion?: (version: number) => void;
+  onRestoreVersion?: (version: number) => void;
   isAddingLabelLoading?: boolean;
 }
 
 export function VersionTimelineSidebar({
   versions,
   isLoadingVersions,
+  historyMode,
+  onHistoryModeChange,
   filter,
   setFilter,
   searchQuery,
@@ -61,6 +77,8 @@ export function VersionTimelineSidebar({
   onSelectBaseVersion,
   onAddLabel,
   onDeleteLabel,
+  onDownloadVersion,
+  onRestoreVersion,
   isAddingLabelLoading = false,
 }: VersionTimelineSidebarProps) {
   const [labelingVersion, setLabelingVersion] = useState<number | null>(null);
@@ -87,9 +105,36 @@ export function VersionTimelineSidebar({
   }, [versions, filter, searchQuery]);
 
   return (
-    <aside className="w-full md:w-80 lg:w-88 border-b md:border-b-0 md:border-r max-h-48 md:max-h-none flex flex-col bg-muted/15 shrink-0 overflow-hidden">
-      {/* Filter and Search Bar */}
+    <aside className="w-full md:w-80 lg:w-88 border-t md:border-t-0 md:border-l border-border max-h-60 md:max-h-none flex flex-col bg-muted/15 shrink-0 overflow-hidden">
+      {/* Mode, Filter, and Search Bar */}
       <div className="p-3 border-b space-y-2 shrink-0 bg-background/50">
+        <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-muted/40 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => onHistoryModeChange('single')}
+            className={cn(
+              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
+              historyMode === 'single'
+                ? 'bg-background text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Single version
+          </button>
+          <button
+            type="button"
+            onClick={() => onHistoryModeChange('compare')}
+            className={cn(
+              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
+              historyMode === 'compare'
+                ? 'bg-background text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Compare
+          </button>
+        </div>
+
         <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-muted/40 text-xs font-medium">
           <button
             type="button"
@@ -188,9 +233,67 @@ export function VersionTimelineSidebar({
                       </span>
                     )}
                   </div>
-                  <span className="text-[11px] text-muted-foreground shrink-0">
-                    {formatVersionTime(v.createdAt)}
-                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[11px] text-muted-foreground">
+                      {formatVersionTime(v.createdAt)}
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Actions for v${v.version}`}
+                          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        >
+                          <MoreVertical className="size-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-52 text-xs"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLabelingVersion(v.version);
+                            setNewLabelText('');
+                          }}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Tag className="size-3.5 text-muted-foreground" />
+                          <span>Label this version</span>
+                        </DropdownMenuItem>
+                        {onDownloadVersion && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDownloadVersion(v.version);
+                            }}
+                            className="gap-2 cursor-pointer"
+                          >
+                            <Download className="size-3.5 text-muted-foreground" />
+                            <span>Download this version (.zip)</span>
+                          </DropdownMenuItem>
+                        )}
+                        {onRestoreVersion && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRestoreVersion(v.version);
+                              }}
+                              className="gap-2 cursor-pointer"
+                            >
+                              <RotateCcw className="size-3.5 text-muted-foreground" />
+                              <span>Restore project to this version</span>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
 
                 {/* Author Attribution (Overleaf Parity) */}
@@ -278,7 +381,7 @@ export function VersionTimelineSidebar({
                   <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <span>{v.fileCount || 1} files</span>
-                      {onSelectBaseVersion && (
+                      {historyMode === 'compare' && onSelectBaseVersion && (
                         <>
                           <span className="text-border/70">•</span>
                           <button
@@ -293,7 +396,7 @@ export function VersionTimelineSidebar({
                             )}
                             title={`Set Version ${v.version} as the comparison base`}
                           >
-                            {isBase ? 'â— Base' : 'Set as base'}
+                            {isBase ? '● Base' : 'Set as base'}
                           </button>
                         </>
                       )}

@@ -49,10 +49,9 @@ const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compil
 const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
 const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
-const TableWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/table-wizard/TableWizardModal'), { ssr: false });
-const EquationGeneratorModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/EquationGeneratorModal'), { ssr: false });
-const FigureWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/FigureWizardModal'), { ssr: false });
-const SymbolPaletteModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/SymbolPaletteModal'), { ssr: false });
+const TableModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/table/TableModal'), { ssr: false });
+const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/EquationModal'), { ssr: false });
+const FigureModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/FigureModal'), { ssr: false });
 const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal'), { ssr: false });
 const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal'), { ssr: false });
 const QuickOpenModal = dynamic(() => import('@/features/editor/subsystems/navigation/ui/QuickOpenModal'), { ssr: false });
@@ -160,7 +159,6 @@ export function WorkbenchLayout() {
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
   const [equationGeneratorOpen, setEquationGeneratorOpen] = useState(false);
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
-  const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
 
@@ -209,8 +207,6 @@ export function WorkbenchLayout() {
         if (useSettingsStore.getState().aiAssistEnabled) {
           setEquationGeneratorOpen(true);
         }
-      } else if (cmd.dialog === 'symbol-palette') {
-        setSymbolPaletteOpen(true);
       } else if (cmd.dialog === 'template-gallery') {
         useSettingsStore.getState().setIsTemplateModalOpen(true);
       } else if (cmd.dialog === 'keyboard-shortcuts' || cmd.dialog === 'shortcuts') {
@@ -243,9 +239,6 @@ export function WorkbenchLayout() {
       }
       if (!cmd.dialog || cmd.dialog === 'equation-generator') {
         setEquationGeneratorOpen(false);
-      }
-      if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
-        setSymbolPaletteOpen(false);
       }
       if (!cmd.dialog || cmd.dialog === 'template-gallery') {
         useSettingsStore.getState().setIsTemplateModalOpen(false);
@@ -371,7 +364,7 @@ export function WorkbenchLayout() {
       )}
 
       {tableWizardOpen && (
-        <TableWizardModal
+        <TableModal
           open={tableWizardOpen}
           onOpenChange={(open) => {
             setTableWizardOpen(open);
@@ -389,7 +382,7 @@ export function WorkbenchLayout() {
       )}
 
       {equationGeneratorOpen && (
-        <EquationGeneratorModal
+        <EquationModal
           open={equationGeneratorOpen}
           onOpenChange={(open) => {
             setEquationGeneratorOpen(open);
@@ -405,7 +398,7 @@ export function WorkbenchLayout() {
       )}
 
       {figureWizardOpen && (
-        <FigureWizardModal
+        <FigureModal
           open={figureWizardOpen}
           onOpenChange={(open) => {
             setFigureWizardOpen(open);
@@ -416,22 +409,6 @@ export function WorkbenchLayout() {
           parentPageId={rootPageId || currentPageId || ''}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
-            editorCommandBus.dispatch({ type: 'editor:focus' });
-          }}
-        />
-      )}
-
-      {symbolPaletteOpen && (
-        <SymbolPaletteModal
-          open={symbolPaletteOpen}
-          onOpenChange={(open) => {
-            setSymbolPaletteOpen(open);
-            if (!open) {
-              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'symbol-palette' });
-            }
-          }}
-          onInsert={(symbol) => {
-            editorCommandBus.dispatch({ type: 'editor:insert-text', text: symbol });
             editorCommandBus.dispatch({ type: 'editor:focus' });
           }}
         />

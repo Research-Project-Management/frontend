@@ -25,7 +25,6 @@
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { docs, updater, bootstrap } from './pages/docs.client';
 import { compiler, synctex } from './pages/compiler.client';
-import { diagnostics } from './pages/diagnostics.client';
 import { review, comments, suggestions } from './pages/review.client';
 import { history } from './pages/history.client';
 import { exportDocs } from './pages/export.client';
@@ -43,7 +42,6 @@ export * from './pages/types';
 export * from './pages/doc-mapper';
 export * from './pages/docs.client';
 export * from './pages/compiler.client';
-export * from './pages/diagnostics.client';
 export * from './pages/review.client';
 export * from './pages/history.client';
 export * from './pages/export.client';
@@ -71,7 +69,6 @@ export const pagesService = {
   search,
   export: exportDocs,
   structure,
-  diagnostics,
   citations,
   templates,
   filestore,

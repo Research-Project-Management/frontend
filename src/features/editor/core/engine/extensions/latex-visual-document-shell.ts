@@ -24,7 +24,7 @@ import {
   type Line,
   type Text,
 } from '@codemirror/state';
-import { findMatchingBrace } from './latex-visual-headings';
+import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
 export const togglePreambleEffect = StateEffect.define<boolean>();
 
@@ -34,17 +34,6 @@ interface PreambleMetadata {
   title?: string;
   author?: string;
   date?: string;
-}
-
-function cleanLatexTextValue(raw: string): string {
-  return raw
-    .replace(/\\thanks\{[^{}]*\}/g, '')
-    .replace(/\\and\b/g, ', ')
-    .replace(/\\\\/g, ' · ')
-    .replace(/\\[a-zA-Z]+\*?\{([^{}]*)\}/g, '$1')
-    .replace(/[{}]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function extractBalancedMacroValue(text: string, macroName: string): string | undefined {
@@ -59,7 +48,7 @@ function extractBalancedMacroValue(text: string, macroName: string): string | un
     const openBrace = match.index + match[0].length - 1;
     const closeBrace = findMatchingBrace(text, openBrace);
     if (closeBrace !== null) {
-      const value = cleanLatexTextValue(text.slice(openBrace + 1, closeBrace));
+      const value = cleanInlineLatexText(text.slice(openBrace + 1, closeBrace));
       if (value) return value;
     }
   }
@@ -358,41 +347,41 @@ const visualDocumentShellTheme = EditorView.baseTheme({
     padding: '3px 10px',
     fontSize: '11.5px',
     fontWeight: '500',
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, sans-serif',
-    color: 'var(--muted-foreground, #64748b)',
-    backgroundColor: 'var(--muted, #f1f5f9)',
-    border: '1px solid var(--border, #e2e8f0)',
+    fontFamily: 'var(--font-sans)',
+    color: 'var(--muted-foreground)',
+    backgroundColor: 'var(--muted)',
+    border: '1px solid var(--border)',
     borderRadius: '9999px',
     cursor: 'pointer',
     transition: 'background-color 120ms ease, color 120ms ease',
   },
   '.cm-visual-preamble-pill:hover': {
-    color: 'var(--foreground, #0f172a)',
-    backgroundColor: 'var(--accent, #e2e8f0)',
+    color: 'var(--foreground)',
+    backgroundColor: 'var(--accent)',
   },
   '.cm-visual-preamble-chevron': {
     fontSize: '10.5px',
     opacity: '0.8',
     paddingLeft: '4px',
-    borderLeft: '1px solid var(--border, #cbd5e1)',
+    borderLeft: '1px solid var(--border)',
   },
   '.cm-visual-doc-header': {
     marginTop: '14px',
     paddingBottom: '14px',
-    borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, sans-serif',
+    borderBottom: '1px solid var(--border-subtle)',
+    fontFamily: 'var(--font-sans)',
   },
   '.cm-visual-doc-title': {
     fontSize: '1.75rem',
-    fontWeight: '800',
+    fontWeight: '600',
     lineHeight: '1.22',
-    letterSpacing: '-0.025em',
-    color: 'var(--foreground, #0f172a)',
+    letterSpacing: '-0.02em',
+    color: 'var(--foreground)',
   },
   '.cm-visual-doc-meta': {
     marginTop: '6px',
     fontSize: '0.92rem',
-    color: 'var(--muted-foreground, #475569)',
+    color: 'var(--muted-foreground)',
   },
 });
 

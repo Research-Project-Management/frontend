@@ -54,55 +54,6 @@ const KNOWN_AGENTS: Record<string, AgentMeta> = {
     badgeClass: 'bg-ai/10 text-ai',
     description: 'Manage project settings and members',
   },
-  workspace_agent: {
-    id: 'workspace_agent',
-    label: 'Workspace',
-    badgeClass: 'bg-ai/10 text-ai',
-    description: 'Workspace search, pages, and stickies',
-  },
-  // Legacy compatibility labels
-  rag: {
-    id: 'rag',
-    label: 'Documents',
-    badgeClass: 'bg-ai/10 text-ai',
-    description: 'Search and synthesize documents',
-  },
-  web_search: {
-    id: 'web_search',
-    label: 'Web Search',
-    badgeClass: 'bg-ai/15 text-ai',
-    description: 'Search web sources',
-  },
-  action: {
-    id: 'action',
-    label: 'Workspace',
-    badgeClass: 'bg-ai/10 text-ai',
-    description: 'Execute workspace actions',
-  },
-  analyze: {
-    id: 'analyze',
-    label: 'Analysis',
-    badgeClass: 'bg-success/15 text-success',
-    description: 'Analyze research data and papers',
-  },
-  latex: {
-    id: 'latex',
-    label: 'LaTeX',
-    badgeClass: 'bg-warning/15 text-warning',
-    description: 'LaTeX equations and document assistance',
-  },
-  work_item: {
-    id: 'work_item',
-    label: 'Work Items',
-    badgeClass: 'bg-destructive/10 text-destructive',
-    description: 'Plan and inspect work items',
-  },
-  chat: {
-    id: 'chat',
-    label: 'Assistant',
-    badgeClass: 'bg-secondary/80 text-muted-foreground',
-    description: 'General assistant',
-  },
 };
 
 export function getAgentMeta(agentId: string): AgentMeta {

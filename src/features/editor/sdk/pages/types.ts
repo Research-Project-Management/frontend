@@ -83,6 +83,7 @@ export interface AutoFixResultDto {
 export interface BibEntryDto {
   id?: string;
   key: string;
+  sourceFile?: string;
   type: string;
   entryType?: string;
   title?: string;

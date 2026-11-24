@@ -144,6 +144,24 @@ export function useEditorToolbarActions(readOnly: boolean) {
     });
   };
 
+  const handleInsertDisplayMath = () => {
+    if (readOnly) return;
+    if (editorMode === 'visual') {
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
+      return;
+    }
+    editorCommandBus.dispatch({
+      type: 'editor:insert-text',
+      text: '\\[\n  \n\\]\n',
+    });
+    editorCommandBus.dispatch({ type: 'editor:focus' });
+  };
+
+  const handleOpenEquationModal = () => {
+    if (readOnly) return;
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'equation-generator' });
+  };
+
   const handleInsertSymbol = () => {
     if (readOnly) return;
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'symbol-palette' });
@@ -219,7 +237,7 @@ export function useEditorToolbarActions(readOnly: boolean) {
     return getActiveEditorEngine()?.getSelectedText?.() || '';
   }, []);
 
-  const handleInsertEnvironment = (env: 'itemize' | 'enumerate' | 'quote' | 'code') => {
+  const handleInsertEnvironment = (env: 'itemize' | 'enumerate' | 'quote' | 'code' | 'equation') => {
     if (readOnly) return;
 
     if (editorMode === 'visual') {
@@ -228,6 +246,7 @@ export function useEditorToolbarActions(readOnly: boolean) {
         enumerate: 'orderedList',
         quote: 'quote',
         code: 'codeBlock',
+        equation: 'insertMath',
       };
       const cmd = visualMap[env];
       if (cmd) {
@@ -280,6 +299,8 @@ export function useEditorToolbarActions(readOnly: boolean) {
     handleSelectStyle,
     handleInlineFormat,
     handleInsertMath,
+    handleInsertDisplayMath,
+    handleOpenEquationModal,
     handleInsertSymbol,
     handleInsertTable,
     handleInsertFigure,

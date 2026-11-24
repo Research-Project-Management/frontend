@@ -43,6 +43,11 @@ const DocumentConflictDialog = dynamic(
   { ssr: false }
 );
 
+const SymbolPalette = dynamic(
+  () => import('@/features/editor/subsystems/insert/ui/SymbolPalette'),
+  { ssr: false },
+);
+
 import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
 import {
   useWorkspaceStore,
@@ -185,6 +190,24 @@ export function EditorArea() {
 
   // Surface remote-vs-local conflicts with visual inspection & merge dialog
   const [activeConflict, setActiveConflict] = React.useState<DocumentConflict | null>(null);
+  const [symbolPaletteOpen, setSymbolPaletteOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const unsubOpen = editorCommandBus.subscribe('dialog:open', (cmd) => {
+      if (cmd.dialog === 'symbol-palette') {
+        setSymbolPaletteOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
+      }
+    });
+    const unsubClose = editorCommandBus.subscribe('dialog:close', (cmd) => {
+      if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
+        setSymbolPaletteOpen(false);
+      }
+    });
+    return () => {
+      unsubOpen();
+      unsubClose();
+    };
+  }, []);
 
   React.useEffect(() => {
     return sessionCoordinator.onConflict((conflict) => {
@@ -424,6 +447,18 @@ export function EditorArea() {
           />
         )}
       </div>
+
+      {/* ── Bottom-Docked Symbol Palette (Overleaf Parity) ────────────────── */}
+      {symbolPaletteOpen && (
+        <SymbolPalette
+          open={symbolPaletteOpen}
+          onClose={() => setSymbolPaletteOpen(false)}
+          onInsert={(symbol) => {
+            editorCommandBus.dispatch({ type: 'editor:insert-text', text: symbol });
+            editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
+        />
+      )}
     </div>
   );
 }

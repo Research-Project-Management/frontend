@@ -24,8 +24,10 @@ import {
   Link2,
   BookOpen,
   List,
+  ListOrdered,
   Search,
   Bookmark,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -42,9 +44,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useContainerWidth } from './useContainerWidth';
 import { cn } from '@/shared/lib/utils';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { STYLE_OPTIONS, useEditorToolbarActions } from './useEditorToolbarActions';
 import { EditorToolbarOverflowMenu, OmegaIcon } from './EditorToolbarOverflowMenu';
-import { InsertTablePopover } from '@/features/editor/subsystems/authoring-wizards/ui/table-wizard/InsertTablePopover';
+import { TablePopover } from '@/features/editor/subsystems/insert/ui/table/TablePopover';
 
 export interface EditorToolbarProps {
   className?: string;
@@ -61,6 +64,7 @@ const iconButtonClass =
 export function EditorToolbar({ className, readOnly = false }: EditorToolbarProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const actions = useEditorToolbarActions(readOnly);
+  const aiEnabled = useSettingsStore((s) => s.aiAssistEnabled);
   const [linkOpen, setLinkOpen] = React.useState(false);
   const [linkUrl, setLinkUrl] = React.useState('');
   const [linkText, setLinkText] = React.useState('');
@@ -186,16 +190,43 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
 
       {/* ── 4. Insert Elements: Math & Symbol ── */}
       {showMath && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={actions.handleInsertMath} className={iconButtonClass} aria-label="Math formula">
-              <Sigma className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-            <span>Math</span>
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenu>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={readOnly} className={iconButtonClass} aria-label="Math">
+                  <Sigma className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              <span>Math</span>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="start" className="w-52 text-xs">
+            <DropdownMenuItem onClick={actions.handleInsertMath} className="flex items-center justify-between gap-2 cursor-pointer">
+              <span>Inline math</span>
+              <span className="font-mono text-10 text-muted-foreground">$ ... $</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={actions.handleInsertDisplayMath} className="flex items-center justify-between gap-2 cursor-pointer">
+              <span>Display math</span>
+              <span className="font-mono text-10 text-muted-foreground">\[ ... \]</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.handleInsertEnvironment('equation')} className="flex items-center justify-between gap-2 cursor-pointer">
+              <span>Equation</span>
+              <span className="font-mono text-10 text-muted-foreground">equation</span>
+            </DropdownMenuItem>
+            {aiEnabled && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={actions.handleOpenEquationModal} className="flex items-center gap-2 cursor-pointer">
+                  <Sparkles className="size-3.5 text-muted-foreground shrink-0" />
+                  <span>Create with AI</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {showSymbol && (
@@ -336,20 +367,32 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
       )}
 
       {showTable && (
-        <InsertTablePopover disabled={readOnly} triggerClassName={iconButtonClass} />
+        <TablePopover disabled={readOnly} triggerClassName={iconButtonClass} />
       )}
 
       {showLists && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('itemize')} className={iconButtonClass} aria-label="Bulleted list">
-              <List className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-            <span>List</span>
-          </TooltipContent>
-        </Tooltip>
+        <>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('itemize')} className={iconButtonClass} aria-label="Bulleted list">
+                <List className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              <span>Bulleted list</span>
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => actions.handleInsertEnvironment('enumerate')} className={iconButtonClass} aria-label="Numbered list">
+                <ListOrdered className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              <span>Numbered list</span>
+            </TooltipContent>
+          </Tooltip>
+        </>
       )}
 
       {/* ── 6. Overflow "More actions" Dropdown ── */}

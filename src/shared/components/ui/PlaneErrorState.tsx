@@ -261,6 +261,7 @@ export interface PlaneErrorStateProps {
   action?: React.ReactNode;
   className?: string;
   isFullPage?: boolean;
+  isCompact?: boolean;
 }
 
 /**
@@ -277,6 +278,7 @@ export function PlaneErrorState({
   action,
   className,
   isFullPage = false,
+  isCompact = false,
 }: PlaneErrorStateProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -323,7 +325,8 @@ export function PlaneErrorState({
     <div
       role="alert"
       className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-transparent',
+        'flex-1 w-full h-full flex flex-col items-center justify-center text-center select-none animate-in fade-in-50 duration-200 bg-transparent',
+        isCompact ? 'min-h-[180px] p-4' : 'min-h-[440px] p-8',
         isFullPage && 'min-h-screen',
         className
       )}
@@ -331,8 +334,13 @@ export function PlaneErrorState({
       <style dangerouslySetInnerHTML={{ __html: illustrationStyles }} />
 
       {/* 3D Isometric Multi-Layer Error Illustration */}
-      <div className="plane-error-illustration mb-6 flex items-center justify-center">
-        <ErrorVerticalStackIllustration />
+      <div
+        className={cn(
+          'plane-error-illustration flex items-center justify-center',
+          isCompact ? 'mb-3' : 'mb-6',
+        )}
+      >
+        <ErrorVerticalStackIllustration className={cn(isCompact && 'w-24 h-28')} />
       </div>
 
       {/* Title (h2 ensures valid heading hierarchy after page h1) */}

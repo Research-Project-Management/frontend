@@ -252,7 +252,7 @@ export function mapStoredMessagesToFlux(
         ? msg.attachments
         : role === 'user' && Array.isArray(msg.sources) && msg.sources.length > 0
           ? msg.sources.map((s, sIdx) => ({
-              id: s.id || `legacy-att-${idx}-${sIdx}`,
+              id: s.id || `att-${idx}-${sIdx}`,
               name: s.title || s.source || 'Attachment',
               sourceType:
                 s.sourceType === 'library' || s.sourceType === 'paper'

@@ -36,7 +36,7 @@ import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { filestore } from '@/features/editor/sdk/pages/filestore.client';
 import { fetchAuthorized, resolveFileUrl } from '@/shared/lib/file-client';
 import { findBeginDocumentLine } from './latex-visual-document-shell';
-import { findMatchingBrace } from './latex-visual-headings';
+import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
 const END_DOC_RE = /^\s*\\end\{document\}\s*(?:%.*)?$/;
 const BEGIN_FLOAT_RE = /^\s*\\begin\{(figure\*?|table\*?|tabular\*?)\}(.*)$/;
@@ -204,17 +204,6 @@ function stripLatexLineComments(text: string): string {
   return text.replace(/(^|[^\\])%.*$/gm, '$1');
 }
 
-function cleanVisualText(raw: string): string {
-  return raw
-    .replace(/\\label\{[^{}]*\}/g, '')
-    .replace(/\\(?:textbf|textit|emph|underline|texttt)\{([^{}]*)\}/g, '$1')
-    .replace(/\\ref\{([^{}]*)\}/g, '$1')
-    .replace(/\\&/g, '&')
-    .replace(/\\%/g, '%')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 function extractBalancedCommand(text: string, prefixPattern: RegExp): string | undefined {
   const re = new RegExp(prefixPattern.source, 'g');
   const match = re.exec(text);
@@ -251,7 +240,7 @@ function parseFigureMetadata(rawBlock: string): FigureMetadata {
     cleaned,
     /\\caption\*?(?:\s*\[[^\]]*\])?\s*\{/,
   );
-  const caption = rawCaption ? cleanVisualText(rawCaption) : undefined;
+  const caption = rawCaption ? cleanInlineLatexText(rawCaption) : undefined;
   const label = extractBalancedCommand(cleaned, /\\label\s*\{/);
 
   return { images, caption, label };
@@ -385,7 +374,30 @@ interface FloatCardShellOptions {
   readonly badgeText: string;
   readonly metaText?: string;
   readonly label?: string;
+  readonly wizardButtonLabel?: string;
+  readonly wizardButtonTitle?: string;
   readonly onWizardClick?: () => void;
+}
+
+function selectBlockAndOpenDialog(
+  view: EditorView,
+  blockFrom: number,
+  blockTo: number,
+  dialog: 'table-wizard' | 'figure-wizard',
+  payload?: { initialTab?: string; initialLatex?: string },
+): void {
+  const docLen = view.state.doc.length;
+  const safeFrom = Math.max(0, Math.min(blockFrom, docLen));
+  const safeTo = Math.max(safeFrom, Math.min(blockTo, docLen));
+  view.dispatch({
+    selection: { anchor: safeFrom, head: safeTo },
+    scrollIntoView: true,
+  });
+  editorCommandBus.dispatch({
+    type: 'dialog:open',
+    dialog,
+    ...(payload ? { payload } : {}),
+  });
 }
 
 function createFloatCardShell(opts: FloatCardShellOptions): {
@@ -431,9 +443,9 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
   if (opts.onWizardClick) {
     const wizardBtn = document.createElement('button');
     wizardBtn.type = 'button';
-    wizardBtn.className = 'cm-visual-float-edit-btn cm-visual-float-wizard-btn';
-    wizardBtn.textContent = 'Edit Table';
-    wizardBtn.title = 'Open interactive Table Wizard for this table';
+    wizardBtn.className = 'cm-visual-float-wizard-btn';
+    wizardBtn.textContent = opts.wizardButtonLabel ?? 'Edit Table';
+    wizardBtn.title = opts.wizardButtonTitle ?? 'Open interactive Wizard for this block';
     wizardBtn.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -468,6 +480,7 @@ class FigureCardWidget extends WidgetType {
 
   constructor(
     readonly blockFrom: number,
+    readonly blockTo: number,
     readonly meta: FigureMetadata,
   ) {
     super();
@@ -478,6 +491,7 @@ class FigureCardWidget extends WidgetType {
     return (
       other instanceof FigureCardWidget &&
       other.blockFrom === this.blockFrom &&
+      other.blockTo === this.blockTo &&
       other.rawKey === this.rawKey
     );
   }
@@ -493,6 +507,11 @@ class FigureCardWidget extends WidgetType {
           ? `${this.meta.images.length} images`
           : undefined,
       label: this.meta.label,
+      wizardButtonLabel: 'Edit Figure',
+      wizardButtonTitle: 'Open Figure Wizard to replace or adjust figure',
+      onWizardClick: () => {
+        selectBlockAndOpenDialog(view, this.blockFrom, this.blockTo, 'figure-wizard');
+      },
     });
 
     const preview = document.createElement('div');
@@ -619,7 +638,7 @@ class TableCardWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const totalRows = getTotalGridRows(this.grid);
     const captionText = this.grid.caption
-      ? cleanVisualText(this.grid.caption)
+      ? cleanInlineLatexText(this.grid.caption)
       : '';
 
     const { card, body } = createFloatCardShell({
@@ -629,21 +648,12 @@ class TableCardWidget extends WidgetType {
       badgeText: 'Table',
       metaText: `${totalRows} × ${this.grid.cols}`,
       label: this.grid.label || undefined,
+      wizardButtonLabel: 'Edit Table',
+      wizardButtonTitle: 'Open interactive Table Wizard for this table',
       onWizardClick: () => {
-        const docLen = view.state.doc.length;
-        const safeFrom = Math.max(0, Math.min(this.blockFrom, docLen));
-        const safeTo = Math.max(safeFrom, Math.min(this.blockTo, docLen));
-        view.dispatch({
-          selection: { anchor: safeFrom, head: safeTo },
-          scrollIntoView: true,
-        });
-        editorCommandBus.dispatch({
-          type: 'dialog:open',
-          dialog: 'table-wizard',
-          payload: {
-            initialTab: 'table',
-            initialLatex: this.rawBlock,
-          },
+        selectBlockAndOpenDialog(view, this.blockFrom, this.blockTo, 'table-wizard', {
+          initialTab: 'table',
+          initialLatex: this.rawBlock,
         });
       },
     });
@@ -727,7 +737,7 @@ function computeFloatDecorations(state: EditorState): DecorationSet {
         block.from,
         block.to,
         Decoration.replace({
-          widget: new FigureCardWidget(block.from, meta),
+          widget: new FigureCardWidget(block.from, block.to, meta),
           block: true,
         }),
       );
@@ -769,12 +779,11 @@ export const visualFloatsField = StateField.define<DecorationSet>({
 const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-float-card': {
     margin: '12px 0',
-    border: '1px solid var(--border, #e2e8f0)',
-    borderRadius: '10px',
-    backgroundColor: 'var(--card, #ffffff)',
+    border: '1px solid var(--border)',
+    borderRadius: '12px',
+    backgroundColor: 'var(--card)',
     overflow: 'hidden',
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, sans-serif',
-    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+    fontFamily: 'var(--font-sans)',
     userSelect: 'none',
   },
   '.cm-visual-float-header': {
@@ -783,8 +792,8 @@ const visualFloatsTheme = EditorView.baseTheme({
     justifyContent: 'space-between',
     gap: '8px',
     padding: '7px 12px',
-    backgroundColor: 'var(--muted, #f8fafc)',
-    borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
+    backgroundColor: 'var(--muted)',
+    borderBottom: '1px solid var(--border-subtle)',
   },
   '.cm-visual-float-header-left': {
     display: 'flex',
@@ -800,20 +809,20 @@ const visualFloatsTheme = EditorView.baseTheme({
     borderRadius: '9999px',
     fontSize: '11px',
     fontWeight: '600',
-    backgroundColor: 'var(--accent, #e2e8f0)',
-    color: 'var(--foreground, #0f172a)',
+    backgroundColor: 'var(--accent)',
+    color: 'var(--foreground)',
   },
   '.cm-visual-float-meta': {
     fontSize: '11.5px',
-    color: 'var(--muted-foreground, #64748b)',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-float-label': {
     fontSize: '11px',
     padding: '1px 6px',
     borderRadius: '4px',
-    backgroundColor: 'var(--background, #ffffff)',
-    border: '1px solid var(--border, #e2e8f0)',
-    color: 'var(--muted-foreground, #475569)',
+    backgroundColor: 'var(--background)',
+    border: '1px solid var(--border)',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-float-actions': {
     display: 'flex',
@@ -821,20 +830,20 @@ const visualFloatsTheme = EditorView.baseTheme({
     gap: '6px',
     flexShrink: '0',
   },
-  '.cm-visual-float-edit-btn': {
+  '.cm-visual-float-edit-btn, .cm-visual-float-wizard-btn': {
     fontSize: '11px',
     fontWeight: '500',
     padding: '2px 8px',
     borderRadius: '6px',
-    border: '1px solid var(--border, #cbd5e1)',
-    backgroundColor: 'var(--background, #ffffff)',
-    color: 'var(--muted-foreground, #475569)',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--background)',
+    color: 'var(--muted-foreground)',
     cursor: 'pointer',
     flexShrink: '0',
   },
-  '.cm-visual-float-edit-btn:hover': {
-    color: 'var(--foreground, #0f172a)',
-    borderColor: 'var(--primary, #2563eb)',
+  '.cm-visual-float-edit-btn:hover, .cm-visual-float-wizard-btn:hover': {
+    color: 'var(--foreground)',
+    borderColor: 'var(--primary)',
   },
   '.cm-visual-float-body': {
     padding: '12px 14px',
@@ -848,8 +857,7 @@ const visualFloatsTheme = EditorView.baseTheme({
     gap: '8px',
     padding: '12px',
     borderRadius: '8px',
-    border: '1px dashed var(--border, #cbd5e1)',
-    backgroundColor: 'var(--muted, #f8fafc)',
+    backgroundColor: 'var(--muted)',
   },
   '.cm-visual-figure-item': {
     display: 'flex',
@@ -863,9 +871,9 @@ const visualFloatsTheme = EditorView.baseTheme({
     width: '34px',
     height: '34px',
     borderRadius: '8px',
-    backgroundColor: 'var(--background, #ffffff)',
-    border: '1px solid var(--border, #e2e8f0)',
-    color: 'var(--primary, #2563eb)',
+    backgroundColor: 'var(--background)',
+    border: '1px solid var(--border)',
+    color: 'var(--primary)',
     flexShrink: '0',
   },
   '.cm-visual-figure-info': {
@@ -877,13 +885,13 @@ const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-figure-path': {
     fontSize: '13px',
     fontWeight: '600',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
     wordBreak: 'break-all',
   },
   '.cm-visual-figure-options': {
     fontSize: '11.5px',
-    fontFamily: 'var(--font-mono), ui-monospace, monospace',
-    color: 'var(--muted-foreground, #64748b)',
+    fontFamily: 'var(--font-mono)',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-figure-thumb-wrap': {
     display: 'flex',
@@ -892,8 +900,8 @@ const visualFloatsTheme = EditorView.baseTheme({
     marginTop: '6px',
     padding: '8px',
     borderRadius: '6px',
-    backgroundColor: 'var(--background, #ffffff)',
-    border: '1px solid var(--border-subtle, #e2e8f0)',
+    backgroundColor: 'var(--background)',
+    border: '1px solid var(--border-subtle)',
   },
   '.cm-visual-figure-thumb': {
     maxHeight: '220px',
@@ -904,7 +912,7 @@ const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-float-caption': {
     fontSize: '13px',
     lineHeight: '1.45',
-    color: 'var(--muted-foreground, #475569)',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-table-scroll': {
     overflowX: 'auto',
@@ -913,7 +921,8 @@ const visualFloatsTheme = EditorView.baseTheme({
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: '13px',
-    color: 'var(--foreground, #0f172a)',
+    fontVariantNumeric: 'tabular-nums',
+    color: 'var(--foreground)',
   },
   '.cm-visual-table th, .cm-visual-table td': {
     padding: '6px 10px',
@@ -922,20 +931,20 @@ const visualFloatsTheme = EditorView.baseTheme({
     fontWeight: '600',
   },
   '.cm-visual-table-booktabs thead th': {
-    borderTop: '2px solid var(--foreground, #1e293b)',
-    borderBottom: '1px solid var(--foreground, #475569)',
+    borderTop: '2px solid var(--foreground)',
+    borderBottom: '1px solid var(--muted-foreground)',
   },
   '.cm-visual-table-booktabs tbody tr:last-child td': {
-    borderBottom: '2px solid var(--foreground, #1e293b)',
+    borderBottom: '2px solid var(--foreground)',
   },
   '.cm-visual-table-bordered th, .cm-visual-table-bordered td': {
-    border: '1px solid var(--border, #cbd5e1)',
+    border: '1px solid var(--border)',
   },
   '.cm-visual-table-minimal th': {
-    borderBottom: '1px solid var(--border, #cbd5e1)',
+    borderBottom: '1px solid var(--border)',
   },
   '.cm-visual-table-minimal td': {
-    borderBottom: '1px solid var(--border-subtle, #f1f5f9)',
+    borderBottom: '1px solid var(--border-subtle)',
   },
 });
 

@@ -71,6 +71,25 @@ export function findMatchingBrace(text: string, openBraceIndex: number): number 
   return null;
 }
 
+/**
+ * Normalizes simple inline LaTeX markup (formatting commands, \thanks, \label,
+ * escaped punctuation) into clean display text for Visual Mode cards and tooltips.
+ */
+export function cleanInlineLatexText(raw: string): string {
+  return raw
+    .replace(/\\thanks\{[^{}]*\}/g, '')
+    .replace(/\\label\{[^{}]*\}/g, '')
+    .replace(/\\and\b/g, ', ')
+    .replace(/\\\\/g, ' · ')
+    .replace(
+      /\\(?:textbf|textit|emph|underline|texttt|textrm|textsf|textsc|url|ref)\*?\{([^{}]*)\}/g,
+      '$1',
+    )
+    .replace(/\\([%&_$#])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const HEADING_PREFIX_REGEX = /\\(title|chapter|section|subsection|subsubsection|paragraph)\*?\{/g;
 const INLINE_CMD_PREFIX_REGEX = /\\(textbf|textit|emph|underline|texttt)\{/g;
 

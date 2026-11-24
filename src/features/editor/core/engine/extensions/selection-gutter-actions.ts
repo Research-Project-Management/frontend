@@ -109,7 +109,7 @@ function createAiLogoIcon(): HTMLImageElement {
 const selectionGutterActionsTheme = EditorView.baseTheme({
   '.cm-selection-gutter-pill': {
     position: 'absolute',
-    zIndex: '250',
+    zIndex: '30',
     display: 'none',
     flexDirection: 'row',
     alignItems: 'center',

@@ -44,7 +44,7 @@ function HelpMenu({ value = 'help' }: { value?: string } = {}) {
         >
           <Keyboard className="size-3.5 text-foreground/80 shrink-0" />
           <span className="whitespace-nowrap flex-1">Keyboard shortcuts</span>
-          <kbd className="text-[10px] font-mono text-muted-foreground">Ctrl /</kbd>
+          <kbd className="text-11 font-mono text-muted-foreground">Ctrl /</kbd>
         </MenubarItem>
 
         <MenubarSeparator />

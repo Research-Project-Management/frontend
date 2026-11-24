@@ -18,7 +18,7 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
-import { findMatchingBrace } from './latex-visual-headings';
+import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
 function focusChipOffset(view: EditorView, chip: HTMLElement, offsetInRaw: number): void {
   const currentPos = view.posAtDOM(chip);
@@ -28,13 +28,6 @@ function focusChipOffset(view: EditorView, chip: HTMLElement, offsetInRaw: numbe
     scrollIntoView: true,
   });
   view.focus();
-}
-
-function cleanInlineMarkup(raw: string): string {
-  return raw
-    .replace(/\\(?:textbf|textit|emph|underline|texttt|url)\{([^{}]*)\}/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 // ── Badge Widgets ─────────────────────────────────────────────────────────────
@@ -71,14 +64,8 @@ class CitationBadgeWidget extends WidgetType {
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const currentPos = view.posAtDOM(chip);
       const bracePos = this.rawText.indexOf('{');
-      const targetPos = bracePos !== -1 ? Math.max(0, currentPos + bracePos + 1) : Math.max(0, currentPos);
-      view.dispatch({
-        selection: { anchor: targetPos, head: targetPos },
-        scrollIntoView: true,
-      });
-      view.focus();
+      focusChipOffset(view, chip, bracePos !== -1 ? bracePos + 1 : 0);
     });
 
     return chip;
@@ -112,28 +99,17 @@ class ReferenceBadgeWidget extends WidgetType {
     chip.className = 'cm-visual-ref-chip';
     chip.title = `Cross-reference: ${this.label} (click to edit)`;
 
-    const icon = document.createElement('span');
-    icon.className = 'cm-visual-ref-icon';
-    icon.textContent = this.isEq ? '🔢' : '🔗';
-
     const text = document.createElement('span');
     text.className = 'cm-visual-ref-label';
     text.textContent = this.isEq ? `(${this.label})` : `[${this.label}]`;
 
-    chip.appendChild(icon);
     chip.appendChild(text);
 
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const currentPos = view.posAtDOM(chip);
       const bracePos = this.rawText.indexOf('{');
-      const targetPos = bracePos !== -1 ? Math.max(0, currentPos + bracePos + 1) : Math.max(0, currentPos);
-      view.dispatch({
-        selection: { anchor: targetPos, head: targetPos },
-        scrollIntoView: true,
-      });
-      view.focus();
+      focusChipOffset(view, chip, bracePos !== -1 ? bracePos + 1 : 0);
     });
 
     return chip;
@@ -260,7 +236,7 @@ const visualCitationsTheme = EditorView.baseTheme({
   },
   '.cm-visual-citation-label': {
     fontWeight: '500',
-    fontFamily: 'monospace',
+    fontFamily: 'var(--font-mono)',
   },
   '.cm-visual-ref-chip': {
     display: 'inline-flex',
@@ -282,15 +258,13 @@ const visualCitationsTheme = EditorView.baseTheme({
       borderColor: 'color-mix(in srgb, var(--success) 40%, transparent)',
     },
   },
-  '.cm-visual-ref-icon': {
-    fontSize: '0.85em',
-  },
   '.cm-visual-ref-label': {
     fontWeight: '500',
+    fontFamily: 'var(--font-mono)',
   },
   '.cm-visual-link-chip': {
     display: 'inline',
-    color: 'var(--primary, #2563eb)',
+    color: 'var(--primary)',
     textDecoration: 'underline',
     textUnderlineOffset: '2px',
     cursor: 'pointer',
@@ -298,7 +272,7 @@ const visualCitationsTheme = EditorView.baseTheme({
     padding: '0 2px',
     transition: 'background-color 0.15s ease',
     '&:hover': {
-      backgroundColor: 'color-mix(in srgb, var(--primary, #2563eb) 10%, transparent)',
+      backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
     },
   },
   '.cm-visual-footnote-chip': {
@@ -312,12 +286,12 @@ const visualCitationsTheme = EditorView.baseTheme({
     lineHeight: '1.35',
     verticalAlign: 'super',
     cursor: 'pointer',
-    backgroundColor: 'color-mix(in srgb, var(--warning, #d97706) 14%, transparent)',
-    color: 'var(--warning-foreground, #b45309)',
-    border: '1px solid color-mix(in srgb, var(--warning, #d97706) 30%, transparent)',
+    backgroundColor: 'color-mix(in srgb, var(--warning) 14%, transparent)',
+    color: 'var(--warning)',
+    border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
     transition: 'all 0.15s ease',
     '&:hover': {
-      backgroundColor: 'color-mix(in srgb, var(--warning, #d97706) 24%, transparent)',
+      backgroundColor: 'color-mix(in srgb, var(--warning) 24%, transparent)',
     },
   },
 });
@@ -436,7 +410,7 @@ class VisualCitationsPlugin {
 
         const url = text.slice(openUrlBrace + 1, closeUrlBrace).trim();
         const rawLabel = text.slice(labelOpenBrace + 1, closeLabelBrace);
-        const label = cleanInlineMarkup(rawLabel) || url;
+        const label = cleanInlineLatexText(rawLabel) || url;
         const rawText = text.slice(hrefMatch.index, closeLabelBrace + 1);
         const editOffsetInRaw = labelOpenBrace + 1 - hrefMatch.index;
 
@@ -491,7 +465,7 @@ class VisualCitationsPlugin {
         }
 
         const rawBody = text.slice(openBrace + 1, closeBrace);
-        const cleaned = cleanInlineMarkup(rawBody);
+        const cleaned = cleanInlineLatexText(rawBody);
         const preview =
           cleaned.length > 120 ? `${cleaned.slice(0, 117)}...` : cleaned;
         const rawText = text.slice(fnMatch.index, closeBrace + 1);

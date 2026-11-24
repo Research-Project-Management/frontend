@@ -289,12 +289,15 @@ describe('Overleaf-style Visual Mode (Document Shell, Headings, Environments)', 
       expect(parent.querySelector('.cm-content')?.textContent).toContain('Visual editor');
 
       const contentText = parent.querySelector('.cm-content')?.textContent ?? '';
-      expect(contentText).toContain('50\\% done');
+      expect(contentText).toContain('50% done');
+      expect(contentText).not.toContain('50\\% done');
       expect(contentText).not.toContain('% hidden note');
 
-      // Moving cursor onto the line reveals the inline comment losslessly
+      // Moving cursor onto the line reveals the backslash and inline comment losslessly
       view.dispatch({ selection: { anchor: doc.indexOf('50\\% done') } });
-      expect(parent.querySelector('.cm-content')?.textContent).toContain('% hidden note');
+      const activeText = parent.querySelector('.cm-content')?.textContent ?? '';
+      expect(activeText).toContain('50\\% done');
+      expect(activeText).toContain('% hidden note');
       expect(view.state.doc.toString()).toBe(doc);
     } finally {
       view.destroy();
@@ -352,11 +355,52 @@ describe('Overleaf-style Visual Mode (Document Shell, Headings, Environments)', 
       expect(parent.querySelector('.cm-content')?.textContent).toContain('\\footnote{');
 
       // Clicking "Edit Table" dispatches table-wizard dialog with selected raw table LaTeX
-      const wizardBtn = parent.querySelector('.cm-visual-float-wizard-btn');
+      const wizardBtn = parent.querySelector('.cm-visual-table-card .cm-visual-float-wizard-btn');
       wizardBtn?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       expect(openedCommands.length).toBe(1);
       expect(openedCommands[0]?.dialog).toBe('table-wizard');
       expect(openedCommands[0]?.initialLatex).toContain('\\begin{tabular}{cc}');
+      expect(view.state.doc.toString()).toBe(doc);
+    } finally {
+      unsub();
+      view.destroy();
+      parent.remove();
+    }
+  });
+
+  it('dispatches figure-wizard when clicking Edit Figure on FigureCardWidget', () => {
+    const doc = [
+      '\\begin{document}',
+      'Paragraph above figure.',
+      '\\begin{figure}[htbp]',
+      '  \\includegraphics[width=0.8\\linewidth]{figures/plot.png}',
+      '  \\caption{Sample plot}',
+      '\\end{figure}',
+      '\\end{document}',
+    ].join('\n');
+
+    const parent = document.createElement('div');
+    document.body.appendChild(parent);
+
+    const view = new EditorView({
+      state: EditorState.create({
+        doc,
+        selection: { anchor: doc.indexOf('Paragraph above figure.') },
+        extensions: createVisualModeExtensions(),
+      }),
+      parent,
+    });
+
+    const openedDialogs: string[] = [];
+    const unsub = editorCommandBus.subscribe('dialog:open', (cmd) => {
+      openedDialogs.push(cmd.dialog);
+    });
+
+    try {
+      const editFigBtn = parent.querySelector('.cm-visual-figure-card .cm-visual-float-wizard-btn');
+      expect(editFigBtn?.textContent).toBe('Edit Figure');
+      editFigBtn?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      expect(openedDialogs).toEqual(['figure-wizard']);
       expect(view.state.doc.toString()).toBe(doc);
     } finally {
       unsub();

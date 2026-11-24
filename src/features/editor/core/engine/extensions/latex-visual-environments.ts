@@ -52,16 +52,18 @@ const END_ENV_RE = /^\s*\\end\{(quote|itemize|enumerate|description)\}\s*(?:%.*)
 const ITEM_LINE_RE = /^(\s*\\item(?:\[([^\]]*)\])?(?:\s+|$))/;
 const FULL_COMMENT_LINE_RE = /^\s*%.*$/;
 
+function countPrecedingBackslashes(text: string, idx: number): number {
+  let count = 0;
+  for (let j = idx - 1; j >= 0 && text[j] === '\\'; j--) {
+    count++;
+  }
+  return count;
+}
+
 function findInlineCommentStart(text: string): number {
   for (let i = 0; i < text.length; i++) {
-    if (text[i] === '%') {
-      let backslashes = 0;
-      for (let j = i - 1; j >= 0 && text[j] === '\\'; j--) {
-        backslashes++;
-      }
-      if (backslashes % 2 === 0) {
-        return i;
-      }
+    if (text[i] === '%' && countPrecedingBackslashes(text, i) % 2 === 0) {
+      return i;
     }
   }
   return -1;
@@ -252,17 +254,30 @@ class VisualEnvironmentsPlugin {
         }
       }
 
-      if (
-        isVisible &&
-        !isCursorOnLine &&
-        inlineCommentIdx > 0 &&
-        line.from + inlineCommentIdx >= itemCmdEnd
-      ) {
-        pending.push({
-          from: line.from + inlineCommentIdx,
-          to: line.to,
-          deco: DECO_SYNTAX_HIDE,
-        });
+      if (isVisible && !isCursorOnLine) {
+        const prefixEnd = inlineCommentIdx > 0 ? inlineCommentIdx : text.length;
+        const scanStart = Math.max(0, itemCmdEnd - line.from);
+        for (let i = scanStart; i < prefixEnd; i++) {
+          const ch = text[i];
+          if (
+            (ch === '%' || ch === '&' || ch === '_' || ch === '$' || ch === '#') &&
+            countPrecedingBackslashes(text, i) % 2 === 1
+          ) {
+            pending.push({
+              from: line.from + i - 1,
+              to: line.from + i,
+              deco: DECO_SYNTAX_HIDE,
+            });
+          }
+        }
+
+        if (inlineCommentIdx > 0 && line.from + inlineCommentIdx >= itemCmdEnd) {
+          pending.push({
+            from: line.from + inlineCommentIdx,
+            to: line.to,
+            deco: DECO_SYNTAX_HIDE,
+          });
+        }
       }
     }
 
@@ -284,12 +299,12 @@ const DECO_HIDDEN_INLINE_SAFE = DECO_SYNTAX_HIDE;
 
 const visualEnvironmentsTheme = EditorView.baseTheme({
   '.cm-visual-quote-line': {
-    borderLeft: '3px solid var(--border, #cbd5e1)',
+    borderLeft: '1px solid var(--border)',
     paddingLeft: '16px !important',
     marginLeft: '4px',
-    color: 'var(--muted-foreground, #475569)',
+    color: 'var(--muted-foreground)',
     fontStyle: 'italic',
-    backgroundColor: 'color-mix(in oklch, var(--muted, #f1f5f9) 45%, transparent)',
+    backgroundColor: 'color-mix(in oklch, var(--muted) 40%, transparent)',
   },
   '.cm-visual-list-line': {
     paddingLeft: '24px !important',
@@ -307,14 +322,14 @@ const visualEnvironmentsTheme = EditorView.baseTheme({
     display: 'inline-block',
     minWidth: '1.1em',
     fontWeight: '600',
-    color: 'var(--primary, #2563eb)',
+    color: 'var(--primary)',
     userSelect: 'none',
     marginRight: '4px',
   },
   '.cm-visual-list-term': {
     display: 'inline-block',
     fontWeight: '600',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
     marginRight: '6px',
   },
 });

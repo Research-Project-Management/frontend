@@ -227,6 +227,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             ) : isLibraryError ? (
               <div className="py-6 px-2">
                 <PlaneErrorState
+                  isCompact
                   title="Unable to load citations"
                   description="An issue occurred while loading references from your library."
                   error={new Error('Failed to load workspace references')}

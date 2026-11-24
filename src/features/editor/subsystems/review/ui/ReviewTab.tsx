@@ -124,6 +124,7 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
       {isCommentsError || isSuggestionsError ? (
         <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center">
           <PlaneErrorState
+            isCompact
             title="Unable to load reviews"
             description="An issue occurred while loading comments and suggestions."
             error={commentsError || suggestionsError || new Error('Review data load failed')}

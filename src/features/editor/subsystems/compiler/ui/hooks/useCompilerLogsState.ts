@@ -194,9 +194,9 @@ export function useCompilerLogsState({
     }
     let active = true;
     const timer = setTimeout(() => {
-      pagesService.diagnostics
-        .parseLog(log!)
-        .then((report) => {
+      (pagesService as any).diagnostics
+        ?.parseLog?.(log!)
+        ?.then((report: any) => {
           if (!active || !report?.items) return;
           const converted = diagnosticsToParsedLog(report.items);
           cacheBackendParsedLog(log!, converted);

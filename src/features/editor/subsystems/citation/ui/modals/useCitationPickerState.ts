@@ -278,24 +278,23 @@ export function useCitationPickerState({
     const timer = setTimeout(async () => {
       setIsSearchingServer(true);
       try {
-        const results = await pagesService.citations.search(
+        const res = await pagesService.citations.list(
           effectiveProjectId,
           search.trim(),
           25,
         );
-        if (active && Array.isArray(results)) {
-          const mapped: BibEntry[] = results.map((r: BibEntryDto) => ({
+        if (active && Array.isArray(res?.items)) {
+          const mapped: BibEntry[] = res.items.map((r: BibEntryDto) => ({
             key: r.key,
             type: r.type || 'article',
             title: cleanBibtexTitle(r.title),
-            authors: parseBibtexAuthors(r.author),
-            author: r.author,
+            authors: Array.isArray(r.authors) ? r.authors : parseBibtexAuthors(r.author),
+            author: Array.isArray(r.authors) ? r.authors.join(' and ') : r.author,
             year: r.year,
             journal: r.journal,
             doi: r.doi,
-            raw: r.rawBibtex,
             source: 'server',
-            sourceFile: 'server',
+            sourceFile: r.sourceFile || 'references.bib',
           }));
           setServerItems((prev) => {
             const merged = new Map<string, BibEntry>();
@@ -521,11 +520,12 @@ export function useCitationPickerState({
 
       try {
         const res = await pagesService.citations.upsertEntries(effectiveProjectId, {
-          entry: (matchedLibItem ?? entry) as unknown as Record<string, unknown>,
+          entries: [(matchedLibItem ?? entry) as unknown as Record<string, unknown>],
           targetBibFile: preferredBib,
         });
 
-        if (res.syncedCount > 0 && res.formattedBibtex) {
+        if (res.entries.length > 0) {
+          const formattedBibtex = formatBibEntryToBibtex(entry);
           const targetDocId = res.docId || res.filePath || preferredBib;
           const existingCached = res.docId ? lruDocumentCache.get(res.docId) : undefined;
           const alreadyPresent = existingCached?.content?.includes(`{${entry.key},`);
@@ -533,8 +533,8 @@ export function useCitationPickerState({
             alreadyPresent && existingCached?.content
               ? existingCached.content
               : existingCached?.content
-                ? `${existingCached.content.trim()}\n\n${res.formattedBibtex}\n`
-                : `${res.formattedBibtex}\n`;
+                ? `${existingCached.content.trim()}\n\n${formattedBibtex}\n`
+                : `${formattedBibtex}\n`;
           if (res.docId && !alreadyPresent) {
             lruDocumentCache.updateContent(res.docId, updatedContent, false);
           }

@@ -159,9 +159,9 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
 
   const toneClasses =
     tone === 'error'
-      ? 'border-destructive/30 bg-destructive/8 text-destructive'
+      ? 'border-destructive/25 bg-destructive/10 text-destructive'
       : tone === 'warning'
-        ? 'border-amber-500/35 bg-amber-500/8 text-amber-700 dark:text-amber-300'
+        ? 'border-warning/25 bg-warning/10 text-warning'
         : 'border-border bg-muted/40 text-foreground';
 
   return (

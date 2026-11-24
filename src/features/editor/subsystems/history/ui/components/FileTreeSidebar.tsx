@@ -4,30 +4,30 @@ import React from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
-export interface HistoryFileTreeItem {
+export interface FileTreeItem {
   path: string;
   status?: 'added' | 'modified' | 'deleted' | 'renamed' | 'unchanged';
   additions?: number;
   deletions?: number;
 }
 
-export interface HistoryFileTreeSidebarProps {
+export interface FileTreeSidebarProps {
   mode: 'single' | 'compare';
-  files: HistoryFileTreeItem[];
+  files: FileTreeItem[];
   activeFilePath: string | null;
   onSelectFile: (path: string) => void;
   isLoading?: boolean;
   versionLabel?: string;
 }
 
-export function HistoryFileTreeSidebar({
+export function FileTreeSidebar({
   mode,
   files,
   activeFilePath,
   onSelectFile,
   isLoading = false,
   versionLabel,
-}: HistoryFileTreeSidebarProps) {
+}: FileTreeSidebarProps) {
   return (
     <aside
       aria-label="Snapshot files"

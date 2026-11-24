@@ -85,7 +85,7 @@ export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalPro
                 </div>
 
                 {isActive && (
-                  <span className="text-10 font-mono px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary shrink-0">
+                  <span className="text-11 font-mono px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary shrink-0">
                     Active
                   </span>
                 )}

@@ -58,20 +58,20 @@ export function useCitationPickerActions() {
       setIsResolving(true);
       try {
         const res = await pagesService.citations.resolve(projectId, trimmed);
-        if (res?.entry?.key) {
-          toast.success(`Resolved BibTeX for ${res.entry.key}`);
+        const resolved = res?.entries?.[0];
+        if (resolved?.key) {
+          toast.success(`Resolved BibTeX for ${resolved.key}`);
           const newEntry: BibEntry = {
-            key: res.entry.key,
-            type: res.entry.type || 'article',
-            title: cleanBibtexTitle(res.entry.title),
-            authors: parseBibtexAuthors(res.entry.author),
-            author: res.entry.author,
-            year: res.entry.year,
-            journal: res.entry.journal,
-            doi: res.entry.doi,
-            raw: res.entry.rawBibtex,
+            key: resolved.key,
+            type: resolved.type || 'article',
+            title: cleanBibtexTitle(resolved.title),
+            authors: Array.isArray(resolved.authors) ? resolved.authors : parseBibtexAuthors(resolved.author),
+            author: Array.isArray(resolved.authors) ? resolved.authors.join(' and ') : resolved.author,
+            year: resolved.year,
+            journal: resolved.journal,
+            doi: resolved.doi,
             source: 'server',
-            sourceFile: 'server',
+            sourceFile: resolved.sourceFile || res.filePath || 'references.bib',
           };
           return newEntry;
         } else {
@@ -96,14 +96,14 @@ export function useCitationPickerActions() {
       try {
         const res = await pagesService.citations.syncLibrary(projectId, {
           collectionId: collectionId ?? '',
-          targetFilename,
+          targetBibFile: targetFilename,
         });
         if (res?.conflicts && res.conflicts.length > 0) {
           toast.warning(
-            `Synced ${res.syncedCount} references (${res.conflicts.length} conflicting citekey(s) skipped: ${res.conflicts.slice(0, 3).join(', ')})`,
+            `Synced ${res.entries.length} references (${res.conflicts.length} conflicting citekey(s) skipped: ${res.conflicts.slice(0, 3).join(', ')})`,
           );
         } else if (res) {
-          toast.success(`Synced ${res.syncedCount} references to ${res.filePath}`);
+          toast.success(`Synced ${res.entries.length} references to ${res.filePath}`);
         }
         return res;
       } catch (err: unknown) {

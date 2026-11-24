@@ -1,10 +1,10 @@
-﻿'use client';
+'use client';
 
 /**
- * SideBySideDiffViewer.tsx
+ * SplitDiffView.tsx
  *
  * Synchronized split column diff viewer rendering base and target revisions side-by-side.
- * Location: `features/editor/subsystems/history/ui/SideBySideDiffViewer.tsx`
+ * Location: `features/editor/subsystems/history/ui/SplitDiffView.tsx`
  */
 
 import React from 'react';
@@ -15,7 +15,7 @@ import type {
   DiffHunk,
   DiffLine,
 } from '@/features/editor/domain/types/history.types';
-import { DiffHunkHeader } from './UnifiedDiffViewer';
+import { DiffHunkHeader } from './UnifiedDiffView';
 
 export interface AlignedSplitRow {
   oldLine: DiffLine | null;
@@ -118,17 +118,17 @@ function alignHunkForSplitView(hunk: DiffHunk): AlignedSplitRow[] {
   return rows;
 }
 
-export interface SideBySideDiffViewerProps {
+export interface SplitDiffViewProps {
   fileDiff: ProjectFileDiff;
   baseVersion?: number;
   targetVersion?: number;
 }
 
-export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
+export const SplitDiffView = React.memo(function SplitDiffView({
   fileDiff,
   baseVersion = 1,
   targetVersion = 2,
-}: SideBySideDiffViewerProps) {
+}: SplitDiffViewProps) {
   if (!fileDiff.hunks || fileDiff.hunks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-sm">

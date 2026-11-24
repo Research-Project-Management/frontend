@@ -386,6 +386,7 @@ export function FileTreeContainer({
       {isFilesError ? (
         <div className="py-6 px-2">
           <PlaneErrorState
+            isCompact
             title="Unable to load files"
             description="An issue occurred while loading project files."
             error={filesError || new Error('Failed to load project files')}

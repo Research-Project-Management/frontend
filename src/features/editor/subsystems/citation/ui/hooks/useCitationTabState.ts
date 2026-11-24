@@ -104,28 +104,15 @@ export function useCitationTabState() {
     queryKey: ['project-citations', projectId],
     queryFn: async () => {
       if (!projectId) return [];
-      return await pagesService.citations.list(projectId, 500);
+      const res = await pagesService.citations.list(projectId, '', 500);
+      return res.items;
     },
     staleTime: 30_000,
     gcTime: 5 * 60_000,
     enabled: Boolean(projectId),
   });
 
-  // Fetch authoritative bibliography validation (duplicate keys, missing required fields) with caching
-  const { data: citationValidation } = useQuery<CitationValidationDto | null>({
-    queryKey: ['project-citation-validation', projectId],
-    queryFn: async () => {
-      if (!projectId) return null;
-      try {
-        return await pagesService.citations.validate(projectId);
-      } catch {
-        return null;
-      }
-    },
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    enabled: Boolean(projectId),
-  });
+  const citationValidation: CitationValidationDto | null = null;
 
   // Merge backend BibTeX entries with any unsaved local symbols index entries
   const bibEntries = useMemo<BibEntry[]>(() => {

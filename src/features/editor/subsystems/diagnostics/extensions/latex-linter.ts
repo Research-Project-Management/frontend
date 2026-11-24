@@ -85,22 +85,8 @@ class LatexLinterClient {
 
     const requestPromise = (async (): Promise<Diagnostic[]> => {
       try {
-        const report = await pagesService.diagnostics.lint(
-          text,
-          options.filePath || 'main.tex',
-          {
-            projectId: options.projectId,
-            docId: options.docId,
-            knownBibKeys: options.knownBibKeys,
-            knownLabels: options.knownLabels,
-          },
-        );
-
-        // If superseded by a newer lint request while in flight, still return mapped result for caller
         void requestId;
-
-        const backendDiagnostics = mapBackendDiagnosticsToOffsets(text, report?.items ?? []);
-        const combined = [...backendDiagnostics, ...retractedDiagnostics] as Diagnostic[];
+        const combined = [...retractedDiagnostics] as Diagnostic[];
         this.lastLintedHash = inputHash;
         this.lastDiagnostics = combined;
         if (this.resultCache.size >= 32) {
@@ -111,8 +97,6 @@ class LatexLinterClient {
         }
         this.resultCache.set(inputHash, combined);
         return combined;
-      } catch {
-        return retractedDiagnostics as Diagnostic[];
       } finally {
         this.inFlightByHash.delete(inputHash);
       }

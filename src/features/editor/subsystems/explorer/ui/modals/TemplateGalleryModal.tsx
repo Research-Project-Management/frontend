@@ -369,7 +369,7 @@ export default function TemplateGalleryModal() {
                             {tpl.name}
                           </span>
                         </div>
-                        <Badge variant="outline" className="text-10 px-1 py-0 font-mono shrink-0 rounded-sm">
+                        <Badge variant="outline" className="text-11 px-1 py-0 font-mono shrink-0 rounded-sm">
                           {tpl.badge}
                         </Badge>
                       </div>
@@ -390,7 +390,7 @@ export default function TemplateGalleryModal() {
                 {/* Template Header & Switcher */}
                 <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20">
                   <div className="flex items-center gap-2 min-w-0">
-                    <Badge className="bg-primary text-primary-foreground text-10 font-semibold rounded-sm">
+                    <Badge className="bg-primary text-primary-foreground text-11 font-semibold rounded-sm">
                       {selectedTemplate.publisher}
                     </Badge>
                     <span className="text-xs font-semibold text-foreground truncate">

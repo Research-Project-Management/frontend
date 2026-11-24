@@ -49,7 +49,6 @@ export {
 export { default as CitationTab } from './ui/CitationTab';
 export {
   default as CitationModal,
-  CitationPickerModal,
 } from './ui/modals/CitationModal';
 export {
   default as RenameCitationModal,

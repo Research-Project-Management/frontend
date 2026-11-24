@@ -3,8 +3,6 @@
 import React, { useState } from 'react';
 import {
   Tag,
-  Check,
-  X,
   Clock,
   Loader2,
   User,
@@ -13,7 +11,6 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +20,7 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectVersionListItem } from '@/features/editor/domain/types/history.types';
+import { VersionLabels } from './VersionLabels';
 
 function formatVersionTime(dateStr?: string | null): string {
   if (!dateStr) return 'Just now';
@@ -40,7 +38,7 @@ function formatVersionTime(dateStr?: string | null): string {
   }
 }
 
-export interface VersionTimelineSidebarProps {
+export interface TimelineSidebarProps {
   versions: ProjectVersionListItem[];
   isLoadingVersions: boolean;
   historyMode: 'single' | 'compare';
@@ -58,7 +56,7 @@ export interface VersionTimelineSidebarProps {
   isAddingLabelLoading?: boolean;
 }
 
-export function VersionTimelineSidebar({
+export function TimelineSidebar({
   versions,
   isLoadingVersions,
   historyMode,
@@ -74,9 +72,8 @@ export function VersionTimelineSidebar({
   onDownloadVersion,
   onRestoreVersion,
   isAddingLabelLoading = false,
-}: VersionTimelineSidebarProps) {
+}: TimelineSidebarProps) {
   const [labelingVersion, setLabelingVersion] = useState<number | null>(null);
-  const [newLabelText, setNewLabelText] = useState('');
 
   const filteredVersions = React.useMemo(() => {
     if (filter === 'labelled') {
@@ -197,7 +194,6 @@ export function VersionTimelineSidebar({
                         onClick={(e) => {
                           e.stopPropagation();
                           setLabelingVersion(v.version);
-                          setNewLabelText('');
                         }}
                         className="gap-2 cursor-pointer"
                       >
@@ -243,75 +239,18 @@ export function VersionTimelineSidebar({
                   </div>
                 )}
 
-                {/* Labels Chips */}
-                {v.labels && v.labels.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {v.labels.map((lbl) => (
-                      <span
-                        key={lbl.id || lbl.label}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-muted text-foreground border border-border rounded-sm"
-                      >
-                        <Tag className="size-2.5" />
-                        <span>{lbl.label}</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteLabel(lbl.id);
-                          }}
-                          className="hover:text-destructive transition-colors ml-0.5 cursor-pointer"
-                          title="Remove label"
-                        >
-                          <X className="size-2.5" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {/* Labels & Inline Add Form */}
+                <VersionLabels
+                  version={v.version}
+                  labels={v.labels}
+                  isAdding={isAddingLabel}
+                  isSubmitting={isAddingLabelLoading}
+                  onAdd={onAddLabel}
+                  onDelete={onDeleteLabel}
+                  onCancelAdd={() => setLabelingVersion(null)}
+                />
 
-                {/* Inline Add Label Box */}
-                {isAddingLabel ? (
-                  <div
-                    className="flex items-center gap-1 mt-2 pt-2 border-t border-border/60"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Input
-                      value={newLabelText}
-                      onChange={(e) => setNewLabelText(e.target.value)}
-                      aria-label="Label name"
-                      placeholder="Label name..."
-                      className="h-6 text-[11px] px-2"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newLabelText.trim()) {
-                          onAddLabel(v.version, newLabelText.trim());
-                          setLabelingVersion(null);
-                        } else if (e.key === 'Escape') {
-                          setLabelingVersion(null);
-                        }
-                      }}
-                    />
-                    <Button
-                      size="sm"
-                      className="h-6 px-2 text-[10px]"
-                      disabled={!newLabelText.trim() || isAddingLabelLoading}
-                      onClick={() => {
-                        onAddLabel(v.version, newLabelText.trim());
-                        setLabelingVersion(null);
-                      }}
-                    >
-                      <Check className="size-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1.5 text-[10px]"
-                      onClick={() => setLabelingVersion(null)}
-                    >
-                      <X className="size-3" />
-                    </Button>
-                  </div>
-                ) : (
+                {!isAddingLabel &&
                   historyMode === 'compare' &&
                   onSelectBaseVersion && (
                     <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-border/40 text-[11px] text-muted-foreground">
@@ -330,8 +269,7 @@ export function VersionTimelineSidebar({
                         {isBase ? '● Comparing from' : 'Compare from here'}
                       </button>
                     </div>
-                  )
-                )}
+                  )}
               </div>
             );
           })

@@ -1,11 +1,9 @@
 'use client';
 
 /**
- * InsertTablePopover.tsx
+ * TablePopover.tsx
  *
- * Overleaf-style quick table insertion popover for the editor toolbar:
- * - Interactive 8x8 hover grid ("Select size") for instant blank table insertion
- * - Quick entry to Table Wizard modal ("Custom table") and AI Table Generator
+ * Toolbar quick-insert popover with an 8x8 size picker and shortcuts to TableModal.
  */
 
 import React, { useState } from 'react';
@@ -18,32 +16,29 @@ import { editorCommandBus } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { generateLatexTable } from '@/features/editor/domain/latex/table-matrix';
 
-const MAX_GRID_DIM = 8;
+const GRID_SIZE = 8;
 
-export interface InsertTablePopoverProps {
+export interface TablePopoverProps {
   disabled?: boolean;
   triggerClassName?: string;
 }
 
-export function InsertTablePopover({
-  disabled = false,
-  triggerClassName,
-}: InsertTablePopoverProps) {
+export function TablePopover({ disabled = false, triggerClassName }: TablePopoverProps) {
   const [open, setOpen] = useState(false);
-  const [hoverDims, setHoverDims] = useState<{ rows: number; cols: number }>({
+  const [hovered, setHovered] = useState<{ rows: number; cols: number }>({
     rows: 0,
     cols: 0,
   });
-  const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
+  const aiEnabled = useSettingsStore((s) => s.aiAssistEnabled);
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
     if (!nextOpen) {
-      setHoverDims({ rows: 0, cols: 0 });
+      setHovered({ rows: 0, cols: 0 });
     }
   };
 
-  const handleSelectSize = (rows: number, cols: number) => {
+  const handleInsertBlank = (rows: number, cols: number) => {
     const hasHeader = rows >= 2;
     const dataRows = hasHeader ? rows - 1 : rows;
 
@@ -65,7 +60,7 @@ export function InsertTablePopover({
     setOpen(false);
   };
 
-  const handleOpenWizard = (initialTab: 'table' | 'ai') => {
+  const openTableModal = (initialTab: 'table' | 'ai') => {
     setOpen(false);
     editorCommandBus.dispatch({
       type: 'dialog:open',
@@ -98,57 +93,55 @@ export function InsertTablePopover({
 
       <PopoverContent align="start" className="w-56 p-2.5 text-xs select-none">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-11 font-medium text-muted-foreground">
-            Select size
-          </span>
+          <span className="text-11 font-medium text-muted-foreground">Select size</span>
           <span className="text-11 font-mono font-semibold text-foreground tabular-nums">
-            {hoverDims.rows > 0 ? `${hoverDims.rows} × ${hoverDims.cols}` : '—'}
+            {hovered.rows > 0 ? `${hovered.rows} × ${hovered.cols}` : '—'}
           </span>
         </div>
 
         <div
           className="grid gap-1"
-          style={{ gridTemplateColumns: `repeat(${MAX_GRID_DIM}, minmax(0, 1fr))` }}
-          onMouseLeave={() => setHoverDims({ rows: 0, cols: 0 })}
+          style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` }}
+          onMouseLeave={() => setHovered({ rows: 0, cols: 0 })}
         >
-          {Array.from({ length: MAX_GRID_DIM }, (_, rIdx) =>
-            Array.from({ length: MAX_GRID_DIM }, (_, cIdx) => {
+          {Array.from({ length: GRID_SIZE }, (_, rIdx) =>
+            Array.from({ length: GRID_SIZE }, (_, cIdx) => {
               const r = rIdx + 1;
               const c = cIdx + 1;
-              const active = r <= hoverDims.rows && c <= hoverDims.cols;
+              const active = r <= hovered.rows && c <= hovered.cols;
               return (
                 <button
                   key={`${r}-${c}`}
                   type="button"
                   aria-label={`Insert ${r} by ${c} table`}
-                  onMouseEnter={() => setHoverDims({ rows: r, cols: c })}
-                  onFocus={() => setHoverDims({ rows: r, cols: c })}
-                  onClick={() => handleSelectSize(r, c)}
+                  onMouseEnter={() => setHovered({ rows: r, cols: c })}
+                  onFocus={() => setHovered({ rows: r, cols: c })}
+                  onClick={() => handleInsertBlank(r, c)}
                   className={cn(
                     'aspect-square w-full rounded-[2px] border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
                     active
                       ? 'bg-primary/20 border-primary'
-                      : 'bg-background border-border hover:border-primary/60'
+                      : 'bg-background border-border hover:border-primary/60',
                   )}
                 />
               );
-            })
+            }),
           )}
         </div>
 
         <div className="border-t border-border mt-2.5 pt-1.5 space-y-0.5">
           <button
             type="button"
-            onClick={() => handleOpenWizard('table')}
+            onClick={() => openTableModal('table')}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-xs text-foreground hover:bg-muted transition-colors cursor-pointer text-left"
           >
             <Table2 className="size-3.5 text-muted-foreground shrink-0" />
             <span>Custom table</span>
           </button>
-          {aiAssistEnabled && (
+          {aiEnabled && (
             <button
               type="button"
-              onClick={() => handleOpenWizard('ai')}
+              onClick={() => openTableModal('ai')}
               className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm text-xs text-foreground hover:bg-muted transition-colors cursor-pointer text-left"
             >
               <Sparkles className="size-3.5 text-muted-foreground shrink-0" />
@@ -160,3 +153,5 @@ export function InsertTablePopover({
     </Popover>
   );
 }
+
+export default TablePopover;

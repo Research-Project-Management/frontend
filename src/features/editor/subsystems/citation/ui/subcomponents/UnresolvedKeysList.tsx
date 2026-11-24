@@ -40,7 +40,7 @@ export const UnresolvedKeysList = memo(function UnresolvedKeysList({
                 onFind(key);
               }
             }}
-            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-warning/10 border border-warning/20 text-foreground cursor-pointer hover:bg-warning/15 transition-colors group outline-none focus-visible:ring-1 focus-visible:ring-border"
+            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-warning/10 border border-warning/25 text-foreground cursor-pointer hover:bg-warning/15 transition-colors group outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             <span className="font-mono text-11 font-medium text-warning truncate">
               {key}
@@ -52,7 +52,7 @@ export const UnresolvedKeysList = memo(function UnresolvedKeysList({
                   e.stopPropagation();
                   onFind(key);
                 }}
-                className="h-6 min-h-[26px] px-2 rounded-md text-10 font-medium text-warning hover:bg-warning/20 transition-colors cursor-pointer flex items-center gap-1 relative after:absolute after:-inset-1 after:content-['']"
+                className="h-6 min-h-[26px] px-2 rounded-md text-11 font-medium text-warning hover:bg-warning/20 transition-colors cursor-pointer flex items-center gap-1 relative after:absolute after:-inset-1 after:content-['']"
                 title="Search reference in inspector"
               >
                 <Search className="size-2.5" />

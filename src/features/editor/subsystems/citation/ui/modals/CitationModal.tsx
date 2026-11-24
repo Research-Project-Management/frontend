@@ -51,8 +51,6 @@ export interface CitationModalProps {
   citedKeys?: string[];
 }
 
-export type CitationPickerModalProps = CitationModalProps;
-
 export function CitationModal({
   open,
   onOpenChange,
@@ -64,7 +62,7 @@ export function CitationModal({
   initialKey = '',
   citedKeys: propsCitedKeys,
 }: CitationModalProps) {
-  const s = useCitationPickerState({
+  const state = useCitationPickerState({
     open,
     onOpenChange,
     items: propsItems,
@@ -92,10 +90,10 @@ export function CitationModal({
             <div className="flex md:hidden items-center bg-muted/60 p-0.5 rounded-md border border-border/60 select-none">
               <button
                 type="button"
-                onClick={() => s.setActiveView('tree')}
+                onClick={() => state.setActiveView('tree')}
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
-                  s.activeView === 'tree'
+                  state.activeView === 'tree'
                     ? 'bg-background text-foreground font-semibold border border-border/60'
                     : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
@@ -104,23 +102,23 @@ export function CitationModal({
               </button>
               <button
                 type="button"
-                onClick={() => s.setActiveView('list')}
+                onClick={() => state.setActiveView('list')}
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
-                  s.activeView === 'list'
+                  state.activeView === 'list'
                     ? 'bg-background text-foreground font-semibold border border-border/60'
                     : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
               >
-                Papers ({s.filteredItems.length})
+                Papers ({state.filteredItems.length})
               </button>
               <button
                 type="button"
-                onClick={() => s.setActiveView('detail')}
-                disabled={!s.selectedEntry}
+                onClick={() => state.setActiveView('detail')}
+                disabled={!state.selectedEntry}
                 className={cn(
                   'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
-                  s.activeView === 'detail'
+                  state.activeView === 'detail'
                     ? 'bg-background text-foreground font-semibold border border-border/60'
                     : 'text-muted-foreground hover:text-foreground border border-transparent',
                 )}
@@ -144,49 +142,49 @@ export function CitationModal({
         {/* 3-Column Cockpit Body */}
         <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden bg-background">
           <CitationCollectionTreePane
-            activeView={s.activeView}
-            selectedNav={s.selectedNav}
-            navCounts={s.navCounts}
-            collectionTree={s.collectionTree}
+            activeView={state.activeView}
+            selectedNav={state.selectedNav}
+            navCounts={state.navCounts}
+            collectionTree={state.collectionTree}
             onSelectNav={(navId) => {
-              s.setSelectedNav(navId);
-              s.setActiveView('list');
+              state.setSelectedNav(navId);
+              state.setActiveView('list');
             }}
           />
 
           <CitationPickerListPane
-            activeView={s.activeView}
-            search={s.search}
-            onSearchChange={s.setSearch}
-            onKeyDown={s.handleKeyDown}
-            searchInputRef={s.searchInputRef}
-            listRef={s.listRef}
-            isIdentifier={s.isIdentifier}
-            effectiveProjectId={s.effectiveProjectId}
-            isResolving={s.isResolving}
-            onResolveIdentifier={s.handleResolveIdentifier}
-            isSearchingServer={s.isSearchingServer}
-            filteredItems={s.filteredItems}
-            selectedKey={s.selectedKey}
-            selectedKeys={s.selectedKeys}
-            onToggleSelectKey={s.toggleSelectKey}
-            sortBy={s.sortBy}
-            onSortChange={s.setSortBy}
-            selectedEntry={s.selectedEntry}
-            citedKeysSet={s.citedKeysSet}
-            isLargeCardsList={s.isLargeCardsList}
-            cardsVirtualizer={s.cardsVirtualizer}
-            onSelectCard={s.handleSelectCard}
-            onSelectItem={s.handleSelectItem}
+            activeView={state.activeView}
+            search={state.search}
+            onSearchChange={state.setSearch}
+            onKeyDown={state.handleKeyDown}
+            searchInputRef={state.searchInputRef}
+            listRef={state.listRef}
+            isIdentifier={state.isIdentifier}
+            effectiveProjectId={state.effectiveProjectId}
+            isResolving={state.isResolving}
+            onResolveIdentifier={state.handleResolveIdentifier}
+            isSearchingServer={state.isSearchingServer}
+            filteredItems={state.filteredItems}
+            selectedKey={state.selectedKey}
+            selectedKeys={state.selectedKeys}
+            onToggleSelectKey={state.toggleSelectKey}
+            sortBy={state.sortBy}
+            onSortChange={state.setSortBy}
+            selectedEntry={state.selectedEntry}
+            citedKeysSet={state.citedKeysSet}
+            isLargeCardsList={state.isLargeCardsList}
+            cardsVirtualizer={state.cardsVirtualizer}
+            onSelectCard={state.handleSelectCard}
+            onSelectItem={state.handleSelectItem}
           />
 
           <CitationInspectorPane
-            activeView={s.activeView}
-            selectedEntry={s.selectedEntry}
-            onBackToList={() => s.setActiveView('list')}
-            copyBibtex={s.copyBibtex}
-            copyKey={s.copyKey}
-            copyDoi={s.copyDoi}
+            activeView={state.activeView}
+            selectedEntry={state.selectedEntry}
+            onBackToList={() => state.setActiveView('list')}
+            copyBibtex={state.copyBibtex}
+            copyKey={state.copyKey}
+            copyDoi={state.copyDoi}
           />
         </div>
 
@@ -207,13 +205,13 @@ export function CitationModal({
               type="button"
               variant="default"
               size="sm"
-              disabled={!s.selectedEntry && s.selectedKeys.size === 0}
-              onClick={s.handleInsertSelected}
+              disabled={!state.selectedEntry && state.selectedKeys.size === 0}
+              onClick={state.handleInsertSelected}
               className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
             >
               <span>
-                {s.selectedKeys.size > 1
-                  ? `Insert ${s.selectedKeys.size} Citations`
+                {state.selectedKeys.size > 1
+                  ? `Insert ${state.selectedKeys.size} Citations`
                   : 'Insert Citation'}
               </span>
             </Button>
@@ -222,13 +220,12 @@ export function CitationModal({
       </DialogContent>
 
       <CitationRetractionAlertDialog
-        pendingRetracted={s.pendingRetracted}
-        onDismiss={() => s.setPendingRetracted(null)}
-        onConfirmCiteAnyway={(entry) => s.insertCitation(entry)}
+        pendingRetracted={state.pendingRetracted}
+        onDismiss={() => state.setPendingRetracted(null)}
+        onConfirmCiteAnyway={(entry) => state.insertCitation(entry)}
       />
     </Dialog>
   );
 }
 
-export const CitationPickerModal = CitationModal;
 export default CitationModal;

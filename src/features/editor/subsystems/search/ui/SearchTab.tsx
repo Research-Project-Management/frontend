@@ -688,6 +688,7 @@ export default function SearchTab() {
               ) : isSearchError ? (
                 <div className="py-8 px-2">
                   <PlaneErrorState
+                    isCompact
                     title="Search failed"
                     description="An issue occurred while searching project files."
                     error={searchError || new Error("Search failed")}

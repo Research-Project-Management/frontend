@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * UnifiedDiffViewer.tsx
+ * UnifiedDiffView.tsx
  *
  * Unified single-column diff hunk viewer with line numbers and word-level token highlight.
- * Location: `features/editor/subsystems/history/ui/UnifiedDiffViewer.tsx`
+ * Location: `features/editor/subsystems/history/ui/UnifiedDiffView.tsx`
  */
 
 import React from 'react';
@@ -53,15 +53,15 @@ export const DiffHunkHeader = React.memo(function DiffHunkHeader({
   );
 });
 
-export interface UnifiedDiffViewerProps {
+export interface UnifiedDiffViewProps {
   fileDiff: ProjectFileDiff;
   baseVersion?: number;
   targetVersion?: number;
 }
 
-export const UnifiedDiffViewer = React.memo(function UnifiedDiffViewer({
+export const UnifiedDiffView = React.memo(function UnifiedDiffView({
   fileDiff,
-}: UnifiedDiffViewerProps) {
+}: UnifiedDiffViewProps) {
   if (!fileDiff.hunks || fileDiff.hunks.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-sm">

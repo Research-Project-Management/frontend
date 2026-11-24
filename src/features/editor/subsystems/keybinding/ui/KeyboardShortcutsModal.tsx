@@ -148,7 +148,7 @@ export default function KeyboardShortcutsModal({
                       {k}
                     </kbd>
                     {i < s.keys.length - 1 && (
-                      <span className="text-muted-foreground text-10">+</span>
+                      <span className="text-muted-foreground text-11">+</span>
                     )}
                   </React.Fragment>
                 ))}

@@ -54,8 +54,8 @@ export const SuggestionCard = React.memo(function SuggestionCard({
     suggestion.type === 'insert'
       ? 'bg-primary/10 text-primary border-primary/20'
       : suggestion.type === 'delete'
-        ? 'bg-destructive/10 text-destructive border-destructive/20'
-        : 'bg-warning/10 text-warning border-warning/20';
+        ? 'bg-destructive/10 text-destructive border-destructive/25'
+        : 'bg-warning/10 text-warning border-warning/25';
 
   const authorDisplay = useMemo(
     () => resolveAuthorDisplay(suggestion.author, membersMap, suggestion.authorId ?? undefined),
@@ -117,7 +117,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
       {/* Diff Preview */}
       <div className="rounded-md bg-muted/40 p-2.5 font-mono text-xs leading-relaxed break-words space-y-1.5">
         {suggestion.originalText && (
-          <div className="text-destructive bg-destructive/10 border border-destructive/20 px-2 py-1 rounded-sm line-through">
+          <div className="text-destructive bg-destructive/10 border border-destructive/25 px-2 py-1 rounded-sm line-through">
             - {suggestion.originalText}
           </div>
         )}

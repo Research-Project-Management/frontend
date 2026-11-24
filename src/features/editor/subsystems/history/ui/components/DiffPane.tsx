@@ -11,10 +11,10 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
-import { SideBySideDiffViewer } from './SideBySideDiffViewer';
-import { UnifiedDiffViewer } from './UnifiedDiffViewer';
+import { SplitDiffView } from './SplitDiffView';
+import { UnifiedDiffView } from './UnifiedDiffView';
 
-export interface DiffContentPaneProps {
+export interface DiffPaneProps {
   diffData: ProjectDiffResponse | null | undefined;
   isLoadingDiff: boolean;
   activeFilePath: string | null;
@@ -27,7 +27,7 @@ export interface DiffContentPaneProps {
   setConfirmingFileRestore: (confirming: boolean) => void;
 }
 
-export function DiffContentPane({
+export function DiffPane({
   diffData,
   isLoadingDiff,
   activeFilePath,
@@ -38,7 +38,7 @@ export function DiffContentPane({
   isRestoringSingleFile = false,
   confirmingFileRestore,
   setConfirmingFileRestore,
-}: DiffContentPaneProps) {
+}: DiffPaneProps) {
   const activeFileDiff = useMemo(() => {
     if (!diffData?.files || diffData.files.length === 0) return null;
     if (activeFilePath) {
@@ -163,7 +163,7 @@ export function DiffContentPane({
         <div className="flex-1 p-3 overflow-hidden min-h-0">
           {viewMode === 'split' ? (
             activeFileDiff ? (
-              <SideBySideDiffViewer
+              <SplitDiffView
                 fileDiff={activeFileDiff}
                 baseVersion={selectedBaseVersion || 1}
                 targetVersion={selectedTargetVersion || 2}
@@ -174,7 +174,7 @@ export function DiffContentPane({
               </div>
             )
           ) : activeFileDiff ? (
-            <UnifiedDiffViewer
+            <UnifiedDiffView
               fileDiff={activeFileDiff}
               baseVersion={selectedBaseVersion || 1}
               targetVersion={selectedTargetVersion || 2}

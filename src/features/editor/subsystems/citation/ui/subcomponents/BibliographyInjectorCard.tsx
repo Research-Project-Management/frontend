@@ -84,39 +84,18 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
       }));
 
       const activeDocId = usePageStore.getState().getActiveDocumentId();
-      let nextContent: string;
-      let action: 'replaced' | 'appended';
+      const newSection = buildBibliographySection({
+        bibliographyText: rawText,
+        format,
+        styleId: detectedStyle,
+        citations: citationsList,
+      });
 
-      try {
-        const serverInj = await pagesService.citations.injectBibliography(
-          projectId || storeSpaceId || storeProjectId,
-          {
-          docId: activeDocId ?? undefined,
-          content: currentContent,
-          filePath: activeFilePath,
-          format,
-          styleId: detectedStyle,
-          bibliographyText: rawText,
-          citations: citationsList,
-        });
-        nextContent = serverInj.nextContent;
-        action = serverInj.action;
-      } catch {
-        const newSection = buildBibliographySection({
-          bibliographyText: rawText,
-          format,
-          styleId: detectedStyle,
-          citations: citationsList,
-        });
-
-        const fallbackRes = injectBibliographyIntoDocument({
-          currentContent,
-          newSection,
-          format,
-        });
-        nextContent = fallbackRes.nextContent;
-        action = fallbackRes.action;
-      }
+      const { nextContent, action } = injectBibliographyIntoDocument({
+        currentContent,
+        newSection,
+        format,
+      });
 
       if (activeDocId) {
         lruDocumentCache.updateContent(activeDocId, nextContent, true);

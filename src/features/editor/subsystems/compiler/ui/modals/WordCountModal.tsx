@@ -508,7 +508,7 @@ function WordCountModal({
             <div className="pt-2">
               <div className="text-11 font-medium text-muted-foreground pb-1 px-1 flex items-center justify-between">
                 <span>File Breakdown</span>
-                <span className="font-mono text-10">{perFileStats.length} files</span>
+                <span className="font-mono text-11">{perFileStats.length} files</span>
               </div>
               <div className="divide-y divide-border/60 max-h-36 overflow-y-auto thin-scrollbar">
                 {perFileStats.map((item) => (

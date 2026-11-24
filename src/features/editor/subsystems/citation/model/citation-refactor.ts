@@ -192,27 +192,8 @@ export async function executeProjectCitekeyRefactor(
 
   let modifiedFiles: Array<{ id: string; path: string; newContent: string; count: number }> = [];
   let totalCount = 0;
-  let handledByBackend = false;
 
-  if (!effectiveCtx?.service) {
-    try {
-      const serverResult = await pagesService.citations.refactorKey(effectiveProjectId, { oldKey, newKey });
-      if (serverResult && Array.isArray(serverResult.affectedFiles)) {
-        handledByBackend = true;
-        totalCount = serverResult.totalReplacements ?? 0;
-        modifiedFiles = serverResult.affectedFiles.map((f) => ({
-          id: f.docId,
-          path: f.path,
-          newContent: f.newContent,
-          count: f.count,
-        }));
-      }
-    } catch {
-      // Fallback for custom service port or offline tests
-    }
-  }
-
-  if (!handledByBackend && effectiveCtx?.service) {
+  if (effectiveCtx?.service) {
     const serverFiles = await effectiveCtx.service.getFilesByProjectId(effectiveProjectId).catch(() => []);
     const cachedFiles = lruDocumentCache
       .getAllModels()
@@ -271,7 +252,7 @@ export async function executeProjectCitekeyRefactor(
     else if (!targetEngine && !yText) {
       editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
     }
-    lruDocumentCache.updateContent(mod.id, mod.newContent, !handledByBackend);
+    lruDocumentCache.updateContent(mod.id, mod.newContent, true);
     sessionCoordinator.notifyContentChange(mod.id, mod.newContent);
     latexSymbolsIndex.indexFile(mod.id, mod.path, mod.newContent, true);
     latexDependencyGraph.parseAndRegister(mod.path, mod.newContent, mod.id);

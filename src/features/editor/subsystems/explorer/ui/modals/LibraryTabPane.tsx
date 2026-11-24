@@ -102,7 +102,7 @@ export function LibraryTabPane({
       navigationCoordinator.openDocument({
         fileId: createdId,
         title: res.filePath || targetName,
-        content: res.formattedBibtex,
+        content: chosenItems.map((item) => formatItemToBibtex(item)).join('\n\n'),
       });
       setSearchParams({ file: createdId });
       onClose();

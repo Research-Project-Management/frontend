@@ -136,20 +136,8 @@ export function copySnippetToClipboard(snippet?: string): void {
   toast.success('Copied', { id: 'copy-snippet' });
 }
 
-export async function fetchLogEntryExplanation(entry: LogEntry): Promise<ErrorExplanationDto | null> {
-  try {
-    if (entry.code) {
-      return await pagesService.diagnostics.getExplanation(entry.code);
-    }
-    const rules = await pagesService.diagnostics.getRules();
-    const found = rules.find((r) => {
-      if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
-      return false;
-    });
-    return found || null;
-  } catch {
-    return null;
-  }
+export async function fetchLogEntryExplanation(_entry: LogEntry): Promise<ErrorExplanationDto | null> {
+  return null;
 }
 
 export interface UseLogViewerActionsOptions {

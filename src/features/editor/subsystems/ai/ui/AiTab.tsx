@@ -8,9 +8,6 @@ import {
   CompanionMessages,
   Composer,
   ContextPicker,
-  getRagDocumentId,
-  sourceEntryToAttachedPayload,
-  sourcesToAttachments,
   threadPool,
   useActiveAiSpace,
   useAiCompanionStore,
@@ -22,6 +19,7 @@ import {
   type SourceEntry,
   type SourceType,
 } from '@/features/ai';
+import { buildTurnPayload } from '@/features/ai/context/turn-payload';
 import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 import {
   getLineContext,
@@ -31,16 +29,11 @@ import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useAiChatActions } from './useAiChatActions';
-
-interface AiTabProps {
-  onClose?: () => void;
-}
 
 const EDITOR_SUGGESTIONS: readonly CompanionSuggestionItem[] = QUICK_ACTIONS.slice(
   0,
@@ -52,8 +45,7 @@ const EDITOR_SUGGESTIONS: readonly CompanionSuggestionItem[] = QUICK_ACTIONS.sli
   prompt: act.prompt,
 }));
 
-export default function AiTab({ onClose }: AiTabProps) {
-  void onClose;
+export default function AiTab() {
   const params = useParams<{
     projectId?: string;
     pageId?: string;
@@ -336,45 +328,19 @@ export default function AiTab({ onClose }: AiTabProps) {
           context: d.context,
         }));
 
-      const combinedDocIds = Array.from(
-        new Set([
-          ...(overrides?.documentIds ?? []),
-          ...extraSources
-            .map(getRagDocumentId)
-            .filter((id): id is string => Boolean(id)),
-        ]),
-      ).filter(Boolean);
-      const attachedSources = extraSources.map(sourceEntryToAttachedPayload);
-      const wireAttachments = sourcesToAttachments(extraSources);
-
-      const finalWebSearch =
-        overrides?.webSearchSites !== undefined
-          ? (overrides.webSearchSites ?? undefined)
-          : turnCtx.webSearchEnabled
-            ? turnCtx.webSearchSites.length > 0
-              ? turnCtx.webSearchSites
-              : ['*']
-            : undefined;
-
       const targetSpaceId =
         overrides?.spaceId !== undefined ? overrides.spaceId : effectiveSpaceId;
       const selectionSnapshot = activeSelection;
 
-      if (!overrides?.isExternalHandoff) {
-        setSelectionContext(null);
-        setSelectionFileId(null);
-        setPromptToFill('');
-        turnCtx.clearSources();
-      }
-
-      await thread.send(displayContent, {
+      const payload = buildTurnPayload({
         mode: 'editor',
         chatId: activeChatId,
         spaceId: targetSpaceId,
-        documentIds: combinedDocIds.length > 0 ? combinedDocIds : undefined,
-        attachedSources: attachedSources.length > 0 ? attachedSources : undefined,
-        attachments: wireAttachments.length > 0 ? wireAttachments : undefined,
-        webSearchSites: finalWebSearch,
+        sources: extraSources,
+        extraDocumentIds: overrides?.documentIds,
+        webSearchEnabled: turnCtx.webSearchEnabled,
+        webSearchSites: turnCtx.webSearchSites,
+        webSearchSitesOverride: overrides?.webSearchSites,
         editor: {
           pageId: activePageId,
           activeFileId,
@@ -397,6 +363,15 @@ export default function AiTab({ onClose }: AiTabProps) {
           compileErrors: compileErrors.length > 0 ? compileErrors : undefined,
         },
       });
+
+      if (!overrides?.isExternalHandoff) {
+        setSelectionContext(null);
+        setSelectionFileId(null);
+        setPromptToFill('');
+        turnCtx.clearSources();
+      }
+
+      await thread.send(displayContent, payload);
     },
     [
       thread,
@@ -493,25 +468,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     [turnCtx.sources],
   );
 
-  const firstUserMsg = thread.messages.find((m) => m.role === 'user')?.content;
-  const isGreeting =
-    firstUserMsg &&
-    /^(hello|hi|hey|greetings|howdy)[!.,? ]*$/i.test(firstUserMsg.trim());
-  const chatTitle =
-    thread.title && thread.title !== 'New Chat'
-      ? thread.title
-      : !isGreeting && firstUserMsg
-        ? firstUserMsg.length > 36
-          ? `${firstUserMsg.slice(0, 36)}...`
-          : firstUserMsg
-        : thread.title || 'AI Assistant';
-  const displayTitle =
-    (thread.messages.length > 0 || thread.title) && chatTitle
-      ? chatTitle
-      : 'AI Assistant';
-
   return (
-    <TooltipProvider delayDuration={150}>
       <div
         role="region"
         aria-label="AI Assistant"
@@ -540,19 +497,9 @@ export default function AiTab({ onClose }: AiTabProps) {
           </header>
         ) : (
           <header className="flex h-10 items-center justify-between px-3 border-b border-border bg-transparent shrink-0 select-none">
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-              <img
-                src="/Chat.svg"
-                alt="AI Assistant"
-                className="size-4 shrink-0 rounded-full object-contain"
-              />
-              <span
-                className="text-13 font-semibold text-foreground tracking-tight truncate"
-                title={displayTitle}
-              >
-                {displayTitle}
-              </span>
-            </div>
+            <span className="text-13 font-semibold text-foreground tracking-tight truncate">
+              AI Assistant
+            </span>
 
             <div className="flex items-center gap-0.5 shrink-0">
               <Tooltip>
@@ -669,6 +616,5 @@ export default function AiTab({ onClose }: AiTabProps) {
           onSelect={(entries) => turnCtx.addSources(entries)}
         />
       </div>
-    </TooltipProvider>
   );
 }

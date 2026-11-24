@@ -22,7 +22,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import {
@@ -449,7 +448,6 @@ function WordCountModal({
                 {/* Total words primary row */}
                 <tr className="bg-muted/30 font-medium">
                   <td className="py-2 px-1 text-foreground font-semibold">
-                    <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span
@@ -466,7 +464,6 @@ function WordCountModal({
                           Sum of words in text, headers, captions, and footnotes
                         </TooltipContent>
                       </Tooltip>
-                    </TooltipProvider>
                   </td>
                   <td className="py-2 px-1 text-right font-mono font-semibold text-foreground tabular-nums">
                     {totalWordsCount.toLocaleString()}
@@ -480,7 +477,6 @@ function WordCountModal({
                     className="hover:bg-muted/20 transition-colors"
                   >
                     <td className="py-1.5 px-1 text-foreground font-normal">
-                      <TooltipProvider delayDuration={200}>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span
@@ -497,7 +493,6 @@ function WordCountModal({
                             {row.description}
                           </TooltipContent>
                         </Tooltip>
-                      </TooltipProvider>
                     </td>
                     <td className="py-1.5 px-1 text-right font-mono font-normal text-muted-foreground tabular-nums">
                       {row.value.toLocaleString()}

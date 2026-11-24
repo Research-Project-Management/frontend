@@ -232,7 +232,7 @@ export default function TemplateGalleryModal() {
         setIsTemplateModalOpen(false);
       } else {
         navigator.clipboard.writeText(selectedTemplate.mainTex);
-        toast.success(`Copied "${selectedTemplate.name}" template code to clipboard`, { id: 'copy-template' });
+        toast.success('Copied template code', { id: 'copy-template' });
         setIsTemplateModalOpen(false);
       }
     } catch {
@@ -260,7 +260,7 @@ export default function TemplateGalleryModal() {
         includeProjects: true,
       });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
+      toast.success(`Scaffolded "${selectedTemplate.name}"`, { id: 'scaffold-template' });
       setIsTemplateModalOpen(false);
     } catch (err) {
       console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
@@ -277,7 +277,7 @@ export default function TemplateGalleryModal() {
         ? selectedTemplate.bibTex
         : selectedTemplate.mainTex;
     navigator.clipboard.writeText(code);
-    toast.success('Template code copied to clipboard', { id: 'copy-template' });
+    toast.success('Copied template code', { id: 'copy-template' });
   }, [previewTab, selectedTemplate]);
 
   return (
@@ -469,7 +469,7 @@ export default function TemplateGalleryModal() {
                               files: { [targetMainFile]: mainContent },
                             });
                             queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
-                            toast.success('Saved project as custom template!', { id: toastId });
+                            toast.success('Saved custom template', { id: toastId });
                           } catch (err: unknown) {
                             toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });
                           }

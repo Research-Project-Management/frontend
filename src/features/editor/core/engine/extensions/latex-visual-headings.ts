@@ -179,15 +179,7 @@ const visualHeadingsTheme = EditorView.baseTheme({
     fontStyle: 'italic',
   },
 
-  // Syntax markers: Monospace, stable font size and metrics in both active and dimmed states
-  '.cm-visual-syntax-dim': {
-    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    fontSize: '0.88em',
-    fontWeight: '400',
-    color: 'var(--muted-foreground, #64748b)',
-    opacity: '0.3',
-    transition: 'opacity 0.15s ease',
-  },
+  // Syntax markers: Monospace, shown only when cursor is active on the element
   '.cm-visual-syntax-active': {
     fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.88em',

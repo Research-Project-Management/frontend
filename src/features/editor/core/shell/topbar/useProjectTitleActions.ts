@@ -136,7 +136,6 @@ export function useProjectTitleActions({
           oldTitle: displayTitle,
         });
 
-        toast.success(`Document renamed to "${trimmed}"`, { id: 'rename-project' });
         return true;
       } catch (err: unknown) {
         toast.error((err as Error)?.message || 'Failed to rename document', { id: 'rename-project' });
@@ -160,7 +159,7 @@ export function useProjectTitleActions({
           id?: string;
         } | null;
         const newPageId = res?.page?.id || res?.rootPageId || res?.id;
-        toast.success('Document duplicated successfully!', { id: toastId });
+        toast.success('Document duplicated', { id: toastId });
         if (newPageId) {
           const isPersonal = !effectiveProjectId || effectiveProjectId === 'personal' || effectiveProjectId === targetPageId;
           router.push(isPersonal ? `/pages/${newPageId}` : `/projects/${effectiveProjectId}/pages/${newPageId}`);

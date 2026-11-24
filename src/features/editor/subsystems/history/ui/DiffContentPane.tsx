@@ -3,7 +3,6 @@
 import React, { useMemo } from 'react';
 import {
   FileText,
-  Copy,
   RotateCcw,
   Loader2,
   Check,
@@ -19,11 +18,9 @@ export interface DiffContentPaneProps {
   diffData: ProjectDiffResponse | null | undefined;
   isLoadingDiff: boolean;
   activeFilePath: string | null;
-  setActiveFilePath: (path: string) => void;
   viewMode: 'split' | 'unified';
   selectedBaseVersion: number | null;
   selectedTargetVersion: number | null;
-  onCopyBaseFile: () => void;
   onRestoreSingleFile: () => void;
   isRestoringSingleFile?: boolean;
   confirmingFileRestore: boolean;
@@ -34,11 +31,9 @@ export function DiffContentPane({
   diffData,
   isLoadingDiff,
   activeFilePath,
-  setActiveFilePath,
   viewMode,
   selectedBaseVersion,
   selectedTargetVersion,
-  onCopyBaseFile,
   onRestoreSingleFile,
   isRestoringSingleFile = false,
   confirmingFileRestore,
@@ -79,57 +74,13 @@ export function DiffContentPane({
   }
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden bg-background">
+    <main className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Changed Files Tab Bar */}
-        <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/30 border-b overflow-x-auto shrink-0 select-none">
-          <span className="text-xs font-semibold text-muted-foreground mr-1.5 tracking-normal text-10">
-            Files:
-          </span>
-          {diffData.files.map((file) => {
-            const isActive = file.path === activeFilePath;
-            const isDeleted = file.status === 'deleted';
-            return (
-              <button
-                key={file.path}
-                type="button"
-                onClick={() => setActiveFilePath(file.path)}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 min-h-[28px] max-w-[280px] rounded-md text-xs font-mono transition-colors shrink-0 cursor-pointer min-w-0 relative after:absolute after:-inset-1 after:content-[\'\']',
-                  isActive
-                    ? 'bg-background text-foreground border border-border font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  isDeleted && !isActive && 'text-destructive/80'
-                )}
-              >
-                <FileText className={cn("size-3 shrink-0", isDeleted && "text-destructive")} />
-                <span className={cn('truncate min-w-0', isDeleted && 'line-through decoration-destructive/60')}>
-                  {file.path}
-                </span>
-                {isDeleted ? (
-                  <span className="text-10 text-destructive font-sans font-medium">
-                    (deleted)
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-10 text-success font-sans">
-                      +{file.additions}
-                    </span>
-                    <span className="text-10 text-destructive font-sans">
-                      -{file.deletions}
-                    </span>
-                  </>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Active File Diff Action Bar */}
         {activeFileDiff && (
-          <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b text-xs shrink-0 select-none overflow-x-auto overflow-y-hidden scrollbar-none gap-2">
+          <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b border-border text-xs shrink-0 select-none overflow-x-auto overflow-y-hidden scrollbar-none gap-2">
             <div className="flex items-center gap-2 shrink-0">
-              <FileText className={cn("size-3.5", activeFileDiff.status === 'deleted' ? "text-destructive" : "text-muted-foreground")} />
+              <FileText className={cn("size-3.5", activeFileDiff.status === 'deleted' ? "text-destructive" : "text-muted-foreground")} strokeWidth={1.5} />
               <span className={cn(
                 "font-mono font-semibold text-xs",
                 activeFileDiff.status === 'deleted' ? "text-destructive line-through" : "text-foreground"
@@ -152,102 +103,59 @@ export function DiffContentPane({
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Copy Base File */}
-              {selectedBaseVersion && (
+            {selectedBaseVersion && (
+              <div className="flex items-center gap-1 shrink-0">
                 <Button
-                  variant="outline"
+                  variant={confirmingFileRestore || activeFileDiff.status === 'deleted' ? 'destructive' : 'secondary'}
                   size="sm"
-                  className="h-7 min-h-[28px] px-2 text-xs gap-1 cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-                  onClick={onCopyBaseFile}
-                  title={`Copy entire content of ${activeFileDiff.path} from Version ${selectedBaseVersion}`}
+                  className="h-7 min-h-[28px] px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
+                  disabled={isRestoringSingleFile}
+                  onClick={() => {
+                    if (confirmingFileRestore) {
+                      onRestoreSingleFile();
+                    } else {
+                      setConfirmingFileRestore(true);
+                    }
+                  }}
                 >
-                  <Copy className="size-3" />
-                  <span className="hidden sm:inline">Copy v{selectedBaseVersion} File</span>
-                </Button>
-              )}
-
-              {/* 1-Click Partial Restore for this file */}
-              {selectedBaseVersion && (
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant={confirmingFileRestore || activeFileDiff.status === 'deleted' ? 'destructive' : 'secondary'}
-                    size="sm"
-                    className="h-7 min-h-[28px] px-2.5 text-xs gap-1.5 cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
-                    disabled={isRestoringSingleFile}
-                    onClick={() => {
-                      if (confirmingFileRestore) {
-                        onRestoreSingleFile();
-                      } else {
-                        setConfirmingFileRestore(true);
-                      }
-                    }}
-                  >
-                    {isRestoringSingleFile ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <RotateCcw className="size-3" />
-                    )}
-                    <span>
-                      {confirmingFileRestore
-                        ? `Confirm restore ${activeFileDiff.path.split('/').pop() || 'file'} to v${selectedBaseVersion}`
-                        : activeFileDiff.status === 'deleted'
-                        ? 'Restore this deleted file'
-                        : 'Restore this file'}
-                    </span>
-                  </Button>
-
-                  {confirmingFileRestore && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setConfirmingFileRestore(false)}
-                      className="h-7 min-h-[28px] px-2 text-xs relative after:absolute after:-inset-1 after:content-['']"
-                    >
-                      Cancel
-                    </Button>
+                  {isRestoringSingleFile ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-3" />
                   )}
-                </div>
-              )}
-            </div>
+                  <span>
+                    {confirmingFileRestore
+                      ? `Confirm restore ${activeFileDiff.path.split('/').pop() || 'file'} to v${selectedBaseVersion}`
+                      : activeFileDiff.status === 'deleted'
+                      ? `Restore deleted file (v${selectedBaseVersion})`
+                      : `Restore v${selectedBaseVersion}`}
+                  </span>
+                </Button>
+
+                {confirmingFileRestore && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmingFileRestore(false)}
+                    className="h-7 min-h-[28px] px-2 text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Deleted File Recovery Banner */}
+        {/* Deleted File Informational Banner */}
         {activeFileDiff && activeFileDiff.status === 'deleted' && selectedBaseVersion && (
-          <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs shrink-0">
-            <div className="flex items-center gap-2 text-foreground">
-              <span className="font-semibold text-destructive text-10 tracking-normal px-1.5 py-0.5 rounded bg-destructive/20">
-                Deleted File
-              </span>
-              <span>
-                <span className="font-mono font-semibold">{activeFileDiff.path}</span> was deleted in Version {selectedTargetVersion}. Restore it to recover it back into your project.
-              </span>
-            </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-7 min-h-[28px] px-2.5 text-11 gap-1 font-medium cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-              disabled={isRestoringSingleFile}
-              onClick={() => {
-                if (confirmingFileRestore) {
-                  onRestoreSingleFile();
-                } else {
-                  setConfirmingFileRestore(true);
-                }
-              }}
-            >
-              {isRestoringSingleFile ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <RotateCcw className="size-3" />
-              )}
-              <span>
-                {confirmingFileRestore
-                  ? `Confirm Restore v${selectedBaseVersion}`
-                  : 'Restore File'}
-              </span>
-            </Button>
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 text-xs text-foreground shrink-0">
+            <span className="font-semibold text-destructive text-10 px-1.5 py-0.5 rounded bg-destructive/20 shrink-0">
+              Deleted File
+            </span>
+            <span className="truncate">
+              <span className="font-mono font-semibold">{activeFileDiff.path}</span> was deleted in Version {selectedTargetVersion}.
+            </span>
           </div>
         )}
 
@@ -262,7 +170,7 @@ export function DiffContentPane({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-                Select a file above to view changes.
+                Select a file from the left tree to view changes.
               </div>
             )
           ) : activeFileDiff ? (
@@ -273,7 +181,7 @@ export function DiffContentPane({
             />
           ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-              Select a file above to view changes.
+              Select a file from the left tree to view changes.
             </div>
           )}
         </div>

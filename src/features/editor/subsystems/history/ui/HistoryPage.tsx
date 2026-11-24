@@ -5,36 +5,22 @@
  *
  * Canonical Project History & Visual Diff Comparison Page (Overleaf Parity).
  * Location: `features/editor/subsystems/history/ui/HistoryPage.tsx`
- *
- * Features:
- * - Version Timeline: View all revisions or labelled snapshots, search by note/label/author.
- * - Side-by-Side & Unified Diff: Powered by Myers diff tokenization.
- * - Label Management: Tag milestone snapshots with custom labels, delete labels.
- * - 1-Click Rollback / Restore: Safely revert project files to any historical version.
- * - Manual Snapshot Checkpoints: Create on-demand named snapshots of the project.
  */
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  History,
   RotateCcw,
-  Plus,
-  X,
   Columns2,
   AlignJustify,
   Loader2,
-  Bookmark,
-  Download,
   ArrowLeft,
-  Copy,
   FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
@@ -43,7 +29,6 @@ import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export
 import {
   clearYjsProviderPool,
   evictYjsProviderByDocId,
-  flushYjsProviders,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import {
@@ -153,7 +138,6 @@ export function HistoryPage({
   // UI State
   const [historyMode, setHistoryMode] = useState<'single' | 'compare'>('single');
   const [filter, setFilter] = useState<'all' | 'labelled'>('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'split' | 'unified'>('unified');
   const [selectedTargetVersion, setSelectedTargetVersion] = useState<number | null>(
     initialVersion || null
@@ -161,16 +145,13 @@ export function HistoryPage({
   const [selectedBaseVersion, setSelectedBaseVersion] = useState<number | null>(null);
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
 
-  // Snapshot creation dialog state
-  const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
-  const [snapshotSummary, setSnapshotSummary] = useState('');
-
   // Restore confirmation state
   const [confirmingRestore, setConfirmingRestore] = useState(false);
   const [confirmingFileRestore, setConfirmingFileRestore] = useState(false);
   const skipNextRestoreResetRef = React.useRef(false);
 
   const prevSelectionRef = React.useRef({
+    mode: historyMode,
     file: activeFilePath,
     base: selectedBaseVersion,
     target: selectedTargetVersion,
@@ -179,11 +160,14 @@ export function HistoryPage({
   useEffect(() => {
     const prev = prevSelectionRef.current;
     if (
+      prev.mode !== historyMode ||
       (prev.file && prev.file !== activeFilePath) ||
       (prev.base !== null && prev.base !== selectedBaseVersion) ||
       (prev.target !== null && prev.target !== selectedTargetVersion)
     ) {
       setConfirmingFileRestore(false);
+    }
+    if (prev.target !== null && prev.target !== selectedTargetVersion) {
       if (skipNextRestoreResetRef.current) {
         skipNextRestoreResetRef.current = false;
       } else {
@@ -191,11 +175,12 @@ export function HistoryPage({
       }
     }
     prevSelectionRef.current = {
+      mode: historyMode,
       file: activeFilePath,
       base: selectedBaseVersion,
       target: selectedTargetVersion,
     };
-  }, [activeFilePath, selectedBaseVersion, selectedTargetVersion]);
+  }, [historyMode, activeFilePath, selectedBaseVersion, selectedTargetVersion]);
 
   // ── Queries ──
   const {
@@ -278,22 +263,6 @@ export function HistoryPage({
       gcTime: 10 * 60_000,
     });
 
-  // Query base snapshot for file restoration and copy in Compare mode
-  const { data: baseSnapshot } = useQuery<ProjectSnapshotDetail | null>({
-    queryKey: ['project-snapshot', effectiveProjectId, effectivePageId, selectedBaseVersion],
-    queryFn: () =>
-      selectedBaseVersion
-        ? pagesService.history.getProjectSnapshot(
-            effectiveProjectId,
-            selectedBaseVersion,
-            pageScopeOpts,
-          )
-        : null,
-    enabled: canCompare && open,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
-  });
-
   const sidebarFiles = React.useMemo(() => {
     if (historyMode === 'single') {
       return Object.keys(targetSnapshot?.files ?? {})
@@ -326,8 +295,7 @@ export function HistoryPage({
         label,
         pageScopeOpts,
       ),
-    onSuccess: (_, vars) => {
-      toast.success(`Attached label "${vars.label}" to v${vars.version}`, { id: `history-label-${vars.version}` });
+    onSuccess: () => {
       refetchVersions();
     },
     onError: (err: unknown, vars) => {
@@ -342,43 +310,11 @@ export function HistoryPage({
         labelId,
         pageScopeOpts,
       ),
-    onSuccess: (_data, labelId) => {
-      toast.success('Label removed', { id: `history-label-${labelId}` });
+    onSuccess: () => {
       refetchVersions();
     },
     onError: (err: unknown, labelId) => {
       toast.error(`Failed to remove label: ${(err as Error)?.message || 'Unknown error'}`, { id: `history-label-${labelId}` });
-    },
-  });
-
-  const createSnapshotMutation = useMutation({
-    mutationFn: async (summary: string) => {
-      const hasDirtyBeforeSnapshot =
-        typeof sessionCoordinator.hasDirtyDocuments === 'function'
-          ? sessionCoordinator.hasDirtyDocuments()
-          : true;
-      if (hasDirtyBeforeSnapshot) {
-        if (effectiveProjectId) {
-          flushYjsProviders(effectiveProjectId);
-        }
-        await sessionCoordinator.flushAllPending();
-      }
-      return await pagesService.history.createProjectSnapshot(
-        effectiveProjectId,
-        { summary, ...(effectivePageId ? { pageId: effectivePageId } : {}) },
-        pageScopeOpts,
-      );
-    },
-    onSuccess: (newVersion) => {
-      if (!newVersion) return;
-      toast.success(`Created milestone snapshot v${newVersion.version}`, { id: 'history-snapshot' });
-      setIsCreatingSnapshot(false);
-      setSnapshotSummary('');
-      refetchVersions();
-      setSelectedTargetVersion(newVersion.version);
-    },
-    onError: (err: unknown) => {
-      toast.error(`Failed to create snapshot: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-snapshot' });
     },
   });
 
@@ -417,7 +353,7 @@ export function HistoryPage({
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
+      toast.success(`Restored project to v${restoredVersion}`, { id: 'history-restore' });
       setConfirmingRestore(false);
       handleClose();
     },
@@ -457,7 +393,7 @@ export function HistoryPage({
       };
     },
     onSuccess: ({ filePath, docId, baseVersion, baseContent, rev }) => {
-      toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
+      toast.success(`Restored ${filePath} from v${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
       let updatedMountedEngine = false;
       if (docId) {
@@ -510,43 +446,11 @@ export function HistoryPage({
     },
   });
 
-  const copySnapshotFile = async (
-    version: number | null,
-    cachedSnapshot: ProjectSnapshotDetail | null | undefined,
-  ) => {
-    try {
-      let snap = cachedSnapshot;
-      if (!snap && effectiveProjectId && version) {
-        snap = await pagesService.history.getProjectSnapshot(
-          effectiveProjectId,
-          version,
-          pageScopeOpts,
-        );
-      }
-      if (!snap || !activeFilePath || !version) return;
-      const fileData = findSnapshotFileEntry(snap.files, activeFilePath);
-      if (!fileData) {
-        toast.error(`File ${activeFilePath} not found in Version ${version}`);
-        return;
-      }
-      const content = extractSnapshotFileContent(fileData);
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(content);
-      }
-      toast.success(`Copied v${version} of ${activeFilePath} to clipboard`, { id: 'history-copy-file' });
-    } catch (err: unknown) {
-      toast.error(`Failed to copy file: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-copy-file' });
-    }
-  };
-
-  const handleCopyBaseFile = () => copySnapshotFile(selectedBaseVersion, baseSnapshot);
-  const handleCopySingleFile = () => copySnapshotFile(selectedTargetVersion, targetSnapshot);
-
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
   const handleDownloadVersionZip = async (versionOverride?: number) => {
     const targetVer = versionOverride ?? selectedTargetVersion;
-    if (!effectiveProjectId || !targetVer) return;
+    if (!effectiveProjectId || !targetVer || isDownloadingZip) return;
     setIsDownloadingZip(true);
     try {
       const projectTitle = currentPageTitle || 'project';
@@ -556,7 +460,6 @@ export function HistoryPage({
         version: targetVer,
         projectTitle,
       });
-      toast.success(`Successfully downloaded ZIP for Version ${targetVer}`, { id: 'history-download-zip' });
     } catch (err: unknown) {
       toast.error(`Failed to download Version ZIP: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-download-zip' });
     } finally {
@@ -593,8 +496,8 @@ export function HistoryPage({
       aria-label="Project Version History"
       className="fixed inset-0 z-50 flex flex-col w-screen h-screen bg-background overflow-hidden select-none font-sans"
     >
-      {/* ── Top Header Bar (Overleaf Parity) ── */}
-      <header className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 border-b border-border bg-background shrink-0 select-none overflow-x-auto overflow-y-hidden scrollbar-none gap-3">
+      {/* ── Top Header Bar ── */}
+      <header className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background shrink-0 select-none gap-3">
         <div className="flex items-center gap-3 shrink-0">
           <Button
             variant="ghost"
@@ -607,202 +510,89 @@ export function HistoryPage({
             <span>Back to editor</span>
           </Button>
           <div className="h-4 w-px bg-border/60" />
-          <div className="flex items-center gap-2.5">
-            <History className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-14 font-semibold text-foreground tracking-tight">Project History</h2>
-                {historyMode === 'single' && selectedTargetVersion != null ? (
-                  <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
-                    v{selectedTargetVersion}
-                  </Badge>
-                ) : historyMode === 'compare' && selectedTargetVersion != null && selectedBaseVersion != null ? (
-                  <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
-                    v{selectedBaseVersion} → v{selectedTargetVersion}
-                  </Badge>
-                ) : null}
-              </div>
-              <p className="text-12 text-muted-foreground mt-0.5">
-                {versions.length} total {versions.length === 1 ? 'version' : 'versions'} recorded
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-foreground tracking-tight">Project History</h2>
+            {historyMode === 'single' && selectedTargetVersion != null ? (
+              <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
+                v{selectedTargetVersion}
+              </Badge>
+            ) : historyMode === 'compare' && selectedTargetVersion != null && selectedBaseVersion != null ? (
+              <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
+                v{selectedBaseVersion} → v{selectedTargetVersion}
+              </Badge>
+            ) : null}
           </div>
         </div>
 
-        {/* Center: Diff Stats (Compare Mode only) */}
-        {historyMode === 'compare' && diffData && (
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono font-medium text-success bg-success/10 rounded-sm border border-success/20">
-              {`+${diffData.totalAdditions}`}
-            </span>
-            <span className="flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono font-medium text-destructive bg-destructive/10 rounded-sm border border-destructive/20">
-              {`-${diffData.totalDeletions}`}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              ({diffData.filesChanged} {diffData.filesChanged === 1 ? 'file' : 'files'} changed)
-            </span>
+        {/* Right: Compare View Switcher only */}
+        {historyMode === 'compare' && (
+          <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-muted-foreground shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode('unified')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors cursor-pointer',
+                viewMode === 'unified'
+                  ? 'bg-muted text-foreground'
+                  : 'hover:text-foreground'
+              )}
+              title="Unified Diff View"
+            >
+              <AlignJustify className="size-3.5" />
+              <span className="hidden md:inline">Unified</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors cursor-pointer',
+                viewMode === 'split'
+                  ? 'bg-muted text-foreground'
+                  : 'hover:text-foreground'
+              )}
+              title="Side-by-Side Split Diff View"
+            >
+              <Columns2 className="size-3.5" />
+              <span className="hidden md:inline">Split</span>
+            </button>
           </div>
         )}
+      </header>
 
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* View Mode Switcher (Compare Mode only) */}
-          {historyMode === 'compare' && (
-            <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => setViewMode('unified')}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
-                  viewMode === 'unified'
-                    ? 'bg-muted text-foreground'
-                    : 'hover:text-foreground'
-                )}
-                title="Unified Diff View"
-              >
-                <AlignJustify className="size-3.5" />
-                <span className="hidden md:inline">Unified</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('split')}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
-                  viewMode === 'split'
-                    ? 'bg-muted text-foreground'
-                    : 'hover:text-foreground'
-                )}
-                title="Side-by-Side Split Diff View"
-              >
-                <Columns2 className="size-3.5" />
-                <span className="hidden md:inline">Split</span>
-              </button>
-            </div>
-          )}
-
-          {/* Create Snapshot Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsCreatingSnapshot(true)}
-            className="h-8 gap-1.5 text-xs cursor-pointer"
-          >
-            <Plus className="size-3.5" />
-            <span className="hidden sm:inline">Snapshot</span>
-          </Button>
-
-          {/* Download this version as ZIP (Overleaf Parity) */}
-          {selectedTargetVersion && (
+      {/* ── Project Restore Confirmation Bar ── */}
+      {confirmingRestore && selectedTargetVersion != null && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs shrink-0">
+          <div className="flex items-center gap-2 text-foreground">
+            <RotateCcw className="size-3.5 text-destructive shrink-0" />
+            <span>
+              Restore project to{' '}
+              <span className="font-mono font-semibold">v{selectedTargetVersion}</span>?
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={() => void handleDownloadVersionZip()}
-              disabled={isDownloadingZip}
-              className="h-8 gap-1.5 text-xs cursor-pointer"
-              title={`Download Version ${selectedTargetVersion} as ZIP archive`}
-            >
-              {isDownloadingZip ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Download className="size-3.5" />
-              )}
-              <span className="hidden sm:inline">Download ZIP</span>
-            </Button>
-          )}
-
-          {/* Restore this version */}
-          {selectedTargetVersion && (
-            <Button
-              variant={confirmingRestore ? 'destructive' : 'default'}
-              size="sm"
-              onClick={() => {
-                if (confirmingRestore) {
-                  restoreMutation.mutate(selectedTargetVersion);
-                } else {
-                  setConfirmingRestore(true);
-                }
-              }}
+              className="h-7 px-2.5 text-xs gap-1.5 cursor-pointer"
               disabled={restoreMutation.isPending}
-              className="h-8 gap-1.5 text-xs cursor-pointer"
+              onClick={() => restoreMutation.mutate(selectedTargetVersion)}
             >
               {restoreMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Loader2 className="size-3 animate-spin" />
               ) : (
-                <RotateCcw className="size-3.5" />
+                <RotateCcw className="size-3" />
               )}
-              <span>
-                {confirmingRestore
-                  ? `Confirm restore to v${selectedTargetVersion}`
-                  : 'Restore this version'}
-              </span>
+              <span>Confirm restore</span>
             </Button>
-          )}
-
-          {confirmingRestore && (
             <Button
               variant="ghost"
               size="sm"
+              className="h-7 px-2 text-xs cursor-pointer"
               onClick={() => setConfirmingRestore(false)}
-              className="h-8 px-2 text-xs"
             >
               Cancel
             </Button>
-          )}
-
-          <div className="h-4 w-px bg-border/60 mx-1" />
-
-          <button
-            type="button"
-            onClick={handleClose}
-            className="flex size-8 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* ── Snapshot Creation Inline Banner ── */}
-      {isCreatingSnapshot && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-muted/40 border-b border-border shrink-0 animate-in fade-in duration-150">
-          <Bookmark className="size-4 text-muted-foreground shrink-0" />
-          <span className="text-xs font-medium text-foreground whitespace-nowrap">
-            New Milestone Snapshot:
-          </span>
-          <Input
-            value={snapshotSummary}
-            onChange={(e) => setSnapshotSummary(e.target.value)}
-            placeholder="e.g. Completed Section 3 methodology draft..."
-            className="h-7 text-xs flex-1"
-            autoFocus
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && snapshotSummary.trim()) {
-                createSnapshotMutation.mutate(snapshotSummary.trim());
-              } else if (e.key === 'Escape') {
-                setIsCreatingSnapshot(false);
-              }
-            }}
-          />
-          <Button
-            size="sm"
-            className="h-7 px-3 text-xs"
-            disabled={!snapshotSummary.trim() || createSnapshotMutation.isPending}
-            onClick={() => createSnapshotMutation.mutate(snapshotSummary.trim())}
-          >
-            {createSnapshotMutation.isPending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              'Save Snapshot'
-            )}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            onClick={() => setIsCreatingSnapshot(false)}
-          >
-            Cancel
-          </Button>
+          </div>
         </div>
       )}
 
@@ -857,56 +647,44 @@ export function HistoryPage({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 min-h-[28px] px-2 text-xs gap-1 cursor-pointer"
-                      onClick={handleCopySingleFile}
-                    >
-                      <Copy className="size-3" />
-                      <span className="hidden sm:inline">Copy</span>
-                    </Button>
-
-                    {selectedTargetVersion != null && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant={confirmingFileRestore ? 'destructive' : 'secondary'}
-                          size="sm"
-                          className="h-7 min-h-[28px] px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
-                          disabled={restoreSingleFileMutation.isPending}
-                          onClick={() => {
-                            if (confirmingFileRestore) {
-                              restoreSingleFileMutation.mutate(selectedTargetVersion);
-                            } else {
-                              setConfirmingFileRestore(true);
-                            }
-                          }}
-                        >
-                          {restoreSingleFileMutation.isPending ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : (
-                            <RotateCcw className="size-3" />
-                          )}
-                          <span>
-                            {confirmingFileRestore
-                              ? `Confirm restore ${activeFilePath.split('/').pop() || 'file'} to v${selectedTargetVersion}`
-                              : 'Restore this version'}
-                          </span>
-                        </Button>
-                        {confirmingFileRestore && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => setConfirmingFileRestore(false)}
-                          >
-                            Cancel
-                          </Button>
+                  {selectedTargetVersion != null && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant={confirmingFileRestore ? 'destructive' : 'secondary'}
+                        size="sm"
+                        className="h-7 min-h-[28px] px-2.5 text-xs gap-1.5 cursor-pointer font-medium"
+                        disabled={restoreSingleFileMutation.isPending}
+                        onClick={() => {
+                          if (confirmingFileRestore) {
+                            restoreSingleFileMutation.mutate(selectedTargetVersion);
+                          } else {
+                            setConfirmingFileRestore(true);
+                          }
+                        }}
+                      >
+                        {restoreSingleFileMutation.isPending ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <RotateCcw className="size-3" />
                         )}
-                      </div>
-                    )}
-                  </div>
+                        <span>
+                          {confirmingFileRestore
+                            ? `Confirm restore ${activeFilePath.split('/').pop() || 'file'} to v${selectedTargetVersion}`
+                            : 'Restore this file'}
+                        </span>
+                      </Button>
+                      {confirmingFileRestore && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs cursor-pointer"
+                          onClick={() => setConfirmingFileRestore(false)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 min-h-0 overflow-auto bg-background">
@@ -937,11 +715,9 @@ export function HistoryPage({
             diffData={diffData}
             isLoadingDiff={isLoadingDiff}
             activeFilePath={activeFilePath}
-            setActiveFilePath={setActiveFilePath}
             viewMode={viewMode}
             selectedBaseVersion={selectedBaseVersion}
             selectedTargetVersion={selectedTargetVersion}
-            onCopyBaseFile={handleCopyBaseFile}
             onRestoreSingleFile={() => restoreSingleFileMutation.mutate(undefined)}
             isRestoringSingleFile={restoreSingleFileMutation.isPending}
             confirmingFileRestore={confirmingFileRestore}
@@ -957,8 +733,6 @@ export function HistoryPage({
           onHistoryModeChange={setHistoryMode}
           filter={filter}
           setFilter={setFilter}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
           selectedTargetVersion={selectedTargetVersion}
           selectedBaseVersion={selectedBaseVersion}
           onSelectVersion={handleSelectVersion}

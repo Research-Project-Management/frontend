@@ -3,10 +3,8 @@
 import React, { useState } from 'react';
 import {
   Tag,
-  Plus,
   Check,
   X,
-  Search,
   Clock,
   Loader2,
   User,
@@ -49,8 +47,6 @@ export interface VersionTimelineSidebarProps {
   onHistoryModeChange: (mode: 'single' | 'compare') => void;
   filter: 'all' | 'labelled';
   setFilter: (filter: 'all' | 'labelled') => void;
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
   selectedTargetVersion: number | null;
   selectedBaseVersion: number | null;
   onSelectVersion: (version: number) => void;
@@ -69,8 +65,6 @@ export function VersionTimelineSidebar({
   onHistoryModeChange,
   filter,
   setFilter,
-  searchQuery,
-  setSearchQuery,
   selectedTargetVersion,
   selectedBaseVersion,
   onSelectVersion,
@@ -84,102 +78,63 @@ export function VersionTimelineSidebar({
   const [labelingVersion, setLabelingVersion] = useState<number | null>(null);
   const [newLabelText, setNewLabelText] = useState('');
 
-  const latestVersion = React.useMemo(() => {
-    if (versions.length === 0) return 0;
-    return Math.max(...versions.map((v) => v.version));
-  }, [versions]);
-
   const filteredVersions = React.useMemo(() => {
-    return versions.filter((v) => {
-      if (filter === 'labelled' && (!v.labels || v.labels.length === 0)) {
-        return false;
-      }
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      const matchSummary = v.summary?.toLowerCase().includes(q);
-      const matchLabel = v.labels?.some((l) => l.label.toLowerCase().includes(q));
-      const matchVer = `v${v.version}`.includes(q) || `${v.version}` === q;
-      const matchAuthor = v.author?.name?.toLowerCase().includes(q);
-      return matchSummary || matchLabel || matchVer || matchAuthor;
-    });
-  }, [versions, filter, searchQuery]);
+    if (filter === 'labelled') {
+      return versions.filter((v) => v.labels && v.labels.length > 0);
+    }
+    return versions;
+  }, [versions, filter]);
 
   return (
-    <aside className="w-full md:w-80 lg:w-88 border-t md:border-t-0 md:border-l border-border max-h-60 md:max-h-none flex flex-col bg-muted/15 shrink-0 overflow-hidden">
-      {/* Mode, Filter, and Search Bar */}
-      <div className="p-3 border-b space-y-2 shrink-0 bg-background/50">
-        <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-muted/40 text-xs font-medium">
-          <button
-            type="button"
-            onClick={() => onHistoryModeChange('single')}
-            className={cn(
-              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
-              historyMode === 'single'
-                ? 'bg-background text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Single version
-          </button>
-          <button
-            type="button"
-            onClick={() => onHistoryModeChange('compare')}
-            className={cn(
-              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
-              historyMode === 'compare'
-                ? 'bg-background text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Compare
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 p-0.5 rounded-md border border-border bg-muted/40 text-xs font-medium">
+    <aside className="w-full md:w-80 lg:w-88 border-t md:border-t-0 md:border-l border-border max-h-60 md:max-h-none flex flex-col bg-surface shrink-0 overflow-hidden">
+      {/* Header: Tabs + Compare toggle */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0 bg-background/50">
+        <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5 text-xs font-medium">
           <button
             type="button"
             onClick={() => setFilter('all')}
             className={cn(
-              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
+              'px-2 py-1 rounded-sm transition-colors cursor-pointer whitespace-nowrap',
               filter === 'all'
                 ? 'bg-background text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            All Revisions ({versions.length})
+            All history
           </button>
           <button
             type="button"
             onClick={() => setFilter('labelled')}
             className={cn(
-              'flex-1 py-1 text-center rounded-sm transition-colors cursor-pointer',
+              'px-2 py-1 rounded-sm transition-colors cursor-pointer whitespace-nowrap',
               filter === 'labelled'
                 ? 'bg-background text-foreground font-medium'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            Labelled ({versions.filter((v) => v.labels?.length > 0).length})
+            Labels
           </button>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Filter versions, labels, or authors"
-            placeholder="Filter versions, labels, or authors..."
-            className="h-7 pl-8 text-xs bg-background"
-          />
-        </div>
+        <Button
+          type="button"
+          variant={historyMode === 'compare' ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() =>
+            onHistoryModeChange(historyMode === 'compare' ? 'single' : 'compare')
+          }
+          className="h-7 px-2.5 text-xs font-medium cursor-pointer whitespace-nowrap shrink-0"
+        >
+          {historyMode === 'compare' ? 'Exit compare' : 'Compare versions'}
+        </Button>
       </div>
 
       {/* Versions List */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 divide-y-0">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 sidebar-scrollbar">
         {isLoadingVersions ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs gap-2">
             <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-primary" />
-            <span>Loading version history...</span>
+            <span>Loading history...</span>
           </div>
         ) : filteredVersions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs text-center px-4">
@@ -187,15 +142,16 @@ export function VersionTimelineSidebar({
             <p className="font-medium text-foreground">No versions found</p>
             <p className="text-[11px] mt-0.5">
               {filter === 'labelled'
-                ? 'No snapshots have been labelled yet.'
-                : 'Revisions will appear automatically as you edit.'}
+                ? 'No labelled versions yet.'
+                : 'Versions appear automatically as you edit.'}
             </p>
           </div>
         ) : (
           filteredVersions.map((v) => {
             const isTarget = selectedTargetVersion === v.version;
-            const isBase = selectedBaseVersion === v.version;
+            const isBase = historyMode === 'compare' && selectedBaseVersion === v.version;
             const isAddingLabel = labelingVersion === v.version;
+            const authorLabel = v.author?.name || v.createdBy?.name || null;
 
             return (
               <div
@@ -210,104 +166,82 @@ export function VersionTimelineSidebar({
                       : 'bg-card hover:bg-muted/40 border-border/70'
                 )}
               >
-                {/* Top Row: Version Badge, Current State / Save Type, Time */}
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span
-                      className={cn(
-                        'px-1.5 py-0.5 rounded-sm text-[11px] font-mono font-semibold',
-                        isTarget
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-foreground'
-                      )}
-                    >
-                      v{v.version}
-                    </span>
-                    {v.version === latestVersion ? (
-                      <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-success/15 text-success border border-success/30">
-                        Current state
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">
-                        {v.isAutomatic ? 'Auto-save' : 'Snapshot'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[11px] text-muted-foreground">
+                {/* Top Row: Time, Version Tag, Actions Menu */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-medium text-foreground truncate">
                       {formatVersionTime(v.createdAt)}
                     </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={`Actions for v${v.version}`}
-                          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                        >
-                          <MoreVertical className="size-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
+                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                      v{v.version}
+                    </span>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
                         onClick={(e) => e.stopPropagation()}
-                        className="w-52 text-xs"
+                        aria-label={`Actions for v${v.version}`}
+                        className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
                       >
+                        <MoreVertical className="size-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-52 text-xs"
+                    >
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLabelingVersion(v.version);
+                          setNewLabelText('');
+                        }}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Tag className="size-3.5 text-muted-foreground" />
+                        <span>Label this version</span>
+                      </DropdownMenuItem>
+                      {onDownloadVersion && (
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            setLabelingVersion(v.version);
-                            setNewLabelText('');
+                            onDownloadVersion(v.version);
                           }}
                           className="gap-2 cursor-pointer"
                         >
-                          <Tag className="size-3.5 text-muted-foreground" />
-                          <span>Label this version</span>
+                          <Download className="size-3.5 text-muted-foreground" />
+                          <span>Download this version (.zip)</span>
                         </DropdownMenuItem>
-                        {onDownloadVersion && (
+                      )}
+                      {onRestoreVersion && (
+                        <>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDownloadVersion(v.version);
+                              onRestoreVersion(v.version);
                             }}
                             className="gap-2 cursor-pointer"
                           >
-                            <Download className="size-3.5 text-muted-foreground" />
-                            <span>Download this version (.zip)</span>
+                            <RotateCcw className="size-3.5 text-muted-foreground" />
+                            <span>Restore project to this version</span>
                           </DropdownMenuItem>
-                        )}
-                        {onRestoreVersion && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRestoreVersion(v.version);
-                              }}
-                              className="gap-2 cursor-pointer"
-                            >
-                              <RotateCcw className="size-3.5 text-muted-foreground" />
-                              <span>Restore project to this version</span>
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
-                {/* Author Attribution (Overleaf Parity) */}
-                {(v.author?.name || v.createdById) && (
-                  <div className="flex items-center gap-1 mb-1 text-[11px] text-muted-foreground">
+                {/* Author */}
+                {authorLabel && (
+                  <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
                     <User className="size-3 shrink-0 opacity-70" />
-                    <span className="truncate">{v.author?.name || `Author ${v.createdById?.slice(0, 6)}`}</span>
+                    <span className="truncate">{authorLabel}</span>
                   </div>
                 )}
-
-                {/* Summary / Commit Message */}
-                <p className="text-xs font-medium text-foreground line-clamp-2 leading-relaxed">
-                  {v.summary || (v.isAutomatic ? 'Automated synchronization checkpoint' : 'Snapshot')}
-                </p>
 
                 {/* Labels Chips */}
                 {v.labels && v.labels.length > 0 && (
@@ -325,7 +259,7 @@ export function VersionTimelineSidebar({
                             e.stopPropagation();
                             onDeleteLabel(lbl.id);
                           }}
-                          className="hover:text-destructive transition-colors ml-0.5"
+                          className="hover:text-destructive transition-colors ml-0.5 cursor-pointer"
                           title="Remove label"
                         >
                           <X className="size-2.5" />
@@ -338,14 +272,14 @@ export function VersionTimelineSidebar({
                 {/* Inline Add Label Box */}
                 {isAddingLabel ? (
                   <div
-                    className="flex items-center gap-1 mt-2 pt-2 border-t"
+                    className="flex items-center gap-1 mt-2 pt-2 border-t border-border/60"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <Input
                       value={newLabelText}
                       onChange={(e) => setNewLabelText(e.target.value)}
                       aria-label="Label name"
-                      placeholder="Label name (e.g. v1.0-draft)..."
+                      placeholder="Label name..."
                       className="h-6 text-[11px] px-2"
                       autoFocus
                       onKeyDown={(e) => {
@@ -378,42 +312,25 @@ export function VersionTimelineSidebar({
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <span>{v.fileCount || 1} files</span>
-                      {historyMode === 'compare' && onSelectBaseVersion && (
-                        <>
-                          <span className="text-border/70">•</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSelectBaseVersion(v.version);
-                            }}
-                            className={cn(
-                              'hover:text-primary transition-colors cursor-pointer',
-                              isBase ? 'text-primary font-semibold' : 'hover:underline'
-                            )}
-                            title={`Set Version ${v.version} as the comparison base`}
-                          >
-                            {isBase ? '● Base' : 'Set as base'}
-                          </button>
-                        </>
-                      )}
+                  historyMode === 'compare' &&
+                  onSelectBaseVersion && (
+                    <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-border/40 text-[11px] text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectBaseVersion(v.version);
+                        }}
+                        className={cn(
+                          'hover:text-primary transition-colors cursor-pointer',
+                          isBase ? 'text-primary font-semibold' : 'hover:underline'
+                        )}
+                        title={`Compare from v${v.version}`}
+                      >
+                        {isBase ? '● Comparing from' : 'Compare from here'}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLabelingVersion(v.version);
-                        setNewLabelText('');
-                      }}
-                      className="hover:text-foreground flex items-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Plus className="size-2.5" />
-                      <span>Add label</span>
-                    </button>
-                  </div>
+                  )
                 )}
               </div>
             );

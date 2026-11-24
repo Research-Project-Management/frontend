@@ -61,6 +61,8 @@ export const CitationSpecs = {
     Boolean(item.sourceFile && item.sourceFile !== 'workspace-library'),
   isCitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
     Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
+  isUncitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
+    !Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
   matchesQuery: (rawQuery: string): CitationPredicate => {
     const query = rawQuery.trim().toLowerCase();
     if (!query) return () => true;
@@ -132,6 +134,8 @@ export function useCitationPickerState({
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>(defaultStyle);
   const [search, setSearch] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<'default' | 'year-desc' | 'year-asc' | 'title-asc' | 'author-asc'>('default');
   const [selectedNav, setSelectedNav] = useState<string>('all');
   const [activeView, setActiveView] = useState<'tree' | 'list' | 'detail'>('list');
   const [serverItems, setServerItems] = useState<BibEntry[]>([]);
@@ -431,8 +435,24 @@ export function useCitationPickerState({
 
   const filteredItems = useMemo(() => {
     const querySpec = CitationSpecs.matchesQuery(deferredSearch);
-    return navFilteredItems.filter(querySpec);
-  }, [navFilteredItems, deferredSearch]);
+    const items = navFilteredItems.filter(querySpec);
+
+    if (sortBy === 'year-desc') {
+      return [...items].sort((a, b) => (Number(b.year) || 0) - (Number(a.year) || 0));
+    }
+    if (sortBy === 'year-asc') {
+      return [...items].sort((a, b) => (Number(a.year) || 0) - (Number(b.year) || 0));
+    }
+    if (sortBy === 'title-asc') {
+      return [...items].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    }
+    if (sortBy === 'author-asc') {
+      return [...items].sort((a, b) =>
+        (a.authors?.[0] || a.author || '').localeCompare(b.authors?.[0] || b.author || ''),
+      );
+    }
+    return items;
+  }, [navFilteredItems, deferredSearch, sortBy]);
 
   useEffect(() => {
     if (filteredItems.length === 0) {
@@ -551,12 +571,34 @@ export function useCitationPickerState({
     [effectiveProjectId, libraryItems, projectFiles, rootId, queryClient],
   );
 
+  const toggleSelectKey = useCallback((key: string) => {
+    const lower = key.toLowerCase();
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(lower)) {
+        next.delete(lower);
+      } else {
+        next.add(lower);
+      }
+      return next;
+    });
+    setSelectedKey(key);
+  }, []);
+
+  const selectAllFiltered = useCallback(() => {
+    setSelectedKeys(new Set(filteredItems.map((it) => it.key.toLowerCase())));
+  }, [filteredItems]);
+
   const insertCitation = useCallback(
-    (entry: BibEntry) => {
-      const snippet = formatCitationSnippet(entry.key, selectedStyle);
+    (entriesToInsert: BibEntry | BibEntry[]) => {
+      const list = Array.isArray(entriesToInsert) ? entriesToInsert : [entriesToInsert];
+      if (list.length === 0) return;
+
+      const keysString = list.map((e) => e.key).join(', ');
+      const snippet = formatCitationSnippet(keysString, selectedStyle);
 
       if (onSelectCitation) {
-        onSelectCitation(snippet, entry.key, entry);
+        onSelectCitation(snippet, list[0].key, list[0]);
       } else {
         const engine = getActiveEditorEngine();
         if (engine) {
@@ -567,8 +609,10 @@ export function useCitationPickerState({
           editorCommandBus.dispatch({ type: 'editor:focus' });
         }
 
-        if (entry.source === 'library' || entry.sourceFile === 'workspace-library') {
-          void ensureBibtexInProject(entry);
+        for (const entry of list) {
+          if (entry.source === 'library' || entry.sourceFile === 'workspace-library') {
+            void ensureBibtexInProject(entry);
+          }
         }
       }
 
@@ -589,12 +633,32 @@ export function useCitationPickerState({
     [retractedMap, insertCitation],
   );
 
-  const handleSelectCard = useCallback((entry: BibEntry) => {
+  const handleInsertSelected = useCallback(() => {
+    if (selectedKeys.size > 1) {
+      const entries = allMergedItems.filter((e) => selectedKeys.has(e.key.toLowerCase()));
+      const retracted = entries.find((e) => retractedMap.has(e.key));
+      if (retracted) {
+        const info = retractedMap.get(retracted.key)!;
+        setPendingRetracted({ entry: retracted, info });
+        return;
+      }
+      insertCitation(entries);
+    } else if (selectedEntry) {
+      handleSelectItem(selectedEntry);
+    }
+  }, [selectedKeys, allMergedItems, selectedEntry, retractedMap, insertCitation, handleSelectItem]);
+
+  const handleSelectCard = useCallback((entry: BibEntry, e?: React.MouseEvent) => {
+    if (e && (e.metaKey || e.ctrlKey)) {
+      toggleSelectKey(entry.key);
+      return;
+    }
     setSelectedKey(entry.key);
+    setSelectedKeys(new Set([entry.key.toLowerCase()]));
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setActiveView('detail');
     }
-  }, []);
+  }, [toggleSelectKey]);
 
   const isLargeCardsList = filteredItems.length >= 25;
   const cardsVirtualizer = useVirtualizer({
@@ -658,6 +722,12 @@ export function useCitationPickerState({
     search,
     setSearch,
     selectedKey,
+    selectedKeys,
+    toggleSelectKey,
+    selectAllFiltered,
+    handleInsertSelected,
+    sortBy,
+    setSortBy,
     selectedNav,
     setSelectedNav,
     activeView,

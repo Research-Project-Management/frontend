@@ -3,32 +3,27 @@
 /**
  * TableWizardModal.tsx
  *
- * Visual LaTeX Table & Math Matrix Editor Wizard (Overleaf Parity).
- * Location: `features/editor/subsystems/authoring-wizards/ui/table-wizard/TableWizardModal.tsx`
- *
- * Features:
- * 1. Interactive Visual Spreadsheet Grid (edit cell contents without typing `&` and `\\`).
- * 2. Academic Booktabs, Bordered, and Minimal table styling.
- * 3. Matrix Wizard: pmatrix, bmatrix, vmatrix, Bmatrix, Vmatrix, matrix.
- * 4. Matrix presets: Identity (I), Zero (0), Symbolic (a_{ij}), Diagonal.
- * 5. Excel / Google Sheets CSV/TSV copy-paste import.
- * 6. Reverse-parser from existing LaTeX tabular & matrix snippets.
- * 7. Live syntax-highlighted LaTeX output and rendered KaTeX preview.
+ * Overleaf-aligned Table Insertion & Customization Modal:
+ * - Table tab: clean blank interactive grid, column alignments, horizontal merge/unmerge,
+ *   border toggles (Booktabs / Outer / Horizontal / Vertical), and Caption/Label fields.
+ * - Import tab: paste Excel/TSV, CSV, or LaTeX tabular snippet into the visual grid.
+ * - Create with AI tab: natural language prompt and image upload / drag-and-drop.
  */
 
-import React, { useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Table as TableIcon,
   Check,
-  Copy,
   Plus,
   Trash2,
-  Grid3X3,
   FileSpreadsheet,
-  Variable,
-  Layers,
-  Bot,
+  Sparkles,
   Loader2,
+  Merge,
+  Split,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
@@ -50,16 +45,34 @@ import {
   TabsTrigger,
 } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { useTableMatrixWizard } from './useTableMatrixWizard';
-import { type MatrixType } from '@/features/editor/domain/latex/table-matrix';
-import katex from 'katex';
+import {
+  useTableMatrixWizard,
+  type TableWizardTab,
+} from './useTableMatrixWizard';
+import type { TableCellMerge } from '@/features/editor/domain/latex/table-matrix';
 
 export interface TableWizardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInsert: (latexCode: string) => void;
-  initialTab?: 'table' | 'matrix';
+  initialTab?: 'table' | 'import' | 'ai' | 'matrix';
   initialLatex?: string;
+}
+
+interface CellSelection {
+  row: number;
+  anchorCol: number;
+  focusCol: number;
+}
+
+function getMergeAt(
+  merges: TableCellMerge[],
+  row: number,
+  col: number,
+): TableCellMerge | undefined {
+  return merges.find(
+    (m) => m.row === row && col >= m.col && col < m.col + m.colSpan,
+  );
 }
 
 export function TableWizardModal({
@@ -72,15 +85,18 @@ export function TableWizardModal({
   const {
     tab,
     setTab,
-
-    // Table state & actions
     tableRows,
     tableCols,
     tableHeaders,
     tableData,
     tableAlignments,
     tableStyle,
-    setTableStyle,
+    merges,
+    borders,
+    mergeCells,
+    unmergeCell,
+    toggleBorder,
+    applyBooktabsPreset,
     caption,
     setCaption,
     label,
@@ -101,23 +117,7 @@ export function TableWizardModal({
     removeTableColumn,
     importPastedData,
     importRawText,
-
-    // Matrix state & actions
-    matrixType,
-    setMatrixType,
-    matrixRows,
-    matrixCols,
-    matrixCells,
-    matrixWrapper,
-    setMatrixWrapper,
-    setMatrixDimension,
-    updateMatrixCell,
-    applyMatrixPreset,
-
-    // Output & Actions
-    activeLatex,
     insertSnippet,
-    copySnippet,
   } = useTableMatrixWizard({
     onInsert,
     onClose: () => onOpenChange(false),
@@ -125,307 +125,613 @@ export function TableWizardModal({
     initialLatex,
   });
 
-  // AI Table Generator State & Actions (Overleaf Parity)
   const aiAssistEnabled = useSettingsStore((s) => s.aiAssistEnabled);
-  const [aiPrompt, setAiPrompt] = React.useState('');
-  const [isAiGenerating, setIsAiGenerating] = React.useState(false);
+  const activeTab: TableWizardTab = !aiAssistEnabled && tab === 'ai' ? 'table' : tab;
 
-  const handleGenerateAiTable = React.useCallback(async () => {
-    if (!aiPrompt.trim() || isAiGenerating) return;
+  // ── Horizontal Cell Selection (click + Shift+click across a row) ──────────
+  const [selection, setSelection] = useState<CellSelection | null>(null);
+
+  const handleCellPointerDown = (
+    e: React.MouseEvent<HTMLInputElement>,
+    row: number,
+    col: number,
+  ) => {
+    const existingMerge = getMergeAt(merges, row, col);
+    if (e.shiftKey && selection && selection.row === row) {
+      if (selection.anchorCol !== col) {
+        e.preventDefault();
+      }
+      const targetCol = existingMerge
+        ? existingMerge.col + existingMerge.colSpan - 1
+        : col;
+      setSelection({ ...selection, focusCol: targetCol });
+      return;
+    }
+
+    if (existingMerge) {
+      setSelection({
+        row,
+        anchorCol: existingMerge.col,
+        focusCol: existingMerge.col + existingMerge.colSpan - 1,
+      });
+    } else {
+      setSelection({ row, anchorCol: col, focusCol: col });
+    }
+  };
+
+  const validSelection =
+    selection &&
+    selection.row < tableRows &&
+    (selection.row !== -1 || hasHeaderRow)
+      ? selection
+      : null;
+
+  const selStartCol = validSelection
+    ? Math.max(0, Math.min(validSelection.anchorCol, validSelection.focusCol))
+    : -1;
+  const selEndCol = validSelection
+    ? Math.min(tableCols - 1, Math.max(validSelection.anchorCol, validSelection.focusCol))
+    : -1;
+
+  const activeSelectedMerge =
+    validSelection && selStartCol >= 0
+      ? getMergeAt(merges, validSelection.row, selStartCol)
+      : undefined;
+
+  const isSingleMergedSelection = Boolean(
+    activeSelectedMerge &&
+      validSelection &&
+      selStartCol >= activeSelectedMerge.col &&
+      selEndCol < activeSelectedMerge.col + activeSelectedMerge.colSpan,
+  );
+
+  const canMergeSelection = Boolean(
+    validSelection && selEndCol > selStartCol && !isSingleMergedSelection,
+  );
+
+  const isBooktabsActive =
+    tableStyle === 'booktabs' &&
+    !borders.outer &&
+    !borders.innerHorizontal &&
+    !borders.innerVertical;
+
+  // ── AI Table Generator State (Text Prompt + Image Upload / Drag & Drop) ───
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const clearUploadedImage = useCallback(() => {
+    setUploadedImage((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (uploadedImage?.previewUrl) {
+        URL.revokeObjectURL(uploadedImage.previewUrl);
+      }
+    };
+  }, [uploadedImage]);
+
+  const handleImageSelected = (file: File | null | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (PNG, JPG, WebP, etc.)', {
+        id: 'ai-table-image',
+      });
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setUploadedImage((prev) => {
+      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl };
+    });
+  };
+
+  const handleGenerateAiTable = useCallback(async () => {
+    if ((!aiPrompt.trim() && !uploadedImage) || isAiGenerating) return;
     setIsAiGenerating(true);
     try {
-      const clean = await pagesService.ai.generateLatexTable(aiPrompt);
+      const promptParts: string[] = [];
+      if (aiPrompt.trim()) {
+        promptParts.push(aiPrompt.trim());
+      }
+      if (uploadedImage) {
+        promptParts.push(`[Attached table image: ${uploadedImage.file.name}]`);
+      }
+      const clean = await pagesService.ai.generateLatexTable(
+        promptParts.join('\n\n'),
+      );
 
       const imported = importRawText(clean);
       if (imported) {
-        toast.success('Table generated with AI and loaded into visual editor!', { id: 'ai-table-gen' });
+        toast.success('Generated table with AI', { id: 'ai-table-gen' });
         setAiPrompt('');
+        clearUploadedImage();
+        setTab('table');
       } else {
         setPastedText(clean);
-        importPastedData();
-        toast.success('Table generated with AI and imported!', { id: 'ai-table-gen' });
-        setAiPrompt('');
+        if (importPastedData()) {
+          toast.success('Generated table with AI', { id: 'ai-table-gen' });
+          setAiPrompt('');
+          clearUploadedImage();
+          setTab('table');
+        }
       }
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to generate table with AI', { id: 'ai-table-gen' });
+      toast.error(
+        (err as Error)?.message || 'Failed to generate table with AI',
+        { id: 'ai-table-gen' },
+      );
     } finally {
       setIsAiGenerating(false);
     }
-  }, [aiPrompt, isAiGenerating, importRawText, importPastedData, setPastedText]);
+  }, [
+    aiPrompt,
+    uploadedImage,
+    isAiGenerating,
+    importRawText,
+    importPastedData,
+    setPastedText,
+    clearUploadedImage,
+    setTab,
+  ]);
 
-  // Render live KaTeX preview for matrix
-  const renderedMatrixHtml = useMemo(() => {
-    if (tab !== 'matrix') return '';
-    try {
-      const rowStrings: string[] = [];
-      for (let r = 0; r < matrixRows; r++) {
-        const row = matrixCells[r] || [];
-        const formattedCells = Array.from({ length: matrixCols }, (_, c) => {
-          const val = row[c] ?? '';
-          return val.trim() || '0';
-        });
-        rowStrings.push(formattedCells.join(' & '));
-      }
-      const rawMatrix = `\\begin{${matrixType}}${rowStrings.join(' \\\\ ')}\\end{${matrixType}}`;
-      return katex.renderToString(rawMatrix, { displayMode: true, throwOnError: false });
-    } catch {
-      return '';
+  const renderRowCells = (
+    rowIdx: number,
+    values: string[],
+    isHeader: boolean,
+  ) => {
+    const cells: React.ReactNode[] = [];
+    let c = 0;
+
+    while (c < tableCols) {
+      const colIdx = c;
+      const merge = merges.find((m) => m.row === rowIdx && m.col === colIdx);
+      const span = merge
+        ? Math.max(1, Math.min(merge.colSpan, tableCols - colIdx))
+        : 1;
+      const align = tableAlignments[colIdx] || 'c';
+      const isSelected = Boolean(
+        validSelection &&
+          validSelection.row === rowIdx &&
+          !(colIdx + span - 1 < selStartCol || colIdx > selEndCol),
+      );
+      const alignClass =
+        align === 'l'
+          ? 'text-left'
+          : align === 'r'
+            ? 'text-right'
+            : 'text-center';
+
+      cells.push(
+        <td
+          key={`${rowIdx}-${colIdx}`}
+          colSpan={span}
+          className={cn(
+            'p-1',
+            borders.innerVertical && colIdx + span < tableCols && 'border-r border-border/80',
+          )}
+        >
+          <Input
+            value={values[colIdx] ?? ''}
+            onMouseDown={(e) => handleCellPointerDown(e, rowIdx, colIdx)}
+            onChange={(e) =>
+              isHeader
+                ? updateTableHeader(colIdx, e.target.value)
+                : updateTableCell(rowIdx, colIdx, e.target.value)
+            }
+            aria-label={
+              isHeader
+                ? `Header ${colIdx + 1}`
+                : `Row ${rowIdx + 1} Column ${colIdx + 1}`
+            }
+            className={cn(
+              'h-7 text-xs rounded-sm border-border/80 bg-background focus-visible:ring-1 focus-visible:ring-ring',
+              isHeader && 'font-semibold',
+              alignClass,
+              span > 1 && 'border-primary/40 bg-primary/5',
+              isSelected && 'ring-1 ring-primary border-primary bg-primary/5',
+            )}
+          />
+        </td>,
+      );
+      c += span;
     }
-  }, [tab, matrixType, matrixRows, matrixCols, matrixCells]);
+
+    return cells;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[92vh] flex flex-col p-5 gap-3 text-xs bg-background border border-border shadow-raised-200 rounded-md">
-        {/* Header */}
+      <DialogContent className="w-[95vw] sm:max-w-3xl max-h-[90vh] flex flex-col p-5 gap-3 text-xs bg-background border border-border shadow-raised-200 rounded-md">
         <DialogHeader className="pb-2 border-b border-border">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                Visual LaTeX Table & Matrix Wizard
+                Insert Table
               </DialogTitle>
               <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-                Construct tabular layouts and math matrices visually without typing manual ampersands (&amp;) or linebreaks (\\).
+                Build a table, import spreadsheet data, or generate one with AI.
               </DialogDescription>
             </div>
 
-            {/* Mode Switcher Tabs */}
             <Tabs
-              value={tab}
-              onValueChange={(v) => setTab(v as 'table' | 'matrix')}
+              value={activeTab}
+              onValueChange={(v) => setTab(v as TableWizardTab)}
               className="shrink-0 mr-8"
             >
               <TabsList className="h-7 bg-muted p-0.5 border border-border rounded-md">
                 <TabsTrigger
                   value="table"
-                  className="text-xs min-h-[26px] h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+                  className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   <TableIcon className="size-3.5" />
-                  Table (Tabular)
+                  <span>Table</span>
                 </TabsTrigger>
                 <TabsTrigger
-                  value="matrix"
-                  className="text-xs min-h-[26px] h-6 px-3 rounded-sm flex items-center gap-1.5 cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
+                  value="import"
+                  className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Variable className="size-3.5" />
-                  Math Matrix
+                  <FileSpreadsheet className="size-3.5" />
+                  <span>Import</span>
                 </TabsTrigger>
+                {aiAssistEnabled && (
+                  <TabsTrigger
+                    value="ai"
+                    className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Sparkles className="size-3.5 text-ai" />
+                    <span>Create with AI</span>
+                  </TabsTrigger>
+                )}
               </TabsList>
             </Tabs>
           </div>
         </DialogHeader>
 
-        {/* Tab 1: Table Wizard Content */}
-        {tab === 'table' && (
-          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1">
-            {/* Top Toolbar: Dimensions & Table Style */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-muted/20 border border-border rounded-md">
-              {/* Dimensions */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Grid:
-                </span>
-                <span className="text-xs font-mono font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-sm">
-                  {tableRows} rows × {tableCols} cols
-                </span>
-                <div className="flex items-center gap-1 ml-2">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={tableRows}
-                    onChange={(e) => setTableDimension(parseInt(e.target.value) || 1, tableCols)}
-                    className="w-14 h-7 text-xs font-mono text-center"
-                    aria-label="Rows"
-                  />
-                  <span className="text-muted-foreground">×</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={tableCols}
-                    onChange={(e) => setTableDimension(tableRows, parseInt(e.target.value) || 1)}
-                    className="w-14 h-7 text-xs font-mono text-center"
-                    aria-label="Columns"
-                  />
-                </div>
+        {/* ── Tab 1: Table Editor ── */}
+        {activeTab === 'table' && (
+          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-0.5">
+            {/* Compact Toolbar: Size, Merge/Unmerge, Borders */}
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-muted/20 border border-border rounded-md">
+              <div className="flex items-center gap-1.5">
+                <span className="text-11 font-medium text-muted-foreground">Size:</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={tableRows}
+                  onChange={(e) =>
+                    setTableDimension(parseInt(e.target.value, 10) || 1, tableCols)
+                  }
+                  className="w-12 h-7 text-xs font-mono text-center bg-background"
+                  aria-label="Rows"
+                />
+                <span className="text-muted-foreground">×</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={tableCols}
+                  onChange={(e) =>
+                    setTableDimension(tableRows, parseInt(e.target.value, 10) || 1)
+                  }
+                  className="w-12 h-7 text-xs font-mono text-center bg-background"
+                  aria-label="Columns"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addTableRow()}
+                  className="h-7 px-2 text-11 gap-1 cursor-pointer ml-1"
+                >
+                  <Plus className="size-3" />
+                  <span>Row</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => addTableColumn()}
+                  className="h-7 px-2 text-11 gap-1 cursor-pointer"
+                >
+                  <Plus className="size-3" />
+                  <span>Column</span>
+                </Button>
               </div>
 
-              {/* Table Style Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-11 font-medium text-muted-foreground">Style:</span>
-                <div className="flex items-center gap-1">
-                  {([
-                    { id: 'booktabs', label: 'Booktabs (Academic)' },
-                    { id: 'bordered', label: 'Bordered (\\hline)' },
-                    { id: 'minimal', label: 'Minimal' },
-                  ] as const).map((s) => (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {isSingleMergedSelection && activeSelectedMerge && validSelection ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => unmergeCell(validSelection.row, activeSelectedMerge.col)}
+                    className="h-7 px-2 text-11 gap-1 cursor-pointer"
+                    title="Split merged cell back into columns"
+                  >
+                    <Split className="size-3" />
+                    <span>Unmerge</span>
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!canMergeSelection}
+                    onClick={() => {
+                      if (validSelection && canMergeSelection) {
+                        mergeCells(validSelection.row, selStartCol, selEndCol);
+                        setSelection({
+                          row: validSelection.row,
+                          anchorCol: selStartCol,
+                          focusCol: selEndCol,
+                        });
+                      }
+                    }}
+                    className="h-7 px-2 text-11 gap-1 cursor-pointer"
+                    title="Shift+click across cells in the same row to merge"
+                  >
+                    <Merge className="size-3" />
+                    <span>
+                      {canMergeSelection
+                        ? `Merge (${selEndCol - selStartCol + 1})`
+                        : 'Merge'}
+                    </span>
+                  </Button>
+                )}
+
+                <div className="h-4 w-px bg-border mx-0.5" />
+
+                <span className="text-11 text-muted-foreground">Borders:</span>
+                <button
+                  type="button"
+                  onClick={applyBooktabsPreset}
+                  className={cn(
+                    'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer',
+                    isBooktabsActive
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background border-border text-foreground hover:bg-muted',
+                  )}
+                >
+                  Booktabs
+                </button>
+                {(
+                  [
+                    { key: 'outer', label: 'Outer' },
+                    { key: 'innerHorizontal', label: 'Horizontal' },
+                    { key: 'innerVertical', label: 'Vertical' },
+                  ] as const
+                ).map((item) => {
+                  const active = borders[item.key];
+                  return (
                     <button
-                      key={s.id}
+                      key={item.key}
                       type="button"
-                      onClick={() => setTableStyle(s.id)}
+                      onClick={() => toggleBorder(item.key)}
                       className={cn(
-                        'min-h-[28px] h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
-                        tableStyle === s.id
-                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                          : 'bg-background border-border text-foreground hover:bg-muted'
+                        'h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer',
+                        active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border text-foreground hover:bg-muted',
                       )}
                     >
-                      {s.label}
+                      {item.label}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Interactive Spreadsheet Grid */}
-            <div className="border border-border rounded-md bg-background overflow-hidden flex flex-col">
-              <div className="px-3 py-1.5 bg-muted/40 border-b border-border flex items-center justify-between text-11 font-semibold text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Grid3X3 className="size-3.5" />
-                  Interactive Cell Editor (Click to edit text, Tab to move)
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addTableColumn()}
-                    className="min-h-[28px] px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <Plus className="size-3" /> Add Column
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => addTableRow()}
-                    className="min-h-[28px] px-2 py-0.5 text-11 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md border border-border flex items-center gap-1 cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
-                  >
-                    <Plus className="size-3" /> Add Row
-                  </button>
-                </div>
-              </div>
-
-              {/* Grid Scroll Container */}
-              <div className="max-h-56 overflow-auto p-2">
-                <table className="w-full border-collapse text-xs">
-                  {/* Column Alignment Controls */}
-                  <thead>
-                    <tr className="border-b border-border/80">
-                      <th className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
-                        #
-                      </th>
-                      {Array.from({ length: tableCols }, (_, cIdx) => (
-                        <th key={`align-${cIdx}`} className="p-1 min-w-[100px]">
-                          <div className="flex items-center justify-between gap-1 px-1 py-0.5 bg-muted/40 rounded-sm border border-border/50">
+            {/* Interactive Editable Grid */}
+            <div className="border border-border rounded-md bg-background overflow-auto max-h-64 p-2">
+              <table
+                className={cn(
+                  'w-full border-collapse text-xs',
+                  borders.outer && 'border border-border',
+                  isBooktabsActive && 'border-t-2 border-b-2 border-foreground/50',
+                )}
+              >
+                <thead>
+                  <tr className="border-b border-border/70">
+                    <th className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
+                      #
+                    </th>
+                    {Array.from({ length: tableCols }, (_, cIdx) => {
+                      const curAlign = (tableAlignments[cIdx] || 'c').toUpperCase();
+                      return (
+                        <th key={`col-ctrl-${cIdx}`} className="p-1 min-w-[96px]">
+                          <div className="flex items-center justify-between gap-1 px-1.5 py-0.5 bg-muted/40 rounded-sm border border-border/50">
                             <button
                               type="button"
                               onClick={() => toggleColumnAlignment(cIdx)}
-                              className="px-1.5 py-0.5 min-h-[22px] text-10 font-mono font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1 after:content-['']"
-                              title={`Click to cycle alignment: currently [${tableAlignments[cIdx]?.toUpperCase() || 'C'}]`}
+                              className="px-1.5 py-0.5 text-10 font-mono font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-sm cursor-pointer transition-colors"
+                              title={`Column ${cIdx + 1} alignment: [${curAlign}] (click to cycle)`}
                             >
-                              [{tableAlignments[cIdx]?.toUpperCase() || 'C'}]
+                              [{curAlign}]
                             </button>
-                            <span className="text-10 text-muted-foreground">Col {cIdx + 1}</span>
                             {tableCols > 1 && (
                               <button
                                 type="button"
                                 onClick={() => removeTableColumn(cIdx)}
-                                className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-sm relative after:absolute after:-inset-1.5 after:content-['']"
+                                className="text-muted-foreground hover:text-destructive cursor-pointer p-0.5 rounded-sm"
                                 aria-label={`Remove Column ${cIdx + 1}`}
-                                title="Remove Column"
+                                title="Remove column"
                               >
-                                <Trash2 className="size-2.5" />
+                                <Trash2 className="size-3" />
                               </button>
                             )}
                           </div>
                         </th>
-                      ))}
-                      <th className="w-8" />
+                      );
+                    })}
+                    <th className="w-8" />
+                  </tr>
+
+                  {hasHeaderRow && (
+                    <tr
+                      className={cn(
+                        'bg-muted/25',
+                        isBooktabsActive
+                          ? 'border-b-2 border-foreground/40'
+                          : borders.innerHorizontal
+                            ? 'border-b border-border'
+                            : 'border-b border-border/60',
+                      )}
+                    >
+                      <td className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
+                        H
+                      </td>
+                      {renderRowCells(-1, tableHeaders, true)}
+                      <td className="w-8" />
                     </tr>
+                  )}
+                </thead>
 
-                    {/* Header Row */}
-                    {hasHeaderRow && (
-                      <tr className="bg-muted/30 border-b border-border">
-                        <td className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
-                          H
-                        </td>
-                        {Array.from({ length: tableCols }, (_, cIdx) => (
-                          <td key={`h-${cIdx}`} className="p-1">
-                            <Input
-                              value={tableHeaders[cIdx] || ''}
-                              onChange={(e) => updateTableHeader(cIdx, e.target.value)}
-                              aria-label={`Header ${cIdx + 1}`}
-                            placeholder={`Header ${cIdx + 1}`}
-                              className="h-7 text-xs font-semibold rounded-md border-border bg-background focus:ring-1 focus:ring-border"
-                            />
-                          </td>
-                        ))}
-                        <td className="w-8" />
-                      </tr>
-                    )}
-                  </thead>
-
-                  {/* Body Data Rows */}
-                  <tbody>
-                    {Array.from({ length: tableRows }, (_, rIdx) => (
-                      <tr key={`r-${rIdx}`} className="border-b border-border/40 hover:bg-muted/10">
-                        <td className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
-                          {rIdx + 1}
-                        </td>
-                        {Array.from({ length: tableCols }, (_, cIdx) => (
-                          <td key={`cell-${rIdx}-${cIdx}`} className="p-1">
-                            <Input
-                              value={tableData[rIdx]?.[cIdx] ?? ''}
-                              onChange={(e) => updateTableCell(rIdx, cIdx, e.target.value)}
-                              aria-label={`Row ${rIdx + 1} Column ${cIdx + 1}`}
-                              placeholder={`r${rIdx + 1}, c${cIdx + 1}`}
-                              className="h-7 text-xs rounded-md border-border/80 bg-background focus:ring-1 focus:ring-border"
-                            />
-                          </td>
-                        ))}
-                        <td className="w-8 p-1 text-center">
-                          {tableRows > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeTableRow(rIdx)}
-                              className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-md transition-colors relative after:absolute after:-inset-1.5 after:content-['']"
-                              aria-label={`Delete Row ${rIdx + 1}`}
-                              title="Delete Row"
-                            >
-                              <Trash2 className="size-3" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                <tbody>
+                  {Array.from({ length: tableRows }, (_, rIdx) => (
+                    <tr
+                      key={`row-${rIdx}`}
+                      className={cn(
+                        'hover:bg-muted/10',
+                        rIdx < tableRows - 1 &&
+                          (borders.innerHorizontal
+                            ? 'border-b border-border'
+                            : 'border-b border-border/30'),
+                      )}
+                    >
+                      <td className="w-8 p-1 text-center font-mono text-10 text-muted-foreground select-none">
+                        {rIdx + 1}
+                      </td>
+                      {renderRowCells(rIdx, tableData[rIdx] || [], false)}
+                      <td className="w-8 p-1 text-center">
+                        {tableRows > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeTableRow(rIdx)}
+                            className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-sm transition-colors"
+                            aria-label={`Delete Row ${rIdx + 1}`}
+                            title="Delete row"
+                          >
+                            <Trash2 className="size-3" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {/* AI Table Generator */}
-            {aiAssistEnabled && (
-            <div className="p-2.5 bg-ai/5 border border-ai/25 rounded-md space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-11 font-medium text-ai flex items-center gap-1.5">
-                  <Bot className="size-3.5" />
-                  AI Table Generator
+            {/* Compact Caption & Label Row */}
+            <div className="flex flex-wrap items-center gap-3 p-2.5 bg-muted/20 border border-border rounded-md">
+              <div className="flex-1 min-w-[160px] flex items-center gap-2">
+                <label
+                  htmlFor="table-caption-input"
+                  className="text-11 font-medium text-muted-foreground whitespace-nowrap"
+                >
+                  Caption
                 </label>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleGenerateAiTable}
-                    disabled={isAiGenerating || !aiPrompt.trim()}
-                    className="h-6 text-10 px-2.5 bg-ai text-ai-foreground font-medium cursor-pointer gap-1 hover:bg-ai-hover shadow-none"
-                  >
-                    {isAiGenerating ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <Bot className="size-3" />
-                    )}
-                    <span>{isAiGenerating ? 'Generating...' : 'Generate Table'}</span>
-                  </Button>
-                </div>
+                <Input
+                  id="table-caption-input"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  placeholder="Optional caption"
+                  className="h-7 text-xs bg-background"
+                />
               </div>
+
+              <div className="w-44 flex items-center gap-2">
+                <label
+                  htmlFor="table-label-input"
+                  className="text-11 font-medium text-muted-foreground whitespace-nowrap"
+                >
+                  Label
+                </label>
+                <Input
+                  id="table-label-input"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="tab:example"
+                  className="h-7 text-xs font-mono bg-background"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <label className="flex items-center gap-1.5 text-11 font-medium cursor-pointer">
+                  <Checkbox
+                    checked={hasHeaderRow}
+                    onCheckedChange={(c) => setHasHeaderRow(Boolean(c))}
+                  />
+                  <span>Header row</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-11 font-medium cursor-pointer">
+                  <Checkbox
+                    checked={centering}
+                    onCheckedChange={(c) => setCentering(Boolean(c))}
+                  />
+                  <span>Center</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab 2: Import Excel / CSV / LaTeX ── */}
+        {activeTab === 'import' && (
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground">
+              Paste cells copied from Excel or Google Sheets, CSV data, or an existing{' '}
+              <code className="font-mono text-foreground">{'\\begin{tabular}'}</code> block.
+            </p>
+            <textarea
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              aria-label="Paste Excel, CSV, or LaTeX code"
+              placeholder="Paste TSV, CSV, or \begin{tabular}...\end{tabular} snippet..."
+              rows={8}
+              className="w-full flex-1 min-h-[160px] p-3 text-xs font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ring"
+            />
+            <div className="flex items-center justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!pastedText.trim()}
+                onClick={() => {
+                  if (importPastedData()) {
+                    setTab('table');
+                  }
+                }}
+                className="h-8 px-3 text-xs cursor-pointer"
+              >
+                Import to Grid
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab 3: Create with AI ── */}
+        {activeTab === 'ai' && aiAssistEnabled && (
+          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-0.5">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="ai-table-prompt"
+                className="text-11 font-medium text-foreground block"
+              >
+                Describe the table
+              </label>
               <textarea
+                id="ai-table-prompt"
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => {
@@ -434,324 +740,126 @@ export function TableWizardModal({
                     handleGenerateAiTable();
                   }
                 }}
-                aria-label="Describe table for AI generation"
-                placeholder="Describe your table or paste raw unformatted text (e.g. 'Compare ResNet, ViT, Mamba on ImageNet with Accuracy, Params, and Latency'). Press Ctrl+Enter to generate..."
-                rows={2}
-                className="w-full p-2 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
+                placeholder="Describe columns, rows, or paste unformatted text (Ctrl+Enter to generate)..."
+                rows={4}
+                className="w-full p-2.5 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
               />
             </div>
-            )}
 
-            {/* Table Metadata & Import Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Metadata */}
-              <div className="p-2.5 bg-muted/20 border border-border rounded-md space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-11 font-medium text-muted-foreground mb-0.5 block">
-                      Caption
-                    </label>
-                    <Input
-                      value={caption}
-                      onChange={(e) => setCaption(e.target.value)}
-                      aria-label="Table caption"
-                    placeholder="Table caption"
-                      className="h-7 text-xs bg-background"
+            {/* Image Upload / Drag-and-Drop Zone */}
+            <div className="space-y-1.5">
+              <span className="text-11 font-medium text-foreground block">
+                Table image (optional)
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleImageSelected(e.target.files?.[0])}
+              />
+              {uploadedImage ? (
+                <div className="flex items-center justify-between gap-3 p-2.5 border border-border rounded-md bg-muted/20">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={uploadedImage.previewUrl}
+                      alt={uploadedImage.file.name}
+                      className="size-12 rounded-sm object-cover border border-border shrink-0"
                     />
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {uploadedImage.file.name}
+                      </p>
+                      <p className="text-11 text-muted-foreground">
+                        {Math.max(1, Math.round(uploadedImage.file.size / 1024))} KB
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-11 font-medium text-muted-foreground mb-0.5 block">
-                      Label (\ref)
-                    </label>
-                    <Input
-                      value={label}
-                      onChange={(e) => setLabel(e.target.value)}
-                      aria-label="Table label"
-                    placeholder="tab:results"
-                      className="h-7 text-xs font-mono bg-background"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="centering"
-                      checked={centering}
-                      onCheckedChange={(c) => setCentering(Boolean(c))}
-                    />
-                    <label htmlFor="centering" className="text-11 font-medium cursor-pointer">
-                      Center (\centering)
-                    </label>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="header-toggle"
-                      checked={hasHeaderRow}
-                      onCheckedChange={(c) => setHasHeaderRow(Boolean(c))}
-                    />
-                    <label htmlFor="header-toggle" className="text-11 font-medium cursor-pointer">
-                      Header row
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Paste / Import */}
-              <div className="p-2.5 bg-muted/20 border border-border rounded-md space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-11 font-medium text-muted-foreground flex items-center gap-1">
-                    <FileSpreadsheet className="size-3.5" />
-                    Paste Excel / CSV / LaTeX Code:
-                  </label>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={importPastedData}
-                    disabled={!pastedText.trim()}
-                    className="h-6 text-10 px-2 cursor-pointer font-medium"
+                    onClick={clearUploadedImage}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
+                    aria-label="Remove uploaded image"
                   >
-                    Import to Grid
+                    <X className="size-3.5" />
                   </Button>
                 </div>
-                <textarea
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  aria-label="Paste Excel, CSV, or LaTeX code"
-                  placeholder="Paste TSV (from Excel), CSV, or \begin{tabular} snippet..."
-                  rows={2}
-                  className="w-full p-1.5 text-11 font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-border"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Matrix Wizard Content */}
-        {tab === 'matrix' && (
-          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1">
-            {/* Matrix Type Selector & Dimensions */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-muted/20 border border-border rounded-md">
-              {/* Bracket Type */}
-              <div className="space-y-1">
-                <span className="text-11 font-medium text-muted-foreground block">
-                  Matrix Bracket Style:
-                </span>
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: 'pmatrix', label: '( ) pmatrix' },
-                    { id: 'bmatrix', label: '[ ] bmatrix' },
-                    { id: 'vmatrix', label: '| | vmatrix' },
-                    { id: 'Bmatrix', label: '{ } Bmatrix' },
-                    { id: 'Vmatrix', label: '‖ ‖ Vmatrix' },
-                    { id: 'matrix', label: 'plain' },
-                  ].map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setMatrixType(m.id as MatrixType)}
-                      className={cn(
-                        'min-h-[28px] h-7 px-2 text-11 font-mono font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
-                        matrixType === m.id
-                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                          : 'bg-background border-border text-foreground hover:bg-muted'
-                      )}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Dimensions */}
-              <div className="space-y-1">
-                <span className="text-11 font-medium text-muted-foreground block">
-                  Dimensions:
-                </span>
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={matrixRows}
-                    onChange={(e) => setMatrixDimension(parseInt(e.target.value) || 1, matrixCols)}
-                    className="w-12 h-6 text-xs font-mono text-center"
-                    aria-label="Matrix rows"
-                  />
-                  <span className="text-muted-foreground">×</span>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={matrixCols}
-                    onChange={(e) => setMatrixDimension(matrixRows, parseInt(e.target.value) || 1)}
-                    className="w-12 h-6 text-xs font-mono text-center"
-                    aria-label="Matrix columns"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Presets Bar */}
-            <div className="flex items-center gap-2 p-2 bg-muted/10 border border-border rounded-md">
-              <span className="text-11 font-semibold text-muted-foreground flex items-center gap-1">
-                <Layers className="size-3.5" /> Presets:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
+              ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    applyMatrixPreset('identity');
-                    toast.success('Applied identity matrix preset');
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
                   }}
-                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
-                >
-                  Identity (I)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    applyMatrixPreset('zero');
-                    toast.success('Applied zero matrix preset');
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(false);
+                    handleImageSelected(e.dataTransfer.files?.[0]);
                   }}
-                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
-                >
-                  Zero (0)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    applyMatrixPreset('symbolic');
-                    toast.success('Applied symbolic matrix preset');
-                  }}
-                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
-                >
-                  Symbolic (a_ij)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    applyMatrixPreset('diagonal');
-                    toast.success('Applied diagonal matrix preset');
-                  }}
-                  className="min-h-[28px] px-2 py-0.5 text-11 bg-background hover:bg-muted border border-border rounded-md cursor-pointer font-medium relative after:absolute after:-inset-1 after:content-['']"
-                >
-                  Diagonal
-                </button>
-              </div>
-
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-11 font-medium text-muted-foreground">Wrap:</span>
-                <div className="flex items-center gap-1">
-                  {([
-                    { id: 'display', label: '\\[ \\]' },
-                    { id: 'inline', label: '$ $' },
-                    { id: 'equation', label: '\\begin{eq}' },
-                    { id: 'raw', label: 'raw' },
-                  ] as const).map((w) => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => setMatrixWrapper(w.id)}
-                      className={cn(
-                        'min-h-[26px] h-6 px-1.5 text-10 font-mono rounded-md border transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-[\'\']',
-                        matrixWrapper === w.id
-                          ? 'bg-primary text-primary-foreground border-primary font-semibold'
-                          : 'bg-background border-border text-foreground hover:bg-muted'
-                      )}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Matrix Coefficient Grid & Live KaTeX Preview Side-by-Side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Coefficient Inputs Grid */}
-              <div className="border border-border rounded-md bg-background p-2.5 flex flex-col justify-center">
-                <span className="text-11 font-semibold text-muted-foreground mb-2 block">
-                  Coefficient Grid ({matrixRows} × {matrixCols}):
-                </span>
-                <div
-                  className="grid gap-1.5 max-h-48 overflow-auto p-1"
-                  style={{
-                    gridTemplateColumns: `repeat(${matrixCols}, minmax(40px, 1fr))`,
-                  }}
-                >
-                  {Array.from({ length: matrixRows }).map((_, rIdx) =>
-                    Array.from({ length: matrixCols }).map((_, cIdx) => (
-                      <Input
-                        key={`mat-${rIdx}-${cIdx}`}
-                        value={matrixCells[rIdx]?.[cIdx] ?? ''}
-                        onChange={(e) => updateMatrixCell(rIdx, cIdx, e.target.value)}
-                        aria-label={`Matrix cell row ${rIdx + 1} column ${cIdx + 1}`}
-                        placeholder={`a_${rIdx + 1}${cIdx + 1}`}
-                        className="h-7 text-xs font-mono text-center rounded-md border-border bg-background focus:ring-1 focus:ring-border p-0.5"
-                      />
-                    ))
+                  className={cn(
+                    'w-full flex flex-col items-center justify-center gap-1.5 p-4 rounded-md border border-dashed transition-colors cursor-pointer text-center',
+                    isDragOver
+                      ? 'border-ai bg-ai/10'
+                      : 'border-border bg-muted/15 hover:bg-muted/30',
                   )}
-                </div>
-              </div>
+                >
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Upload className="size-4" />
+                    <ImageIcon className="size-4" />
+                  </div>
+                  <span className="text-xs font-medium text-foreground">
+                    Drop a screenshot of a table or click to upload
+                  </span>
+                  <span className="text-11 text-muted-foreground">
+                    PNG, JPG, WebP
+                  </span>
+                </button>
+              )}
+            </div>
 
-              {/* Rendered Math Preview */}
-              <div className="border border-border rounded-md bg-muted/10 p-3 flex flex-col items-center justify-center min-h-[120px] overflow-auto select-none">
-                <span className="text-10 font-medium text-muted-foreground mb-1 block self-start">
-                  Live KaTeX Rendered Output:
-                </span>
-                <div
-                  className="py-2 text-foreground"
-                  dangerouslySetInnerHTML={{ __html: renderedMatrixHtml }}
-                />
-              </div>
+            <div className="flex items-center justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleGenerateAiTable}
+                disabled={isAiGenerating || (!aiPrompt.trim() && !uploadedImage)}
+                className="h-8 px-3 text-xs bg-ai text-ai-foreground hover:bg-ai-hover font-medium cursor-pointer gap-1.5 shadow-none"
+              >
+                {isAiGenerating ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                <span>{isAiGenerating ? 'Generating...' : 'Generate Table'}</span>
+              </Button>
             </div>
           </div>
         )}
 
-        {/* Live LaTeX Code Output Preview */}
-        <div className="border border-border rounded-md bg-muted/15 p-2 font-mono text-11 max-h-24 overflow-y-auto select-all shrink-0">
-          <pre className="text-foreground leading-relaxed whitespace-pre-wrap">
-            {activeLatex}
-          </pre>
-        </div>
-
-        {/* Modal Footer */}
-        <DialogFooter className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border shrink-0">
+        <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border shrink-0">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={copySnippet}
-            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
+            onClick={() => onOpenChange(false)}
+            className="h-8 text-xs cursor-pointer"
           >
-            <Copy className="size-3.5" />
-            Copy Code
+            Cancel
           </Button>
-
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="w-full sm:w-auto h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={insertSnippet}
-              className="w-full sm:w-auto gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
-            >
-              <Check className="size-3.5" />
-              {tab === 'table' ? 'Insert Table' : 'Insert Matrix'}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={insertSnippet}
+            className="gap-1.5 h-8 text-xs font-medium cursor-pointer"
+          >
+            <Check className="size-3.5" />
+            <span>Insert Table</span>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

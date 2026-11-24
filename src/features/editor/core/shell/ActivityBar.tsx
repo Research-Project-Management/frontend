@@ -24,7 +24,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -35,15 +34,16 @@ import { useSettingsStore } from '../store/settings.store';
 interface ActivityItem {
   id: ActivityBarTab;
   label: string;
+  tooltip: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
-  { id: 'files', label: 'File Tree', icon: Files },
-  { id: 'search', label: 'Search in Project', icon: Search },
-  { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
-  { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
-  { id: 'ai', label: 'AI Assistant', icon: Bot },
+  { id: 'files', label: 'File Tree', tooltip: 'Files', icon: Files },
+  { id: 'search', label: 'Search in Project', tooltip: 'Search', icon: Search },
+  { id: 'citations', label: 'Citations & BibTeX', tooltip: 'Citations', icon: BookMarked },
+  { id: 'review', label: 'Review & Comments', tooltip: 'Review', icon: MessageSquareText },
+  { id: 'ai', label: 'AI Assistant', tooltip: 'AI Assistant', icon: Bot },
 ];
 
 export function ActivityBar() {
@@ -63,8 +63,7 @@ export function ActivityBar() {
       aria-label="Activity Bar"
       className="h-full w-12 shrink-0 flex flex-col items-center justify-between border-r border-border bg-background py-2.5 select-none z-30"
     >
-      <TooltipProvider delayDuration={150}>
-        {/* Top Section: Primary Viewlets */}
+      {/* Top Section: Primary Viewlets */}
         <div
           role="tablist"
           aria-orientation="vertical"
@@ -101,8 +100,8 @@ export function ActivityBar() {
                     />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  {item.label}
+                <TooltipContent side="right" sideOffset={6} className="text-xs">
+                  {item.tooltip}
                 </TooltipContent>
               </Tooltip>
             );
@@ -127,12 +126,11 @@ export function ActivityBar() {
                 <Settings className="size-4.5 shrink-0" strokeWidth={1.8} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              Project settings
+            <TooltipContent side="right" sideOffset={6} className="text-xs">
+              Settings
             </TooltipContent>
           </Tooltip>
         </div>
-      </TooltipProvider>
     </aside>
   );
 }

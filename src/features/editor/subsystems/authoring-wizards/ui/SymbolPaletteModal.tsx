@@ -35,7 +35,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -173,7 +172,6 @@ function SymbolPaletteModal({
                 <span>No symbols found matching &quot;{searchQuery}&quot;</span>
               </div>
             ) : (
-              <TooltipProvider delayDuration={200}>
                 <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 select-none">
                   {filteredSymbols.map((sym) => {
                     const isRecent = lastInserted === sym.command;
@@ -214,7 +212,6 @@ function SymbolPaletteModal({
                     );
                   })}
                 </div>
-              </TooltipProvider>
             )}
           </div>
         </Tabs>

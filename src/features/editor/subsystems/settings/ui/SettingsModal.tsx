@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { X, BookOpen, SpellCheck, Cpu, Code2 } from 'lucide-react';
+import { X, SpellCheck, Cpu, Code2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,11 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
-import { EDITOR_FONT_FAMILIES, EDITOR_FONT_SIZES } from './settings-common';
 import { GithubTab } from './GithubTab';
-import { ReferencesTab } from './ReferencesTab';
 import { DictionaryTab } from './DictionaryTab';
 import { CompilerEditorSection } from './CompilerEditorSection';
 import { GitCloneCard } from './GitCloneCard';
 import { useSettingsModal, type SettingsView } from './hooks/useSettingsModal';
-
-export { EDITOR_FONT_FAMILIES, EDITOR_FONT_SIZES };
 
 interface NavItem {
   id: SettingsView;
@@ -35,7 +31,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'compiler', label: 'Compiler', icon: <Cpu className="size-3.5 shrink-0" /> },
   { id: 'editor', label: 'Editor', icon: <Code2 className="size-3.5 shrink-0" /> },
   { id: 'github', label: 'GitHub', icon: <GitHubIcon className="size-3.5 shrink-0" /> },
-  { id: 'references', label: 'References', icon: <BookOpen className="size-3.5 shrink-0" /> },
   { id: 'dictionary', label: 'Dictionary', icon: <SpellCheck className="size-3.5 shrink-0" /> },
 ];
 
@@ -49,14 +44,10 @@ export function SettingsModal() {
         className="sm:max-w-[740px] h-[560px] max-h-[85vh] !flex flex-col p-0 gap-0 overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-raised-200 font-sans select-none"
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
-          <div className="min-w-0">
-            <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-tight">
-              Settings
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground truncate mt-0.5">
-              {s.projectTitle}
-            </DialogDescription>
-          </div>
+          <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-tight">
+            Settings
+          </DialogTitle>
+          <DialogDescription className="sr-only">Editor settings</DialogDescription>
 
           <button
             type="button"
@@ -101,10 +92,7 @@ export function SettingsModal() {
                 <CompilerEditorSection
                   section="compiler"
                   texFiles={s.texFiles}
-                  bibFiles={s.bibFiles}
                   onMainFileChange={s.handleMainFileChange}
-                  onClearCache={s.handleClearCache}
-                  isClearingCache={s.isClearingCache}
                 />
               )}
 
@@ -112,22 +100,15 @@ export function SettingsModal() {
                 <CompilerEditorSection
                   section="editor"
                   texFiles={s.texFiles}
-                  bibFiles={s.bibFiles}
                   onMainFileChange={s.handleMainFileChange}
-                  onClearCache={s.handleClearCache}
-                  isClearingCache={s.isClearingCache}
                 />
               )}
 
               {s.activeView === 'github' && (
                 <div className="space-y-4">
-                  <GithubTab projectId={s.projectId} projectTitle={s.projectTitle} />
-                  <GitCloneCard projectId={s.projectId} open={s.open} />
+                  <GithubTab pageId={s.pageId} pageTitle={s.pageTitle} />
+                  <GitCloneCard projectId={s.pageId} open={s.open} />
                 </div>
-              )}
-
-              {s.activeView === 'references' && (
-                <ReferencesTab projectId={s.projectId} bibFiles={s.bibFiles} />
               )}
             </div>
           )}

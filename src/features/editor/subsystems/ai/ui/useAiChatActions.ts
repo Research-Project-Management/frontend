@@ -32,8 +32,6 @@ import {
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { aiCoordinator } from '../coordinator/ai.coordinator';
 
-export type AttachmentSource = 'library' | 'documents';
-
 export interface UseAiChatActionsOptions {
   engine?: IEditorEngine | null;
   selectionFileId?: string | null;
@@ -149,39 +147,14 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
     try {
       await navigator.clipboard.writeText(code);
       onSuccess?.();
-      toast.success('Copied to clipboard', { id: 'copy-code' });
+      toast.success('Copied', { id: 'copy-code' });
     } catch {
-      toast.error('Failed to copy to clipboard', { id: 'copy-code' });
+      toast.error('Failed to copy', { id: 'copy-code' });
     }
   }, []);
 
-  const notifyItemsAttached = useCallback((count: number, source: AttachmentSource) => {
-    const messages: Record<AttachmentSource, { text: string; id: string }> = {
-      library: { text: `Attached ${count} item(s) from Library`, id: 'attach-library' },
-      documents: { text: `Selected ${count} uploaded document(s)`, id: 'attach-docs' },
-    };
-    const { text, id } = messages[source];
-    toast.success(text, { id });
-  }, []);
-
-  const notifyFileAttached = useCallback(
-    (fileName: string) => toast.success(`Attached "${fileName}"`, { id: `attach-${fileName}` }),
-    [],
-  );
-
-  const notifyFileError = useCallback(
-    (fileName: string, errMessage?: string) =>
-      toast.error(errMessage || `Failed to upload "${fileName}"`, { id: `attach-${fileName}` }),
-    [],
-  );
-
   const notifyChatError = useCallback(
     (errMessage?: string) => toast.error(errMessage || 'Failed to send message to AI', { id: 'ai-chat-error' }),
-    [],
-  );
-
-  const notifyChatCleared = useCallback(
-    () => toast.success('Conversation history cleared', { id: 'ai-chat-clear' }),
     [],
   );
 
@@ -192,10 +165,6 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
     reviewEditorPatch,
     applyAllEditorPatches,
     copyCode,
-    notifyItemsAttached,
-    notifyFileAttached,
-    notifyFileError,
     notifyChatError,
-    notifyChatCleared,
   };
 }

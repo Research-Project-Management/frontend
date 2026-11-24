@@ -179,7 +179,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
           { id: toastId },
         );
       } else {
-        toast.error('Failed to copy to clipboard', { id: toastId });
+        toast.error('Failed to copy', { id: toastId });
       }
     } catch (err: unknown) {
       toast.error('Copy failed', {

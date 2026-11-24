@@ -66,7 +66,7 @@ export function PrimarySidebar() {
       case 'review':
         return <ReviewTab onClose={handleClose} />;
       case 'ai':
-        return <AiTab onClose={handleClose} />;
+        return <AiTab />;
       default:
         return <FilesTab onClose={handleClose} />;
     }

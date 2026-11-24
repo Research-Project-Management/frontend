@@ -14,6 +14,19 @@
 export type TableAlignment = 'l' | 'c' | 'r';
 export type TableStyle = 'booktabs' | 'bordered' | 'minimal';
 
+export interface TableCellMerge {
+  /** -1 targets the header row; >= 0 targets 0-based body rows */
+  row: number;
+  col: number;
+  colSpan: number;
+}
+
+export interface TableBorderConfig {
+  outer: boolean;
+  innerHorizontal: boolean;
+  innerVertical: boolean;
+}
+
 export interface TableGrid {
   rows: number;
   cols: number;
@@ -26,6 +39,8 @@ export interface TableGrid {
   placement?: string;
   centering?: boolean;
   hasHeaderRow?: boolean;
+  merges?: TableCellMerge[];
+  borders?: TableBorderConfig;
 }
 
 export type MatrixType =
@@ -82,6 +97,57 @@ export function unescapeTableCell(text: string): string {
     .trim();
 }
 
+function resolveEffectiveBorders(
+  style: TableStyle,
+  borders?: TableBorderConfig,
+): TableBorderConfig {
+  if (borders) return borders;
+  if (style === 'bordered') {
+    return { outer: true, innerHorizontal: true, innerVertical: true };
+  }
+  return { outer: false, innerHorizontal: false, innerVertical: false };
+}
+
+function buildRowLatex(
+  rowValues: string[],
+  rowIdx: number,
+  cols: number,
+  alignments: TableAlignment[],
+  merges: TableCellMerge[] | undefined,
+  effectiveBorders: TableBorderConfig,
+): string {
+  const rowMerges = merges?.filter((m) => m.row === rowIdx && m.colSpan > 1) ?? [];
+  const cellsOut: string[] = [];
+  let c = 0;
+
+  while (c < cols) {
+    const merge = rowMerges.find((m) => m.col === c);
+    const cellText = sanitizeTableCell(rowValues[c] ?? '');
+    if (merge) {
+      const span = Math.max(1, Math.min(merge.colSpan, cols - c));
+      if (span > 1) {
+        const align = alignments[c] || 'c';
+        const leftPipe = c === 0 && effectiveBorders.outer ? '|' : '';
+        const rightPipe =
+          c + span < cols
+            ? effectiveBorders.innerVertical
+              ? '|'
+              : ''
+            : effectiveBorders.outer
+              ? '|'
+              : '';
+        cellsOut.push(`\\multicolumn{${span}}{${leftPipe}${align}${rightPipe}}{${cellText}}`);
+        c += span;
+        continue;
+      }
+    }
+    cellsOut.push(cellText);
+    c++;
+  }
+
+  return `    ${cellsOut.join(' & ')} \\\\\n`;
+}
+
 /**
  * Generates clean, production-ready LaTeX table code.
  */
@@ -98,28 +164,33 @@ export function generateLatexTable(grid: TableGrid): string {
     placement = 'htbp',
     centering = true,
     hasHeaderRow = true,
+    merges,
+    borders,
   } = grid;
 
+  const effectiveBorders = resolveEffectiveBorders(style, borders);
+  const useBooktabsRules =
+    style === 'booktabs' &&
+    !effectiveBorders.outer &&
+    !effectiveBorders.innerVertical &&
+    !effectiveBorders.innerHorizontal;
+
   // Build column alignment specifier
-  let colSpec = '';
-  if (style === 'bordered') {
-    colSpec = `|${Array.from({ length: cols }, (_, i) => alignments[i] || 'c').join('|')}|`;
-  } else {
-    colSpec = Array.from({ length: cols }, (_, i) => alignments[i] || 'c').join('');
-  }
+  const alignChars = Array.from({ length: cols }, (_, i) => alignments[i] || 'c');
+  const leftPipe = effectiveBorders.outer ? '|' : '';
+  const rightPipe = effectiveBorders.outer ? '|' : '';
+  const innerPipe = effectiveBorders.innerVertical ? '|' : '';
+  const colSpec = `${leftPipe}${alignChars.join(innerPipe)}${rightPipe}`;
 
   let body = '';
 
-  // 1. Header row
+  // 1. Header row (row index -1 for merge lookup)
   if (hasHeaderRow && headers && headers.length > 0) {
-    const formattedHeaders = Array.from({ length: cols }, (_, c) =>
-      sanitizeTableCell(headers[c] || `Header ${c + 1}`)
-    );
-    body += `    ${formattedHeaders.join(' & ')} \\\\\n`;
+    body += buildRowLatex(headers, -1, cols, alignments, merges, effectiveBorders);
 
-    if (style === 'booktabs') {
+    if (useBooktabsRules) {
       body += `    \\midrule\n`;
-    } else if (style === 'bordered') {
+    } else if (effectiveBorders.innerHorizontal) {
       body += `    \\hline\n`;
     }
   }
@@ -128,13 +199,9 @@ export function generateLatexTable(grid: TableGrid): string {
   const actualRows = Math.max(rows, data.length);
   for (let r = 0; r < actualRows; r++) {
     const rowData = data[r] || [];
-    const formattedCells = Array.from({ length: cols }, (_, c) =>
-      sanitizeTableCell(rowData[c] || '')
-    );
+    body += buildRowLatex(rowData, r, cols, alignments, merges, effectiveBorders);
 
-    body += `    ${formattedCells.join(' & ')} \\\\\n`;
-
-    if (style === 'bordered' && r < actualRows - 1) {
+    if (effectiveBorders.innerHorizontal && r < actualRows - 1) {
       body += `    \\hline\n`;
     }
   }
@@ -153,17 +220,17 @@ export function generateLatexTable(grid: TableGrid): string {
 
   result += `  \\begin{tabular}{${colSpec}}\n`;
 
-  if (style === 'booktabs') {
+  if (useBooktabsRules) {
     result += `    \\toprule\n`;
-  } else if (style === 'bordered') {
+  } else if (effectiveBorders.outer) {
     result += `    \\hline\n`;
   }
 
   result += body;
 
-  if (style === 'booktabs') {
+  if (useBooktabsRules) {
     result += `    \\bottomrule\n`;
-  } else if (style === 'bordered') {
+  } else if (effectiveBorders.outer) {
     result += `    \\hline\n`;
   }
 
@@ -244,6 +311,7 @@ export function parseLatexTabular(latex: string): TableGrid | null {
   const rawRows = rawBody.split(/\\\\(?:\s*\[[^\]]*\])?/);
 
   const parsedRows: string[][] = [];
+  const rawMergesByParsedRow: Array<Array<{ col: number; colSpan: number }>> = [];
   let detectedHeader = false;
 
   for (let i = 0; i < rawRows.length; i++) {
@@ -268,6 +336,7 @@ export function parseLatexTabular(latex: string): TableGrid | null {
     // Split cells by unescaped & and expand \multicolumn / unwrap \multirow
     const rawCells = cleanRow.split(/(?<!\\)&/);
     const cells: string[] = [];
+    const rowMerges: Array<{ col: number; colSpan: number }> = [];
     for (const rawCell of rawCells) {
       let cellText = rawCell.trim();
       let colSpan = 1;
@@ -283,12 +352,16 @@ export function parseLatexTabular(latex: string): TableGrid | null {
         cellText = multiRowMatch[1].replace(/\\vspace\{[^}]*\}/g, '').trim();
       }
 
+      if (colSpan > 1) {
+        rowMerges.push({ col: cells.length, colSpan });
+      }
       cells.push(unescapeTableCell(cellText));
       for (let s = 1; s < colSpan; s++) {
         cells.push('');
       }
     }
     parsedRows.push(cells);
+    rawMergesByParsedRow.push(rowMerges);
 
     // If the raw row or the next row had midrule/cmidrule/hline after first line, it has a header
     if (
@@ -313,20 +386,49 @@ export function parseLatexTabular(latex: string): TableGrid | null {
     alignments.push('c');
   }
 
+  const hasHeader = Boolean(detectedHeader || (parsedRows.length > 1 && hasBooktabs));
   let headers: string[] = [];
   let data: string[][] = [];
+  const merges: TableCellMerge[] = [];
 
-  if (detectedHeader || (parsedRows.length > 1 && hasBooktabs)) {
+  if (hasHeader) {
     headers = Array.from({ length: cols }, (_, c) => parsedRows[0][c] || '');
+    for (const m of rawMergesByParsedRow[0] || []) {
+      merges.push({ row: -1, col: m.col, colSpan: m.colSpan });
+    }
     data = parsedRows.slice(1).map((row) =>
       Array.from({ length: cols }, (_, c) => row[c] || '')
     );
+    rawMergesByParsedRow.slice(1).forEach((list, rIdx) => {
+      for (const m of list) {
+        merges.push({ row: rIdx, col: m.col, colSpan: m.colSpan });
+      }
+    });
   } else {
-    headers = Array.from({ length: cols }, (_, c) => `Col ${c + 1}`);
+    headers = Array.from({ length: cols }, () => '');
     data = parsedRows.map((row) =>
       Array.from({ length: cols }, (_, c) => row[c] || '')
     );
+    rawMergesByParsedRow.forEach((list, rIdx) => {
+      for (const m of list) {
+        merges.push({ row: rIdx, col: m.col, colSpan: m.colSpan });
+      }
+    });
   }
+
+  const trimmedSpec = rawAlignSpec.replace(/[@!<>]\{[^{}]*\}/g, '').trim();
+  const outerVertical = trimmedSpec.startsWith('|') || trimmedSpec.endsWith('|');
+  const innerSpec = trimmedSpec.replace(/^\|+|\|+$/g, '');
+  const innerVertical = innerSpec.includes('|');
+  const hasHline = /\\hline/.test(rawBody);
+  const borders: TableBorderConfig =
+    style === 'bordered'
+      ? { outer: true, innerHorizontal: true, innerVertical: true }
+      : {
+          outer: outerVertical || (hasHline && !hasBooktabs),
+          innerHorizontal: hasHline,
+          innerVertical,
+        };
 
   return {
     rows: data.length,
@@ -339,7 +441,9 @@ export function parseLatexTabular(latex: string): TableGrid | null {
     label,
     placement,
     centering,
-    hasHeaderRow: Boolean(detectedHeader || (parsedRows.length > 1 && hasBooktabs)),
+    hasHeaderRow: hasHeader,
+    merges,
+    borders,
   };
 }
 
@@ -396,7 +500,7 @@ export function parseDelimitedTextToGrid(
     headers = normalized[0];
     data = normalized.slice(1);
   } else {
-    headers = Array.from({ length: cols }, (_, i) => `Col ${i + 1}`);
+    headers = Array.from({ length: cols }, () => '');
     data = normalized;
   }
 

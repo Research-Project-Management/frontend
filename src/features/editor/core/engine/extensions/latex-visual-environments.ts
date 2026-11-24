@@ -17,33 +17,55 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
+import { findBeginDocumentLine } from './latex-visual-document-shell';
 
 class ListMarkerWidget extends WidgetType {
-  constructor(readonly label: string) {
+  constructor(
+    readonly label: string,
+    readonly isTerm: boolean = false,
+  ) {
     super();
   }
 
-  eq(other: WidgetType): boolean {
-    return other instanceof ListMarkerWidget && other.label === this.label;
+  override eq(other: WidgetType): boolean {
+    return (
+      other instanceof ListMarkerWidget &&
+      other.label === this.label &&
+      other.isTerm === this.isTerm
+    );
   }
 
   toDOM(): HTMLElement {
     const span = document.createElement('span');
-    span.className = 'cm-visual-list-bullet';
+    span.className = this.isTerm ? 'cm-visual-list-term' : 'cm-visual-list-bullet';
     span.textContent = this.label;
     return span;
   }
 
-  ignoreEvent(): boolean {
+  override ignoreEvent(): boolean {
     return true;
   }
 }
 
-const BEGIN_DOC_RE = /^[^%]*\\begin\{document\}/;
-const BEGIN_ENV_RE = /^\s*\\begin\{(quote|itemize|enumerate)\}\s*(?:%.*)?$/;
-const END_ENV_RE = /^\s*\\end\{(quote|itemize|enumerate)\}\s*(?:%.*)?$/;
+const BEGIN_ENV_RE = /^\s*\\begin\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
+const END_ENV_RE = /^\s*\\end\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
 const ITEM_LINE_RE = /^(\s*\\item(?:\[([^\]]*)\])?(?:\s+|$))/;
 const FULL_COMMENT_LINE_RE = /^\s*%.*$/;
+
+function findInlineCommentStart(text: string): number {
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '%') {
+      let backslashes = 0;
+      for (let j = i - 1; j >= 0 && text[j] === '\\'; j--) {
+        backslashes++;
+      }
+      if (backslashes % 2 === 0) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
 
 const DECO_HIDDEN_LINE = Decoration.line({ class: 'cm-visual-hidden-line' });
 const DECO_HIDDEN_COMMENT_LINE = Decoration.line({ class: 'cm-visual-comment-hidden' });
@@ -57,7 +79,7 @@ const DECO_LIST_DEPTH: Record<number, Decoration> = {
   4: Decoration.line({ class: 'cm-visual-list-line cm-visual-list-d4' }),
 };
 
-type EnvKind = 'quote' | 'itemize' | 'enumerate';
+type EnvKind = 'quote' | 'itemize' | 'enumerate' | 'description';
 
 interface EnvStackFrame {
   kind: EnvKind;
@@ -103,14 +125,8 @@ class VisualEnvironmentsPlugin {
     const selection = view.state.selection.main;
 
     // Locate preamble end so preamble lines are never tagged as body comments/envs
-    let bodyStartLine = 1;
-    const preambleScanLimit = Math.min(doc.lines, 400);
-    for (let l = 1; l <= preambleScanLimit; l++) {
-      if (BEGIN_DOC_RE.test(doc.line(l).text)) {
-        bodyStartLine = l + 1;
-        break;
-      }
-    }
+    const beginDocLine = findBeginDocumentLine(doc);
+    const bodyStartLine = beginDocLine ? beginDocLine.number + 1 : 1;
 
     interface PendingDeco {
       from: number;
@@ -168,55 +184,84 @@ class VisualEnvironmentsPlugin {
       }
 
       const activeFrame = stack[stack.length - 1];
-      if (!activeFrame) continue;
+      const inlineCommentIdx = findInlineCommentStart(text);
+      let itemCmdEnd = line.from;
 
-      if (activeFrame.kind === 'quote') {
-        if (isVisible && text.trim().length > 0) {
-          pending.push({ from: line.from, to: line.from, deco: DECO_QUOTE_LINE });
-        }
-        continue;
-      }
+      if (activeFrame) {
+        if (activeFrame.kind === 'quote') {
+          if (isVisible) {
+            pending.push({ from: line.from, to: line.from, deco: DECO_QUOTE_LINE });
+          }
+        } else {
+          // Active list environment (`itemize`, `enumerate`, or `description`)
+          const listDepth = Math.min(
+            4,
+            stack.filter(
+              (f) =>
+                f.kind === 'itemize' ||
+                f.kind === 'enumerate' ||
+                f.kind === 'description',
+            ).length,
+          );
+          const itemMatch = ITEM_LINE_RE.exec(text);
+          if (itemMatch) {
+            activeFrame.counter += 1;
+            if (isVisible) {
+              const customLabel = itemMatch[2]?.trim();
+              const isDescriptionTerm =
+                activeFrame.kind === 'description' && Boolean(customLabel);
+              const markerText = customLabel
+                ? `${customLabel} `
+                : activeFrame.kind === 'enumerate'
+                  ? `${activeFrame.counter}. `
+                  : '• ';
 
-      // Active list environment (`itemize` or `enumerate`)
-      const listDepth = Math.min(
-        4,
-        stack.filter((f) => f.kind === 'itemize' || f.kind === 'enumerate').length,
-      );
-      const itemMatch = ITEM_LINE_RE.exec(text);
-      if (itemMatch) {
-        activeFrame.counter += 1;
-        if (isVisible) {
-          const customLabel = itemMatch[2]?.trim();
-          const markerText = customLabel
-            ? `${customLabel} `
-            : activeFrame.kind === 'enumerate'
-              ? `${activeFrame.counter}. `
-              : '• ';
+              pending.push({
+                from: line.from,
+                to: line.from,
+                deco: DECO_LIST_DEPTH[listDepth] ?? DECO_LIST_DEPTH[1]!,
+              });
 
-          pending.push({
-            from: line.from,
-            to: line.from,
-            deco: DECO_LIST_DEPTH[listDepth] ?? DECO_LIST_DEPTH[1]!,
-          });
-
-          const cmdFrom = line.from;
-          const cmdTo = line.from + itemMatch[1]!.length;
-          // Keep bullet visible when cursor starts at item content (`selection.from === cmdTo`)
-          const isCursorInItemPrefix =
-            selection.from < cmdTo && selection.to >= cmdFrom;
-          if (!isCursorInItemPrefix && cmdTo > cmdFrom) {
-            pending.push({
-              from: cmdFrom,
-              to: cmdTo,
-              deco: Decoration.replace({ widget: new ListMarkerWidget(markerText) }),
-            });
+              const cmdFrom = line.from;
+              const cmdTo = line.from + itemMatch[1]!.length;
+              itemCmdEnd = cmdTo;
+              // Keep bullet/term visible when cursor starts at item content (`selection.from === cmdTo`)
+              const isCursorInItemPrefix =
+                selection.from < cmdTo && selection.to >= cmdFrom;
+              if (!isCursorInItemPrefix && cmdTo > cmdFrom) {
+                pending.push({
+                  from: cmdFrom,
+                  to: cmdTo,
+                  deco: Decoration.replace({
+                    widget: new ListMarkerWidget(markerText, isDescriptionTerm),
+                  }),
+                });
+              }
+            }
+          } else {
+            const visibleText =
+              inlineCommentIdx > 0 ? text.slice(0, inlineCommentIdx) : text;
+            if (isVisible && visibleText.trim().length > 0) {
+              pending.push({
+                from: line.from,
+                to: line.from,
+                deco: DECO_LIST_DEPTH[listDepth] ?? DECO_LIST_DEPTH[1]!,
+              });
+            }
           }
         }
-      } else if (isVisible && text.trim().length > 0) {
+      }
+
+      if (
+        isVisible &&
+        !isCursorOnLine &&
+        inlineCommentIdx > 0 &&
+        line.from + inlineCommentIdx >= itemCmdEnd
+      ) {
         pending.push({
-          from: line.from,
-          to: line.from,
-          deco: DECO_LIST_DEPTH[listDepth] ?? DECO_LIST_DEPTH[1]!,
+          from: line.from + inlineCommentIdx,
+          to: line.to,
+          deco: DECO_SYNTAX_HIDE,
         });
       }
     }
@@ -238,17 +283,6 @@ class VisualEnvironmentsPlugin {
 const DECO_HIDDEN_INLINE_SAFE = DECO_SYNTAX_HIDE;
 
 const visualEnvironmentsTheme = EditorView.baseTheme({
-  '.cm-visual-comment-hidden': {
-    height: '0 !important',
-    minHeight: '0 !important',
-    paddingTop: '0 !important',
-    paddingBottom: '0 !important',
-    marginTop: '0 !important',
-    marginBottom: '0 !important',
-    lineHeight: '0 !important',
-    fontSize: '0 !important',
-    overflow: 'hidden !important',
-  },
   '.cm-visual-quote-line': {
     borderLeft: '3px solid var(--border, #cbd5e1)',
     paddingLeft: '16px !important',
@@ -276,6 +310,12 @@ const visualEnvironmentsTheme = EditorView.baseTheme({
     color: 'var(--primary, #2563eb)',
     userSelect: 'none',
     marginRight: '4px',
+  },
+  '.cm-visual-list-term': {
+    display: 'inline-block',
+    fontWeight: '600',
+    color: 'var(--foreground, #0f172a)',
+    marginRight: '6px',
   },
 });
 

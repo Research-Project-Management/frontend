@@ -18,7 +18,7 @@ import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { setActiveEditorEngine } from '@/features/editor/core';
-import { fluxTransport, getPageChat } from '@/features/ai';
+import { fluxTransport } from '@/features/ai';
 import { decodeFluxSseFrame } from '@/features/ai/transport/sse';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 
@@ -339,26 +339,6 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       expect(sentBody.chatId).toBe('chat-1');
       expect(sentBody.documentStructure).toBe('\\section{One}');
       expect(sentBody.messages[0].attachments).toEqual([{ id: 'f1', name: 'ref.pdf' }]);
-    });
-
-    it('getPageChat unwraps chat.messages when returned from PageChat controller', async () => {
-      vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        headers: new Headers({ 'content-type': 'application/json' }),
-        json: async () => ({
-          success: true,
-          data: {
-            chat: { id: 'c1', messages: [{ role: 'user', content: 'Saved prompt' }] },
-          },
-        }),
-      } as any);
-
-      const res = await getPageChat('pg-1');
-      expect(res).toEqual({
-        chatId: 'c1',
-        messages: [{ role: 'user', content: 'Saved prompt' }],
-      });
     });
   });
 

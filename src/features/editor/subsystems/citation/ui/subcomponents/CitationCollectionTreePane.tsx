@@ -8,13 +8,9 @@
 
 import React, { useState } from 'react';
 import {
-  Library,
   Folder,
   FolderOpen,
   ChevronRight,
-  FileText,
-  FileCode,
-  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
@@ -57,36 +53,31 @@ export function CitationCollectionTreePane({
   return (
     <div
       className={cn(
-        'w-full md:w-56 shrink-0 bg-muted/20 border-r border-border/70 flex flex-col min-h-0 overflow-hidden',
+        'w-full md:w-52 shrink-0 bg-muted/20 border-r border-border/70 flex flex-col min-h-0 overflow-hidden',
         activeView !== 'tree' && 'hidden md:flex',
       )}
     >
       <div
         role="tree"
         aria-label="Reference collections"
-        className="flex-1 min-h-0 overflow-y-auto p-2 space-y-4 sidebar-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto p-2.5 space-y-4 sidebar-scrollbar"
       >
         {/* Scope & System Sections */}
         <div className="space-y-0.5">
-          <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
-            My Library
-          </div>
-
           <button
             type="button"
             role="treeitem"
             aria-selected={selectedNav === 'all'}
             onClick={() => onSelectNav('all')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
+              'w-full h-8 px-2.5 flex items-center gap-2 rounded-md text-13 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'all'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
             )}
           >
-            <Library className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
             <span className="truncate flex-1">All References</span>
-            <span className="text-10 font-mono opacity-70">{navCounts.all}</span>
+            <span className="text-11 font-mono text-muted-foreground tabular-nums">{navCounts.all}</span>
           </button>
 
           <button
@@ -95,56 +86,58 @@ export function CitationCollectionTreePane({
             aria-selected={selectedNav === 'cited'}
             onClick={() => onSelectNav('cited')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
+              'w-full h-8 px-2.5 flex items-center gap-2 rounded-md text-13 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'cited'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
             )}
           >
-            <FileText className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
             <span className="truncate flex-1">In Document</span>
-            <span className="text-10 font-mono opacity-70">{navCounts.cited}</span>
+            <span className="text-11 font-mono text-muted-foreground tabular-nums">{navCounts.cited}</span>
           </button>
 
-          <button
-            type="button"
-            role="treeitem"
-            aria-selected={selectedNav === 'library'}
-            onClick={() => onSelectNav('library')}
-            className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
-              selectedNav === 'library'
-                ? 'bg-muted text-foreground font-medium'
-                : 'text-foreground hover:bg-muted',
-            )}
-          >
-            <BookOpen className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-            <span className="truncate flex-1">Workspace Library</span>
-            <span className="text-10 font-mono opacity-70">{navCounts.library}</span>
-          </button>
+          {/* Differentiated sources: Only show when multiple distinct sources exist */}
+          {navCounts.library > 0 && navCounts.bib > 0 && (
+            <button
+              type="button"
+              role="treeitem"
+              aria-selected={selectedNav === 'library'}
+              onClick={() => onSelectNav('library')}
+              className={cn(
+                'w-full h-8 px-2.5 flex items-center gap-2 rounded-md text-13 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
+                selectedNav === 'library'
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-foreground hover:bg-muted',
+              )}
+            >
+              <span className="truncate flex-1">Workspace Library</span>
+              <span className="text-11 font-mono text-muted-foreground tabular-nums">{navCounts.library}</span>
+            </button>
+          )}
 
-          <button
-            type="button"
-            role="treeitem"
-            aria-selected={selectedNav === 'bib'}
-            onClick={() => onSelectNav('bib')}
-            className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
-              selectedNav === 'bib'
-                ? 'bg-muted text-foreground font-medium'
-                : 'text-foreground hover:bg-muted',
-            )}
-          >
-            <FileCode className="size-3.5 shrink-0 text-foreground" strokeWidth={1.75} />
-            <span className="truncate flex-1">Project .bib</span>
-            <span className="text-10 font-mono opacity-70">{navCounts.bib}</span>
-          </button>
+          {navCounts.bib > 0 && (
+            <button
+              type="button"
+              role="treeitem"
+              aria-selected={selectedNav === 'bib'}
+              onClick={() => onSelectNav('bib')}
+              className={cn(
+                'w-full h-8 px-2.5 flex items-center gap-2 rounded-md text-13 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
+                selectedNav === 'bib'
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-foreground hover:bg-muted',
+              )}
+            >
+              <span className="truncate flex-1">Project .bib</span>
+              <span className="text-11 font-mono text-muted-foreground tabular-nums">{navCounts.bib}</span>
+            </button>
+          )}
         </div>
 
         {/* Collections Tree Section */}
         {collectionTree.length > 0 && (
           <div className="space-y-0.5">
-            <div className="px-2 pb-1 text-11 font-medium text-foreground select-none">
+            <div className="px-2 pb-1 text-11 font-medium text-muted-foreground select-none">
               Collections
             </div>
 
@@ -200,14 +193,14 @@ export function CitationCollectionTreePane({
                     )}
 
                     {isExpanded ? (
-                      <FolderOpen className="size-3.5 shrink-0 text-foreground" />
+                      <FolderOpen className="size-3.5 shrink-0 text-muted-foreground" />
                     ) : (
-                      <Folder className="size-3.5 shrink-0 text-foreground" />
+                      <Folder className="size-3.5 shrink-0 text-muted-foreground" />
                     )}
 
                     <span className="truncate flex-1">{rootNode.name}</span>
                     {count > 0 && (
-                      <span className="text-10 font-mono opacity-70">{count}</span>
+                      <span className="text-10 font-mono text-muted-foreground">{count}</span>
                     )}
                   </div>
 
@@ -232,10 +225,10 @@ export function CitationCollectionTreePane({
                                 : 'text-foreground hover:bg-muted',
                             )}
                           >
-                            <Folder className="size-3 shrink-0 text-foreground" />
+                            <Folder className="size-3 shrink-0 text-muted-foreground" />
                             <span className="truncate flex-1">{subNode.name}</span>
                             {subCount > 0 && (
-                              <span className="text-10 font-mono opacity-70">{subCount}</span>
+                              <span className="text-10 font-mono text-muted-foreground">{subCount}</span>
                             )}
                           </button>
                         );

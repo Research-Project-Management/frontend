@@ -235,7 +235,6 @@ export function useEditorStorageMutations(
     },
     onSuccess: () => {
       invalidateStorageState({ emitBusEvent: true });
-      toast.success('Folder created', { id: 'create-folder' });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to create folder';

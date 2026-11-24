@@ -55,9 +55,6 @@ export function usePageActions() {
         });
         editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
       }
-      if (!variables.silent) {
-        toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
-      }
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to create file';
@@ -184,7 +181,6 @@ export function usePageActions() {
       });
 
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success(`Renamed to "${variables.title}"`, { id: `rename-file-${variables.pageId}` });
     },
     onError: (err: unknown, variables, context) => {
       const pageStore = usePageStore.getState();

@@ -26,28 +26,28 @@ export function useCitationPickerActions() {
 
   const copyCitationSnippet = useCallback((snippet: string) => {
     navigator.clipboard.writeText(snippet);
-    toast.success(`Copied "${snippet}"`);
+    toast.success('Copied');
   }, []);
 
   const copyBibtex = useCallback((entry: BibEntry) => {
     const code = formatBibEntryToBibtex(entry);
     navigator.clipboard.writeText(code);
-    toast.success(`Copied BibTeX for ${entry.key}`);
+    toast.success('Copied BibTeX');
   }, []);
 
   const copyKey = useCallback((key: string) => {
     navigator.clipboard.writeText(key);
-    toast.success(`Copied citation key "${key}"`);
+    toast.success('Copied citation key');
   }, []);
 
   const copyDoi = useCallback((doi: string) => {
     navigator.clipboard.writeText(doi);
-    toast.success(`Copied DOI "${doi}"`);
+    toast.success('Copied DOI');
   }, []);
 
   const copyCiteKey = useCallback((key: string) => {
     navigator.clipboard.writeText(`\\cite{${key}}`);
-    toast.success(`Copied \\cite{${key}} to clipboard`);
+    toast.success('Copied citation');
   }, []);
 
   const resolveAcademicIdentifier = useCallback(

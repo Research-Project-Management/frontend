@@ -57,9 +57,6 @@ export const useCreateSuggestion = (customClient?: QueryClient) => {
       onSuccess: (_newSug, variables) => {
         queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
         queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
-        if (!variables?.silent) {
-          toast.success('Suggestion submitted', { id: 'submit-suggestion' });
-        }
       },
       onError: (err: unknown) => {
         toast.error((err as Error)?.message || 'Failed to submit suggestion', { id: 'submit-suggestion' });
@@ -110,7 +107,6 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
         if (typeof rev === 'number') {
           lruDocumentCache.setServerRev(vars.pageId, rev);
         }
-        toast.success('Suggestion accepted', { id: `sug-${vars.suggestionId}` });
       },
     },
     queryClient,
@@ -157,7 +153,6 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
         if (typeof rev === 'number') {
           lruDocumentCache.setServerRev(vars.pageId, rev);
         }
-        toast.info('Suggestion rejected', { id: `sug-${vars.suggestionId}` });
       },
     },
     queryClient,

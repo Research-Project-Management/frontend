@@ -21,6 +21,8 @@ import {
   StateField,
   type EditorState,
   type Extension,
+  type Line,
+  type Text,
 } from '@codemirror/state';
 import { findMatchingBrace } from './latex-visual-headings';
 
@@ -161,7 +163,7 @@ class PreambleHeaderWidget extends WidgetType {
   }
 
   override ignoreEvent(): boolean {
-    return false;
+    return true;
   }
 }
 
@@ -190,7 +192,7 @@ class CollapsePreambleWidget extends WidgetType {
   }
 
   override ignoreEvent(): boolean {
-    return false;
+    return true;
   }
 }
 
@@ -199,12 +201,56 @@ const DECO_HIDDEN_INLINE = Decoration.replace({});
 const STRUCTURAL_SINGLE_LINE_RE = /^\s*(?:\\maketitle|\\end\{document\})\s*(?:%.*)?$/;
 const BEGIN_DOCUMENT_RE = /^[^%]*\\begin\{document\}/;
 
+export function findBeginDocumentLine(doc: Text): Line | null {
+  const maxScanLine = Math.min(doc.lines, 400);
+  for (let l = 1; l <= maxScanLine; l++) {
+    const line = doc.line(l);
+    if (BEGIN_DOCUMENT_RE.test(line.text)) {
+      return line;
+    }
+  }
+  return null;
+}
+
 export const preambleExpandedField = StateField.define<boolean>({
   create: () => false,
   update(value, tr) {
     for (const effect of tr.effects) {
       if (effect.is(togglePreambleEffect)) {
         return effect.value;
+      }
+    }
+    if (!value) {
+      const beginLine = findBeginDocumentLine(tr.state.doc);
+      if (beginLine) {
+        if (tr.docChanged) {
+          let isFullDocReplace = false;
+          let touchedPreamble = false;
+          tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+            if (
+              fromA === 0 &&
+              toA === tr.startState.doc.length &&
+              fromB === 0 &&
+              toB === tr.state.doc.length
+            ) {
+              isFullDocReplace = true;
+              return;
+            }
+            if (fromB <= beginLine.to) {
+              touchedPreamble = true;
+            }
+          });
+          if (!isFullDocReplace && touchedPreamble) {
+            return true;
+          }
+        }
+        if (
+          tr.selection &&
+          tr.selection.main.from > 0 &&
+          tr.selection.main.from <= beginLine.to
+        ) {
+          return true;
+        }
       }
     }
     return value;
@@ -217,17 +263,7 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
 
   const selection = state.selection.main;
   const expanded = state.field(preambleExpandedField, false) ?? false;
-
-  // Locate \begin{document}
-  let beginDocLineNum: number | null = null;
-  const maxScanLine = Math.min(doc.lines, 400);
-  for (let l = 1; l <= maxScanLine; l++) {
-    const line = doc.line(l);
-    if (BEGIN_DOCUMENT_RE.test(line.text)) {
-      beginDocLineNum = l;
-      break;
-    }
-  }
+  const beginLine = findBeginDocumentLine(doc);
 
   interface PendingDeco {
     from: number;
@@ -237,8 +273,7 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
   const pending: PendingDeco[] = [];
 
   let bodyStartLine = 1;
-  if (beginDocLineNum !== null) {
-    const beginLine = doc.line(beginDocLineNum);
+  if (beginLine !== null) {
     if (!expanded) {
       const preambleText = doc.sliceString(0, beginLine.to);
       const meta = parsePreambleMetadata(preambleText);
@@ -261,7 +296,7 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
         }),
       });
     }
-    bodyStartLine = beginDocLineNum + 1;
+    bodyStartLine = beginLine.number + 1;
   }
 
   for (let l = bodyStartLine; l <= doc.lines; l++) {
@@ -358,17 +393,6 @@ const visualDocumentShellTheme = EditorView.baseTheme({
     marginTop: '6px',
     fontSize: '0.92rem',
     color: 'var(--muted-foreground, #475569)',
-  },
-  '.cm-visual-hidden-line': {
-    height: '0 !important',
-    minHeight: '0 !important',
-    paddingTop: '0 !important',
-    paddingBottom: '0 !important',
-    marginTop: '0 !important',
-    marginBottom: '0 !important',
-    lineHeight: '0 !important',
-    fontSize: '0 !important',
-    overflow: 'hidden !important',
   },
 });
 

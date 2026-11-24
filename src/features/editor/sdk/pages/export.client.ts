@@ -62,10 +62,8 @@ export const exportDocs = {
     const cleanPageId = options?.pageId?.trim();
     if (cleanPageId) params.append('pageId', cleanPageId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    const scopePrefix =
-      !projectId && cleanPageId ? `pages/${encodeURIComponent(cleanPageId)}` : `spaces/${projectId}`;
     const res = await rawFetch(
-      `${getPagesBaseUrl()}/${scopePrefix}/history/versions/${encodeURIComponent(String(version))}/export-zip${queryString}`,
+      `${getPagesBaseUrl()}/spaces/${encodeURIComponent(projectId)}/history/versions/${encodeURIComponent(String(version))}/export-zip${queryString}`,
       'GET',
     );
     if (!res.ok) throw new Error(`Export Version ZIP failed: ${res.statusText}`);

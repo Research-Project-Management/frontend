@@ -169,14 +169,14 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   ) : null}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
+              <TooltipContent side="bottom" sideOffset={6} className="text-xs">
                 {showLog
                   ? 'Back to PDF'
                   : errorCount > 0
-                    ? `Logs and output files (${errorCount} error${errorCount > 1 ? 's' : ''})`
+                    ? `Logs (${errorCount} error${errorCount > 1 ? 's' : ''})`
                     : warningCount > 0
-                      ? `Logs and output files (${warningCount} warning${warningCount > 1 ? 's' : ''})`
-                      : 'Logs and output files'}
+                      ? `Logs (${warningCount} warning${warningCount > 1 ? 's' : ''})`
+                      : 'Logs'}
               </TooltipContent>
             </Tooltip>
           </>
@@ -195,7 +195,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               <Download className="size-3.5 shrink-0" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
             Download PDF
           </TooltipContent>
         </Tooltip>

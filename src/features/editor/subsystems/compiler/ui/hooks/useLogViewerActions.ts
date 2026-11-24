@@ -133,7 +133,7 @@ function computeQuickFixPatch(
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
   navigator.clipboard.writeText(snippet);
-  toast.success('Snippet copied to clipboard', { id: 'copy-snippet' });
+  toast.success('Copied', { id: 'copy-snippet' });
 }
 
 export async function fetchLogEntryExplanation(entry: LogEntry): Promise<ErrorExplanationDto | null> {
@@ -335,7 +335,6 @@ export function useLogViewerActions({
         isPageScoped ? { isPageScoped: true } : undefined,
       );
       window.open(url, '_blank');
-      toast.success(`Downloading ${filename}...`, { id: `download-aux-${filename}` });
     },
     [projectId, isPageScoped],
   );
@@ -350,7 +349,6 @@ export function useLogViewerActions({
       isPageScoped ? { isPageScoped: true } : undefined,
     );
     window.open(url, '_blank');
-    toast.success('Downloading all auxiliary files...', { id: 'download-all-aux' });
   }, [projectId, isPageScoped]);
 
   return {

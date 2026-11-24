@@ -20,7 +20,6 @@ import {
   Bold,
   Italic,
   Sigma,
-  Table as TableIcon,
   Image as ImageIcon,
   Link2,
   BookOpen,
@@ -45,6 +44,7 @@ import { useContainerWidth } from './useContainerWidth';
 import { cn } from '@/shared/lib/utils';
 import { STYLE_OPTIONS, useEditorToolbarActions } from './useEditorToolbarActions';
 import { EditorToolbarOverflowMenu, OmegaIcon } from './EditorToolbarOverflowMenu';
+import { InsertTablePopover } from '@/features/editor/subsystems/authoring-wizards/ui/table-wizard/InsertTablePopover';
 
 export interface EditorToolbarProps {
   className?: string;
@@ -97,7 +97,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
       role="toolbar"
       aria-label="Editor formatting tools"
       className={cn(
-        'h-9 min-h-[36px] px-2 flex items-center gap-0.5 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none w-full max-w-full',
+        'h-9 min-h-[36px] px-1.5 flex items-center gap-0 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none w-full max-w-full',
         className,
       )}
     >
@@ -108,9 +108,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             <RotateCcw className="size-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
           <span>Undo</span>
-          <span className="ml-1.5 opacity-60">(Mod-z)</span>
+          <span className="ml-1.5 opacity-60">Ctrl+Z</span>
         </TooltipContent>
       </Tooltip>
 
@@ -120,9 +120,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             <RotateCw className="size-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
           <span>Redo</span>
-          <span className="ml-1.5 opacity-60">(Mod-y)</span>
+          <span className="ml-1.5 opacity-60">Ctrl+Y</span>
         </TooltipContent>
       </Tooltip>
 
@@ -130,24 +130,18 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
 
       {/* ── 2. Paragraph Style Dropdown ── */}
       <DropdownMenu>
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={readOnly}
-                className="h-7 px-2 gap-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:bg-muted shrink-0"
-              >
-                <span className="truncate max-w-[80px] text-12">{actions.currentStyle}</span>
-                <ChevronDown className="size-3 opacity-60 shrink-0" />
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Paragraph style</span>
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={readOnly}
+            aria-label="Paragraph style"
+            className="h-7 px-2 gap-1 text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:bg-muted shrink-0"
+          >
+            <span className="truncate max-w-[80px] text-12">{actions.currentStyle}</span>
+            <ChevronDown className="size-3 opacity-60 shrink-0" />
+          </Button>
+        </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-36">
           {STYLE_OPTIONS.map((opt) => (
             <DropdownMenuItem
@@ -170,9 +164,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             <Bold className="size-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
           <span>Bold</span>
-          <span className="ml-1.5 opacity-60">(Mod-b)</span>
+          <span className="ml-1.5 opacity-60">Ctrl+B</span>
         </TooltipContent>
       </Tooltip>
 
@@ -182,9 +176,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
             <Italic className="size-3.5" />
           </Button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-xs">
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
           <span>Italic</span>
-          <span className="ml-1.5 opacity-60">(Mod-i)</span>
+          <span className="ml-1.5 opacity-60">Ctrl+I</span>
         </TooltipContent>
       </Tooltip>
 
@@ -198,8 +192,8 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <Sigma className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Math formula</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>Math</span>
           </TooltipContent>
         </Tooltip>
       )}
@@ -211,8 +205,8 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <OmegaIcon />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Insert Symbol (Ω)</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>Symbol</span>
           </TooltipContent>
         </Tooltip>
       )}
@@ -230,9 +224,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
-              <span>Insert link</span>
-              <span className="ml-1.5 opacity-60">(Mod-k)</span>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              <span>Link</span>
+              <span className="ml-1.5 opacity-60">Ctrl+K</span>
             </TooltipContent>
           </Tooltip>
           <PopoverContent align="start" className="w-72 p-3">
@@ -284,7 +278,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
               <span>Cross-reference</span>
             </TooltipContent>
           </Tooltip>
@@ -321,9 +315,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <BookOpen className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Cite reference</span>
-            <span className="ml-1.5 opacity-60">(Mod-Shift-k)</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>Citation</span>
+            <span className="ml-1.5 opacity-60">Ctrl+Shift+K</span>
           </TooltipContent>
         </Tooltip>
       )}
@@ -335,24 +329,14 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <ImageIcon className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Insert figure</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>Figure</span>
           </TooltipContent>
         </Tooltip>
       )}
 
       {showTable && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={readOnly} onClick={actions.handleInsertTable} className={iconButtonClass} aria-label="Insert table">
-              <TableIcon className="size-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Insert table</span>
-            <span className="ml-1.5 opacity-60">(Mod-Shift-t)</span>
-          </TooltipContent>
-        </Tooltip>
+        <InsertTablePopover disabled={readOnly} triggerClassName={iconButtonClass} />
       )}
 
       {showLists && (
@@ -362,8 +346,8 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <List className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Bulleted list</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>List</span>
           </TooltipContent>
         </Tooltip>
       )}
@@ -403,9 +387,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
               <Search className="size-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="bottom" className="text-xs">
-            <span>Search in file</span>
-            <span className="ml-1.5 opacity-60">(Mod-f)</span>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            <span>Find &amp; replace</span>
+            <span className="ml-1.5 opacity-60">Ctrl+F</span>
           </TooltipContent>
         </Tooltip>
       </div>

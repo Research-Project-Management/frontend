@@ -49,7 +49,7 @@ export function OfflineBanner() {
     if (wasOfflineRef.current && isOnline && !isSyncingOfflineQueue) {
       wasOfflineRef.current = false;
       setJustReconnected(true);
-      toast.success('Connection restored! All pending changes have been synchronized.', { id: 'network-status' });
+      toast.success('Connection restored. Changes synced.', { id: 'network-status' });
       const timer = setTimeout(() => setJustReconnected(false), 3000);
       return () => clearTimeout(timer);
     }

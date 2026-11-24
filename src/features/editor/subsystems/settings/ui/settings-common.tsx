@@ -11,7 +11,7 @@ import { Switch } from '@/shared/components/ui/switch';
 import { cn } from '@/shared/lib/utils';
 
 export const EDITOR_FONT_FAMILIES = [
-  { id: 'default', label: 'Default Monospace' },
+  { id: 'default', label: 'Default' },
   { id: 'fira', label: 'Fira Code' },
   { id: 'jetbrains', label: 'JetBrains Mono' },
   { id: 'consolas', label: 'Consolas' },

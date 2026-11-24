@@ -10,9 +10,9 @@ import {
   act,
 } from '@testing-library/react';
 import AiTab from '@/features/editor/subsystems/ai';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { threadPool, useAiCompanionStore } from '@/features/ai';
 import {
-  clearPageChat,
   fetchSessions,
   getSession,
 } from '@/features/ai/transport/sessions';
@@ -43,11 +43,8 @@ vi.mock('@/features/ai/transport/sessions', () => ({
     documentIds: [],
     messages: [],
   }),
-  createSession: vi.fn(),
   renameSession: vi.fn(),
   deleteSession: vi.fn(),
-  getPageChat: vi.fn().mockResolvedValue({ chatId: null, messages: [] }),
-  clearPageChat: vi.fn().mockResolvedValue(undefined),
 }));
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -55,7 +52,9 @@ function renderWithQuery(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+    <QueryClientProvider client={client}>
+      <TooltipProvider>{ui}</TooltipProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -195,7 +194,7 @@ describe('AiTab Unified Global AI Synchronization Tests', () => {
     ).toBeInTheDocument();
   });
 
-  it('resets activeChatId on New chat without calling destructive clearPageChat', async () => {
+  it('resets activeChatId on New chat', async () => {
     vi.mocked(getSession).mockResolvedValue({
       id: 'session-existing-1',
       title: 'Existing Thread',
@@ -215,7 +214,6 @@ describe('AiTab Unified Global AI Synchronization Tests', () => {
       expect(useAiCompanionStore.getState().activeChatId).toBeNull();
       expect(screen.getByText('Suggestions')).toBeInTheDocument();
     });
-    expect(clearPageChat).not.toHaveBeenCalled();
   });
 
   it('handles sidebar:open-ai-panel by exiting history view, showing quoted selection chip, and filling prompt', async () => {

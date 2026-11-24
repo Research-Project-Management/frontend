@@ -15,7 +15,7 @@ import {
   DialogClose,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { X, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { CitationCollectionTreePane } from '../subcomponents/CitationCollectionTreePane';
@@ -80,7 +80,7 @@ export function CitationModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[94vw] sm:max-w-5xl md:max-w-6xl h-[660px] max-h-[88vh] min-h-0 sm:min-h-[520px] p-0 gap-0 overflow-hidden rounded-md border border-border shadow-raised-500 bg-background flex flex-col"
+        className="w-[94vw] sm:max-w-5xl md:max-w-6xl h-[700px] max-h-[88vh] min-h-0 sm:min-h-[520px] p-0 gap-0 overflow-hidden rounded-md border border-border shadow-raised-500 bg-background flex flex-col"
       >
         {/* Header with clear dividing line */}
         <div className="h-12 px-4 sm:px-6 flex items-center justify-between shrink-0 bg-background border-b border-border">
@@ -168,6 +168,10 @@ export function CitationModal({
             isSearchingServer={s.isSearchingServer}
             filteredItems={s.filteredItems}
             selectedKey={s.selectedKey}
+            selectedKeys={s.selectedKeys}
+            onToggleSelectKey={s.toggleSelectKey}
+            sortBy={s.sortBy}
+            onSortChange={s.setSortBy}
             selectedEntry={s.selectedEntry}
             citedKeysSet={s.citedKeysSet}
             isLargeCardsList={s.isLargeCardsList}
@@ -179,12 +183,7 @@ export function CitationModal({
           <CitationInspectorPane
             activeView={s.activeView}
             selectedEntry={s.selectedEntry}
-            selectedStyle={s.selectedStyle}
-            citedKeysSet={s.citedKeysSet}
-            onSelectStyle={s.setSelectedStyle}
             onBackToList={() => s.setActiveView('list')}
-            onCloseModal={() => onOpenChange(false)}
-            copyCitationSnippet={s.copyCitationSnippet}
             copyBibtex={s.copyBibtex}
             copyKey={s.copyKey}
             copyDoi={s.copyDoi}
@@ -192,15 +191,7 @@ export function CitationModal({
         </div>
 
         {/* Footer with clean, focused actions (Cancel & Insert Citation) */}
-        <div className="h-13 px-6 flex items-center justify-between shrink-0 bg-background border-t border-border">
-          <div className="text-11 text-muted-foreground select-none">
-            {s.filteredItems.length > 0 && (
-              <span>
-                {s.filteredItems.length} reference{s.filteredItems.length === 1 ? '' : 's'}
-              </span>
-            )}
-          </div>
-
+        <div className="h-13 px-6 flex items-center justify-end shrink-0 bg-background border-t border-border">
           {/* Action buttons */}
           <div className="flex items-center gap-2">
             <Button
@@ -216,12 +207,15 @@ export function CitationModal({
               type="button"
               variant="default"
               size="sm"
-              disabled={!s.selectedEntry}
-              onClick={() => s.selectedEntry && s.handleSelectItem(s.selectedEntry)}
+              disabled={!s.selectedEntry && s.selectedKeys.size === 0}
+              onClick={s.handleInsertSelected}
               className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
             >
-              <Check className="size-3.5" />
-              <span>Insert Citation</span>
+              <span>
+                {s.selectedKeys.size > 1
+                  ? `Insert ${s.selectedKeys.size} Citations`
+                  : 'Insert Citation'}
+              </span>
             </Button>
           </div>
         </div>

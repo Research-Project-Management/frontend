@@ -6,7 +6,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
@@ -15,9 +14,8 @@ import { filesQuery, pageQuery } from '@/features/editor/core/queries/document.q
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 
-export type SettingsView = 'compiler' | 'editor' | 'github' | 'references' | 'dictionary';
+export type SettingsView = 'compiler' | 'editor' | 'github' | 'dictionary';
 
 export function useSettingsModal() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
@@ -40,7 +38,6 @@ export function useSettingsModal() {
   const setMainDocument = usePageStore((s) => s.setMainDocument);
 
   const [activeView, setActiveView] = useState<SettingsView>('compiler');
-  const [isClearingCache, setIsClearingCache] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -49,8 +46,6 @@ export function useSettingsModal() {
     }
     if (settingsActiveTab === 'github') {
       setActiveView('github');
-    } else if (settingsActiveTab === 'references') {
-      setActiveView('references');
     } else {
       setActiveView('compiler');
     }
@@ -65,13 +60,11 @@ export function useSettingsModal() {
           'compiler';
         if (
           target === 'github' ||
-          target === 'references' ||
           target === 'dictionary' ||
           target === 'editor'
         ) {
           setActiveView(target);
           if (target === 'github') setSettingsActiveTab('github');
-          else if (target === 'references') setSettingsActiveTab('references');
         } else {
           setActiveView('compiler');
           setSettingsActiveTab('editor');
@@ -97,7 +90,6 @@ export function useSettingsModal() {
   const selectView = (view: SettingsView) => {
     setActiveView(view);
     if (view === 'github') setSettingsActiveTab('github');
-    else if (view === 'references') setSettingsActiveTab('references');
     else if (view === 'compiler' || view === 'editor') setSettingsActiveTab('editor');
   };
 
@@ -190,54 +182,15 @@ export function useSettingsModal() {
     return list;
   }, [storeMainFilePath, parentPage?.path, parentPage?.title, projectFiles]);
 
-  const bibFiles = useMemo(() => {
-    const list: string[] = [];
-    if (projectFiles && Array.isArray(projectFiles)) {
-      (projectFiles as Array<{ title?: string; name?: string; filename?: string }>).forEach((f) => {
-        const name = f.title || f.name || f.filename;
-        if (typeof name === 'string' && name.toLowerCase().endsWith('.bib') && !list.includes(name)) {
-          list.push(name);
-        }
-      });
-    }
-    if (list.length === 0) list.push('references.bib');
-    return list;
-  }, [projectFiles]);
-
-  const handleClearCache = async () => {
-    const targetId = pageId || currentPage?.id || spaceId || projectId;
-    if (!targetId) {
-      toast.info('No active manuscript found to clear cache.', { id: 'clear-cache' });
-      return;
-    }
-
-    setIsClearingCache(true);
-    try {
-      const res = await pagesService.compiler.cleanAuxFiles(targetId);
-      if (res && res.success === false) {
-        throw new Error('Failed to clear cached files');
-      }
-      toast.success('Cached files cleared.', { id: 'clear-cache' });
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to clear cached files', {
-        id: 'clear-cache',
-      });
-    } finally {
-      setIsClearingCache(false);
-    }
-  };
-
   return {
+    pageId: pageId || projectId,
     projectId,
-    projectTitle,
+    pageTitle: projectTitle,
     open,
     setOpen,
     activeView,
     selectView,
     texFiles,
-    bibFiles,
-    isClearingCache,
     handleMainFileChange,
-    handleClearCache,
   };
 }

@@ -3,7 +3,7 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { usePageStore, editorCommandBus } from '@/features/editor/core';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
-import { getPageChat, clearPageChat, fluxTransport } from '@/features/ai';
+import { fluxTransport } from '@/features/ai';
 
 describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
   beforeEach(() => {
@@ -81,45 +81,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
     });
   });
 
-  describe('3. Page Chat Service & Streaming API Integration', () => {
-    it('should call page chat endpoint with correct URL and headers', async () => {
-      const mockMessages = [
-        { role: 'user', content: 'What is this section about?' },
-        { role: 'assistant', content: 'This section details the theorem.' },
-      ];
-
-      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ messages: mockMessages }),
-      } as any);
-
-      const result = await getPageChat('page-abc-123');
-
-      expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/api/ai/chats/page/page-abc-123'),
-        expect.objectContaining({
-          credentials: 'include',
-        }),
-      );
-      expect(result).toEqual({ chatId: null, messages: mockMessages });
-    });
-
-    it('should delete page chat thread via clearPageChat', async () => {
-      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ success: true }),
-      } as any);
-
-      await clearPageChat('page-abc-123');
-
-      expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/api/ai/chats/page/page-abc-123'),
-        expect.objectContaining({
-          method: 'DELETE',
-        }),
-      );
-    });
-
+  describe('3. Streaming API Integration', () => {
     it('should stream editor chat chunks over SSE body', async () => {
       const encoder = new TextEncoder();
       const chunks = [

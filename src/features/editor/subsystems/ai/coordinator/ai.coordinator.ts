@@ -250,11 +250,6 @@ export class AiCoordinator {
     this.pendingDiffsByFile.set(fileId, proposal);
   }
 
-  public getPendingDiffForFile(fileId: string): DiffProposal | null {
-    if (!fileId) return null;
-    return this.pendingDiffsByFile.get(fileId) ?? null;
-  }
-
   public consumePendingDiffForFile(fileId: string, docText?: string): DiffProposal | null {
     if (!fileId) return null;
     const proposal = this.pendingDiffsByFile.get(fileId) ?? null;
@@ -494,7 +489,7 @@ export class AiCoordinator {
 
     editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
       if (cmd.action === 'accept') {
-        toast.success('Applied AI suggestion to document!', { id: 'ai-diff-status' });
+        toast.success('Applied AI suggestion', { id: 'ai-diff-status' });
         editorCommandBus.dispatch({ type: 'compiler:trigger', draft: true });
       }
     });
@@ -730,7 +725,7 @@ export class AiCoordinator {
     if (engine) {
       engine.insertText(replacement);
       sessionCoordinator.notifyContentChange(fileId, engine.getContent());
-      toast.success('Applied AI suggestion to editor', { id: 'ai-diff-status' });
+      toast.success('Applied AI suggestion', { id: 'ai-diff-status' });
       return true;
     }
 
@@ -747,7 +742,7 @@ export class AiCoordinator {
         nextContent = model.content ? `${model.content}\n${replacement}` : replacement;
       }
       sessionCoordinator.notifyContentChange(fileId, nextContent);
-      toast.success('Updated document with AI suggestion', { id: 'ai-diff-status' });
+      toast.success('Applied AI suggestion', { id: 'ai-diff-status' });
       return true;
     }
 

@@ -291,7 +291,7 @@ export function useCitationTabState() {
 
   const handleCopyKey = useCallback((key: string) => {
     navigator.clipboard.writeText(`\\cite{${key}}`);
-    toast.success(`Copied \\cite{${key}} to clipboard`, { id: 'copy-citation-key' });
+    toast.success(`Copied \\cite{${key}}`, { id: 'copy-citation-key' });
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 1500);
   }, []);

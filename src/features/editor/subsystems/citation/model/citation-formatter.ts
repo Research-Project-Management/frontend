@@ -559,6 +559,46 @@ export function formatItemToBibtex(item: Item): string {
   return `@${type}{${key},\n${fields.join(',\n')}\n}`;
 }
 
+function normalizeBibtexEntryType(rawType?: string): string {
+  const normalized = (rawType || 'article').toLowerCase().replace(/[\s_-]+/g, '');
+  switch (normalized) {
+    case 'article':
+    case 'journalarticle':
+      return 'article';
+    case 'inproceedings':
+    case 'conferencepaper':
+    case 'proceedings':
+      return 'inproceedings';
+    case 'incollection':
+    case 'booksection':
+    case 'bookchapter':
+    case 'chapter':
+      return 'incollection';
+    case 'book':
+      return 'book';
+    case 'phdthesis':
+    case 'thesis':
+    case 'dissertation':
+      return 'phdthesis';
+    case 'mastersthesis':
+      return 'mastersthesis';
+    case 'techreport':
+    case 'report':
+      return 'techreport';
+    case 'preprint':
+    case 'unpublished':
+      return 'unpublished';
+    case 'webpage':
+    case 'website':
+    case 'online':
+    case 'dataset':
+    case 'misc':
+      return 'misc';
+    default:
+      return normalized || 'article';
+  }
+}
+
 /**
  * Formats a parsed BibEntry into a standard, pretty-printed BibTeX entry string.
  * Uses raw snippet if available, or synthesizes clean BibTeX from metadata.
@@ -567,7 +607,10 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
   if (entry.raw && entry.raw.trim().startsWith('@')) {
     return entry.raw.trim();
   }
-  const type = (entry.type || 'article').toLowerCase();
+  const type = normalizeBibtexEntryType(entry.type);
+  const isRedundantDoiUrl =
+    Boolean(entry.doi && entry.url) &&
+    entry.url!.toLowerCase().includes(entry.doi!.toLowerCase());
   const fields: string[] = [];
 
   appendBibtexFields(fields, [
@@ -581,8 +624,7 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
     ['pages', entry.pages],
     ['publisher', entry.publisher],
     ['doi', entry.doi],
-    ['url', entry.url],
-    ['abstract', entry.abstract ? entry.abstract.replace(WHITESPACE_COLLAPSE_REGEX, ' ').trim() : undefined],
+    ['url', isRedundantDoiUrl ? undefined : entry.url],
   ]);
 
   return `@${type}{${entry.key},\n${fields.join(',\n')}\n}`;

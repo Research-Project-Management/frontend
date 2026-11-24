@@ -358,7 +358,6 @@ export function useCompilerLogsState({
     const artifactUrl = compileReport?.logMeta?.logArtifactUrl;
     if (artifactUrl) {
       window.open(artifactUrl, '_blank');
-      toast.success('Downloading full output.log...', { id: 'download-full-raw-log' });
       return;
     }
     if (compileReport?.logMeta?.truncated && scratchTargetId) {

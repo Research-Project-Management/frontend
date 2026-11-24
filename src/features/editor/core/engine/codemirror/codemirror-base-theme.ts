@@ -13,6 +13,7 @@ import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-
 import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
 import { latexVisualDocumentShell } from '@/features/editor/core/engine/extensions/latex-visual-document-shell';
 import { latexVisualEnvironments } from '@/features/editor/core/engine/extensions/latex-visual-environments';
+import { latexVisualFloats } from '@/features/editor/core/engine/extensions/latex-visual-floats';
 
 export const editorBaseTheme = EditorView.theme({
   '&': {
@@ -303,10 +304,10 @@ export function createConfiguredLineNumbers(): Extension {
 
 export const visualModeTheme = EditorView.theme({
   '&': {
-    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
+    backgroundColor: 'var(--background, #ffffff)',
   },
   '.cm-scroller': {
-    backgroundColor: 'var(--editor-gutter, #EEF6FF)',
+    backgroundColor: 'var(--background, #ffffff)',
   },
   '.cm-gutters': {
     display: 'none !important',
@@ -314,8 +315,6 @@ export const visualModeTheme = EditorView.theme({
   '.cm-content': {
     fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif !important',
     backgroundColor: 'var(--background, #ffffff)',
-    borderLeft: '1px solid var(--editor-gutter-border, #CFE3FA)',
-    borderRight: '1px solid var(--editor-gutter-border, #CFE3FA)',
     maxWidth: '760px',
     minHeight: '100%',
     margin: '0 auto',
@@ -336,6 +335,7 @@ export function createVisualModeExtensions(): Extension[] {
       latexVisualDocumentShell(),
       latexVisualHeadings(),
       latexVisualEnvironments(),
+      latexVisualFloats(),
     ],
     latexVisualMath(),
     latexVisualCitations(),

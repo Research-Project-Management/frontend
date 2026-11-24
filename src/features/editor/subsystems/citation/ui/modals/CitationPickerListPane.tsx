@@ -9,9 +9,16 @@
 
 import React from 'react';
 import type { Virtualizer } from '@tanstack/react-virtual';
-import { Search, X, Loader2, SearchX, Binary } from 'lucide-react';
+import { Search, X, Loader2, ListFilter, Check } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { CitationPickerCard } from './CitationPickerCard';
@@ -30,11 +37,15 @@ export interface CitationPickerListPaneProps {
   isSearchingServer: boolean;
   filteredItems: BibEntry[];
   selectedKey: string | null;
+  selectedKeys?: ReadonlySet<string>;
+  onToggleSelectKey?: (key: string) => void;
+  sortBy?: 'default' | 'year-desc' | 'year-asc' | 'title-asc' | 'author-asc';
+  onSortChange?: (sort: 'default' | 'year-desc' | 'year-asc' | 'title-asc' | 'author-asc') => void;
   selectedEntry: BibEntry | null;
   citedKeysSet: ReadonlySet<string>;
   isLargeCardsList: boolean;
   cardsVirtualizer: Virtualizer<HTMLDivElement, Element>;
-  onSelectCard: (entry: BibEntry) => void;
+  onSelectCard: (entry: BibEntry, e?: React.MouseEvent) => void;
   onSelectItem: (entry: BibEntry) => void;
 }
 
@@ -52,6 +63,10 @@ export function CitationPickerListPane({
   isSearchingServer,
   filteredItems,
   selectedKey,
+  selectedKeys,
+  onToggleSelectKey,
+  sortBy = 'default',
+  onSortChange,
   selectedEntry,
   citedKeysSet,
   isLargeCardsList,
@@ -59,22 +74,25 @@ export function CitationPickerListPane({
   onSelectCard,
   onSelectItem,
 }: CitationPickerListPaneProps) {
+  const isSorted = sortBy !== 'default';
+
   return (
     <div
       className={cn(
-        'w-full md:w-[320px] lg:w-[350px] border-r border-border/70 flex flex-col min-h-0 bg-background shrink-0 h-full overflow-hidden',
+        'w-full md:w-[330px] lg:w-[360px] border-r border-border/70 flex flex-col min-h-0 bg-background shrink-0 h-full overflow-hidden',
         activeView !== 'list' && 'hidden md:flex',
       )}
     >
-      <div className="p-3 pb-2 shrink-0">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none" />
+      {/* Search Header with Unified Filter/Sort Icon Button */}
+      <div className="px-3 py-2.5 shrink-0 flex items-center gap-1.5 border-b border-border/70">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
             ref={searchInputRef}
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search by title, author, year or key..."
+            placeholder="Search references..."
             className="pl-8 pr-7 h-8 text-xs bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border rounded-md"
           />
           {search && (
@@ -84,24 +102,83 @@ export function CitationPickerListPane({
                 onSearchChange('');
                 searchInputRef.current?.focus();
               }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer after:absolute after:-inset-1.5 after:content-['']"
               aria-label="Clear search"
             >
               <X className="size-3" />
             </button>
           )}
         </div>
+
+        {/* Sort Menu Trigger */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                'size-8 shrink-0 flex items-center justify-center rounded-md border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative',
+                isSorted
+                  ? 'bg-muted border-primary/40 text-primary font-medium'
+                  : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted',
+              )}
+              title="Sort references"
+              aria-label="Sort references"
+            >
+              <ListFilter className="size-3.5" />
+              {isSorted && (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
+              )}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44 text-xs">
+            <DropdownMenuLabel className="text-11 font-medium text-muted-foreground px-2 py-1">
+              Sort by
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => onSortChange?.('default')}
+              className="flex items-center justify-between text-xs cursor-pointer"
+            >
+              <span>Default</span>
+              {sortBy === 'default' && <Check className="size-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onSortChange?.('year-desc')}
+              className="flex items-center justify-between text-xs cursor-pointer"
+            >
+              <span>Year (Newest)</span>
+              {sortBy === 'year-desc' && <Check className="size-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onSortChange?.('year-asc')}
+              className="flex items-center justify-between text-xs cursor-pointer"
+            >
+              <span>Year (Oldest)</span>
+              {sortBy === 'year-asc' && <Check className="size-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onSortChange?.('title-asc')}
+              className="flex items-center justify-between text-xs cursor-pointer"
+            >
+              <span>Title (A-Z)</span>
+              {sortBy === 'title-asc' && <Check className="size-3.5 text-primary" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onSortChange?.('author-asc')}
+              className="flex items-center justify-between text-xs cursor-pointer"
+            >
+              <span>Author (A-Z)</span>
+              {sortBy === 'author-asc' && <Check className="size-3.5 text-primary" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isIdentifier && effectiveProjectId && (
         <div className="mx-3 mb-2 p-2 rounded-md border border-border bg-muted/40 flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
-            <div className="flex items-center gap-1">
-              <Binary className="size-3 text-foreground" />
-              <p className="text-11 font-medium text-foreground truncate">
-                {search.trim().startsWith('10.') ? 'DOI detected' : 'Identifier detected'}
-              </p>
-            </div>
+            <p className="text-11 font-medium text-foreground truncate">
+              {search.trim().startsWith('10.') ? 'DOI detected' : 'Identifier detected'}
+            </p>
             <p className="text-10 font-mono text-muted-foreground truncate">
               {search.trim()}
             </p>
@@ -131,7 +208,7 @@ export function CitationPickerListPane({
         role="listbox"
         aria-label="Citations list"
         aria-activedescendant={selectedKey ? `citation-opt-${selectedKey}` : undefined}
-        className="flex-1 min-h-0 overflow-y-auto px-2 pb-2 space-y-1 sidebar-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1 sidebar-scrollbar"
       >
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {filteredItems.length} citations found
@@ -145,10 +222,7 @@ export function CitationPickerListPane({
         )}
 
         {!isSearchingServer && filteredItems.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-foreground px-4 space-y-2">
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground">
-              <SearchX className="size-4 text-foreground" />
-            </div>
+          <div className="flex flex-col items-center justify-center py-12 text-center px-4 space-y-1">
             <p className="text-xs font-medium text-foreground">No citations found</p>
             <p className="text-11 text-muted-foreground max-w-xs leading-normal">
               {search
@@ -166,8 +240,10 @@ export function CitationPickerListPane({
                 entry={entry}
                 idx={idx}
                 isSelected={selectedEntry?.key.toLowerCase() === entry.key.toLowerCase()}
+                isChecked={Boolean(selectedKeys?.has(entry.key.toLowerCase()))}
                 isCited={Boolean(entry.key && citedKeysSet.has(entry.key.toLowerCase()))}
                 onSelect={onSelectCard}
+                onToggleCheck={onToggleSelectKey}
                 onDoubleClick={onSelectItem}
               />
             ))}
@@ -201,8 +277,10 @@ export function CitationPickerListPane({
                     entry={entry}
                     idx={virtualRow.index}
                     isSelected={selectedEntry?.key.toLowerCase() === entry.key.toLowerCase()}
+                    isChecked={Boolean(selectedKeys?.has(entry.key.toLowerCase()))}
                     isCited={Boolean(entry.key && citedKeysSet.has(entry.key.toLowerCase()))}
                     onSelect={onSelectCard}
+                    onToggleCheck={onToggleSelectKey}
                     onDoubleClick={onSelectItem}
                   />
                 </div>

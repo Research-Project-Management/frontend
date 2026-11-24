@@ -29,7 +29,6 @@ import { Menubar } from "@/shared/components/ui/menubar";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { cn } from '@/shared/lib/utils';
@@ -86,7 +85,6 @@ export function Topbar() {
   }, [isHistoryOpen, toggleHistory]);
 
   return (
-    <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
         className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-background border-b border-border shrink-0 z-30 select-none"
@@ -125,7 +123,7 @@ export function Topbar() {
                 />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
               Back to Projects
             </TooltipContent>
           </Tooltip>
@@ -170,7 +168,7 @@ export function Topbar() {
                   </span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
+              <TooltipContent side="bottom" sideOffset={6} className="text-xs">
                 GitHub: {githubLink.repoFullName} ({githubLink.branch})
               </TooltipContent>
             </Tooltip>
@@ -180,27 +178,20 @@ export function Topbar() {
           <CollaboratorAvatarStack />
 
           {/* History Button (Overleaf Parity: Top Right) */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleToggleHistory}
-                aria-label="History (revisions)"
-                className={cn(
-                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none",
-                  isHistoryOpen
-                    ? "bg-background text-foreground font-semibold"
-                    : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
-                )}
-              >
-                <History className="size-3.5 shrink-0" />
-                <span>History</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6}>
-              History (revisions)
-            </TooltipContent>
-          </Tooltip>
+          <button
+            type="button"
+            onClick={handleToggleHistory}
+            aria-label="History (revisions)"
+            className={cn(
+              "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none",
+              isHistoryOpen
+                ? "bg-background text-foreground font-semibold"
+                : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
+            )}
+          >
+            <History className="size-3.5 shrink-0" />
+            <span>History</span>
+          </button>
 
           {/* Re-attach PDF Button (Visible when preview is detached to separate tab) */}
           {isPdfDetached && (
@@ -216,8 +207,8 @@ export function Topbar() {
                   <span className="hidden md:inline">Re-attach PDF</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6}>
-                PDF preview is in a separate window. Click to re-attach here.
+              <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+                Re-attach PDF preview
               </TooltipContent>
             </Tooltip>
           )}
@@ -226,7 +217,6 @@ export function Topbar() {
           <LayoutSwitcher />
         </div>
       </nav>
-    </TooltipProvider>
   );
 }
 

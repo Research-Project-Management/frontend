@@ -156,7 +156,7 @@ export function WorkbenchLayout() {
   const [renameCitationOpen, setRenameCitationOpen] = useState(false);
   const [renameCitationOldKey, setRenameCitationOldKey] = useState('');
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
-  const [tableWizardTab, setTableWizardTab] = useState<'table' | 'matrix'>('table');
+  const [tableWizardTab, setTableWizardTab] = useState<'table' | 'import' | 'ai' | 'matrix'>('table');
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
   const [equationGeneratorOpen, setEquationGeneratorOpen] = useState(false);
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
@@ -192,10 +192,13 @@ export function WorkbenchLayout() {
         setRenameCitationOldKey(key);
         setRenameCitationOpen(true);
       } else if (cmd.dialog === 'table-wizard' || cmd.dialog === 'matrix-wizard') {
-        const initialTab: 'table' | 'matrix' =
-          cmd.dialog === 'matrix-wizard' || cmd.payload?.initialTab === 'matrix'
+        const requestedTab = cmd.payload?.initialTab;
+        const initialTab: 'table' | 'import' | 'ai' | 'matrix' =
+          cmd.dialog === 'matrix-wizard' || requestedTab === 'matrix'
             ? 'matrix'
-            : 'table';
+            : requestedTab === 'import' || requestedTab === 'ai'
+              ? requestedTab
+              : 'table';
         const selectedText = getActiveEditorEngine()?.getSelectedText?.() || cmd.payload?.initialLatex || '';
         setTableWizardTab(initialTab);
         setTableWizardInitialLatex(selectedText);

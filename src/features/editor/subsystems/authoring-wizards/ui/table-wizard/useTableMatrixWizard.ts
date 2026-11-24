@@ -17,21 +17,29 @@ import { toast } from 'sonner';
 import {
   type TableAlignment,
   type TableStyle,
+  type TableCellMerge,
+  type TableBorderConfig,
   type MatrixType,
   type MatrixWrapper,
   generateLatexTable,
   parseLatexTabular,
   parseDelimitedTextToGrid,
   generateLatexMatrix,
-  parseLatexMatrix,
   generateMatrixPreset,
 } from '@/features/editor/domain/latex/table-matrix';
+
+export type TableWizardTab = 'table' | 'import' | 'ai' | 'matrix';
 
 export interface UseTableMatrixWizardOptions {
   onInsert: (latexCode: string) => void;
   onClose: () => void;
-  initialTab?: 'table' | 'matrix';
+  initialTab?: TableWizardTab;
   initialLatex?: string;
+}
+
+function normalizeInitialTab(tab?: TableWizardTab): TableWizardTab {
+  if (tab === 'import' || tab === 'ai' || tab === 'matrix') return tab;
+  return 'table';
 }
 
 export function useTableMatrixWizard({
@@ -40,29 +48,35 @@ export function useTableMatrixWizard({
   initialTab = 'table',
   initialLatex = '',
 }: UseTableMatrixWizardOptions) {
-  const [tab, setTab] = useState<'table' | 'matrix'>(initialTab);
+  const [tab, setTab] = useState<TableWizardTab>(() => normalizeInitialTab(initialTab));
 
-  // ─── 1. Table Grid State ────────────────────────────────────────────────────
+  useEffect(() => {
+    setTab(normalizeInitialTab(initialTab));
+  }, [initialTab]);
+
+  // ─── 1. Table Grid State (clean blank 3x3 Overleaf default) ─────────────────
   const [tableRows, setTableRows] = useState<number>(3);
   const [tableCols, setTableCols] = useState<number>(3);
-  const [tableHeaders, setTableHeaders] = useState<string[]>([
-    'Metric',
-    'Baseline',
-    'Proposed',
-  ]);
+  const [tableHeaders, setTableHeaders] = useState<string[]>(['', '', '']);
   const [tableData, setTableData] = useState<string[][]>([
-    ['Accuracy', '85.4%', '94.2%'],
-    ['Precision', '0.82', '0.91'],
-    ['F1-Score', '0.84', '0.93'],
+    ['', '', ''],
+    ['', '', ''],
+    ['', '', ''],
   ]);
   const [tableAlignments, setTableAlignments] = useState<TableAlignment[]>([
-    'l',
+    'c',
     'c',
     'c',
   ]);
   const [tableStyle, setTableStyle] = useState<TableStyle>('booktabs');
-  const [caption, setCaption] = useState<string>('Performance comparison across models');
-  const [label, setLabel] = useState<string>('tab:performance');
+  const [merges, setMerges] = useState<TableCellMerge[]>([]);
+  const [borders, setBorders] = useState<TableBorderConfig>({
+    outer: false,
+    innerHorizontal: false,
+    innerVertical: false,
+  });
+  const [caption, setCaption] = useState<string>('');
+  const [label, setLabel] = useState<string>('');
   const [placement, setPlacement] = useState<string>('htbp');
   const [centering, setCentering] = useState<boolean>(true);
   const [hasHeaderRow, setHasHeaderRow] = useState<boolean>(true);
@@ -70,7 +84,7 @@ export function useTableMatrixWizard({
   // Table paste / import state
   const [pastedText, setPastedText] = useState<string>('');
 
-  // ─── 2. Matrix Grid State ───────────────────────────────────────────────────
+  // ─── 2. Matrix Grid State (kept for hook compatibility) ────────────────────
   const [matrixType, setMatrixType] = useState<MatrixType>('pmatrix');
   const [matrixRows, setMatrixRows] = useState<number>(3);
   const [matrixCols, setMatrixCols] = useState<number>(3);
@@ -86,20 +100,6 @@ export function useTableMatrixWizard({
   useEffect(() => {
     if (!initialLatex || !initialLatex.trim()) return;
 
-    // Check if initialLatex is a matrix
-    const parsedMatrix = parseLatexMatrix(initialLatex);
-    if (parsedMatrix) {
-      setTab('matrix');
-      setMatrixType(parsedMatrix.type);
-      setMatrixRows(parsedMatrix.rows);
-      setMatrixCols(parsedMatrix.cols);
-      setMatrixCells(parsedMatrix.cells);
-      setMatrixWrapper(parsedMatrix.wrapper);
-      if (parsedMatrix.equationLabel) setMatrixEquationLabel(parsedMatrix.equationLabel);
-      return;
-    }
-
-    // Check if initialLatex is a table
     const parsedTable = parseLatexTabular(initialLatex);
     if (parsedTable) {
       setTab('table');
@@ -109,8 +109,15 @@ export function useTableMatrixWizard({
       setTableData(parsedTable.data);
       setTableAlignments(parsedTable.alignments);
       setTableStyle(parsedTable.style);
-      if (parsedTable.caption) setCaption(parsedTable.caption);
-      if (parsedTable.label) setLabel(parsedTable.label);
+      setMerges(parsedTable.merges ?? []);
+      setBorders(
+        parsedTable.borders ??
+          (parsedTable.style === 'bordered'
+            ? { outer: true, innerHorizontal: true, innerVertical: true }
+            : { outer: false, innerHorizontal: false, innerVertical: false }),
+      );
+      setCaption(parsedTable.caption ?? '');
+      setLabel(parsedTable.label ?? '');
       if (parsedTable.placement) setPlacement(parsedTable.placement);
       setCentering(Boolean(parsedTable.centering));
       setHasHeaderRow(Boolean(parsedTable.hasHeaderRow));
@@ -129,7 +136,7 @@ export function useTableMatrixWizard({
     // Resize headers
     setTableHeaders((prev) => {
       const next = [...prev];
-      while (next.length < validCols) next.push(`Col ${next.length + 1}`);
+      while (next.length < validCols) next.push('');
       return next.slice(0, validCols);
     });
 
@@ -152,6 +159,17 @@ export function useTableMatrixWizard({
       }
       return next.slice(0, validRows);
     });
+
+    // Clip merges to new bounds
+    setMerges((prev) =>
+      prev
+        .filter((m) => m.row < validRows && m.col < validCols)
+        .map((m) => ({
+          ...m,
+          colSpan: Math.min(m.colSpan, validCols - m.col),
+        }))
+        .filter((m) => m.colSpan >= 2),
+    );
   }, []);
 
   const updateTableCell = useCallback((row: number, col: number, value: string) => {
@@ -193,6 +211,7 @@ export function useTableMatrixWizard({
   }, [tableCols]);
 
   const addTableRow = useCallback((afterIndex?: number) => {
+    const insertIdx = afterIndex !== undefined ? afterIndex + 1 : tableRows;
     setTableData((prev) => {
       const newRow = Array(tableCols).fill('');
       const targetIdx = afterIndex !== undefined ? afterIndex + 1 : prev.length;
@@ -200,7 +219,10 @@ export function useTableMatrixWizard({
       setTableRows(next.length);
       return next;
     });
-  }, [tableCols]);
+    setMerges((prev) =>
+      prev.map((m) => (m.row >= insertIdx ? { ...m, row: m.row + 1 } : m)),
+    );
+  }, [tableCols, tableRows]);
 
   const removeTableRow = useCallback((index: number) => {
     setTableData((prev) => {
@@ -209,6 +231,11 @@ export function useTableMatrixWizard({
       setTableRows(next.length);
       return next;
     });
+    setMerges((prev) =>
+      prev
+        .filter((m) => m.row !== index)
+        .map((m) => (m.row > index ? { ...m, row: m.row - 1 } : m)),
+    );
   }, []);
 
   const addTableColumn = useCallback((afterIndex?: number) => {
@@ -218,7 +245,7 @@ export function useTableMatrixWizard({
 
     setTableHeaders((prev) => [
       ...prev.slice(0, targetIdx),
-      `Col ${newColCount}`,
+      '',
       ...prev.slice(targetIdx),
     ]);
 
@@ -235,6 +262,16 @@ export function useTableMatrixWizard({
         ...row.slice(targetIdx),
       ])
     );
+
+    setMerges((prev) =>
+      prev.map((m) => {
+        if (targetIdx <= m.col) return { ...m, col: m.col + 1 };
+        if (targetIdx > m.col && targetIdx < m.col + m.colSpan) {
+          return { ...m, colSpan: m.colSpan + 1 };
+        }
+        return m;
+      }),
+    );
   }, [tableCols]);
 
   const removeTableColumn = useCallback((index: number) => {
@@ -244,7 +281,80 @@ export function useTableMatrixWizard({
     setTableHeaders((prev) => prev.filter((_, i) => i !== index));
     setTableAlignments((prev) => prev.filter((_, i) => i !== index));
     setTableData((prev) => prev.map((row) => row.filter((_, i) => i !== index)));
+    setMerges((prev) =>
+      prev
+        .map((m) => {
+          if (index < m.col) return { ...m, col: m.col - 1 };
+          if (index >= m.col && index < m.col + m.colSpan) {
+            return { ...m, colSpan: m.colSpan - 1 };
+          }
+          return m;
+        })
+        .filter((m) => m.colSpan >= 2),
+    );
   }, [tableCols]);
+
+  const mergeCells = useCallback((row: number, startCol: number, endCol: number) => {
+    const cStart = Math.max(0, Math.min(startCol, endCol));
+    const cEnd = Math.min(tableCols - 1, Math.max(startCol, endCol));
+    const colSpan = cEnd - cStart + 1;
+    if (colSpan < 2) return;
+
+    if (row === -1) {
+      setTableHeaders((prev) => {
+        const next = [...prev];
+        if (!next[cStart]?.trim()) {
+          const firstNonEmpty = next.slice(cStart, cEnd + 1).find((v) => v?.trim());
+          if (firstNonEmpty) next[cStart] = firstNonEmpty;
+        }
+        return next;
+      });
+    } else {
+      setTableData((prev) =>
+        prev.map((r, rIdx) => {
+          if (rIdx !== row) return r;
+          const next = [...r];
+          if (!next[cStart]?.trim()) {
+            const firstNonEmpty = next.slice(cStart, cEnd + 1).find((v) => v?.trim());
+            if (firstNonEmpty) next[cStart] = firstNonEmpty;
+          }
+          return next;
+        }),
+      );
+    }
+
+    setMerges((prev) => {
+      const nonOverlapping = prev.filter(
+        (m) => m.row !== row || m.col + m.colSpan - 1 < cStart || m.col > cEnd,
+      );
+      return [...nonOverlapping, { row, col: cStart, colSpan }];
+    });
+  }, [tableCols]);
+
+  const unmergeCell = useCallback((row: number, col: number) => {
+    setMerges((prev) =>
+      prev.filter((m) => !(m.row === row && col >= m.col && col < m.col + m.colSpan)),
+    );
+  }, []);
+
+  const toggleBorder = useCallback((key: keyof TableBorderConfig) => {
+    setBorders((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      if (next.outer || next.innerHorizontal || next.innerVertical) {
+        setTableStyle(
+          next.outer && next.innerHorizontal && next.innerVertical ? 'bordered' : 'minimal',
+        );
+      } else {
+        setTableStyle('minimal');
+      }
+      return next;
+    });
+  }, []);
+
+  const applyBooktabsPreset = useCallback(() => {
+    setTableStyle('booktabs');
+    setBorders({ outer: false, innerHorizontal: false, innerVertical: false });
+  }, []);
 
   const importRawText = useCallback(
     (text: string, useHeaderSetting = true): { kind: 'latex' | 'delimited'; rows: number; cols: number } | null => {
@@ -257,8 +367,15 @@ export function useTableMatrixWizard({
         setTableData(parsedLatex.data);
         setTableAlignments(parsedLatex.alignments);
         setTableStyle(parsedLatex.style);
-        if (parsedLatex.caption) setCaption(parsedLatex.caption);
-        if (parsedLatex.label) setLabel(parsedLatex.label);
+        setMerges(parsedLatex.merges ?? []);
+        setBorders(
+          parsedLatex.borders ??
+            (parsedLatex.style === 'bordered'
+              ? { outer: true, innerHorizontal: true, innerVertical: true }
+              : { outer: false, innerHorizontal: false, innerVertical: false }),
+        );
+        setCaption(parsedLatex.caption ?? '');
+        setLabel(parsedLatex.label ?? '');
         if (parsedLatex.placement) setPlacement(parsedLatex.placement);
         setCentering(Boolean(parsedLatex.centering));
         setHasHeaderRow(Boolean(parsedLatex.hasHeaderRow));
@@ -275,6 +392,7 @@ export function useTableMatrixWizard({
         setTableHeaders(headers);
         setTableData(data.length > 0 ? data : [Array(cols).fill('')]);
         setTableAlignments(Array(cols).fill('c'));
+        setMerges([]);
         return { kind: 'delimited', rows, cols };
       }
       return null;
@@ -282,12 +400,12 @@ export function useTableMatrixWizard({
     [hasHeaderRow],
   );
 
-  const importPastedData = useCallback(() => {
-    if (!pastedText.trim()) return;
+  const importPastedData = useCallback((): boolean => {
+    if (!pastedText.trim()) return false;
     const imported = importRawText(pastedText, true);
     if (!imported) {
       toast.error('Could not parse table data', { id: 'import-table' });
-      return;
+      return false;
     }
     if (imported.kind === 'latex') {
       toast.success('Imported LaTeX table into visual editor', { id: 'import-table' });
@@ -295,6 +413,7 @@ export function useTableMatrixWizard({
       toast.success(`Imported ${imported.rows} rows and ${imported.cols} columns`, { id: 'import-table' });
     }
     setPastedText('');
+    return true;
   }, [pastedText, importRawText]);
 
   // ─── 5. Matrix Grid Actions ─────────────────────────────────────────────────
@@ -375,6 +494,8 @@ export function useTableMatrixWizard({
       placement,
       centering,
       hasHeaderRow,
+      merges,
+      borders,
     });
   }, [
     tableRows,
@@ -388,6 +509,8 @@ export function useTableMatrixWizard({
     placement,
     centering,
     hasHeaderRow,
+    merges,
+    borders,
   ]);
 
   const generatedMatrixLatex = useMemo(() => {
@@ -408,18 +531,18 @@ export function useTableMatrixWizard({
     matrixEquationLabel,
   ]);
 
-  const activeLatex = tab === 'table' ? generatedTableLatex : generatedMatrixLatex;
+  const activeLatex = generatedTableLatex;
 
   const insertSnippet = useCallback(() => {
-    onInsert(activeLatex);
-    toast.success(tab === 'matrix' ? 'Matrix inserted into document' : 'Table inserted into document');
+    onInsert(generatedTableLatex);
+    toast.success('Table inserted into document');
     onClose();
-  }, [onInsert, activeLatex, onClose, tab]);
+  }, [onInsert, generatedTableLatex, onClose]);
 
   const copySnippet = useCallback(() => {
-    navigator.clipboard.writeText(activeLatex);
+    navigator.clipboard.writeText(generatedTableLatex);
     toast.info('LaTeX code copied to clipboard', { id: 'copy-latex-snippet' });
-  }, [activeLatex]);
+  }, [generatedTableLatex]);
 
   return {
     tab,
@@ -433,6 +556,13 @@ export function useTableMatrixWizard({
     tableAlignments,
     tableStyle,
     setTableStyle,
+    merges,
+    borders,
+    setBorders,
+    mergeCells,
+    unmergeCell,
+    toggleBorder,
+    applyBooktabsPreset,
     caption,
     setCaption,
     label,

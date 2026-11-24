@@ -10,7 +10,6 @@
 import dynamic from 'next/dynamic';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 import { editorBootstrapQuery } from '@/features/editor/core/queries/document.queries';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
@@ -124,13 +123,9 @@ export default function ClientEditor() {
   const isWorkspaceReady =
     !bootstrapTargetId || (readyTargetId === bootstrapTargetId && !hasStaleForeignState);
 
-  return (
-    <TooltipProvider delayDuration={200}>
-      {isWorkspaceReady ? (
-        <WorkbenchLayout key={bootstrapTargetId || 'default'} />
-      ) : (
-        <EditorSkeleton />
-      )}
-    </TooltipProvider>
+  return isWorkspaceReady ? (
+    <WorkbenchLayout key={bootstrapTargetId || 'default'} />
+  ) : (
+    <EditorSkeleton />
   );
 }

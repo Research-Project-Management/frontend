@@ -40,7 +40,7 @@ export function copyTexCommandToClipboard(title: string): void {
   const snippet = formatLatexIncludeSnippet(title, 'tex');
 
   navigator.clipboard.writeText(snippet);
-  toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
+  toast.success('Copied', { id: 'copy-tex-snippet' });
 }
 
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
@@ -72,7 +72,6 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success(`Downloaded ${displayName(file.title)}`, { id: `download-${file.id}` });
       } catch {
         toast.error('Failed to download file', { id: `download-${file.id}` });
       }
@@ -151,7 +150,7 @@ export function useStorageItemActions() {
   const copyStorageSnippet = useCallback((filename: string) => {
     const snippet = formatLatexIncludeSnippet(filename, 'asset');
     navigator.clipboard.writeText(snippet);
-    toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
+    toast.success('Copied', { id: 'copy-tex-snippet' });
   }, []);
 
   const downloadStorageItem = useCallback((url?: string, filename?: string) => {
@@ -160,8 +159,6 @@ export function useStorageItemActions() {
         const msg = err instanceof Error ? err.message : 'Failed to download file';
         toast.error(msg, { id: 'download-file' });
       });
-    } else {
-      toast.info('Downloading file...', { id: 'download-file' });
     }
   }, []);
 

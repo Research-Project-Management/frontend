@@ -25,13 +25,13 @@ import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
 const githubSyncKeys = {
   all: ['github-sync'] as const,
-  link: (projectId?: string) => ['github-link', projectId] as const,
+  link: (pageId?: string) => ['github-link', pageId] as const,
   repos: () => ['github-repos'] as const,
 };
 
 export interface UseGithubSyncOptions {
-  projectId?: string;
-  projectTitle?: string;
+  pageId?: string;
+  pageTitle?: string;
   enabled?: boolean;
   fetchRepos?: boolean;
   onLinkSuccess?: () => void;
@@ -39,8 +39,8 @@ export interface UseGithubSyncOptions {
 }
 
 export function useGithubSync({
-  projectId,
-  projectTitle,
+  pageId,
+  pageTitle,
   enabled = true,
   fetchRepos = false,
   onLinkSuccess,
@@ -49,9 +49,9 @@ export function useGithubSync({
   const queryClient = useQueryClient();
 
   const linkQuery = useQuery({
-    queryKey: githubSyncKeys.link(projectId),
-    queryFn: () => (projectId ? integrationService.getProjectGithubLink(projectId) : null),
-    enabled: Boolean(projectId) && enabled,
+    queryKey: githubSyncKeys.link(pageId),
+    queryFn: () => (pageId ? integrationService.getPageGithubLink(pageId) : null),
+    enabled: Boolean(pageId) && enabled,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
@@ -67,15 +67,15 @@ export function useGithubSync({
 
   const linkMutation = useMutation({
     mutationFn: async (payload: { repoFullName: string; branch: string }) => {
-      if (!projectId) throw new Error('Project ID is required');
-      return await integrationService.linkProjectGithub({
-        projectId,
+      if (!pageId) throw new Error('Page ID is required');
+      return await integrationService.linkPageGithub({
+        pageId,
         repoFullName: payload.repoFullName,
         branch: payload.branch,
       });
     },
     onSuccess: (data) => {
-      toast.success(`Successfully linked project to ${data.repoFullName}`, { id: 'github-link' });
+      toast.success(`Linked to ${data.repoFullName}`, { id: 'github-link' });
       usePageStore.getState().setGithubLink({
         id: data.linkId,
         repoFullName: data.repoFullName,
@@ -83,7 +83,7 @@ export function useGithubSync({
         lastSyncedAt: null,
       });
       linkQuery.refetch();
-      queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
+      queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(pageId) });
       onLinkSuccess?.();
     },
     onError: (err: unknown) => {
@@ -101,20 +101,20 @@ export function useGithubSync({
       isPrivate: boolean;
       defaultBranch?: string;
     }) => {
-      if (!projectId) throw new Error('Project ID is required');
+      if (!pageId) throw new Error('Page ID is required');
       const created = await integrationService.createGithubRepo({
         name,
         private: isPrivate,
-        description: `LaTeX manuscript: ${projectTitle || 'Research Project'}`,
+        description: `LaTeX manuscript: ${pageTitle || 'Manuscript'}`,
       });
-      return await integrationService.linkProjectGithub({
-        projectId,
+      return await integrationService.linkPageGithub({
+        pageId,
         repoFullName: created.fullName,
         branch: created.defaultBranch || defaultBranch,
       });
     },
     onSuccess: (data) => {
-      toast.success(`Created & linked repository ${data.repoFullName}!`, { id: 'github-create-link' });
+      toast.success(`Created & linked ${data.repoFullName}`, { id: 'github-create-link' });
       usePageStore.getState().setGithubLink({
         id: data.linkId,
         repoFullName: data.repoFullName,
@@ -122,7 +122,7 @@ export function useGithubSync({
         lastSyncedAt: null,
       });
       linkQuery.refetch();
-      queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
+      queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(pageId) });
       onCreateSuccess?.();
     },
     onError: (err: unknown) => {
@@ -138,7 +138,7 @@ export function useGithubSync({
       commitMessage?: string;
       branch: string;
     }) => {
-      if (!projectId) throw new Error('Project ID is required');
+      if (!pageId) throw new Error('Page ID is required');
       const engines = getAllRegisteredEngines?.();
       if (engines) {
         for (const [fId, eng] of engines.entries()) {
@@ -151,16 +151,16 @@ export function useGithubSync({
           }
         }
       }
-      flushYjsProviders(projectId);
+      flushYjsProviders(pageId);
       await sessionCoordinator.flushAllPending();
-      return await integrationService.pushProjectGithub({
-        projectId,
+      return await integrationService.pushPageGithub({
+        pageId,
         commitMessage: commitMessage?.trim() || 'Update manuscript from Flux',
         branch,
       });
     },
     onSuccess: (data) => {
-      toast.success(`Pushed ${data.fileCount} files to GitHub (${data.commitSha.slice(0, 7)})!`, { id: 'github-push' });
+      toast.success(`Pushed ${data.fileCount} files (${data.commitSha.slice(0, 7)})`, { id: 'github-push' });
       linkQuery.refetch();
     },
     onError: (err: unknown) => {
@@ -170,22 +170,22 @@ export function useGithubSync({
 
   const pullMutation = useMutation({
     mutationFn: async ({ branch }: { branch: string }) => {
-      if (!projectId) throw new Error('Project ID is required');
-      return await integrationService.pullProjectGithub({
-        projectId,
+      if (!pageId) throw new Error('Page ID is required');
+      return await integrationService.pullPageGithub({
+        pageId,
         branch,
       });
     },
     onSuccess: async (data) => {
-      toast.success(`Pulled ${data.filesImported} files from GitHub!`, { id: 'github-pull' });
+      toast.success(`Pulled ${data.filesImported} files from GitHub`, { id: 'github-pull' });
       linkQuery.refetch();
       sessionCoordinator.resetSession();
       lruDocumentCache.discardAll();
       useCompileStore.getState().clearAllDirty();
       clearYjsProviderPool();
-      if (projectId) {
-        documentFacade.clearProjectCache(projectId);
-        await unsyncedEditsStore.clearByScope(projectId);
+      if (pageId) {
+        documentFacade.clearProjectCache(pageId);
+        await unsyncedEditsStore.clearByScope(pageId);
       }
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });

@@ -51,11 +51,11 @@ import {
 } from '@/features/editor/domain/types/core.types';
 
 interface GithubTabProps {
-  projectId?: string;
-  projectTitle?: string;
+  pageId?: string;
+  pageTitle?: string;
 }
 
-export function GithubTab({ projectId, projectTitle }: GithubTabProps) {
+export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
   const { integrations, connect, isConnecting } = useIntegrations();
 
   const githubIntegration = integrations.find((i) => i.provider === 'github');
@@ -75,8 +75,8 @@ export function GithubTab({ projectId, projectTitle }: GithubTabProps) {
     pushMutation,
     pullMutation,
   } = useGithubSync({
-    projectId,
-    projectTitle,
+    pageId,
+    pageTitle,
     enabled: isGithubConnected,
     fetchRepos: isGithubConnected,
     onLinkSuccess: () => setShowChangeRepo(false),
@@ -121,7 +121,7 @@ export function GithubTab({ projectId, projectTitle }: GithubTabProps) {
   } = useForm<CreateRepoFormValues>({
     resolver: zodResolver(createRepoSchema),
     defaultValues: {
-      newRepoName: (projectTitle || 'latex-manuscript')
+      newRepoName: (pageTitle || 'latex-manuscript')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '-')
         .replace(/-+/g, '-'),

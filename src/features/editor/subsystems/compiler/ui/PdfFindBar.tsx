@@ -25,6 +25,11 @@ import {
   Regex,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 
 export interface PdfFindBarProps {
@@ -123,59 +128,77 @@ export const PdfFindBar = React.memo(function PdfFindBar({
 
       {/* Filter Options: Case Sensitivity, Whole Word, Regex */}
       <div className="flex items-center gap-0.5 border-l border-border/60 pl-1 shrink-0">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCaseSensitive}
-          title="Match Case (Alt+C)"
-          aria-label="Match Case"
-          aria-pressed={caseSensitive}
-          className={cn(
-            'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
-            caseSensitive
-              ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <CaseSensitive className="size-3.5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onToggleCaseSensitive}
+              aria-label="Match Case"
+              aria-pressed={caseSensitive}
+              className={cn(
+                'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
+                caseSensitive
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <CaseSensitive className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            Match Case (Alt+C)
+          </TooltipContent>
+        </Tooltip>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onToggleWholeWord}
-          title="Match Whole Word (Alt+W)"
-          aria-label="Match Whole Word"
-          aria-pressed={wholeWord}
-          className={cn(
-            'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
-            wholeWord
-              ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <WholeWord className="size-3.5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onToggleWholeWord}
+              aria-label="Match Whole Word"
+              aria-pressed={wholeWord}
+              className={cn(
+                'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
+                wholeWord
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <WholeWord className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            Match Whole Word (Alt+W)
+          </TooltipContent>
+        </Tooltip>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onToggleRegex}
-          title="Use Regular Expression (Alt+R)"
-          aria-label="Use Regular Expression"
-          aria-pressed={useRegex}
-          className={cn(
-            'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
-            useRegex
-              ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          <Regex className="size-3.5" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onToggleRegex}
+              aria-label="Use Regular Expression"
+              aria-pressed={useRegex}
+              className={cn(
+                'size-5.5 p-0 rounded-sm cursor-pointer transition-colors relative after:absolute after:-inset-1.5 after:content-[\'\']',
+                useRegex
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30 font-semibold'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Regex className="size-3.5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            Use Regular Expression (Alt+R)
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="h-4 w-px bg-border shrink-0" />
@@ -198,45 +221,63 @@ export const PdfFindBar = React.memo(function PdfFindBar({
       <div className="h-4 w-px bg-border shrink-0" />
 
       {/* Prev button */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={onPrev}
-        disabled={matchesCount === 0}
-        title="Previous match (Shift+Enter)"
-        aria-label="Previous match"
-        className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-40 relative after:absolute after:-inset-1.5 after:content-['']"
-      >
-        <ChevronUp className="size-3.5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onPrev}
+            disabled={matchesCount === 0}
+            aria-label="Previous match"
+            className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-40 relative after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <ChevronUp className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+          Previous match (Shift+Enter)
+        </TooltipContent>
+      </Tooltip>
 
       {/* Next button */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={onNext}
-        disabled={matchesCount === 0}
-        title="Next match (Enter)"
-        aria-label="Next match"
-        className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-40 relative after:absolute after:-inset-1.5 after:content-['']"
-      >
-        <ChevronDown className="size-3.5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onNext}
+            disabled={matchesCount === 0}
+            aria-label="Next match"
+            className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer disabled:opacity-40 relative after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <ChevronDown className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+          Next match (Enter)
+        </TooltipContent>
+      </Tooltip>
 
       {/* Close button */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        onClick={onClose}
-        title="Close (Esc)"
-        aria-label="Close find bar"
-        className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer ml-0.5 relative after:absolute after:-inset-1.5 after:content-['']"
-      >
-        <X className="size-3.5" />
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close find bar"
+            className="size-6 p-0 rounded-sm text-muted-foreground hover:text-foreground cursor-pointer ml-0.5 relative after:absolute after:-inset-1.5 after:content-['']"
+          >
+            <X className="size-3.5" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+          Close (Esc)
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 });

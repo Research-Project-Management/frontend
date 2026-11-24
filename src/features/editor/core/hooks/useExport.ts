@@ -59,7 +59,6 @@ export function useProjectExport() {
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
       }
-      toast.success(`Downloaded ${filename}`, { id: 'download-pdf' });
     } catch {
       const a = document.createElement('a');
       a.href = pdfUrl;
@@ -77,16 +76,15 @@ export function useProjectExport() {
     const filename = `${title}_copy.tex`;
     const blob = new Blob([src], { type: 'text/plain;charset=utf-8' });
     triggerFileDownload(blob, filename);
-    toast.success(`Created copy: ${filename}`, { id: 'download-copy' });
   }, []);
 
   const exportZip = useCallback(async (options: ExportZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Packaging project into ZIP...');
+    const toastId = toast.loading('Exporting ZIP...');
     setIsExporting(true);
     try {
       const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
       const filename = await exportProjectAsZip({ ...options, mainFile });
-      toast.success(`Exported ${filename} successfully!`, { id: toastId });
+      toast.success(`Exported ${filename}`, { id: toastId });
       return filename;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to create project ZIP archive.', { id: toastId });
@@ -97,12 +95,12 @@ export function useProjectExport() {
   }, []);
 
   const exportArxiv = useCallback(async (options: ExportZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Generating arXiv submission bundle...');
+    const toastId = toast.loading('Exporting arXiv bundle...');
     setIsExporting(true);
     try {
       const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
       const filename = await exportArxivSubmissionZip({ ...options, mainFile });
-      toast.success(`Exported ${filename} successfully for arXiv!`, { id: toastId });
+      toast.success(`Exported ${filename}`, { id: toastId });
       return filename;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to create arXiv submission ZIP.', { id: toastId });
@@ -117,11 +115,11 @@ export function useProjectExport() {
       toast.error('Unable to find project or document ID', { id: 'export-word' });
       return null;
     }
-    const toastId = toast.loading('Exporting document to Microsoft Word (.docx)...');
+    const toastId = toast.loading('Exporting Word (.docx)...');
     setIsExporting(true);
     try {
       const filename = await exportDocumentAsWord(options);
-      toast.success(`Exported ${filename} successfully!`, { id: toastId });
+      toast.success(`Exported ${filename}`, { id: toastId });
       return filename;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to export document to Microsoft Word (.docx).', { id: toastId });
@@ -136,11 +134,11 @@ export function useProjectExport() {
       toast.error('Unable to find document content', { id: 'export-markdown' });
       return null;
     }
-    const toastId = toast.loading('Exporting document to Markdown (.md)...');
+    const toastId = toast.loading('Exporting Markdown (.md)...');
     setIsExporting(true);
     try {
       const filename = await exportDocumentAsMarkdown(options);
-      toast.success(`Exported ${filename} successfully!`, { id: toastId });
+      toast.success(`Exported ${filename}`, { id: toastId });
       return filename;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to export document to Markdown (.md).', { id: toastId });
@@ -163,11 +161,11 @@ export function useProjectExport() {
         toast.error('Unable to find project or document ID', { id: 'export-html' });
         return null;
       }
-      const toastId = toast.loading('Exporting document to HTML (.html)...');
+      const toastId = toast.loading('Exporting HTML (.html)...');
       setIsExporting(true);
       try {
         const filename = await exportDocumentAsHtml(options);
-        toast.success(`Exported ${filename} successfully!`, { id: toastId });
+        toast.success(`Exported ${filename}`, { id: toastId });
         return filename;
       } catch (err: unknown) {
         toast.error(
@@ -183,11 +181,11 @@ export function useProjectExport() {
   );
 
   const exportVersionZip = useCallback(async (options: ExportVersionZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Packaging historical snapshot into ZIP...');
+    const toastId = toast.loading('Exporting version ZIP...');
     setIsExporting(true);
     try {
       const filename = await exportVersionAsZip(options);
-      toast.success(`Exported ${filename} successfully!`, { id: toastId });
+      toast.success(`Exported ${filename}`, { id: toastId });
       return filename;
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to create version ZIP archive.', { id: toastId });

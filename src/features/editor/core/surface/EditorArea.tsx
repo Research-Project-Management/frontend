@@ -256,7 +256,7 @@ export function EditorArea() {
       fileId: displayPage.id,
     });
     setRecoverableEdit(null);
-    toast.success('Local changes restored successfully!', { id: 'unsynced-edit-recovery-status' });
+    toast.success('Local changes restored', { id: 'unsynced-edit-recovery-status' });
   }, [recoverableEdit, displayPage?.id]);
 
   const handleDiscardUnsyncedEdit = React.useCallback(() => {

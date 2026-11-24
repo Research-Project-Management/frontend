@@ -59,29 +59,22 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   return (
     <div className="relative flex h-9 shrink-0 items-center justify-between px-3 select-none">
       {/* ── Title / Collapse Button ── */}
-      <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={onToggleFileTree}
-            aria-expanded={isFileTreeOpen}
-            className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5 motion-reduce:transition-none"
-            aria-label={isFileTreeOpen ? 'Collapse File Tree' : 'Expand File Tree'}
-          >
-            <ChevronRight
-              className={cn(
-                'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
-                isFileTreeOpen && 'rotate-90',
-              )}
-              strokeWidth={1.75}
-            />
-            <span>File Tree</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="text-11">
-          {isFileTreeOpen ? 'Collapse file tree' : 'Expand file tree'}
-        </TooltipContent>
-      </Tooltip>
+      <button
+        type="button"
+        onClick={onToggleFileTree}
+        aria-expanded={isFileTreeOpen}
+        className="flex items-center gap-1.5 font-semibold text-13 tracking-tight text-foreground hover:text-foreground/80 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-foreground rounded-sm py-0.5 motion-reduce:transition-none"
+        aria-label={isFileTreeOpen ? 'Collapse File Tree' : 'Expand File Tree'}
+      >
+        <ChevronRight
+          className={cn(
+            'size-3.5 shrink-0 transition-transform duration-150 text-foreground motion-reduce:transition-none',
+            isFileTreeOpen && 'rotate-90',
+          )}
+          strokeWidth={1.75}
+        />
+        <span>File Tree</span>
+      </button>
 
       {/* ── Actions: Plus (New/Upload) & Filter (Sort by) ── */}
       <div className="flex items-center gap-0.5">
@@ -100,8 +93,8 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">
-                  New file, folder or upload
+                <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+                  New...
                 </TooltipContent>
               </Tooltip>
 
@@ -149,7 +142,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-11">
+                <TooltipContent side="bottom" sideOffset={6} className="text-xs">
                   Sort files
                 </TooltipContent>
               </Tooltip>

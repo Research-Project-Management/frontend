@@ -22,6 +22,11 @@ import {
 } from "lucide-react";
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import { useShallow } from 'zustand/react/shallow';
 import {
@@ -365,23 +370,29 @@ export default function SearchTab() {
         </span>
       </button>
       {showReplace && (
-        <button
-          type="button"
-          title="Replace this occurrence"
-          aria-label="Replace this occurrence"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleReplaceSingleMatch(
-              file.fileId,
-              match.line,
-              match.matchStart,
-              match.matchEnd,
-            );
-          }}
-          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 mr-2 px-1.5 py-0.5 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-opacity cursor-pointer"
-        >
-          Replace
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Replace this occurrence"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReplaceSingleMatch(
+                  file.fileId,
+                  match.line,
+                  match.matchStart,
+                  match.matchEnd,
+                );
+              }}
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 mr-2 px-1.5 py-0.5 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-opacity cursor-pointer"
+            >
+              Replace
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+            Replace this occurrence
+          </TooltipContent>
+        </Tooltip>
       )}
     </>
   );
@@ -438,69 +449,93 @@ export default function SearchTab() {
 
         {/* Row 2: Search Options (Aa, [.*], W - Overleaf 1:1 Parity) */}
         <div className="flex items-center gap-1.5 pt-0.5">
-          <button
-            type="button"
-            onClick={() => setCaseSensitive(!caseSensitive)}
-            title="Match Case (Aa)"
-            aria-label="Match Case"
-            aria-pressed={caseSensitive}
-            className={cn(
-              "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
-              caseSensitive
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            Aa
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setCaseSensitive(!caseSensitive)}
+                aria-label="Match Case"
+                aria-pressed={caseSensitive}
+                className={cn(
+                  "size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
+                  caseSensitive
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+                )}
+              >
+                Aa
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              Match Case (Aa)
+            </TooltipContent>
+          </Tooltip>
 
-          <button
-            type="button"
-            onClick={() => setUseRegex(!useRegex)}
-            title="Regular Expression ([.*])"
-            aria-label="Regular Expression"
-            aria-pressed={useRegex}
-            className={cn(
-              "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
-              useRegex
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            [.*]
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setUseRegex(!useRegex)}
+                aria-label="Regular Expression"
+                aria-pressed={useRegex}
+                className={cn(
+                  "size-7 rounded-md text-xs font-mono transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
+                  useRegex
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+                )}
+              >
+                [.*]
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              Regular Expression ([.*])
+            </TooltipContent>
+          </Tooltip>
 
-          <button
-            type="button"
-            onClick={() => setWholeWord(!wholeWord)}
-            title="Whole Word (W)"
-            aria-label="Whole Word"
-            aria-pressed={wholeWord}
-            className={cn(
-              "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
-              wholeWord
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            W
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setWholeWord(!wholeWord)}
+                aria-label="Whole Word"
+                aria-pressed={wholeWord}
+                className={cn(
+                  "size-7 rounded-md text-xs font-semibold transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
+                  wholeWord
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+                )}
+              >
+                W
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              Whole Word (W)
+            </TooltipContent>
+          </Tooltip>
 
-          <button
-            type="button"
-            onClick={() => setShowReplace(!showReplace)}
-            title="Toggle Replace (Ctrl+H)"
-            aria-label="Toggle Replace"
-            aria-pressed={showReplace}
-            className={cn(
-              "ml-auto size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
-              showReplace
-                ? "bg-muted text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
-            )}
-          >
-            <Replace className="size-3.5 shrink-0" strokeWidth={1.5} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setShowReplace(!showReplace)}
+                aria-label="Toggle Replace"
+                aria-pressed={showReplace}
+                className={cn(
+                  "ml-auto size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-ring relative after:absolute after:-inset-1.5 after:content-['']",
+                  showReplace
+                    ? "bg-muted text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+                )}
+              >
+                <Replace className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+              Toggle Replace (Ctrl+H)
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Row 3: Replace Input & Actions (When Replace is toggled on) */}

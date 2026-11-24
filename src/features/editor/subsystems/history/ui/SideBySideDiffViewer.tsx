@@ -145,13 +145,13 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
         <div className="flex items-center justify-between px-3 py-1.5 font-medium text-foreground">
           <div className="flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-destructive/70" />
-            <span className="font-semibold">Base: v{baseVersion}</span>
+            <span className="font-semibold">Version {baseVersion}</span>
           </div>
         </div>
         <div className="flex items-center justify-between px-3 py-1.5 font-medium text-foreground">
           <div className="flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-success/70" />
-            <span className="font-semibold">Target: v{targetVersion}</span>
+            <span className="font-semibold">Version {targetVersion}</span>
           </div>
         </div>
       </div>
@@ -163,11 +163,9 @@ export const SideBySideDiffViewer = React.memo(function SideBySideDiffViewer({
 
           return (
             <div key={hIdx} className="border-b last:border-b-0">
-              {/* Hunk Header with Copy Controls */}
+              {/* Hunk Header */}
               <DiffHunkHeader
                 hunk={hunk}
-                baseVersion={baseVersion}
-                targetVersion={targetVersion}
                 className="bg-muted/50"
               />
 

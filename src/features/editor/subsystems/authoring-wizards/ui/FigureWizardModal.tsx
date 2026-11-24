@@ -142,7 +142,7 @@ export function FigureWizardModal({
 
   const copyFigureCode = useCallback(() => {
     navigator.clipboard.writeText(generatedLatex);
-    toast.info('LaTeX code copied to clipboard', { id: 'copy-figure-latex' });
+    toast.success('Copied LaTeX', { id: 'copy-figure-latex' });
   }, [generatedLatex]);
 
   // Auto-select first image if none selected

@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Loader2, StickyNote, Trash2, X, Check, Edit3, FileText, Palette,
+  Loader2, StickyNote, Trash2, X, Plus, Check, Edit3, FileText, Palette,
   Highlighter, Underline, Strikethrough, Scan, PenTool, Type, Sparkles,
   Copy, Link2, Quote, MoreHorizontal, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Form } from '@/shared/components/ui/form';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger,
@@ -24,10 +21,16 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { toast } from 'sonner';
-import { cn } from '@/shared/lib/utils';
+import { READER_TOAST_IDS } from '@/features/library/sdk/queries/reader.queries';
+import { copyToClipboard, cn } from '@/shared/lib/utils';
 import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/features/library/types/reader.types';
 import { annotationFormSchema } from '@/features/library/types/reader.types';
-import { PdfAnnotationEngine, ANNOTATION_PALETTE_COLORS, formatAnnotationCitation } from '@/features/library/domain/reader/reader';
+import {
+  PdfAnnotationEngine,
+  ANNOTATION_PALETTE_COLORS,
+  DEFAULT_ANNOTATION_COLOR,
+  formatAnnotationCitation,
+} from '@/features/library/domain/reader/reader';
 
 const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
   ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]),
@@ -80,95 +83,168 @@ export function filterAndSortAnnotations(
   return params.sortBy === 'position' ? PdfAnnotationEngine.sortAnnotations(filtered) : PdfAnnotationEngine.sortAnnotationsByMode(filtered, params.sortBy);
 }
 
-function AnnotationEditForm({
-  initialQuote, initialComment, initialColor, initialPageLabel, initialTags = [], isSaving, onSave, onCancel,
+function AnnotationCardCommentEditor({
+  initialComment = '',
+  initialTags = [],
+  isSaving,
+  onSave,
+  onCancel,
 }: {
-  initialQuote?: string; initialComment?: string; initialColor?: string;
-  initialPageLabel?: string | null; initialTags?: string[];
-  isSaving: boolean; onSave: (data: AnnotationFormData) => Promise<void>; onCancel: () => void;
+  initialComment?: string;
+  initialTags?: string[];
+  isSaving: boolean;
+  onSave: (comment: string, tags: string[]) => Promise<void>;
+  onCancel: () => void;
 }) {
-  const [tagText, setTagText] = useState((initialTags || []).join(', '));
-  const [selectedColor, setSelectedColor] = useState(initialColor || '#ffd400');
-  const form = useForm<AnnotationFormData>({
-    resolver: zodResolver(annotationFormSchema),
-    defaultValues: {
-      quoteText: initialQuote || '', comment: initialComment || '',
-      color: initialColor || '#ffd400', pageLabel: initialPageLabel || '', tags: initialTags,
-    },
-  });
-  const { register, handleSubmit, setValue } = form;
+  const [comment, setComment] = useState(initialComment);
+  const [tags, setTags] = useState<string[]>(initialTags);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleFormSubmit = (data: AnnotationFormData) => {
-    const parsedTags = tagText.split(',').map((t) => t.trim().replace(/^#/, '')).filter((t) => t.length > 0);
-    return onSave({ ...data, color: selectedColor, tags: parsedTags });
+  useEffect(() => {
+    textareaRef.current?.focus();
+    if (textareaRef.current) {
+      textareaRef.current.selectionStart = textareaRef.current.value.length;
+      textareaRef.current.selectionEnd = textareaRef.current.value.length;
+    }
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      onCancel();
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      void onSave(comment.trim(), tags);
+    }
+  };
+
+  const handleTextareaBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    if (e.relatedTarget && containerRef.current?.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    const trimmed = comment.trim();
+    if (trimmed !== initialComment.trim() || tags.length !== initialTags.length) {
+      void onSave(trimmed, tags);
+    } else {
+      onCancel();
+    }
+  };
+
+  const handleAddTag = () => {
+    const cleaned = newTagText.replace(/^#+/, '').trim();
+    if (cleaned && !tags.includes(cleaned)) {
+      const nextTags = [...tags, cleaned];
+      setTags(nextTags);
+      setNewTagText('');
+      setIsAddingTag(false);
+      void onSave(comment.trim(), nextTags);
+      return;
+    }
+    setNewTagText('');
+    setIsAddingTag(false);
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    const nextTags = tags.filter((t) => t !== tagToRemove);
+    setTags(nextTags);
+    void onSave(comment.trim(), nextTags);
   };
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={handleSubmit(handleFormSubmit)}
-        onClick={(e) => e.stopPropagation()}
-        className="space-y-2 rounded-md border border-border p-2 bg-background font-sans"
-      >
-        <div className="flex items-center justify-between gap-2 pb-1 border-b border-border-subtle">
-          <div className="flex items-center gap-1">
-            {ANNOTATION_PALETTE_COLORS.map((c) => {
-              const active = selectedColor.toLowerCase() === c.hex.toLowerCase();
-              return (
-                <Tooltip key={c.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => { setSelectedColor(c.hex); setValue('color', c.hex); }}
-                      aria-label={c.label}
-                      className={cn(
-                        'size-3.5 rounded-full border border-border transition-colors cursor-pointer',
-                        active && 'ring-2 ring-primary ring-offset-1',
-                      )}
-                      style={{ backgroundColor: c.hex }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6} className="text-11">{c.label}</TooltipContent>
-                </Tooltip>
-              );
-            })}
+    <div
+      ref={containerRef}
+      onClick={(e) => e.stopPropagation()}
+      className="space-y-1.5 mt-1 font-sans"
+    >
+      <textarea
+        ref={textareaRef}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleTextareaBlur}
+        placeholder="Add comment..."
+        rows={2}
+        className="w-full resize-none bg-background p-1.5 rounded-md text-12 outline-none text-foreground leading-relaxed font-sans border border-border/80 focus:border-primary/80 focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground shadow-2xs"
+      />
+
+      {/* Tags row */}
+      <div className="flex flex-wrap items-center gap-1">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-10 font-mono bg-muted/50 text-foreground border border-border/60"
+          >
+            <span>#{tag}</span>
+            <button
+              type="button"
+              onClick={() => handleRemoveTag(tag)}
+              className="text-muted-foreground hover:text-destructive cursor-pointer"
+              aria-label={`Remove tag ${tag}`}
+            >
+              <X className="size-2.5" />
+            </button>
+          </span>
+        ))}
+
+        {isAddingTag ? (
+          <div className="inline-flex items-center gap-1">
+            <input
+              type="text"
+              autoFocus
+              value={newTagText}
+              onChange={(e) => setNewTagText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddTag();
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setIsAddingTag(false);
+                  setNewTagText('');
+                }
+              }}
+              onBlur={handleAddTag}
+              placeholder="Tag name..."
+              className="w-20 bg-background text-10 font-mono px-1.5 py-0.5 rounded border border-border/80 outline-none focus:border-primary/80 focus:ring-1 focus:ring-primary/20"
+            />
           </div>
-          <input
-            {...register('pageLabel')} aria-label="Page label" placeholder="Page label..."
-            className="w-20 bg-muted/60 rounded px-1.5 py-0.5 text-10 font-mono outline-none text-foreground placeholder:text-muted-foreground border border-border-subtle"
-          />
-        </div>
-        <input
-          {...register('quoteText')} aria-label="Quote text" placeholder="Quote text..."
-          className="w-full bg-transparent text-12 font-medium outline-none text-foreground font-sans"
-        />
-        <textarea
-          {...register('comment')} autoFocus aria-label="Comment" placeholder="Add comment..." rows={2}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); void handleSubmit(handleFormSubmit)(); }
-          }}
-          className="w-full resize-none bg-muted/40 p-1.5 rounded-sm text-12 outline-none text-foreground leading-relaxed font-sans border border-border focus:border-primary transition-colors"
-        />
-        <input
-          value={tagText} onChange={(e) => setTagText(e.target.value)} aria-label="Labels" placeholder="Labels (e.g. methodology, result)..."
-          className="w-full bg-transparent text-11 font-mono outline-none text-foreground placeholder:text-muted-foreground border-t border-border-subtle pt-1"
-        />
-        <div className="flex justify-end gap-1">
-          <Button
-            type="button" variant="outline" size="sm" onClick={onCancel}
-            className="h-7 text-11 px-2.5 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        ) : (
+          <button
+            type="button"
+            onClick={() => setIsAddingTag(true)}
+            className="inline-flex items-center gap-0.5 text-10 text-muted-foreground hover:text-foreground cursor-pointer transition-colors py-0.5 px-1 rounded hover:bg-muted/50"
           >
-            Cancel
-          </Button>
-          <Button
-            type="submit" size="sm" disabled={isSaving}
-            className="h-7 text-11 px-3 font-medium cursor-pointer rounded-md relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} /> : 'Save'}
-          </Button>
-        </div>
-      </form>
-    </Form>
+            <Plus className="size-2.5" />
+            <span>Add tag</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function renderAnnotationTypeIcon(
+  type: ReaderAnnotation['type'] | undefined,
+  color: string,
+) {
+  const iconProps = { className: 'size-3.5 shrink-0', strokeWidth: 1.75 };
+  let Icon = Highlighter;
+  if (type === 'underline') Icon = Underline;
+  else if (type === 'strike' || type === 'strikethrough') Icon = Strikethrough;
+  else if (type === 'note') Icon = StickyNote;
+  else if (type === 'rect' || type === 'area' || type === 'image') Icon = Scan;
+  else if (type === 'ink') Icon = PenTool;
+  else if (type === 'text') Icon = Type;
+
+  return (
+    <span className="inline-flex items-center justify-center shrink-0" style={{ color }}>
+      <Icon {...iconProps} />
+    </span>
   );
 }
 
@@ -208,7 +284,7 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
   onStartDelete, onCancelDelete, onConfirmDelete, onAddToNote, onAskAi, onBatchAddToNote,
   onBatchChangeColor, onChangeType, onBatchDelete,
 }: AnnotationsPanelCardProps) {
-  const safeColor = annotation.color || '#ffd400';
+  const safeColor = annotation.color || DEFAULT_ANNOTATION_COLOR;
   const displayPage = annotation.pageLabel?.trim() || String((annotation.pageIndex ?? 0) + 1);
   const firstRect = annotation.rects?.[0];
   const areaImageDataUrl = firstRect?.imageDataUrl;
@@ -239,31 +315,34 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
     }
   };
 
-  const handleCopyText = useCallback(() => {
+  const handleCopyText = useCallback(async () => {
     const textToCopy = (annotation.quoteText || annotation.text || annotation.comment || '').trim();
     if (!textToCopy) return;
-    void navigator.clipboard.writeText(textToCopy);
-    toast.success('Copied text to clipboard', { id: 'reader-clipboard' });
+    const ok = await copyToClipboard(textToCopy);
+    if (ok) toast.success('Copied', { id: READER_TOAST_IDS.clipboard });
+    else toast.error('Copy failed', { id: READER_TOAST_IDS.clipboard });
   }, [annotation.quoteText, annotation.text, annotation.comment]);
 
-  const handleCopyCitation = useCallback(() => {
+  const handleCopyCitation = useCallback(async () => {
     const pageNumber = (annotation.pageIndex ?? 0) + 1;
     const citation = formatAnnotationCitation(
       paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, spaceId, annotation.pageLabel,
     );
     const quote = (annotation.quoteText || annotation.text || '').trim();
-    void navigator.clipboard.writeText(quote ? `"${quote}" ${citation.label}` : citation.label);
-    toast.success('Copied citation to clipboard', { id: 'reader-clipboard' });
+    const ok = await copyToClipboard(quote ? `"${quote}" ${citation.label}` : citation.label);
+    if (ok) toast.success('Copied citation', { id: READER_TOAST_IDS.clipboard });
+    else toast.error('Copy failed', { id: READER_TOAST_IDS.clipboard });
   }, [paper, attachmentId, annotation, spaceId]);
 
-  const handleCopyLink = useCallback(() => {
+  const handleCopyLink = useCallback(async () => {
     const pageNumber = (annotation.pageIndex ?? 0) + 1;
     const citation = formatAnnotationCitation(
       paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, spaceId, annotation.pageLabel,
     );
     const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}${citation.url}` : citation.url;
-    void navigator.clipboard.writeText(fullUrl);
-    toast.success('Copied deep link to clipboard', { id: 'reader-clipboard' });
+    const ok = await copyToClipboard(fullUrl);
+    if (ok) toast.success('Copied link', { id: READER_TOAST_IDS.clipboard });
+    else toast.error('Copy failed', { id: READER_TOAST_IDS.clipboard });
   }, [paper, attachmentId, annotation, spaceId]);
 
   return (
@@ -273,39 +352,22 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
           role="button" tabIndex={0} draggable={!isEditing} onDragStart={handleDragStart}
           onClick={(e) => onCardClick(e, annotation)} onContextMenu={() => onCardContextMenu(annotation)}
           className={cn(
-            'group rounded-md border p-2 text-12 transition-colors relative cursor-pointer select-none outline-none',
-            isSelected ? 'border-primary bg-primary/10 ring-1 ring-primary' : 'border-border hover:border-border-hover bg-background',
+            'group rounded-md border overflow-hidden text-12 transition-all relative cursor-pointer select-none outline-none bg-background',
+            isSelected
+              ? 'border-primary/60 ring-1 ring-primary/25 shadow-xs'
+              : 'border-border/80 hover:border-border-hover shadow-2xs',
           )}
         >
-          {isEditing ? (
-            <AnnotationEditForm
-              initialQuote={annotation.quoteText} initialComment={annotation.comment}
-              initialColor={annotation.color} initialPageLabel={annotation.pageLabel}
-              initialTags={annotation.tags} isSaving={isUpdating}
-              onSave={async (data) => { await onSaveEdit(annotation, data); }}
-              onCancel={onCancelEdit}
-            />
-          ) : (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-1 text-11">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: safeColor }} />
+          <div>
+            <div className="flex items-center justify-between gap-1 px-2.5 py-1.5 border-b border-border/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {renderAnnotationTypeIcon(annotation.type, safeColor)}
                   <span
-                    className="font-mono text-foreground hover:underline cursor-pointer tabular-nums font-medium"
+                    className="font-sans font-semibold text-12 text-foreground hover:underline cursor-pointer tabular-nums truncate"
                     onClick={(e) => { e.stopPropagation(); onJumpToPage(annotation.pageIndex, annotation.id, annotation.pageNumber); }}
                   >
-                    p. {displayPage}
+                    Page {displayPage}
                   </span>
-                  {annotation.type && annotation.type !== 'highlight' && (
-                    <span className="inline-flex items-center gap-0.5 text-10 text-muted-foreground font-sans">
-                      {annotation.type === 'underline' && <Underline className="size-2.5" />}
-                      {(annotation.type === 'strike' || annotation.type === 'strikethrough') && <Strikethrough className="size-2.5" />}
-                      {annotation.type === 'note' && <StickyNote className="size-2.5" />}
-                      {(annotation.type === 'rect' || annotation.type === 'area' || annotation.type === 'image') && <Scan className="size-2.5" />}
-                      {annotation.type === 'ink' && <PenTool className="size-2.5" />}
-                      {annotation.type === 'text' && <Type className="size-2.5" />}
-                    </span>
-                  )}
                 </div>
 
                 <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 max-md:opacity-100 transition-opacity">
@@ -325,52 +387,42 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                       </button>
                     </div>
                   ) : (
-                    <>
-                      {onAskAi && (annotation.quoteText || annotation.comment) && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => onAskAi(annotation.quoteText || annotation.comment || '', (annotation.pageIndex ?? 0) + 1)}
-                              aria-label="Ask AI"
-                              className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                            >
-                              <img src="/Chat.svg" alt="AI Assistant" className="size-3 rounded-full object-cover shrink-0" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={6} className="text-11">Ask AI</TooltipContent>
-                        </Tooltip>
-                      )}
-                      {(onAddToNote || onBatchAddToNote) && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (onAddToNote) onAddToNote(annotation.quoteText || annotation.comment || '', (annotation.pageIndex ?? 0) + 1, annotation.id);
-                                else if (onBatchAddToNote) onBatchAddToNote([annotation.id]);
-                              }}
-                              aria-label="Add to Note"
-                              className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                            >
-                              <FileText className="size-3" strokeWidth={1.5} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={6} className="text-11">Add to Note</TooltipContent>
-                        </Tooltip>
-                      )}
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button" aria-label="More options"
-                            className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button" aria-label="More options"
+                          className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        >
+                          <MoreHorizontal className="size-3.5" strokeWidth={1.5} />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 text-12 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
+                        {onAskAi && (annotation.quoteText || annotation.comment) && (
+                          <DropdownMenuItem
+                            onClick={() => onAskAi(annotation.quoteText || annotation.comment || '', (annotation.pageIndex ?? 0) + 1)}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
                           >
-                            <MoreHorizontal className="size-3" strokeWidth={1.5} />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 text-12 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
-                          <DropdownMenuItem onClick={handleCopyText} className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted">
+                            <img src="/Chat.svg" alt="AI Assistant" className="size-3.5 rounded-full object-cover shrink-0" />
+                            <span>Ask AI</span>
+                          </DropdownMenuItem>
+                        )}
+                        {(onAddToNote || onBatchAddToNote) && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (onAddToNote) onAddToNote(annotation.quoteText || annotation.comment || '', (annotation.pageIndex ?? 0) + 1, annotation.id);
+                              else if (onBatchAddToNote) onBatchAddToNote([annotation.id]);
+                            }}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+                          >
+                            <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span>{targetIds.length > 1 ? `Add to Note (${targetIds.length})` : 'Add to Note'}</span>
+                          </DropdownMenuItem>
+                        )}
+                        {((onAskAi && (annotation.quoteText || annotation.comment)) || onAddToNote || onBatchAddToNote) && (
+                          <DropdownMenuSeparator className="my-1 border-t border-border" />
+                        )}
+
+                        <DropdownMenuItem onClick={handleCopyText} className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted">
                             <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                             <span className="flex-1">Copy Text</span>
                             <span className="text-10 text-muted-foreground font-mono">Ctrl+C</span>
@@ -444,70 +496,91 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </>
                   )}
                 </div>
               </div>
 
+              <div className="px-2.5 py-2 space-y-1.5">
               {areaImageDataUrl && (
-                <div className="rounded border border-border overflow-hidden bg-muted/40 my-1 p-1 flex items-center gap-1.5">
-                  <span className="w-1 self-stretch rounded-full shrink-0" style={{ backgroundColor: safeColor }} />
+                <div className="rounded border border-border overflow-hidden bg-muted/40 p-1 flex items-center gap-1.5">
+                  <span className="w-0.5 self-stretch rounded-full shrink-0" style={{ backgroundColor: safeColor }} />
                   <img src={areaImageDataUrl} alt="Selected area snapshot" className="max-h-36 w-full object-contain bg-background rounded-xs" />
                 </div>
               )}
 
               {annotation.quoteText && (
-                <div className="text-left w-full select-text flex items-start gap-2 pl-0.5">
-                  <span className="w-1 self-stretch rounded-full shrink-0 my-0.5" style={{ backgroundColor: safeColor }} />
+                <div className="text-left w-full select-text flex items-start gap-2">
+                  <span className="w-0.5 self-stretch rounded-full shrink-0 my-0.5" style={{ backgroundColor: safeColor }} />
                   <p
                     className={cn(
-                      'text-12 leading-snug text-foreground italic flex-1 min-w-0',
+                      'font-sans text-12 leading-snug text-foreground/80 flex-1 min-w-0',
+                      !isSelected && 'line-clamp-3',
                       annotation.type === 'underline' && 'underline decoration-current',
                       (annotation.type === 'strike' || annotation.type === 'strikethrough') && 'line-through',
                     )}
                   >
-                    &ldquo;{annotation.quoteText}&rdquo;
+                    {annotation.quoteText}
                   </p>
                 </div>
               )}
 
-              {!annotation.quoteText && !areaImageDataUrl && !annotation.comment && (
-                <p className="text-11 text-muted-foreground pl-2 italic">
+              {!annotation.quoteText && !areaImageDataUrl && !annotation.comment && !isEditing && (
+                <p className="text-11 text-muted-foreground pl-2">
                   {annotation.type === 'note' ? 'Sticky Note' : annotation.type === 'ink' ? 'Freehand Ink Drawing' : annotation.type === 'rect' || annotation.type === 'area' ? 'Selected Area' : 'Highlight'}
                 </p>
               )}
 
-              {/* Comment field (Zotero parity: always accessible directly on card) */}
-              {annotation.comment ? (
-                <div
-                  role="button" tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); onStartEdit(annotation.id); }}
-                  className="flex items-start gap-1.5 ml-2 mt-1.5 py-1 px-1.5 text-11 text-foreground/90 bg-muted/40 rounded-sm border border-border/80 cursor-pointer hover:bg-muted/70 transition-colors"
-                >
-                  <MessageSquare className="size-3 text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="leading-relaxed select-text flex-1 break-words">{annotation.comment}</p>
-                </div>
+              {isEditing ? (
+                <AnnotationCardCommentEditor
+                  initialComment={annotation.comment || ''}
+                  initialTags={annotation.tags || []}
+                  isSaving={isUpdating}
+                  onSave={async (newComment, newTags) => {
+                    await onSaveEdit(annotation, {
+                      quoteText: annotation.quoteText,
+                      comment: newComment,
+                      color: annotation.color,
+                      pageLabel: annotation.pageLabel || undefined,
+                      tags: newTags,
+                    });
+                  }}
+                  onCancel={onCancelEdit}
+                />
               ) : (
-                <button
-                  type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(annotation.id); }}
-                  className="flex items-center gap-1.5 ml-2 mt-1.5 text-11 text-muted-foreground hover:text-foreground cursor-pointer transition-colors py-0.5 group/comment"
-                >
-                  <MessageSquare className="size-3 text-muted-foreground group-hover/comment:text-foreground shrink-0" strokeWidth={1.5} />
-                  <span className="italic">Add comment...</span>
-                </button>
-              )}
+                <>
+                  {/* Comment field (Zotero 7 parity: visible when selected or when comment exists) */}
+                  {annotation.comment ? (
+                    <div
+                      role="button" tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); onStartEdit(annotation.id); }}
+                      className="flex items-start gap-1.5 mt-1 py-1 px-1.5 text-11 text-foreground/90 bg-muted/30 rounded-md border border-border/40 cursor-pointer hover:bg-muted/50 transition-colors"
+                    >
+                      <MessageSquare className="size-3 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="leading-relaxed select-text flex-1 break-words">{annotation.comment}</p>
+                    </div>
+                  ) : isSelected ? (
+                    <button
+                      type="button" onClick={(e) => { e.stopPropagation(); onStartEdit(annotation.id); }}
+                      className="flex items-center gap-1.5 mt-1 text-11 text-muted-foreground hover:text-foreground cursor-pointer transition-colors py-0.5 group/comment"
+                    >
+                      <MessageSquare className="size-3 text-muted-foreground group-hover/comment:text-foreground shrink-0" strokeWidth={1.5} />
+                      <span>Add comment...</span>
+                    </button>
+                  ) : null}
 
-              {annotation.tags && annotation.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 pl-2 pt-0.5">
-                  {annotation.tags.map((tag) => (
-                    <span key={tag} className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border">
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+                  {annotation.tags && annotation.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {annotation.tags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center px-1.5 py-0.5 rounded text-10 font-mono bg-muted/40 text-foreground/80 border border-border/50">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
+              </div>
             </div>
-          )}
         </div>
       </ContextMenuTrigger>
 

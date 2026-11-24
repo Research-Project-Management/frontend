@@ -247,6 +247,9 @@ export function AnnotationsPanel({
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent, annotation: ReaderAnnotation) => {
+      if (editingId && editingId !== annotation.id) {
+        setEditingId(null);
+      }
       if (editingId === annotation.id) return;
       if (e.ctrlKey || e.metaKey) {
         if (onToggleSelect) onToggleSelect(annotation.id);
@@ -303,12 +306,19 @@ export function AnnotationsPanel({
     }
     const target = e.target as HTMLElement | null;
     const tag = target?.tagName?.toLowerCase();
+    if (e.key === 'Escape') {
+      if (editingId) {
+        e.preventDefault();
+        setEditingId(null);
+        return;
+      }
+      onSelectIds?.(new Set());
+      return;
+    }
     if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
       e.preventDefault();
       onSelectIds?.(new Set(filteredAnnotations.map((a) => a.id)));
-    } else if (e.key === 'Escape') {
-      onSelectIds?.(new Set());
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
       e.preventDefault();
       onBatchDelete?.(Array.from(selectedIds));
@@ -627,7 +637,14 @@ export function AnnotationsPanel({
       )}
 
       {/* ── MAIN CONTENT LIST (#annotations) ── */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        onClick={(e) => {
+          if (e.target === e.currentTarget && editingId) {
+            setEditingId(null);
+          }
+        }}
+        className="flex-1 overflow-y-auto p-2 space-y-1.5 min-h-0 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
         {isLoading ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="size-4 animate-spin text-foreground" strokeWidth={1.5} />

@@ -8,6 +8,7 @@ import { annotationKeys } from '@/features/library/sdk/query-keys';
 import {
   executeAnnotationBatchSync,
   executeExtractAnnotationNotes,
+  READER_TOAST_IDS,
   type ExtractNotesOptions,
 } from '@/features/library/sdk/queries/reader.queries';
 import {
@@ -22,6 +23,7 @@ import {
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
 } from '@/features/library/sdk/queries/annotation-history.queries';
+import { DEFAULT_ANNOTATION_COLOR } from '@/features/library/domain/reader/reader';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   dispatchContextualOrCommandUndo,
@@ -49,7 +51,6 @@ interface UseAnnotationBatchOptions {
   spaceId: string;
   effectiveAttachmentId?: string;
   paper: ReaderDocument | null;
-  setPendingNoteText: (text: string) => void;
   extractNotes?: (paperId: string, options?: ExtractNotesOptions) => Promise<unknown>;
 }
 
@@ -61,7 +62,6 @@ export function useAnnotationBatch({
   spaceId,
   effectiveAttachmentId,
   paper,
-  setPendingNoteText: _setPendingNoteText,
   extractNotes,
 }: UseAnnotationBatchOptions) {
   const qc = useQueryClient();
@@ -187,7 +187,10 @@ export function useAnnotationBatch({
       });
     } catch (err) {
       if (attachmentEpochRef.current === startEpoch) {
-        toast.error('Undo failed', { description: getErrorMessage(err) });
+        toast.error('Undo failed', {
+          description: getErrorMessage(err) || undefined,
+          id: READER_TOAST_IDS.batch,
+        });
       }
     } finally {
       if (attachmentEpochRef.current === startEpoch) {
@@ -222,7 +225,10 @@ export function useAnnotationBatch({
       });
     } catch (err) {
       if (attachmentEpochRef.current === startEpoch) {
-        toast.error('Redo failed', { description: getErrorMessage(err) });
+        toast.error('Redo failed', {
+          description: getErrorMessage(err) || undefined,
+          id: READER_TOAST_IDS.batch,
+        });
       }
     } finally {
       if (attachmentEpochRef.current === startEpoch) {
@@ -287,7 +293,7 @@ export function useAnnotationBatch({
           if (found) {
             historyItems.push({
               id,
-              prevColor: found.color || '#ffd400',
+              prevColor: found.color || DEFAULT_ANNOTATION_COLOR,
               newColor: colorHex,
               version: found.version ?? 1,
               previousData: { ...found },
@@ -318,17 +324,11 @@ export function useAnnotationBatch({
           { type: 'color', items: historyItems, timestamp: Date.now() },
         ]);
         updateRedoStack([]);
-
-        if (ids.length > 1) {
-          toast.success(`Updated color for ${ids.length} highlights`, {
-            id: 'reader-batch-action',
-          });
-        }
       } catch (err) {
         if (attachmentEpochRef.current === startEpoch) {
-          toast.error('Batch update failed', {
-            description: getErrorMessage(err),
-            id: 'reader-batch-action',
+          toast.error('Could not update highlights', {
+            description: getErrorMessage(err) || undefined,
+            id: READER_TOAST_IDS.batch,
           });
         }
       } finally {
@@ -374,14 +374,16 @@ export function useAnnotationBatch({
           return next;
         });
 
-        toast.success(`Deleted ${ids.length} highlight${ids.length > 1 ? 's' : ''}`, {
-          id: 'reader-batch-action',
-        });
+        if (ids.length > 1) {
+          toast.success(`Deleted ${ids.length} highlights`, {
+            id: READER_TOAST_IDS.batch,
+          });
+        }
       } catch (err) {
         if (attachmentEpochRef.current === startEpoch) {
-          toast.error('Batch delete failed', {
-            description: getErrorMessage(err),
-            id: 'reader-batch-action',
+          toast.error('Could not delete highlights', {
+            description: getErrorMessage(err) || undefined,
+            id: READER_TOAST_IDS.batch,
           });
         }
       } finally {

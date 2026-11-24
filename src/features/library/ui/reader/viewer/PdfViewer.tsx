@@ -8,7 +8,7 @@ import type {
   DocumentFulltext, ReaderDocument, ReaderAnnotation, AnnotationRect, ReaderNavigationTarget, PdfOutlineItem,
 } from "@/features/library/types/reader.types";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
-import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
+import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader/reader";
 import {
   computeEffectivePdfPageWidth, computeSpreadPairs, isPageInVirtualWindow, resolvePdfOutlineFromDoc, type PdfOutlineProxyDoc,
 } from "@/features/library/domain/reader/search-outline";
@@ -19,6 +19,7 @@ import {
   ViewerSmartHoverPopover,
 } from "./ViewerSmartHover";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";
+import { PdfSelectionOverlay } from "./PdfSelectionOverlay";
 import { ViewerPageCanvas, DocumentPageSkeleton } from "./ViewerPageCanvas";
 import { usePdfViewerInteraction } from "@/features/library/core/coordinator/reader/use-pdf-interaction";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -37,7 +38,6 @@ const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 export interface ViewerProps {
   blobUrl: string | null; isLoading: boolean; error: string | null; attachmentId?: string; spaceId?: string;
-  onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
   onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onAnnotate?: (
     selectedText: string, pageNumber: number, colorHex?: string, rects?: AnnotationRect[],
@@ -48,6 +48,7 @@ export interface ViewerProps {
     dto: { color?: string; comment?: string; tags?: string[]; rects?: AnnotationRect[] },
   ) => Promise<unknown>;
   annotations?: ReaderAnnotation[]; onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
+  onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
   fulltext?: DocumentFulltext | null; targetPage?: ReaderNavigationTarget | null; paper?: ReaderDocument;
   onVisiblePageChange?: (page: number) => void; onNavigateWithHistory?: (page: number) => void;
   onTotalPagesChange?: (total: number) => void; onOutlineLoad?: (outline: PdfOutlineItem[]) => void;
@@ -66,8 +67,8 @@ export interface ViewerProps {
 }
 
 export default function Viewer({
-  blobUrl, isLoading, error, attachmentId, spaceId, onAddToNote, onAskAi, onAnnotate, onUpdateAnnotation,
-  annotations = [], onDeleteAnnotation, fulltext, targetPage, paper,
+  blobUrl, isLoading, error, attachmentId, spaceId, onAskAi, onAnnotate, onUpdateAnnotation,
+  annotations = [], onDeleteAnnotation, onAddToNote, fulltext, targetPage, paper,
   onVisiblePageChange, onNavigateWithHistory, onTotalPagesChange, onOutlineLoad,
   onDocumentLoad, onDocumentLoaded, sharedPdfDocument, onOpenInSplitView,
   zoom: zoomProp, onZoomChange, onSelectFitMode, rotation = 0, themeMode = "normal",
@@ -239,7 +240,7 @@ export default function Viewer({
   }, [initialScrollTop, numPages]);
 
   const scrollToPage = useCallback(
-    (page: number) => {
+    (page: number, yRatio?: number) => {
       programmaticScrollTargetRef.current = {
         page,
         expiresAt: Date.now() + 700,
@@ -249,14 +250,23 @@ export default function Viewer({
         setVisiblePage(page);
         onVisiblePageChange?.(page);
       }
-      const container = scrollContainerRef.current;
-      const el = pageRefs.current.get(page);
-      if (container && el) {
-        const containerRect = container.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        const targetTop = container.scrollTop + (elRect.top - containerRect.top);
-        container.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
-      }
+      const doScroll = () => {
+        const container = scrollContainerRef.current;
+        const el = pageRefs.current.get(page);
+        if (container && el) {
+          const containerRect = container.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
+          const offsetPx =
+            typeof yRatio === "number" && yRatio > 0
+              ? Math.max(0, elRect.height * yRatio)
+              : 0;
+          const targetTop = container.scrollTop + (elRect.top - containerRect.top) + offsetPx;
+          container.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+        }
+      };
+
+      doScroll();
+      requestAnimationFrame(doScroll);
     },
     [onVisiblePageChange],
   );
@@ -285,6 +295,7 @@ export default function Viewer({
     activeTool,
     activeColor,
     interactionMode,
+    rotation,
     isSuspended,
     onAnnotate: handleAnnotateWithPageLabel,
   });
@@ -297,7 +308,15 @@ export default function Viewer({
     [onNavigateWithHistory, scrollToPage],
   );
 
-  const smartHover = useViewerSmartHover({ scrollContainerRef, fulltext, numPages });
+  const smartHover = useViewerSmartHover({
+    scrollContainerRef,
+    fulltext,
+    numPages,
+    pdfDocument: (sharedPdfDocProxy || pdfDocument) as never,
+    rotation,
+    visiblePage,
+    onNavigatePage: handleNavigateOrScrollToPage,
+  });
 
   useEffect(() => {
     if (!scrollContainerRef.current) return;
@@ -396,6 +415,30 @@ export default function Viewer({
         });
     }
 
+    if (typeof outlineDoc.getPage === "function") {
+      void outlineDoc
+        .getPage(1)
+        .then((firstPage) => {
+          const vp = firstPage?.getViewport?.({ scale: 1 });
+          const vpWidth = vp?.width;
+          const vpHeight = vp?.height;
+          if (
+            typeof vpWidth === "number" &&
+            typeof vpHeight === "number" &&
+            Number.isFinite(vpWidth) &&
+            Number.isFinite(vpHeight) &&
+            vpWidth > 0 &&
+            vpHeight > 0
+          ) {
+            setPageDimensions((prev) => {
+              if (prev[1]) return prev;
+              return { ...prev, 1: { width: vpWidth, height: vpHeight } };
+            });
+          }
+        })
+        .catch(() => {});
+    }
+
     if (onOutlineLoad && typeof outlineDoc.getOutline === "function") {
       void resolvePdfOutlineFromDoc(outlineDoc)
         .then((resolvedOutline) => onOutlineLoad(resolvedOutline))
@@ -414,7 +457,7 @@ export default function Viewer({
     if (handledTargetKeyRef.current === targetKey) return;
     handledTargetKeyRef.current = targetKey;
 
-    scrollToPage(targetPage.pageNumber);
+    scrollToPage(targetPage.pageNumber, targetPage.yRatio);
 
     if (targetPage.annotationId) {
       const annId = targetPage.annotationId;
@@ -586,15 +629,30 @@ export default function Viewer({
       <ViewerPageCanvas
         key={pageNum} pageNum={pageNum} inWindow={inWindow}
         effectivePageWidth={effectivePageWidth} rotation={rotation} themeMode={themeMode}
-        activeTool={activeTool} activeColor={activeColor} cachedDim={pageDimensions[pageNum]}
+        activeTool={activeTool} activeColor={activeColor} cachedDim={pageDimensions[pageNum] || pageDimensions[1]}
         pdfDocument={sharedPdfDocProxy || pdfDocument} pageAnnotations={pageAnns}
-        pulsingAnnotationId={pagePulsingId} inlineTextInput={pageInlineInput}
+        semanticOverlays={smartHover.overlaysByPage[pageNum]}
+        hoveredSemanticOverlayId={smartHover.hoveredOverlayId}
+        pulsingAnnotationId={pagePulsingId} activeAnnotationId={interaction.activeHighlightTooltip?.id} inlineTextInput={pageInlineInput}
         areaSelection={pageAreaSelection} inkDrawing={pageInkDrawing}
         customTextRenderer={customTextRenderer} onRegisterPageRef={handleRegisterPageRef}
-        onPageDimensionsLoad={handlePageDimensionsLoad} onPageClick={interaction.handlePageClick}
+        onPageDimensionsLoad={handlePageDimensionsLoad}
+        onPageClick={(e, clickedPageNum) => {
+          if (
+            interactionMode !== "hand" &&
+            activeTool === "select" &&
+            smartHover.handlePageOverlayClick(e, clickedPageNum)
+          ) {
+            return;
+          }
+          interaction.handlePageClick(e, clickedPageNum);
+        }}
         onPageMouseDown={interaction.handlePageMouseDown} onPageMouseMove={interaction.handlePageMouseMove}
         onPageMouseUp={interaction.handlePageMouseUp} onInlineTextChange={interaction.setInlineTextInput}
         onSaveInlineText={interaction.handleSaveInlineText} onOpenAnnotationCard={interaction.openAnnotationCard}
+        onHoverExternalLink={smartHover.showExternalLinkPopup}
+        onLeaveLink={smartHover.scheduleDismissSmartHover}
+        onNavigatePage={handleNavigateOrScrollToPage}
         onDeleteAnnotation={onDeleteAnnotation} onUpdateAnnotation={onUpdateAnnotation}
       />
     );
@@ -614,20 +672,33 @@ export default function Viewer({
         onWheel={() => { programmaticScrollTargetRef.current = null; }}
         onTouchMove={() => { programmaticScrollTargetRef.current = null; }}
         onMouseUp={interaction.handleMouseUpCombined}
-        onMouseDown={(e) => { programmaticScrollTargetRef.current = null; interaction.handleMouseDown(e); }}
-        onMouseMove={interaction.handleMouseMove}
+        onMouseDown={(e) => {
+          programmaticScrollTargetRef.current = null;
+          smartHover.cancelHoverOpen();
+          smartHover.setSmartHoverCard(null);
+          interaction.handleMouseDown(e);
+        }}
+        onMouseMove={(e) => {
+          interaction.handleMouseMove(e);
+          smartHover.handleContainerMouseMove(e);
+        }}
         onMouseOver={smartHover.handleContainerMouseOver}
-        onMouseLeave={smartHover.scheduleDismissSmartHover}
+        onMouseLeave={() => {
+          smartHover.scheduleDismissSmartHover();
+        }}
         className={cn(
-          "flex-1 w-full relative bg-canvas",
+          "flex-1 w-full relative bg-canvas pdf-custom-selection",
           currentZoom > 1.0
             ? "overflow-auto"
             : "overflow-y-auto overflow-x-hidden",
           interactionMode === "hand"
             ? "cursor-grab active:cursor-grabbing select-none"
-            : "select-text",
+            : smartHover.hoveredOverlayId && activeTool === "select"
+              ? "!cursor-pointer select-text [&_.textLayer]:!cursor-pointer [&_.textLayer_*]:!cursor-pointer [&_.react-pdf__Page__textLayer]:!cursor-pointer [&_.react-pdf__Page__textLayer_*]:!cursor-pointer"
+              : "select-text",
         )}
       >
+        <PdfSelectionOverlay scrollContainerRef={scrollContainerRef} />
         {isSearchOpen && (
           <ViewerSearchBar
             searchInputRef={searchInputRef} searchQuery={searchQuery} onSearchQueryChange={setSearchQuery}
@@ -714,7 +785,8 @@ export default function Viewer({
           <AnnotationQuickEditCard
             tooltip={interaction.activeHighlightTooltip} visiblePage={visiblePage}
             onUpdateAnnotation={onUpdateAnnotation} onDeleteAnnotation={onDeleteAnnotation}
-            onAddToNote={onAddToNote} onAskAi={onAskAi}
+            onAddToNote={onAddToNote}
+            onAskAi={onAskAi}
             onUpdateTooltip={interaction.setActiveHighlightTooltip}
             onClose={() => interaction.setActiveHighlightTooltip(null)}
           />
@@ -723,10 +795,11 @@ export default function Viewer({
         {interaction.showFloatingMenu && interaction.selectedText && (
           <TextSelectionToolbar
             selectedText={interaction.selectedText} selectedPageNum={interaction.selectedPageNum}
-            selectedRects={interaction.selectedRects} menuPosition={interaction.menuPosition}
+            selectedRects={interaction.selectedRects} selectedPageSegments={interaction.selectedPageSegments}
+            menuPosition={interaction.menuPosition}
             activeColor={activeColor} activeTool={activeTool} paper={paper} visiblePage={visiblePage}
-            onAnnotate={handleAnnotateWithPageLabel} onSelectColor={onSelectColor} onSelectTool={onSelectTool}
-            onOpenAnnotationCard={interaction.openAnnotationCard} onAddToNote={onAddToNote} onAskAi={onAskAi}
+            onAnnotate={handleAnnotateWithPageLabel} onUpdateAnnotation={onUpdateAnnotation} onSelectColor={onSelectColor} onSelectTool={onSelectTool}
+            onOpenAnnotationCard={interaction.openAnnotationCard} onAskAi={onAskAi}
             onClose={() => interaction.setShowFloatingMenu(false)}
           />
         )}
@@ -735,6 +808,7 @@ export default function Viewer({
           <ViewerSmartHoverPopover
             card={smartHover.smartHoverCard} onCancelDismiss={smartHover.cancelHoverDismiss}
             onScheduleDismiss={smartHover.scheduleDismissSmartHover}
+            onPopoverHoverChange={smartHover.setPopoverHovered}
             onDismiss={() => smartHover.setSmartHoverCard(null)}
             onJumpToPage={handleNavigateOrScrollToPage} onOpenInSplitView={onOpenInSplitView}
           />

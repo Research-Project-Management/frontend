@@ -1,7 +1,7 @@
 /**
- * Library Offline Mutation Outbox Adapter (`@/features/library/core/adapters/library-outbox-storage.adapter`)
+ * Library Offline Mutation Outbox Adapter (`@/features/library/core/adapters/outbox-storage.adapter`)
  *
- * Implements a persistent, FIFO-ordered offline mutation queue backed by IndexedDB
+ * Implements a persistent, FIFO-ordered offline mutation queue backed by IndexedDB (`idb`)
  * with UUIDv7 time-ordered keys and in-memory test fallback.
  *
  * Guarantees zero data loss during network dropouts for:
@@ -10,6 +10,7 @@
  * - Reading progress and state transitions
  */
 
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { uuidv7 } from '@/shared/utils/uuid.util';
 
 export const OUTBOX_DB_NAME = 'flux:library:outbox:v1';
@@ -58,57 +59,53 @@ export interface OutboxStorageProvider {
   clear(): Promise<void>;
 }
 
+interface OutboxDbSchema extends DBSchema {
+  [OUTBOX_STORE_NAME]: {
+    key: string;
+    value: OutboxMutationEntry;
+    indexes: {
+      createdAt: number;
+      spaceId: string;
+    };
+  };
+}
+
 class IndexedDbOutboxStorage implements OutboxStorageProvider {
-  private dbPromise: Promise<IDBDatabase | null> | null = null;
+  private dbPromise: Promise<IDBPDatabase<OutboxDbSchema> | null> | null = null;
   private memoryFallback = new Map<string, OutboxMutationEntry>();
 
-  private openDb(): Promise<IDBDatabase | null> {
+  private openDb(): Promise<IDBPDatabase<OutboxDbSchema> | null> {
     if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     if (this.dbPromise) return this.dbPromise;
 
-    this.dbPromise = new Promise((resolve) => {
-      try {
-        const req = window.indexedDB.open(OUTBOX_DB_NAME, 2);
-        req.onupgradeneeded = (e) => {
-          const openReq = e.target as IDBOpenDBRequest;
-          const db = openReq.result;
-          if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
-            const store = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'id' });
-            store.createIndex('createdAt', 'createdAt', { unique: false });
+    this.dbPromise = openDB<OutboxDbSchema>(OUTBOX_DB_NAME, 2, {
+      upgrade(db, _oldVersion, _newVersion, tx) {
+        if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
+          const store = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'id' });
+          store.createIndex('createdAt', 'createdAt', { unique: false });
+          store.createIndex('spaceId', 'spaceId', { unique: false });
+        } else {
+          const store = tx.objectStore(OUTBOX_STORE_NAME);
+          if (!store.indexNames.contains('spaceId')) {
             store.createIndex('spaceId', 'spaceId', { unique: false });
-          } else if (openReq.transaction) {
-            const store = openReq.transaction.objectStore(OUTBOX_STORE_NAME);
-            if (!store.indexNames.contains('spaceId')) {
-              store.createIndex('spaceId', 'spaceId', { unique: false });
-            }
           }
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          db.onversionchange = () => {
-            try {
-              db.close();
-            } catch {
-              // ignore
-            }
-            this.dbPromise = null;
-          };
-          resolve(db);
-        };
-        req.onerror = () => {
-          this.dbPromise = null;
-          resolve(null);
-        };
-        req.onblocked = () => {
-          this.dbPromise = null;
-          resolve(null);
-        };
-      } catch {
+        }
+      },
+      blocked: () => {
         this.dbPromise = null;
-        resolve(null);
-      }
+      },
+      blocking: () => {
+        this.dbPromise?.then((db) => db?.close()).catch(() => {});
+        this.dbPromise = null;
+      },
+      terminated: () => {
+        this.dbPromise = null;
+      },
+    }).catch(() => {
+      this.dbPromise = null;
+      return null;
     });
 
     return this.dbPromise;
@@ -126,19 +123,13 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
 
     const db = await this.openDb();
     if (db) {
-      await new Promise<void>((resolve, reject) => {
-        try {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite');
-          tx.objectStore(OUTBOX_STORE_NAME).put(entry);
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        } catch (err) {
-          reject(err);
-        }
-      }).catch(() => {
+      try {
+        await db.put(OUTBOX_STORE_NAME, entry as unknown as OutboxMutationEntry);
+        return entry;
+      } catch {
         this.memoryFallback.set(id, entry as unknown as OutboxMutationEntry);
-      });
-      return entry;
+        return entry;
+      }
     }
 
     this.memoryFallback.set(id, entry as unknown as OutboxMutationEntry);
@@ -149,13 +140,7 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
     const db = await this.openDb();
     if (db) {
       try {
-        const rows = await new Promise<OutboxMutationEntry[]>((resolve) => {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readonly');
-          const store = tx.objectStore(OUTBOX_STORE_NAME);
-          const req = store.getAll();
-          req.onsuccess = () => resolve((req.result as OutboxMutationEntry[]) || []);
-          req.onerror = () => resolve([]);
-        });
+        const rows = await db.getAll(OUTBOX_STORE_NAME);
         // UUIDv7 is naturally lexicographically and chronologically sortable
         return rows.sort((a, b) => a.id.localeCompare(b.id));
       } catch {
@@ -179,15 +164,8 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
     const db = await this.openDb();
     if (db) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite');
-          tx.objectStore(OUTBOX_STORE_NAME).delete(id);
-          tx.oncomplete = () => {
-            deleted = true;
-            resolve();
-          };
-          tx.onerror = () => reject(tx.error);
-        });
+        await db.delete(OUTBOX_STORE_NAME, id);
+        deleted = true;
       } catch {
         // ignore
       }
@@ -204,12 +182,7 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
     const db = await this.openDb();
     if (db) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite');
-          tx.objectStore(OUTBOX_STORE_NAME).put(entry);
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
+        await db.put(OUTBOX_STORE_NAME, entry);
       } catch {
         // ignore
       }
@@ -220,12 +193,7 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
     const db = await this.openDb();
     if (db) {
       try {
-        return await new Promise<number>((resolve) => {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readonly');
-          const req = tx.objectStore(OUTBOX_STORE_NAME).count();
-          req.onsuccess = () => resolve(req.result || 0);
-          req.onerror = () => resolve(this.memoryFallback.size);
-        });
+        return await db.count(OUTBOX_STORE_NAME);
       } catch {
         return this.memoryFallback.size;
       }
@@ -239,12 +207,7 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
     const db = await this.openDb();
     if (db) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite');
-          tx.objectStore(OUTBOX_STORE_NAME).clear();
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
+        await db.clear(OUTBOX_STORE_NAME);
       } catch {
         // ignore
       }
@@ -252,12 +215,16 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
   }
 }
 
-let activeOutboxStorage: OutboxStorageProvider = new IndexedDbOutboxStorage();
+export const libraryOutboxStorage: OutboxStorageProvider = new IndexedDbOutboxStorage();
 
-export function setCustomOutboxStorageProvider(provider: OutboxStorageProvider | null): void {
-  activeOutboxStorage = provider ?? new IndexedDbOutboxStorage();
+let customProvider: OutboxStorageProvider | null = null;
+
+export function setCustomOutboxStorageProvider(
+  provider: OutboxStorageProvider | null,
+): void {
+  customProvider = provider;
 }
 
 export function getOutboxStorage(): OutboxStorageProvider {
-  return activeOutboxStorage;
+  return customProvider ?? libraryOutboxStorage;
 }

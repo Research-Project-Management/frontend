@@ -23,6 +23,14 @@ import {
 } from '../clients/http.client';
 import { uuidv7 } from '@/shared/utils/uuid.util';
 
+export const READER_TOAST_IDS = {
+  clipboard: 'reader-clipboard',
+  download: 'reader-download',
+  annotation: 'reader-annotation',
+  batch: 'reader-batch',
+  exportPdf: 'reader-export-pdf',
+} as const;
+
 export type OfflineMutationEnqueuer = (
   input: {
     spaceId: string;
@@ -473,9 +481,9 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
           queryClient.setQueryData(queryKey, context.previousAnnotations);
         }
       }
-      toast.error('Failed to create annotation', {
-        description: getErrorMessage(err) || 'Please try again.',
-        id: 'reader-annotation-toast',
+      toast.error('Could not save annotation', {
+        description: getErrorMessage(err) || undefined,
+        id: READER_TOAST_IDS.annotation,
       });
     },
   });
@@ -572,9 +580,9 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
           context.previousAnnotations,
         );
       }
-      toast.error('Failed to update annotation', {
-        description: getErrorMessage(err) || 'Please try again.',
-        id: 'reader-annotation-toast',
+      toast.error('Could not update annotation', {
+        description: getErrorMessage(err) || undefined,
+        id: READER_TOAST_IDS.annotation,
       });
     },
   });
@@ -643,7 +651,6 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
           attachmentId,
         });
       }
-      toast.success('Annotation deleted', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown, _variables, context) => {
       if (attachmentId && context?.previousAnnotations !== undefined) {
@@ -652,9 +659,9 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
           context.previousAnnotations,
         );
       }
-      toast.error('Failed to delete annotation', {
-        description: getErrorMessage(err) || 'Please try again.',
-        id: 'reader-annotation-toast',
+      toast.error('Could not delete annotation', {
+        description: getErrorMessage(err) || undefined,
+        id: READER_TOAST_IDS.annotation,
       });
     },
   });
@@ -689,25 +696,24 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
       const addedCount =
         (res as { addedCount?: number } | undefined)?.addedCount ?? res?.totalExtracted;
       if (!res || res.totalExtracted === 0) {
-        toast.info('No annotations in this document to extract', {
-          id: 'reader-annotation-toast',
+        toast.info('No annotations to extract', {
+          id: READER_TOAST_IDS.annotation,
         });
       } else if (addedCount === 0) {
-        toast.info('Literature note is already up to date', {
-          description: 'All annotations in this document have already been synthesized.',
-          id: 'reader-annotation-toast',
+        toast.info('Notes already up to date', {
+          id: READER_TOAST_IDS.annotation,
         });
       } else {
-        toast.success('Notes synthesized', {
-          description: `Extracted ${addedCount ?? res.totalExtracted} highlight${(addedCount ?? res.totalExtracted) === 1 ? '' : 's'} into Literature Note.`,
-          id: 'reader-annotation-toast',
+        const count = addedCount ?? res.totalExtracted;
+        toast.success(`Synthesized ${count} highlight${count === 1 ? '' : 's'}`, {
+          id: READER_TOAST_IDS.annotation,
         });
       }
     },
     onError: (err: unknown) => {
-      toast.error('Failed to synthesize notes', {
-        description: getErrorMessage(err) || 'Please try again.',
-        id: 'reader-annotation-toast',
+      toast.error('Could not synthesize notes', {
+        description: getErrorMessage(err) || undefined,
+        id: READER_TOAST_IDS.annotation,
       });
     },
   });
@@ -735,26 +741,23 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
       const totalFound =
         (res as { totalFound?: number } | undefined)?.totalFound ?? count;
       if (totalFound === 0 && count === 0) {
-        toast.info('No embedded annotations found in PDF', {
-          description: 'Scanned document pages and found 0 standard PDF annotations.',
-          id: 'reader-annotation-toast',
+        toast.info('No embedded annotations found', {
+          id: READER_TOAST_IDS.annotation,
         });
       } else if (count === 0 && totalFound > 0) {
         toast.info('Annotations already imported', {
-          description: `All ${totalFound} embedded PDF annotation${totalFound === 1 ? '' : 's'} are already in your library.`,
-          id: 'reader-annotation-toast',
+          id: READER_TOAST_IDS.annotation,
         });
       } else {
-        toast.success('Annotations imported', {
-          description: `Imported ${count} annotation${count === 1 ? '' : 's'} from PDF.`,
-          id: 'reader-annotation-toast',
+        toast.success(`Imported ${count} annotation${count === 1 ? '' : 's'}`, {
+          id: READER_TOAST_IDS.annotation,
         });
       }
     },
     onError: (err: unknown) => {
-      toast.error('Failed to import annotations', {
-        description: getErrorMessage(err) || 'Please try again.',
-        id: 'reader-annotation-toast',
+      toast.error('Could not import annotations', {
+        description: getErrorMessage(err) || undefined,
+        id: READER_TOAST_IDS.annotation,
       });
     },
   });
@@ -802,20 +805,21 @@ export function useExportAnnotatedPdf(spaceId?: string) {
   return {
     exportAnnotatedPdf: async (itemId: string, filename?: string, attachmentId?: string) => {
       const targetFilename = filename || 'annotated-document.pdf';
-      toast.loading('Exporting PDF with annotations...', { id: 'reader-export-annotated-pdf' });
+      toast.loading('Exporting PDF...', { id: READER_TOAST_IDS.exportPdf });
       try {
         await downloadMutation.mutateAsync({
           itemId,
           filename: targetFilename,
           attachmentId,
         });
-        toast.success(`Annotated PDF exported: ${targetFilename}`, {
-          id: 'reader-export-annotated-pdf',
+        toast.success('PDF exported', {
+          id: READER_TOAST_IDS.exportPdf,
         });
         return targetFilename;
       } catch (err: unknown) {
-        toast.error(getErrorMessage(err) || 'Failed to export annotated PDF', {
-          id: 'reader-export-annotated-pdf',
+        toast.error('Could not export PDF', {
+          description: getErrorMessage(err) || undefined,
+          id: READER_TOAST_IDS.exportPdf,
         });
         throw err;
       }

@@ -11,7 +11,6 @@ export const DEFAULT_READER_TABS: ReaderTab[] = [
 ];
 
 export const MAX_READER_TABS = 15;
-export const MAX_BOOKMARKED_ITEMS = 200;
 export const MIN_READER_ZOOM = 0.25;
 export const MAX_READER_ZOOM = 5.0;
 
@@ -28,24 +27,6 @@ export function enforceMaxReaderTabs(tabs: ReaderTab[], activeTabId: string): Re
     result.splice(evictIdx, 1);
   }
   return result;
-}
-
-/**
- * Evicts the oldest bookmarked items when the bookmark dictionary exceeds MAX_BOOKMARKED_ITEMS.
- */
-export function enforceMaxBookmarkedItems(
-  bookmarks: Record<string, number[]>,
-): Record<string, number[]> {
-  const keys = Object.keys(bookmarks);
-  if (keys.length <= MAX_BOOKMARKED_ITEMS) return bookmarks;
-  const keepKeys = keys.slice(keys.length - MAX_BOOKMARKED_ITEMS);
-  const bounded: Record<string, number[]> = {};
-  for (const k of keepKeys) {
-    if (bookmarks[k] && bookmarks[k].length > 0) {
-      bounded[k] = bookmarks[k];
-    }
-  }
-  return bounded;
 }
 
 /**

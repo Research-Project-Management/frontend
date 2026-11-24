@@ -22,11 +22,9 @@ import type { ReaderTab } from '@/features/library/types/reader.types';
 import {
   DEFAULT_READER_TABS,
   MAX_READER_TABS,
-  MAX_BOOKMARKED_ITEMS,
   MIN_READER_ZOOM,
   MAX_READER_ZOOM,
   enforceMaxReaderTabs,
-  enforceMaxBookmarkedItems,
   normalizeReaderZoom,
   normalizeReaderFitMode,
   normalizeReaderTheme,
@@ -41,11 +39,9 @@ export {
   type LibrarySchemaRegistrySnapshot,
   DEFAULT_READER_TABS,
   MAX_READER_TABS,
-  MAX_BOOKMARKED_ITEMS,
   MIN_READER_ZOOM,
   MAX_READER_ZOOM,
   enforceMaxReaderTabs,
-  enforceMaxBookmarkedItems,
   normalizeReaderZoom,
   normalizeReaderFitMode,
   normalizeReaderTheme,
@@ -241,15 +237,14 @@ export function saveFeedReadEntryIdsToStorage(
   }
 }
 
-// ── 3. Reader Tabs & Bookmarks Persistence ───────────────────────────────────
+// ── 3. Reader Tabs Persistence ──────────────────────────────────────────────
 
 export const READER_TABS_STORAGE_KEY = 'flux_reader_tabs';
 export const READER_ACTIVE_TAB_STORAGE_KEY = 'flux_reader_active_tab';
-export const READER_BOOKMARKS_STORAGE_KEY = 'flux_reader_bookmarks';
 export { FEED_READ_IDS_STORAGE_KEY };
 
 /**
- * Hydrates initial reader tabs and bookmarks from storage (SSR-safe).
+ * Hydrates initial reader tabs from storage (SSR-safe).
  * Per-window `activeTabId` prefers `sessionStorage` so two browser windows can
  * read two different papers side-by-side without clobbering each other's active tab,
  * falling back to `localStorage` when opening a fresh tab.
@@ -260,29 +255,9 @@ export function loadReaderStorageState(
 ): {
   tabs: ReaderTab[];
   activeTabId: string;
-  bookmarks: Record<string, number[]>;
 } {
   if (!storage) {
-    return { tabs: DEFAULT_READER_TABS, activeTabId: 'library', bookmarks: {} };
-  }
-
-  let bookmarks: Record<string, number[]> = {};
-  try {
-    const rawBookmarks = storage.getItem(READER_BOOKMARKS_STORAGE_KEY);
-    if (rawBookmarks) {
-      const parsedBookmarks = JSON.parse(rawBookmarks);
-      if (
-        parsedBookmarks &&
-        typeof parsedBookmarks === 'object' &&
-        !Array.isArray(parsedBookmarks)
-      ) {
-        bookmarks = enforceMaxBookmarkedItems(
-          parsedBookmarks as Record<string, number[]>,
-        );
-      }
-    }
-  } catch {
-    // Ignore storage read error
+    return { tabs: DEFAULT_READER_TABS, activeTabId: 'library' };
   }
 
   try {
@@ -314,13 +289,13 @@ export function loadReaderStorageState(
           ? rawActive
           : rawTabs[0].id;
       const tabs = enforceMaxReaderTabs(rawTabs, activeTabId);
-      return { tabs, activeTabId, bookmarks };
+      return { tabs, activeTabId };
     }
   } catch {
     // Ignore parse error
   }
 
-  return { tabs: DEFAULT_READER_TABS, activeTabId: 'library', bookmarks };
+  return { tabs: DEFAULT_READER_TABS, activeTabId: 'library' };
 }
 
 /**
@@ -424,41 +399,4 @@ export function saveReaderTabsToStorage(
     safeSetStorageItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId, sessionStorage);
   }
   return boundedTabs;
-}
-
-/**
- * Persists reader bookmarks to storage, merging with other tabs' bookmarks unless
- * a specific `updatedPaperId` was modified/cleared by this tab.
- */
-export function saveReaderBookmarksToStorage(
-  bookmarks: Record<string, number[]>,
-  storage = getActiveStorage(),
-  updatedPaperId?: string,
-): Record<string, number[]> {
-  if (!storage) return bookmarks;
-
-  let mergedSource: Record<string, number[]> = bookmarks;
-  if (updatedPaperId) {
-    try {
-      const raw = storage.getItem(READER_BOOKMARKS_STORAGE_KEY);
-      if (raw) {
-        const persisted = JSON.parse(raw);
-        if (persisted && typeof persisted === 'object' && !Array.isArray(persisted)) {
-          mergedSource = {
-            ...(persisted as Record<string, number[]>),
-            ...bookmarks,
-          };
-          if (!(updatedPaperId in bookmarks)) {
-            delete mergedSource[updatedPaperId];
-          }
-        }
-      }
-    } catch {
-      mergedSource = bookmarks;
-    }
-  }
-
-  const bounded = enforceMaxBookmarkedItems(mergedSource);
-  safeSetStorageItem(READER_BOOKMARKS_STORAGE_KEY, JSON.stringify(bounded), storage);
-  return bounded;
 }

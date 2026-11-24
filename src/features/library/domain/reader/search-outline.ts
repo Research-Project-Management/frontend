@@ -271,6 +271,7 @@ export function buildOutlineSections(
           num: '',
           title: item.title,
           page: item.pageNumber,
+          yRatio: item.yRatio,
           level: Math.min(4, level),
           hasChildren,
           parentId,
@@ -677,10 +678,30 @@ export async function resolvePdfOutlineFromDoc(
     const rawOutline = await outlineDoc.getOutline();
     if (!Array.isArray(rawOutline) || rawOutline.length === 0) return [];
 
-    const resolvePageNum = async (
+    const pageHeightCache = new Map<number, number>();
+    const getPageHeight = async (pageNum: number): Promise<number> => {
+      const cached = pageHeightCache.get(pageNum);
+      if (cached !== undefined) return cached;
+      let height = 792;
+      if (typeof outlineDoc.getPage === 'function') {
+        try {
+          const page = await outlineDoc.getPage(pageNum);
+          const vp = page?.getViewport?.({ scale: 1 });
+          if (vp && Number.isFinite(vp.height) && vp.height > 0) {
+            height = vp.height;
+          }
+        } catch {
+          // Fallback to default US Letter height (792pt)
+        }
+      }
+      pageHeightCache.set(pageNum, height);
+      return height;
+    };
+
+    const resolveDestination = async (
       dest: string | Array<unknown> | null | undefined,
-    ): Promise<number> => {
-      if (!dest) return 1;
+    ): Promise<{ pageNumber: number; yRatio?: number }> => {
+      if (!dest) return { pageNumber: 1 };
       try {
         const destArray =
           typeof dest === 'string'
@@ -690,19 +711,75 @@ export async function resolvePdfOutlineFromDoc(
             : Array.isArray(dest)
               ? dest
               : null;
-        if (!destArray || destArray.length === 0) return 1;
+        if (!destArray || destArray.length === 0) return { pageNumber: 1 };
         const pageRef = destArray[0];
+        let pageNumber = 1;
         if (typeof pageRef === 'number') {
-          return Math.max(1, pageRef + 1);
-        }
-        if (pageRef && typeof outlineDoc.getPageIndex === 'function') {
+          pageNumber = Math.max(1, pageRef + 1);
+        } else if (pageRef && typeof outlineDoc.getPageIndex === 'function') {
           const idx = await outlineDoc.getPageIndex(pageRef);
-          return Math.max(1, idx + 1);
+          pageNumber = Math.max(1, idx + 1);
         }
+
+        const destType = destArray[1];
+        const typeName =
+          typeof destType === 'string'
+            ? destType
+            : typeof destType === 'object' && destType !== null && 'name' in destType
+              ? String((destType as { name?: unknown }).name ?? '')
+              : '';
+
+        let x = 0;
+        let y: number | undefined;
+
+        if (typeName === 'XYZ') {
+          x = typeof destArray[2] === 'number' ? destArray[2] : 0;
+          y = typeof destArray[3] === 'number' && Number.isFinite(destArray[3]) ? destArray[3] : undefined;
+        } else if (typeName === 'FitH' || typeName === 'FitBH') {
+          y = typeof destArray[2] === 'number' && Number.isFinite(destArray[2]) ? destArray[2] : undefined;
+        } else if (typeName === 'FitR') {
+          x = typeof destArray[2] === 'number' ? destArray[2] : 0;
+          y =
+            typeof destArray[5] === 'number' && Number.isFinite(destArray[5])
+              ? destArray[5]
+              : typeof destArray[3] === 'number' && Number.isFinite(destArray[3])
+                ? destArray[3]
+                : undefined;
+        }
+
+        if (typeof outlineDoc.getPage === 'function') {
+          try {
+            const page = await outlineDoc.getPage(pageNumber);
+            const vp = page?.getViewport?.({ scale: 1 });
+            if (vp && Number.isFinite(vp.height) && vp.height > 0) {
+              if (y === undefined) {
+                return { pageNumber, yRatio: 0 };
+              }
+              if (typeof vp.convertToViewportPoint === 'function') {
+                const [, vy] = vp.convertToViewportPoint(x, y);
+                if (Number.isFinite(vy)) {
+                  const yRatio = Math.max(0, Math.min(1, vy / vp.height));
+                  return { pageNumber, yRatio };
+                }
+              }
+              const yRatio = Math.max(0, Math.min(1, (vp.height - y) / vp.height));
+              return { pageNumber, yRatio };
+            }
+          } catch {
+            // Ignore page fetch error and fall back
+          }
+        }
+
+        if (y !== undefined) {
+          const pageHeight = await getPageHeight(pageNumber);
+          const yRatio = Math.max(0, Math.min(1, 1 - y / pageHeight));
+          return { pageNumber, yRatio };
+        }
+        return { pageNumber, yRatio: 0 };
       } catch {
         // Ignore destination resolution error
       }
-      return 1;
+      return { pageNumber: 1 };
     };
 
     const mapNodes = async (
@@ -716,8 +793,8 @@ export async function resolvePdfOutlineFromDoc(
         nodes.map(async (node): Promise<PdfOutlineItem | null> => {
           const title = (node.title || '').trim();
           if (!title) return null;
-          const [pageNumber, children] = await Promise.all([
-            resolvePageNum(node.dest),
+          const [resolved, children] = await Promise.all([
+            resolveDestination(node.dest),
             Array.isArray(node.items) && node.items.length > 0
               ? mapNodes(
                   node.items as Array<{
@@ -730,7 +807,8 @@ export async function resolvePdfOutlineFromDoc(
           ]);
           return {
             title,
-            pageNumber,
+            pageNumber: resolved.pageNumber,
+            ...(resolved.yRatio !== undefined ? { yRatio: resolved.yRatio } : {}),
             dest: node.dest,
             items: children,
           };

@@ -1,114 +1,145 @@
 'use client';
 
 import { useState, useRef, useMemo, useCallback, type RefObject, useEffect } from 'react';
-import { Columns2, ArrowUpRight, X, StickyNote, Check, Quote, Copy, Underline, MessageSquare, FileText } from 'lucide-react';
-import type { DocumentFulltext, AnnotationRect, ReaderDocument, ReaderAnnotation } from '@/features/library/types/reader.types';
-import { copyToClipboard, cn } from '@/shared/lib/utils';
-import { formatInTextCitation } from '@/features/library/domain/reader/reader';
-import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/shared/components/ui/tooltip';
+  useFloating,
+  offset,
+  flip,
+  shift,
+  arrow,
+  autoUpdate,
+} from '@floating-ui/react';
+import type { DocumentFulltext } from '@/features/library/types/reader.types';
+import {
+  extractPdfPageHoverGeometry,
+  normalizePageRotation,
+  rotateRectFromCanonical,
+  type PdfPageHoverGeometry,
+  type PdfPageProxyLike,
+} from '@/features/library/domain/reader/annotation-geometry';
+import {
+  AUTHOR_YEAR_CITATION_RE,
+  buildSemanticLookupIndex,
+  buildSemanticPageOverlays,
+  hitTestSemanticOverlays,
+  refineSemanticOverlaysWithTextLayer,
+  type SemanticOverlayEntry,
+  type SemanticPageOverlay,
+} from '@/features/library/domain/reader/semantic-overlays';
+import { cn } from '@/shared/lib/utils';
 
-interface SmartHoverCardData {
-  kind: "Reference" | "Figure" | "Table" | "Section";
-  label: string;
-  body: string;
-  targetPage?: number;
-  top: number;
-  left: number;
+export { TextSelectionToolbar } from './TextSelectionToolbar';
+export { AUTHOR_YEAR_CITATION_RE };
+
+const OPEN_DELAY_MS = 350;
+const CLOSE_DELAY_MS = 500;
+
+export type SmartHoverEntry = SemanticOverlayEntry;
+
+export interface SmartHoverCardData {
+  kind: 'Reference' | 'Figure' | 'Table' | 'Section' | 'Link';
+  entries: SmartHoverEntry[];
+  anchorRect: { left: number; top: number; width: number; height: number };
+}
+
+function getAnchorRectForHit(
+  hit: SemanticPageOverlay,
+  normX: number,
+  normY: number,
+  rotation: number,
+  pageRect: DOMRect,
+  containerRect: DOMRect,
+  container: HTMLDivElement,
+): SmartHoverCardData['anchorRect'] {
+  const normRot = normalizePageRotation(rotation);
+  const rotatedRects = hit.rects.map((r) =>
+    rotateRectFromCanonical({ x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2 }, normRot),
+  );
+  const tol = 0.004;
+  const targetRect =
+    rotatedRects.find(
+      (r) =>
+        normX >= r.x1 - tol &&
+        normX <= r.x2 + tol &&
+        normY >= r.y1 - tol &&
+        normY <= r.y2 + tol,
+    ) ?? rotatedRects[0]!;
+
+  return {
+    left:
+      pageRect.left +
+      targetRect.x1 * pageRect.width -
+      containerRect.left +
+      container.scrollLeft,
+    top:
+      pageRect.top +
+      targetRect.y1 * pageRect.height -
+      containerRect.top +
+      container.scrollTop,
+    width: (targetRect.x2 - targetRect.x1) * pageRect.width,
+    height: (targetRect.y2 - targetRect.y1) * pageRect.height,
+  };
 }
 
 export function useViewerSmartHover({
   fulltext,
   numPages,
   scrollContainerRef,
+  pdfDocument,
+  rotation = 0,
+  visiblePage,
+  onNavigatePage,
 }: {
   fulltext?: DocumentFulltext | null;
   numPages: number;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
+  pdfDocument?: {
+    getPage?: (pageNumber: number) => Promise<PdfPageProxyLike>;
+  } | null;
+  rotation?: number;
+  visiblePage?: number;
+  onNavigatePage?: (pageNumber: number) => void;
 }) {
   const [smartHoverCard, setSmartHoverCard] = useState<SmartHoverCardData | null>(null);
+  const [overlaysByPage, setOverlaysByPage] = useState<Record<number, SemanticPageOverlay[]>>({});
+  const [hoveredOverlayId, setHoveredOverlayId] = useState<string | null>(null);
+
+  const hoverOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastHoveredSpanRef = useRef<HTMLElement | null>(null);
+  const lastTriggerKeyRef = useRef<string | null>(null);
+  const isHoveringPopoverRef = useRef<boolean>(false);
+
+  const overlaysByPageRef = useRef<Record<number, SemanticPageOverlay[]>>({});
+  overlaysByPageRef.current = overlaysByPage;
+
+  const smartHoverCardRef = useRef<SmartHoverCardData | null>(null);
+  smartHoverCardRef.current = smartHoverCard;
+
+  const canonicalGeometryCacheRef = useRef<Map<number, PdfPageHoverGeometry>>(new Map());
+  const pendingPageLoadsRef = useRef<Set<number>>(new Set());
+  const computedRevisionByPageRef = useRef<Map<number, number>>(new Map());
+  const textLayerRefineTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const lookupRevisionRef = useRef(0);
+  const activePdfDocRef = useRef(pdfDocument);
+  activePdfDocRef.current = pdfDocument;
+  const rotationRef = useRef(rotation);
+  rotationRef.current = rotation;
 
   const hoverLookupIndex = useMemo(() => {
-    const figureByKey = new Map<string, NonNullable<DocumentFulltext["figures"]>[number]>();
-    const figureList: Array<{ fig: NonNullable<DocumentFulltext["figures"]>[number]; lowerLabel: string }> = [];
-    if (Array.isArray(fulltext?.figures)) {
-      for (const f of fulltext.figures) {
-        const lowerId = f.id?.toLowerCase();
-        if (lowerId) {
-          figureByKey.set(lowerId, f);
-          if (lowerId.startsWith("fig-")) figureByKey.set(lowerId.slice(4), f);
-        }
-        const lowerLabel = f.label?.toLowerCase() || "";
-        const labelNumMatch = lowerLabel.match(/\b(?:fig\.?|figure)\s*(\d+[a-z]?)\b/i);
-        if (labelNumMatch?.[1]) figureByKey.set(labelNumMatch[1].toLowerCase(), f);
-        figureList.push({ fig: f, lowerLabel });
-      }
-    }
+    lookupRevisionRef.current += 1;
+    return buildSemanticLookupIndex(fulltext, numPages);
+  }, [fulltext, numPages]);
 
-    const tableByKey = new Map<string, NonNullable<DocumentFulltext["tables"]>[number]>();
-    const tableList: Array<{ tbl: NonNullable<DocumentFulltext["tables"]>[number]; lowerLabel: string }> = [];
-    if (Array.isArray(fulltext?.tables)) {
-      for (const t of fulltext.tables) {
-        const lowerId = t.id?.toLowerCase();
-        if (lowerId) {
-          tableByKey.set(lowerId, t);
-          if (lowerId.startsWith("table-")) tableByKey.set(lowerId.slice(6), t);
-        }
-        const lowerLabel = t.label?.toLowerCase() || "";
-        const labelNumMatch = lowerLabel.match(/\b(?:table|tab\.?)\s*(\d+[a-z]?)\b/i);
-        if (labelNumMatch?.[1]) tableByKey.set(labelNumMatch[1].toLowerCase(), t);
-        tableList.push({ tbl: t, lowerLabel });
-      }
-    }
+  const hoverLookupRef = useRef(hoverLookupIndex);
+  hoverLookupRef.current = hoverLookupIndex;
 
-    let bibliographyStartPage: number | undefined;
-    if (Array.isArray(fulltext?.sections)) {
-      const refSec = fulltext.sections.find((s) =>
-        /\b(?:references|bibliography|works\s+cited|literature\s+cited)\b/i.test(s.title || ""),
-      );
-      if (refSec?.page && refSec.page >= 1) bibliographyStartPage = refSec.page;
+  const cancelHoverOpen = useCallback(() => {
+    if (hoverOpenTimerRef.current) {
+      clearTimeout(hoverOpenTimerRef.current);
+      hoverOpenTimerRef.current = null;
     }
-    if (!bibliographyStartPage && Array.isArray(fulltext?.pages)) {
-      for (let i = fulltext.pages.length - 1; i >= 0; i--) {
-        const p = fulltext.pages[i];
-        if (p && p.pageNumber >= 1 && /(?:^|\n)\s*(?:references|bibliography|works\s+cited)\s*(?:\n|$)/i.test(p.text || "")) {
-          bibliographyStartPage = p.pageNumber;
-        }
-      }
-    }
-
-    const indexedReferences = Array.isArray(fulltext?.references)
-      ? fulltext.references.map((r) => {
-          const rec = r as typeof r & { page?: number; pageNumber?: number; pageIndex?: number };
-          const explicitPage = rec.pageNumber ?? rec.page ?? (typeof rec.pageIndex === "number" ? rec.pageIndex + 1 : undefined);
-          return {
-            ref: r,
-            year: r.year,
-            lowerAuthors: Array.isArray(r.authors) ? r.authors.map((a) => a.toLowerCase()) : [],
-            lowerCitation: r.rawCitation ? r.rawCitation.toLowerCase() : "",
-            targetPage: explicitPage && explicitPage >= 1 ? explicitPage : bibliographyStartPage,
-          };
-        })
-      : [];
-
-    const referencesByYear = new Map<number, typeof indexedReferences>();
-    for (const item of indexedReferences) {
-      if (typeof item.year === "number") {
-        const list = referencesByYear.get(item.year);
-        if (list) list.push(item);
-        else referencesByYear.set(item.year, [item]);
-      }
-    }
-
-    return { figureByKey, figureList, tableByKey, tableList, indexedReferences, referencesByYear, bibliographyStartPage };
-  }, [fulltext]);
+    lastTriggerKeyRef.current = null;
+  }, []);
 
   const cancelHoverDismiss = useCallback(() => {
     if (hoverDismissTimerRef.current) {
@@ -118,149 +149,433 @@ export function useViewerSmartHover({
   }, []);
 
   const scheduleDismissSmartHover = useCallback(() => {
-    if (hoverDismissTimerRef.current) clearTimeout(hoverDismissTimerRef.current);
+    cancelHoverOpen();
+    if (hoverDismissTimerRef.current) return;
     hoverDismissTimerRef.current = setTimeout(() => {
-      setSmartHoverCard(null);
-    }, 280);
+      hoverDismissTimerRef.current = null;
+      if (!isHoveringPopoverRef.current) {
+        setHoveredOverlayId(null);
+        setSmartHoverCard(null);
+      }
+    }, CLOSE_DELAY_MS);
+  }, [cancelHoverOpen]);
+
+  const clearRefineTimers = useCallback(() => {
+    for (const timer of textLayerRefineTimersRef.current.values()) {
+      clearTimeout(timer);
+    }
+    textLayerRefineTimersRef.current.clear();
   }, []);
+
+  const scheduleTextLayerRefinement = useCallback(
+    (pageNum: number, rev: number, attempt = 0) => {
+      const existingTimer = textLayerRefineTimersRef.current.get(pageNum);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        textLayerRefineTimersRef.current.delete(pageNum);
+      }
+      const delayMs = attempt === 0 ? 250 : 600;
+      const timer = setTimeout(() => {
+        textLayerRefineTimersRef.current.delete(pageNum);
+        if (computedRevisionByPageRef.current.get(pageNum) !== rev) return;
+        const current = overlaysByPageRef.current[pageNum];
+        if (!current || current.length === 0) return;
+
+        const pageEl =
+          scrollContainerRef.current?.querySelector<HTMLElement>(
+            `[data-page-num="${pageNum}"]`,
+          ) ?? null;
+        const hasSpans = Boolean(
+          pageEl?.querySelector(
+            '.react-pdf__Page__textLayer span, .react-pdf__Page__textContent span, .textLayer span',
+          ),
+        );
+        if (!pageEl || !hasSpans) {
+          if (attempt < 2) {
+            scheduleTextLayerRefinement(pageNum, rev, attempt + 1);
+          }
+          return;
+        }
+
+        const normRot = normalizePageRotation(rotationRef.current);
+        const refined = refineSemanticOverlaysWithTextLayer(pageEl, current, normRot);
+        if (refined !== current) {
+          setOverlaysByPage((prev) => {
+            if (prev[pageNum] !== current) return prev;
+            return { ...prev, [pageNum]: refined };
+          });
+        }
+      }, delayMs);
+      textLayerRefineTimersRef.current.set(pageNum, timer);
+    },
+    [scrollContainerRef],
+  );
+
+  const commitPageOverlays = useCallback(
+    (pageNum: number, geometry: PdfPageHoverGeometry, rev: number) => {
+      const built = buildSemanticPageOverlays(pageNum, geometry, hoverLookupRef.current);
+      const pageEl =
+        scrollContainerRef.current?.querySelector<HTMLElement>(
+          `[data-page-num="${pageNum}"]`,
+        ) ?? null;
+      const normRot = normalizePageRotation(rotationRef.current);
+      const refined = refineSemanticOverlaysWithTextLayer(pageEl, built, normRot);
+
+      computedRevisionByPageRef.current.set(pageNum, rev);
+      setOverlaysByPage((prev) => {
+        if (prev[pageNum] === refined) return prev;
+        return { ...prev, [pageNum]: refined };
+      });
+
+      const needsTextLayerSnap = built.some(
+        (o) => o.source === 'matched' && o.rects.length === 1,
+      );
+      if (needsTextLayerSnap) {
+        const hasSpans = Boolean(
+          pageEl?.querySelector(
+            '.react-pdf__Page__textLayer span, .react-pdf__Page__textContent span, .textLayer span',
+          ),
+        );
+        if (!hasSpans) {
+          scheduleTextLayerRefinement(pageNum, rev, 0);
+        }
+      }
+    },
+    [scrollContainerRef, scheduleTextLayerRefinement],
+  );
+
+  const ensurePageOverlaysComputed = useCallback(
+    (pageNum: number) => {
+      const getPageFn = pdfDocument?.getPage;
+      if (
+        !Number.isFinite(pageNum) ||
+        pageNum < 1 ||
+        (numPages > 0 && pageNum > numPages) ||
+        !pdfDocument ||
+        typeof getPageFn !== 'function' ||
+        !fulltext
+      ) {
+        return;
+      }
+
+      const rev = lookupRevisionRef.current;
+      if (computedRevisionByPageRef.current.get(pageNum) === rev) {
+        return;
+      }
+
+      const cachedGeo = canonicalGeometryCacheRef.current.get(pageNum);
+      if (cachedGeo) {
+        commitPageOverlays(pageNum, cachedGeo, rev);
+        return;
+      }
+
+      if (pendingPageLoadsRef.current.has(pageNum)) {
+        return;
+      }
+
+      pendingPageLoadsRef.current.add(pageNum);
+      const docSnapshot = pdfDocument;
+      void getPageFn
+        .call(docSnapshot, pageNum)
+        .then((page) => extractPdfPageHoverGeometry(page, 0))
+        .then((geometry) => {
+          if (activePdfDocRef.current !== docSnapshot) return;
+          canonicalGeometryCacheRef.current.set(pageNum, geometry);
+          commitPageOverlays(pageNum, geometry, lookupRevisionRef.current);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          pendingPageLoadsRef.current.delete(pageNum);
+        });
+    },
+    [pdfDocument, fulltext, numPages, commitPageOverlays],
+  );
+
+  // Reset caches when switching documents
+  useEffect(() => {
+    canonicalGeometryCacheRef.current.clear();
+    pendingPageLoadsRef.current.clear();
+    computedRevisionByPageRef.current.clear();
+    clearRefineTimers();
+    overlaysByPageRef.current = {};
+    setOverlaysByPage({});
+    setHoveredOverlayId(null);
+    cancelHoverOpen();
+    cancelHoverDismiss();
+    setSmartHoverCard(null);
+  }, [pdfDocument, cancelHoverOpen, cancelHoverDismiss, clearRefineTimers]);
+
+  // When fulltext lookup index updates (e.g. bibliography finishes loading), recompute cached pages immediately
+  useEffect(() => {
+    if (!fulltext || !pdfDocument) return;
+    const rev = lookupRevisionRef.current;
+    computedRevisionByPageRef.current.clear();
+    for (const [pageNum, geometry] of canonicalGeometryCacheRef.current.entries()) {
+      commitPageOverlays(pageNum, geometry, rev);
+    }
+  }, [hoverLookupIndex, fulltext, pdfDocument, commitPageOverlays]);
+
+  // Pre-warm nearby pages [visiblePage - 1 .. visiblePage + 2]
+  useEffect(() => {
+    if (!fulltext || !pdfDocument || !visiblePage || visiblePage < 1) return;
+    const candidates = [visiblePage - 1, visiblePage, visiblePage + 1, visiblePage + 2];
+    for (const pageNum of candidates) {
+      if (pageNum >= 1 && (numPages <= 0 || pageNum <= numPages)) {
+        ensurePageOverlaysComputed(pageNum);
+      }
+    }
+  }, [fulltext, pdfDocument, visiblePage, numPages, ensurePageOverlaysComputed]);
+
+  useEffect(() => {
+    return () => {
+      cancelHoverOpen();
+      cancelHoverDismiss();
+      clearRefineTimers();
+    };
+  }, [cancelHoverOpen, cancelHoverDismiss, clearRefineTimers]);
+
+  useEffect(() => {
+    if (!smartHoverCard) return;
+    const handleKeyDown = (evt: KeyboardEvent) => {
+      if (evt.key === 'Escape') {
+        cancelHoverOpen();
+        cancelHoverDismiss();
+        setHoveredOverlayId(null);
+        setSmartHoverCard(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [smartHoverCard, cancelHoverOpen, cancelHoverDismiss]);
+
+  const evaluateSmartHoverAtEvent = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!fulltext) return;
+      if (e.buttons !== 0) {
+        setHoveredOverlayId(null);
+        cancelHoverOpen();
+        return;
+      }
+
+      const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+      if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
+        setHoveredOverlayId(null);
+        cancelHoverOpen();
+        return;
+      }
+
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('[data-smart-hover-popover]')) {
+        cancelHoverDismiss();
+        return;
+      }
+      if (target.closest('[data-pdf-external-link]')) {
+        cancelHoverDismiss();
+        return;
+      }
+
+      const pageEl = target.closest('[data-page-num]') as HTMLElement | null;
+      const pageNum = pageEl ? Number(pageEl.dataset.pageNum) : NaN;
+      const container = scrollContainerRef.current;
+
+      if (!pageEl || !Number.isFinite(pageNum) || pageNum < 1 || !container) {
+        setHoveredOverlayId((prev) => (prev !== null ? null : prev));
+        cancelHoverOpen();
+        if (smartHoverCardRef.current) {
+          scheduleDismissSmartHover();
+        }
+        return;
+      }
+
+      const pageOverlays = overlaysByPageRef.current[pageNum];
+      if (!pageOverlays) {
+        ensurePageOverlaysComputed(pageNum);
+        setHoveredOverlayId((prev) => (prev !== null ? null : prev));
+        cancelHoverOpen();
+        if (smartHoverCardRef.current) {
+          scheduleDismissSmartHover();
+        }
+        return;
+      }
+
+      const pageRect = pageEl.getBoundingClientRect();
+      if (pageRect.width <= 0 || pageRect.height <= 0) return;
+
+      const normX = (e.clientX - pageRect.left) / pageRect.width;
+      const normY = (e.clientY - pageRect.top) / pageRect.height;
+      const hit = hitTestSemanticOverlays(pageOverlays, normX, normY, rotation);
+
+      if (!hit) {
+        setHoveredOverlayId((prev) => (prev !== null ? null : prev));
+        cancelHoverOpen();
+        if (smartHoverCardRef.current) {
+          scheduleDismissSmartHover();
+        }
+        return;
+      }
+
+      setHoveredOverlayId((prev) => (prev === hit.id ? prev : hit.id));
+      cancelHoverDismiss();
+
+      if (
+        lastTriggerKeyRef.current === hit.id &&
+        (hoverOpenTimerRef.current || smartHoverCardRef.current)
+      ) {
+        return;
+      }
+
+      cancelHoverOpen();
+      lastTriggerKeyRef.current = hit.id;
+
+      const containerRect = container.getBoundingClientRect();
+      const anchorRect = getAnchorRectForHit(
+        hit,
+        normX,
+        normY,
+        rotation,
+        pageRect,
+        containerRect,
+        container,
+      );
+
+      const nextCard: SmartHoverCardData = {
+        kind: hit.kind,
+        entries: hit.entries,
+        anchorRect,
+      };
+      hoverOpenTimerRef.current = setTimeout(() => {
+        hoverOpenTimerRef.current = null;
+        setSmartHoverCard(nextCard);
+      }, OPEN_DELAY_MS);
+    },
+    [
+      fulltext,
+      rotation,
+      scrollContainerRef,
+      ensurePageOverlaysComputed,
+      cancelHoverOpen,
+      cancelHoverDismiss,
+      scheduleDismissSmartHover,
+    ],
+  );
 
   const handleContainerMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!fulltext) return;
-      const target = e.target as HTMLElement | null;
-      if (!target) return;
-      const textSpan = (
-        target.tagName === "SPAN" && target.closest(".react-pdf__Page__textContent")
-          ? target
-          : target.closest(".react-pdf__Page__textContent span, .annotationLayer a")
-      ) as HTMLElement | null;
-      if (!textSpan) {
-        lastHoveredSpanRef.current = null;
+      evaluateSmartHoverAtEvent(e);
+    },
+    [evaluateSmartHoverAtEvent],
+  );
+
+  const handleContainerMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      evaluateSmartHoverAtEvent(e);
+    },
+    [evaluateSmartHoverAtEvent],
+  );
+
+  const setPopoverHovered = useCallback((hovered: boolean) => {
+    isHoveringPopoverRef.current = hovered;
+  }, []);
+
+  const handlePageOverlayClick = useCallback(
+    (e: React.MouseEvent, pageNum: number): boolean => {
+      if (e.defaultPrevented) return false;
+      const targetEl = e.target as HTMLElement | null;
+      if (targetEl?.closest('[data-pdf-external-link], a')) {
+        return false;
+      }
+
+      const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+      if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
+        return false;
+      }
+
+      const pageOverlays = overlaysByPageRef.current[pageNum];
+      if (!pageOverlays || pageOverlays.length === 0) return false;
+
+      const pageRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      if (pageRect.width <= 0 || pageRect.height <= 0) return false;
+
+      const normX = (e.clientX - pageRect.left) / pageRect.width;
+      const normY = (e.clientY - pageRect.top) / pageRect.height;
+      const hit = hitTestSemanticOverlays(pageOverlays, normX, normY, rotation);
+      if (!hit) return false;
+
+      const targetPage =
+        hit.entries[0]?.targetPage ??
+        hit.entries.find((entry) => typeof entry.targetPage === 'number' && entry.targetPage >= 1)
+          ?.targetPage;
+      if (typeof targetPage !== 'number' || !Number.isFinite(targetPage) || targetPage < 1) {
+        return false;
+      }
+
+      cancelHoverOpen();
+      cancelHoverDismiss();
+      setHoveredOverlayId(null);
+      setSmartHoverCard(null);
+      onNavigatePage?.(targetPage);
+      return true;
+    },
+    [rotation, cancelHoverOpen, cancelHoverDismiss, onNavigatePage],
+  );
+
+  const showExternalLinkPopup = useCallback(
+    ({ url, rect }: { url: string; rect: DOMRect }) => {
+      const container = scrollContainerRef.current;
+      if (!container || !url) return;
+
+      const triggerKey = `ext:${url}:${Math.round(rect.left)}:${Math.round(rect.top)}`;
+      if (
+        lastTriggerKeyRef.current === triggerKey &&
+        (hoverOpenTimerRef.current || smartHoverCardRef.current)
+      ) {
+        cancelHoverDismiss();
         return;
       }
-      if (lastHoveredSpanRef.current === textSpan) return;
-      lastHoveredSpanRef.current = textSpan;
-
-      const rawText = (textSpan.textContent || "").trim();
-      if (!rawText || rawText.length > 140) return;
-
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      let matchedCard: Omit<SmartHoverCardData, "top" | "left"> | null = null;
-
-      const figMatch = rawText.match(/\b(?:Fig\.?|Figure)\s*(\d+[A-Za-z]?)\b/i);
-      if (figMatch && hoverLookupIndex.figureList.length > 0) {
-        const figNum = figMatch[1]!.toLowerCase();
-        const foundFig =
-          hoverLookupIndex.figureByKey.get(figNum) ||
-          hoverLookupIndex.figureByKey.get(`fig-${figNum}`) ||
-          hoverLookupIndex.figureList.find((item) => item.lowerLabel.includes(figNum))?.fig;
-        if (foundFig) {
-          matchedCard = {
-            kind: "Figure",
-            label: foundFig.label || `Figure ${figMatch[1]}`,
-            body: foundFig.caption || "Figure in document",
-            targetPage: foundFig.page,
-          };
-        }
-      }
-
-      if (!matchedCard) {
-        const tblMatch = rawText.match(/\b(?:Table|Tab\.?)\s*(\d+[A-Za-z]?)\b/i);
-        if (tblMatch && hoverLookupIndex.tableList.length > 0) {
-          const tblNum = tblMatch[1]!.toLowerCase();
-          const foundTbl =
-            hoverLookupIndex.tableByKey.get(tblNum) ||
-            hoverLookupIndex.tableByKey.get(`table-${tblNum}`) ||
-            hoverLookupIndex.tableList.find((item) => item.lowerLabel.includes(tblNum))?.tbl;
-          if (foundTbl) {
-            matchedCard = {
-              kind: "Table",
-              label: foundTbl.label || `Table ${tblMatch[1]}`,
-              body: foundTbl.caption || "Table in document",
-              targetPage: foundTbl.page,
-            };
-          }
-        }
-      }
-
-      if (!matchedCard && hoverLookupIndex.indexedReferences.length > 0) {
-        const fallbackRefPage = hoverLookupIndex.bibliographyStartPage ?? (numPages > 0 ? numPages : undefined);
-        const bracketMatch = rawText.match(/\[(\d{1,3})(?:\s*[,\-–]\s*\d{1,3})?\]/);
-        if (bracketMatch) {
-          const refIdx = parseInt(bracketMatch[1]!, 10) - 1;
-          const foundEntry = hoverLookupIndex.indexedReferences[refIdx];
-          if (foundEntry) {
-            const foundRef = foundEntry.ref;
-            const authorsStr =
-              Array.isArray(foundRef.authors) && foundRef.authors.length > 0
-                ? foundRef.authors.slice(0, 3).join(", ") + (foundRef.authors.length > 3 ? " et al." : "")
-                : "";
-            const bodyParts = [
-              authorsStr,
-              foundRef.year ? `(${foundRef.year})` : "",
-              foundRef.title ? `"${foundRef.title}"` : "",
-              foundRef.journal || "",
-            ].filter(Boolean);
-            matchedCard = {
-              kind: "Reference",
-              label: `Reference [${bracketMatch[1]}]`,
-              body: foundRef.rawCitation || bodyParts.join(" ") || `Reference #${bracketMatch[1]}`,
-              targetPage: foundEntry.targetPage ?? fallbackRefPage,
-            };
-          }
-        } else {
-          const authorYearMatch = rawText.match(/\b([A-Z][a-zA-Z\-]{2,24})(?:\s+et\s+al\.?)?\s*\(?(\d{4})\)?/);
-          if (authorYearMatch) {
-            const surname = authorYearMatch[1]!.toLowerCase();
-            const yearNum = parseInt(authorYearMatch[2]!, 10);
-            const yearStr = String(yearNum);
-            const candidates = hoverLookupIndex.referencesByYear.get(yearNum) ?? hoverLookupIndex.indexedReferences;
-            const foundEntry = candidates.find(
-              (item) =>
-                (item.year === yearNum || !item.year) &&
-                (item.lowerAuthors.some((a) => a.includes(surname)) ||
-                  (item.lowerCitation.includes(surname) && item.lowerCitation.includes(yearStr))),
-            );
-            if (foundEntry) {
-              const foundRef = foundEntry.ref;
-              matchedCard = {
-                kind: "Reference",
-                label: `${authorYearMatch[1]} (${yearNum})`,
-                body:
-                  foundRef.rawCitation ||
-                  [foundRef.authors?.join(", "), foundRef.title, foundRef.journal].filter(Boolean).join(" — "),
-                targetPage: foundEntry.targetPage ?? fallbackRefPage,
-              };
-            }
-          }
-        }
-      }
-
-      if (!matchedCard) return;
 
       cancelHoverDismiss();
+      cancelHoverOpen();
+      setHoveredOverlayId(null);
 
-      const spanRect = textSpan.getBoundingClientRect();
+      lastTriggerKeyRef.current = triggerKey;
+
       const containerRect = container.getBoundingClientRect();
-      const top = spanRect.bottom - containerRect.top + container.scrollTop + 6;
-      const left = Math.max(
-        16,
-        Math.min(container.clientWidth - 320, spanRect.left - containerRect.left + container.scrollLeft),
-      );
+      const anchorRect = {
+        left: rect.left - containerRect.left + container.scrollLeft,
+        top: rect.top - containerRect.top + container.scrollTop,
+        width: rect.width,
+        height: rect.height,
+      };
 
-      setSmartHoverCard({ ...matchedCard, top, left });
+      const nextCard: SmartHoverCardData = {
+        kind: 'Link',
+        entries: [{ badge: 'External Link', rawFallback: url, externalUrl: url }],
+        anchorRect,
+      };
+
+      hoverOpenTimerRef.current = setTimeout(() => {
+        hoverOpenTimerRef.current = null;
+        setSmartHoverCard(nextCard);
+      }, OPEN_DELAY_MS);
     },
-    [fulltext, hoverLookupIndex, numPages, scrollContainerRef, cancelHoverDismiss],
+    [scrollContainerRef, cancelHoverDismiss, cancelHoverOpen],
   );
 
   return {
     smartHoverCard,
+    hoverCard: smartHoverCard,
+    overlaysByPage,
+    hoveredOverlayId,
     setSmartHoverCard,
+    setPopoverHovered,
+    showExternalLinkPopup,
+    cancelHoverOpen,
     cancelHoverDismiss,
     scheduleDismissSmartHover,
     handleContainerMouseOver,
+    handleContainerMouseMove,
+    handlePageOverlayClick,
   };
 }
 
@@ -268,289 +583,115 @@ export function ViewerSmartHoverPopover({
   card,
   onCancelDismiss,
   onScheduleDismiss,
-  onDismiss,
-  onJumpToPage,
-  onOpenInSplitView,
+  onPopoverHoverChange,
 }: {
   card: SmartHoverCardData;
   onCancelDismiss: () => void;
   onScheduleDismiss: () => void;
-  onDismiss: () => void;
-  onJumpToPage: (page: number) => void;
+  onPopoverHoverChange?: (hovered: boolean) => void;
+  onDismiss?: () => void;
+  onJumpToPage?: (page: number) => void;
   onOpenInSplitView?: (page: number) => void;
 }) {
-  return (
-    <div
-      role="status"
-      aria-label={`${card.kind} preview`}
-      onMouseEnter={onCancelDismiss}
-      onMouseLeave={onScheduleDismiss}
-      style={{ top: `${card.top}px`, left: `${card.left}px` }}
-      className="absolute z-40 w-80 max-w-[90vw] rounded-md border border-border bg-popover p-2.5 text-11 text-popover-foreground shadow-raised-200 font-sans animate-in fade-in duration-100 select-text"
-    >
-      <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-border-subtle">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="px-1.5 py-0.5 text-10 font-mono font-medium rounded-sm bg-muted text-foreground shrink-0">
-            {card.kind}
-          </span>
-          <span className="font-semibold text-foreground truncate">{card.label}</span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {card.targetPage && (
-            <button
-              type="button"
-              onClick={() => {
-                onJumpToPage(card.targetPage!);
-                onDismiss();
-              }}
-              className="h-5 px-1.5 rounded-sm text-10 font-mono text-primary hover:bg-primary/10 flex items-center gap-0.5 cursor-pointer transition-colors"
-            >
-              <span>p. {card.targetPage}</span>
-              <ArrowUpRight className="size-2.5" strokeWidth={1.5} />
-            </button>
-          )}
-          {card.targetPage && onOpenInSplitView && (
-            <button
-              type="button"
-              onClick={() => {
-                onOpenInSplitView(card.targetPage!);
-                onDismiss();
-              }}
-              className="h-5 px-1.5 rounded-sm text-10 font-sans font-medium text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer transition-colors"
-            >
-              <Columns2 className="size-3 shrink-0" strokeWidth={1.5} />
-              <span>Split</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="size-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center cursor-pointer"
-            aria-label="Dismiss preview"
-          >
-            <X className="size-3" strokeWidth={1.5} />
-          </button>
-        </div>
-      </div>
-      <p className="text-11 leading-relaxed text-foreground/90 line-clamp-4">{card.body}</p>
-    </div>
-  );
-}
+  const arrowRef = useRef<HTMLSpanElement | null>(null);
+  const { refs, floatingStyles, placement, middlewareData } = useFloating({
+    placement: 'bottom',
+    middleware: [
+      offset(8),
+      flip({ padding: 12 }),
+      shift({ padding: 12 }),
+      arrow({ element: arrowRef, padding: 14 }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
 
-interface TextSelectionToolbarProps {
-  selectedText: string;
-  selectedPageNum: number;
-  selectedRects: AnnotationRect[];
-  menuPosition: { top: number; left: number };
-  activeColor?: string;
-  activeTool?: ReaderAnnotationTool;
-  paper?: ReaderDocument;
-  visiblePage: number;
-  onAnnotate?: (
-    selectedText: string,
-    pageNumber: number,
-    colorHex?: string,
-    rects?: AnnotationRect[],
-    type?: "highlight" | "underline" | "note" | "text" | "rect" | "area",
-    comment?: string,
-  ) => Promise<unknown> | void;
-  onSelectColor?: (colorHex: string) => void;
-  onSelectTool?: (tool: ReaderAnnotationTool) => void;
-  onOpenAnnotationCard?: (createdAnn: ReaderAnnotation, el?: HTMLElement) => void;
-  onAddToNote?: (
-    selectedText: string,
-    pageNumber?: number,
-    annotationId?: string,
-  ) => void;
-  onAskAi?: (selectedText: string, pageNumber?: number) => void;
-  onClose: () => void;
-}
+  const isTopPlacement = placement.startsWith('top');
+  const arrowX = middlewareData.arrow?.x;
 
-export function TextSelectionToolbar({
-  selectedText,
-  selectedPageNum,
-  selectedRects,
-  menuPosition,
-  activeColor,
-  activeTool,
-  paper,
-  visiblePage,
-  onAnnotate,
-  onSelectColor,
-  onSelectTool,
-  onOpenAnnotationCard,
-  onAddToNote,
-  onAskAi,
-  onClose,
-}: TextSelectionToolbarProps) {
-  const [copiedSelection, setCopiedSelection] = useState(false);
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    },
-    [],
-  );
-
-  const handleCopySelection = async () => {
-    if (!selectedText) return;
-    const ok = await copyToClipboard(selectedText);
-    if (ok) {
-      setCopiedSelection(true);
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = setTimeout(() => {
-        setCopiedSelection(false);
-        onClose();
-      }, 1200);
-    }
+  const formatEntryLine = (entry: SmartHoverEntry): string => {
+    if (entry.rawFallback) return entry.rawFallback;
+    const segments: string[] = [];
+    if (entry.authors) segments.push(entry.authors.replace(/\.+$/, ''));
+    if (entry.title) segments.push(entry.title.replace(/\.+$/, ''));
+    if (entry.venueYear) segments.push(entry.venueYear.replace(/\.+$/, ''));
+    return segments.length > 0 ? `${segments.join('. ')}.` : entry.badge;
   };
 
-  const effectiveColor = activeColor || "#ffd400";
-
   return (
-    <div
-      className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 whitespace-nowrap w-max bg-popover text-popover-foreground p-1 rounded-lg border border-border shadow-raised-200 duration-150 select-none animate-in fade-in zoom-in-95 font-sans"
-      style={{
-        top: `${menuPosition.top}px`,
-        left: `${menuPosition.left}px`,
-        transform: "translateX(-50%)",
-      }}
-      onMouseUp={(e) => e.stopPropagation()}
-    >
-      {/* 1. All 8 Academic Colors (Zotero 7 standard: 1-click Highlight) */}
-      {onAnnotate && (
-        <div className="flex items-center gap-1 px-0.5 shrink-0">
-          {ANNOTATION_PALETTE_COLORS.map((c) => {
-            const isSelected = activeColor === c.hex;
+    <>
+      <div
+        ref={refs.setReference}
+        aria-hidden="true"
+        className="absolute pointer-events-none z-[6]"
+        style={{
+          left: card.anchorRect.left,
+          top: card.anchorRect.top,
+          width: card.anchorRect.width,
+          height: card.anchorRect.height,
+        }}
+      />
+      <div
+        ref={refs.setFloating}
+        data-smart-hover-popover="true"
+        role="status"
+        aria-label={`${card.kind} preview`}
+        onMouseEnter={() => {
+          onPopoverHoverChange?.(true);
+          onCancelDismiss();
+        }}
+        onMouseLeave={() => {
+          onPopoverHoverChange?.(false);
+          onScheduleDismiss();
+        }}
+        style={floatingStyles}
+        className="z-40 w-[360px] max-w-[90vw] rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 px-3.5 py-2.5 font-sans animate-in fade-in duration-100 select-text"
+      >
+        <span
+          ref={arrowRef}
+          aria-hidden="true"
+          style={arrowX !== undefined ? { left: `${arrowX}px` } : undefined}
+          className={cn(
+            'absolute size-2.5 rotate-45 border-border bg-popover pointer-events-none',
+            isTopPlacement
+              ? '-bottom-[5px] border-r border-b'
+              : '-top-[5px] border-l border-t',
+          )}
+        />
+        <div className="max-h-56 overflow-y-auto divide-y divide-border-subtle">
+          {card.entries.map((entry, idx) => {
+            const text = formatEntryLine(entry);
             return (
-              <Tooltip key={c.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`Highlight in ${c.label}`}
-                    onClick={async () => {
-                      onSelectColor?.(c.hex);
-                      await onAnnotate(
-                        selectedText,
-                        selectedPageNum,
-                        c.hex,
-                        selectedRects,
-                        "highlight",
-                      );
-                      onClose();
-                      window.getSelection()?.removeAllRanges();
-                    }}
-                    className={cn(
-                      "size-3.5 rounded-full border border-border transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden hover:scale-125",
-                      isSelected && "ring-2 ring-primary ring-offset-1 scale-110",
-                    )}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6} className="text-11">
-                  Highlight in {c.label}
-                </TooltipContent>
-              </Tooltip>
+              <div
+                key={`${entry.badge}-${idx}`}
+                className={cn(
+                  card.entries.length > 1 && idx > 0 && 'pt-2',
+                  card.entries.length > 1 && idx < card.entries.length - 1 && 'pb-2',
+                )}
+              >
+                <p className="text-[12px] leading-[1.55] text-foreground">
+                  {card.entries.length > 1 && (
+                    <span className="font-mono text-[11px] text-muted-foreground mr-1.5">
+                      {entry.badge}
+                    </span>
+                  )}
+                  {entry.externalUrl ? (
+                    <a
+                      href={entry.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline break-all"
+                    >
+                      {text}
+                    </a>
+                  ) : (
+                    <span>{text}</span>
+                  )}
+                </p>
+              </div>
             );
           })}
         </div>
-      )}
-
-      {/* 2. Underline (Zotero parity) */}
-      {onAnnotate && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label="Underline selected text"
-              onClick={async () => {
-                onSelectTool?.("underline");
-                await onAnnotate(
-                  selectedText,
-                  selectedPageNum,
-                  effectiveColor,
-                  selectedRects,
-                  "underline",
-                );
-                onClose();
-                window.getSelection()?.removeAllRanges();
-              }}
-              className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <Underline className="size-3.5" strokeWidth={1.5} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={6} className="text-11">
-            Underline
-          </TooltipContent>
-        </Tooltip>
-      )}
-
-      {/* 3. Add to Note (Zotero standard: send quote into Note editor) */}
-      {onAddToNote && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label="Add to Note"
-              onClick={() => {
-                onAddToNote(selectedText, selectedPageNum || visiblePage);
-                onClose();
-                window.getSelection()?.removeAllRanges();
-              }}
-              className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <FileText className="size-3.5" strokeWidth={1.5} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={6} className="text-11">
-            Add to Note
-          </TooltipContent>
-        </Tooltip>
-      )}
-
-      {/* 4. Copy Action */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            aria-label="Copy selected text"
-            onClick={handleCopySelection}
-            className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {copiedSelection ? (
-              <Check className="size-3.5 text-primary" strokeWidth={1.5} />
-            ) : (
-              <Copy className="size-3.5 text-foreground" strokeWidth={1.5} />
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={6} className="text-11">
-          {copiedSelection ? "Copied" : "Copy"}
-        </TooltipContent>
-      </Tooltip>
-
-      {/* 5. Ask AI Action */}
-      {onAskAi && (
-        <button
-          type="button"
-          aria-label="Ask AI about selected text"
-          onClick={() => {
-            onAskAi(selectedText, selectedPageNum || visiblePage);
-            onClose();
-            window.getSelection()?.removeAllRanges();
-          }}
-          className="h-6 px-2 rounded-md flex items-center gap-1 cursor-pointer transition-colors text-foreground hover:bg-muted text-11 font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <img
-            src="/Chat.svg"
-            alt="AI Assistant"
-            className="size-3.5 rounded-full object-cover shrink-0"
-          />
-          <span>Ask AI</span>
-        </button>
-      )}
-    </div>
+      </div>
+    </>
   );
 }

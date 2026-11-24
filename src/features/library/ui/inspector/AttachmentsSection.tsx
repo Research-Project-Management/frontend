@@ -18,6 +18,7 @@ import {
   Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import { copyToClipboard } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -450,12 +451,12 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                     )}
                     {(targetUrl || (downloadUrl && isSafeBrowserUrl(downloadUrl))) && (
                       <DropdownMenuItem
-                        onClick={() => {
+                        onClick={async () => {
                           const urlToCopy = targetUrl || downloadUrl;
-                          if (urlToCopy) {
-                            void navigator.clipboard.writeText(urlToCopy);
-                            toast.success("Attachment link copied to clipboard");
-                          }
+                          if (!urlToCopy) return;
+                          const ok = await copyToClipboard(urlToCopy);
+                          if (ok) toast.success("Copied link");
+                          else toast.error("Copy failed");
                         }}
                         className="gap-2 cursor-pointer"
                       >

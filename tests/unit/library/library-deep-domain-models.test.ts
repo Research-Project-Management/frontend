@@ -272,7 +272,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
   });
 
   describe('library-local-storage.adapter (Candidate 2 Local-Substitutable Adapter)', () => {
-    it('persists and hydrates Reader tabs, bookmarks, and Feed read IDs using an injected in-memory StorageLike adapter', async () => {
+    it('persists and hydrates Reader tabs and Feed read IDs using an injected in-memory StorageLike adapter', async () => {
       const {
         setLibraryStorageProvider,
         saveReaderTabsToStorage,

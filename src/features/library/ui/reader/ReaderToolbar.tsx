@@ -27,7 +27,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
-import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader/reader";
+import {
+  ANNOTATION_PALETTE_COLORS,
+  DEFAULT_ANNOTATION_COLOR,
+} from "@/features/library/domain/reader/reader";
 import {
   ZOOM_PRESETS,
   ToolbarIconButton,
@@ -146,7 +149,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onSelectInteractionMode,
   activeTool = "highlight",
   onSelectTool,
-  activeColor = "#ffd400",
+  activeColor = DEFAULT_ANNOTATION_COLOR,
   onSelectColor,
   isToolLocked = false,
   onToggleToolLocked,

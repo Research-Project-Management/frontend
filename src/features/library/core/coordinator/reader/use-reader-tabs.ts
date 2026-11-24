@@ -20,50 +20,16 @@ import {
   normalizeReaderZoom,
 } from '@/features/library/core/adapters/project-context.adapter';
 import type {
+  AnnotationRect,
   ReaderDocument,
   ReaderNavigationTarget,
 } from '@/features/library/types/reader.types';
 
-interface ScrollPositionWithBookmarks extends Record<string, unknown> { bookmarks?: number[]; }
-
-function normalizeBookmarkPages(raw: unknown): number[] {
-  if (!Array.isArray(raw)) return [];
-  const unique = new Set<number>();
-  for (const entry of raw) {
-    if (typeof entry === 'number' && Number.isFinite(entry) && entry >= 1) unique.add(Math.max(1, Math.floor(entry)));
-  }
-  return Array.from(unique).sort((a, b) => a - b);
-}
-
-function parseScrollPositionObject(scrollPosition: unknown): ScrollPositionWithBookmarks {
+function parseScrollPositionObject(scrollPosition: unknown): Record<string, unknown> {
   if (scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition)) {
-    const record = scrollPosition as Record<string, unknown>;
-    return 'bookmarks' in record ? { ...record, bookmarks: normalizeBookmarkPages(record.bookmarks) } : { ...record };
+    return { ...(scrollPosition as Record<string, unknown>) };
   }
   return {};
-}
-
-function hasExplicitBookmarksInScrollPosition(scrollPosition: unknown): boolean {
-  return Boolean(scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition) && Array.isArray((scrollPosition as { bookmarks?: unknown }).bookmarks));
-}
-
-function extractBookmarksFromScrollPosition(scrollPosition: unknown): number[] | undefined {
-  if (hasExplicitBookmarksInScrollPosition(scrollPosition)) {
-    return normalizeBookmarkPages((scrollPosition as { bookmarks?: unknown }).bookmarks);
-  }
-  return undefined;
-}
-
-function buildScrollPositionWithBookmarks(
-  baseScrollPosition: unknown,
-  latestScrollPosition: Record<string, unknown>,
-  bookmarks: readonly number[],
-): ScrollPositionWithBookmarks {
-  return {
-    ...parseScrollPositionObject(baseScrollPosition),
-    ...latestScrollPosition,
-    bookmarks: normalizeBookmarkPages(bookmarks),
-  };
 }
 
 function syncPaperStateQueryCache(
@@ -108,8 +74,7 @@ export function useReadingProgress({
   const isInitialStateLoadedRef = useRef<boolean>(false);
   const lastSavedPageRef = useRef<number | null>(null);
   const pendingPageUpdateRef = useRef<{ scope: string; paperId: string; page: number } | null>(null);
-  const hydratedBookmarksRef = useRef<string | null>(null);
-  const latestScrollPositionRef = useRef<ScrollPositionWithBookmarks>({});
+  const latestScrollPositionRef = useRef<Record<string, unknown>>({});
 
   useEffect(() => {
     const restorationKey = paper?.id ? `${paper.id}:${effectiveAttachmentId || ''}` : null;
@@ -139,15 +104,6 @@ export function useReadingProgress({
       if (isCancelled) return;
       const parsedScroll = parseScrollPositionObject(scrollPosition);
       latestScrollPositionRef.current = parsedScroll;
-
-      const hasExplicitBookmarks = hasExplicitBookmarksInScrollPosition(scrollPosition);
-      const extractedBookmarks = extractBookmarksFromScrollPosition(scrollPosition);
-      if (hasExplicitBookmarks) {
-        useReaderStore.getState().setBookmarks(paperId, extractedBookmarks ?? []);
-        hydratedBookmarksRef.current = JSON.stringify(extractedBookmarks ?? []);
-      } else {
-        hydratedBookmarksRef.current = null;
-      }
 
       if (typeof parsedScroll.scrollTop === 'number' && Number.isFinite(parsedScroll.scrollTop) && parsedScroll.scrollTop >= 0) {
         useReaderStore.getState().updateTabState(paperId, { scrollTop: Math.round(parsedScroll.scrollTop) });
@@ -199,47 +155,6 @@ export function useReadingProgress({
 
     return () => { isCancelled = true; };
   }, [paper, effectiveAttachmentId, effectiveScope, queryClient, setTargetPage, setVisiblePage, hasExplicitDeepLink]);
-
-  const paperBookmarks = useReaderStore((s) => (paper?.id ? s.bookmarks[paper.id] : undefined));
-  useEffect(() => {
-    if (!paper?.id || !isInitialStateLoadedRef.current) return;
-    const currentBookmarks = normalizeBookmarkPages(paperBookmarks);
-    const serialized = JSON.stringify(currentBookmarks);
-    if (hydratedBookmarksRef.current === serialized) return;
-
-    const paperId = paper.id;
-    const embeddedScrollPos = paper.readingState?.scrollPosition;
-
-    const timeout = setTimeout(() => {
-      const previousSerialized = hydratedBookmarksRef.current;
-      const previousScrollPos = { ...latestScrollPositionRef.current };
-      hydratedBookmarksRef.current = serialized;
-
-      const nextScrollPos = buildScrollPositionWithBookmarks(
-        embeddedScrollPos,
-        latestScrollPositionRef.current,
-        currentBookmarks,
-      );
-      latestScrollPositionRef.current = nextScrollPos;
-
-      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, { scrollPosition: nextScrollPos });
-
-      updateReaderItemState(effectiveScope, paperId, { scrollPosition: nextScrollPos })
-        .then((updatedState) => {
-          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
-            ...(updatedState ?? {}),
-            scrollPosition: updatedState?.scrollPosition ?? nextScrollPos,
-          });
-        })
-        .catch(() => {
-          hydratedBookmarksRef.current = previousSerialized;
-          latestScrollPositionRef.current = previousScrollPos;
-          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, { scrollPosition: previousScrollPos });
-        });
-    }, 400);
-
-    return () => clearTimeout(timeout);
-  }, [paperBookmarks, paper?.id, paper?.readingState?.scrollPosition, effectiveScope, queryClient]);
 
   useEffect(() => {
     if (!paper?.id || visiblePage < 1 || !isInitialStateLoadedRef.current) return;
@@ -384,7 +299,7 @@ interface UseReaderTabHistoryOptions {
   effectiveTabId: string | null | undefined;
   visiblePage: number;
   onNavigateToPage: (pageNumber: number) => void;
-  onNavigateToAnnotation: (pageNumber: number, annotationId?: string) => void;
+  onNavigateToAnnotation: (pageNumber: number, annotationId?: string, coords?: AnnotationRect, yRatio?: number) => void;
 }
 
 const EMPTY_PAGE_HISTORY: number[] = [];
@@ -404,7 +319,7 @@ export function useReaderTabHistory({
   const forwardHistory = tabHistoryByTabId[tabKey]?.forwardHistory ?? EMPTY_PAGE_HISTORY;
 
   const handleNavigateToPageWithHistory = useCallback(
-    (newPage: number, annotationId?: string) => {
+    (newPage: number, annotationId?: string, yRatio?: number) => {
       if (visiblePage && visiblePage !== newPage) {
         setTabHistoryByTabId((prev) => {
           const current = prev[tabKey] ?? { pageHistory: [], forwardHistory: [] };
@@ -417,7 +332,7 @@ export function useReaderTabHistory({
           };
         });
       }
-      onNavigateToAnnotation(newPage, annotationId);
+      onNavigateToAnnotation(newPage, annotationId, undefined, yRatio);
     },
     [visiblePage, onNavigateToAnnotation, tabKey],
   );

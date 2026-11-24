@@ -20,6 +20,7 @@ import {
   useReaderFulltext,
   useAnnotations,
   useExportAnnotatedPdf,
+  READER_TOAST_IDS,
 } from '@/features/library/sdk/queries/reader.queries';
 import { registerReaderResourceCleanupHandler } from '@/features/library/sdk/queries/cache-patcher.queries';
 import {
@@ -40,22 +41,12 @@ import type {
   ReaderNavigationTarget,
   AnnotationType,
 } from '@/features/library/types/reader.types';
-import { formatAnnotationCitation } from '@/features/library/domain/reader/reader';
+import {
+  DEFAULT_ANNOTATION_COLOR,
+  formatAnnotationCitation,
+} from '@/features/library/domain/reader/reader';
 
 export { useExportAnnotatedPdf, prefetchReaderDocumentBlob };
-
-const READER_TOAST_IDS = {
-  clipboard: 'reader-clipboard',
-  download: 'reader-download',
-  exportAnnotatedPdf: 'reader-export-annotated-pdf',
-  ocr: 'reader-ocr-trigger',
-  itemUpdate: 'reader-item-update',
-  note: 'reader-note-toast',
-  annotation: 'reader-annotation-toast',
-  conversion: 'reader-type-conversion',
-  retraction: 'reader-retraction-check',
-  batchAction: 'reader-batch-action',
-} as const;
 
 export function useReaderClipboard(resetDelay = 2000) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -78,9 +69,9 @@ export function useReaderClipboard(resetDelay = 2000) {
 
       try {
         const ok = await copyToClipboard(clean);
-        if (!ok) throw new Error('Could not copy to clipboard');
+        if (!ok) throw new Error('Copy failed');
 
-        const successMessage = label ? `Copied ${label} to clipboard` : 'Copied to clipboard';
+        const successMessage = label ? `Copied ${label}` : 'Copied';
         toast.success(successMessage, { id: READER_TOAST_IDS.clipboard });
 
         const activeKey = label || 'copied';
@@ -93,7 +84,7 @@ export function useReaderClipboard(resetDelay = 2000) {
 
         return true;
       } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : 'Could not copy to clipboard';
+        const errorMsg = err instanceof Error ? err.message : 'Copy failed';
         toast.error(errorMsg, { id: READER_TOAST_IDS.clipboard });
         return false;
       }
@@ -112,13 +103,12 @@ export function useReaderFileDownload() {
   const download = useCallback(
     (filename: string, content: string | null | undefined, mimeType = 'text/plain;charset=utf-8') => {
       if (!content || !content.trim()) {
-        toast.error('No content available to download', { id: READER_TOAST_IDS.download });
+        toast.error('Nothing to download', { id: READER_TOAST_IDS.download });
         return false;
       }
 
       try {
         triggerBrowserTextDownload(content, filename, mimeType);
-        toast.success(`Downloaded ${filename}`, { id: READER_TOAST_IDS.download });
         return true;
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : 'Download failed';
@@ -204,11 +194,50 @@ export function cleanupReaderResourcesForItems(
   }
 }
 
+export const READER_IDLE_RAM_EVICT_MS = 5 * 60 * 1000;
+
+let activeReaderMountCount = 0;
+let idleRamEvictTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelIdleRamEvictTimer(): void {
+  if (idleRamEvictTimer !== null) {
+    clearTimeout(idleRamEvictTimer);
+    idleRamEvictTimer = null;
+  }
+}
+
+/**
+ * Marks a Reader view as mounted and cancels any pending idle RAM eviction.
+ */
+export function markReaderMounted(): void {
+  activeReaderMountCount += 1;
+  cancelIdleRamEvictTimer();
+}
+
+/**
+ * Marks a Reader view as unmounted. When no Reader view remains mounted,
+ * schedules automatic revocation of in-memory ObjectURL blobs after 5 minutes
+ * (tab list in localStorage and OPFS/IndexedDB disk cache remain intact).
+ */
+export function markReaderUnmounted(): void {
+  activeReaderMountCount = Math.max(0, activeReaderMountCount - 1);
+  if (activeReaderMountCount === 0 && typeof window !== 'undefined') {
+    cancelIdleRamEvictTimer();
+    idleRamEvictTimer = setTimeout(() => {
+      idleRamEvictTimer = null;
+      if (activeReaderMountCount === 0) {
+        clearAllWarmReaderPools();
+      }
+    }, READER_IDLE_RAM_EVICT_MS);
+  }
+}
+
 /**
  * Revokes all in-memory ObjectURL blobs across `warmObjectUrlPool` and `warmViewerPool`
- * (e.g., on cross-tab logout or session expiration).
+ * (e.g., on cross-tab logout, session expiration, or extended Reader idle).
  */
 export function clearAllWarmReaderPools(): void {
+  cancelIdleRamEvictTimer();
   for (const entry of warmObjectUrlPool.getValuesMruOrder()) {
     try {
       URL.revokeObjectURL(entry.objectUrl);
@@ -420,6 +449,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const storeReadingId = useReaderStore((s) => s.readingPaperId);
   const closeReader = useReaderStore((s) => s.closeReader);
+  const setActiveTab = useReaderStore((s) => s.setActiveTab);
   const effectivePaperId = overridePaperId || params?.paperId || storeReadingId || '';
 
   const requestedAttachmentId = searchParams?.get('attachmentId') || undefined;
@@ -536,7 +566,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     spaceId: effectiveSpaceId,
     effectiveAttachmentId,
     paper,
-    setPendingNoteText,
     extractNotes,
   });
 
@@ -599,9 +628,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   }, [paper?.id]);
 
   const handleNavigateToAnnotation = useCallback(
-    (pageNumber: number, annotationId?: string, coords?: AnnotationRect) => {
+    (pageNumber: number, annotationId?: string, coords?: AnnotationRect, yRatio?: number) => {
       if (pageNumber >= 1) {
-        setTargetPage({ pageNumber, annotationId, coords, timestamp: Date.now() });
+        setTargetPage({ pageNumber, annotationId, coords, yRatio, timestamp: Date.now() });
       }
     },
     [],
@@ -667,7 +696,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     async (
       text: string,
       pageNum?: number,
-      colorHex: string = '#ffd400',
+      colorHex: string = DEFAULT_ANNOTATION_COLOR,
       rects?: AnnotationRect[],
       type: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area' | 'ink' = 'highlight',
       comment?: string,
@@ -703,13 +732,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           recordCreateAnnotation(created as ReaderAnnotation, effectiveAttachmentId);
         }
         return created;
-      } catch (err) {
-        if (!createAnnotation) {
-          toast.error('Failed to save annotation', {
-            description: getErrorMessage(err) || 'Could not save annotation. Please try again.',
-            id: 'reader-annotation-toast',
-          });
-        }
+      } catch {
+        // Error toast is handled centrally by createMutation.onError
       }
     },
     [effectiveAttachmentId, createAnnotation, recordCreateAnnotation],
@@ -720,9 +744,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       onBackOverride();
       return;
     }
-    closeReader();
-    router.push('/library');
-  }, [onBackOverride, closeReader, router]);
+    setActiveTab('library');
+    router.push(isProject && rawProjectId ? `/projects/${rawProjectId}/library` : '/library');
+  }, [onBackOverride, setActiveTab, router, isProject, rawProjectId]);
 
   const state = useMemo(
     () => ({

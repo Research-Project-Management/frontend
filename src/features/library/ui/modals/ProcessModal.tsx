@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Progress } from '@/shared/components/ui/progress';
-import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X, ShieldCheck } from 'lucide-react';
 import { deriveProcessModalPhase, deriveProcessModalDisplayMode, classifyProcessItemStage, type ProcessModalState } from '@/features/library/core/store/process-modal.store';
@@ -196,17 +195,9 @@ export default function ProcessModal({
         {/* Modal Header */}
         <div className="pb-3 flex items-start justify-between">
           <DialogHeader className="text-left">
-            <div className="flex items-center gap-2.5">
-              <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                Metadata Retrieval
-              </DialogTitle>
-              {isCompletedPhase && !state.error && (
-                <Badge variant="completed" className="text-11 gap-1 py-0.5">
-                  <CheckCircle2 className="size-3" />
-                  Completed
-                </Badge>
-              )}
-            </div>
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+              Metadata Retrieval
+            </DialogTitle>
             <DialogDescription className="sr-only">
               Metadata Retrieval Process
             </DialogDescription>

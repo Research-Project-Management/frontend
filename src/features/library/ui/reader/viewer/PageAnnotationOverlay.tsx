@@ -1,8 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StickyNote, Trash2, X, Loader2, Sparkles, MessageSquare, FileText } from 'lucide-react';
+import {
+  Check,
+  MoreHorizontal,
+  Plus,
+  StickyNote,
+  Tag,
+  Trash2,
+  Underline,
+  X,
+  Loader2,
+  MessageSquare,
+} from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
@@ -14,14 +32,26 @@ import type {
   ActiveHighlightTooltipState,
 } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
+import {
+  ANNOTATION_PALETTE_COLORS,
+  DEFAULT_ANNOTATION_COLOR,
+} from '@/features/library/domain/reader/reader';
 import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader/search-outline';
+import {
+  normalizePageRotation,
+  rotatePointFromCanonical,
+  rotateRectFromCanonical,
+  rotateRectToCanonical,
+  splitVerticalOverlaps,
+} from '@/features/library/domain/reader/annotation-geometry';
 
 export type { ActiveHighlightTooltipState };
 
 interface PageAnnotationOverlayProps {
   annotations: ReaderAnnotation[];
+  rotation?: number;
   pulsingAnnotationId: string | null;
+  activeAnnotationId?: string | null;
   activeTool?: ReaderAnnotationTool;
   isEraser?: boolean;
   onSelectAnnotation: (ann: ReaderAnnotation, el: HTMLElement) => void;
@@ -42,15 +72,19 @@ type ResizeHandleCorner = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
 export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
   annotations,
+  rotation = 0,
   pulsingAnnotationId,
+  activeAnnotationId,
   activeTool,
   isEraser: isEraserProp,
   onSelectAnnotation,
   onDeleteAnnotation,
   onUpdateAnnotation,
 }: PageAnnotationOverlayProps) {
+  const normRot = normalizePageRotation(rotation);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const [draggingRectState, setDraggingRectState] = useState<{
     annotationId: string;
     rectIdx: number;
@@ -72,10 +106,24 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
   if (!annotations || annotations.length === 0) return null;
 
   const isEraser = isEraserProp ?? activeTool === 'eraser';
+  const recordMouseDown = (e: React.MouseEvent<HTMLElement>) => {
+    mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+  };
   const handleAnnotationInteraction = (
     e: React.MouseEvent<HTMLElement>,
     ann: ReaderAnnotation,
   ) => {
+    if (!isEraser) {
+      const startPos = mouseDownPosRef.current;
+      mouseDownPosRef.current = null;
+      if (startPos && Math.hypot(e.clientX - startPos.x, e.clientY - startPos.y) > 4) {
+        return;
+      }
+      const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+      if (sel && !sel.isCollapsed && sel.toString().trim().length > 0) {
+        return;
+      }
+    }
     e.stopPropagation();
     if (isEraser && onDeleteAnnotation) {
       onDeleteAnnotation(ann);
@@ -182,8 +230,11 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
         };
       }
 
+      const canonicalRect = rotateRectToCanonical(latestRect, normRot);
       const existingRects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
-      const nextRects = existingRects.map((item, idx) => (idx === rectIdx ? latestRect : item));
+      const nextRects = existingRects.map((item, idx) =>
+        idx === rectIdx ? canonicalRect : item,
+      );
       void onUpdateAnnotation(ann.id, ann.version, { rects: nextRects });
     };
 
@@ -197,7 +248,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
     <div ref={overlayRef} className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
       {annotations.map((ann: ReaderAnnotation) => {
         const rects = (Array.isArray(ann.rects) ? ann.rects : []) as AnnotationRect[];
-        const colorHex = ann.color || '#ffd400';
+        const colorHex = ann.color || DEFAULT_ANNOTATION_COLOR;
         const isUnderline = ann.type === 'underline';
         const isStrike = ann.type === 'strike' || ann.type === 'strikethrough';
         const isRect = ann.type === 'rect' || ann.type === 'image' || ann.type === 'area';
@@ -208,7 +259,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
 
         // 0. Freehand Ink Annotation (SVG paths)
         if (isInk && rects.length > 0) {
-          return rects.map((r, rIdx) => {
+          return rects.map((rawRect, rIdx) => {
+            const r = rotateRectFromCanonical(rawRect, normRot);
             const paths = Array.isArray(r.paths) ? r.paths : [];
             const w = Math.max(0.01, r.width ?? (r.x2 ?? r.x1) - r.x1);
             const h = Math.max(0.01, r.height ?? (r.y2 ?? r.y1) - r.y1);
@@ -225,13 +277,20 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
               >
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
-                  {paths.length > 0 ? (
-                    paths.map((d, pIdx) => (
-                      <path key={pIdx} d={d} fill="none" stroke={colorHex} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                    ))
-                  ) : (
-                    <line x1="0" y1="0" x2="100" y2="100" stroke={colorHex} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
-                  )}
+                  <g transform={normRot !== 0 ? `rotate(${normRot} 50 50)` : undefined}>
+                    {paths.length > 0 ? (
+                      paths.map((d, pIdx) => {
+                        const isFilledOutline = d.trim().endsWith('Z');
+                        return isFilledOutline ? (
+                          <path key={pIdx} d={d} fill={colorHex} stroke="none" />
+                        ) : (
+                          <path key={pIdx} d={d} fill="none" stroke={colorHex} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                        );
+                      })
+                    ) : (
+                      <line x1="0" y1="0" x2="100" y2="100" stroke={colorHex} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+                    )}
+                  </g>
                 </svg>
               </div>
             );
@@ -241,6 +300,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
         // 1. Sticky Note Pin (Zotero 7 official)
         if (isNote && rects.length > 0) {
           const r = rects[0];
+          const pt = rotatePointFromCanonical({ x: r.x1, y: r.y1 }, normRot);
           return (
             <div
               key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id}
@@ -249,7 +309,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                 isPulsing && 'ring-2 ring-primary ring-offset-2',
               )}
-              style={{ left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`, transform: 'translate(-50%, -50%)' }}
+              style={{ left: `${pt.x * 100}%`, top: `${pt.y * 100}%`, transform: 'translate(-50%, -50%)' }}
               onClick={(e) => handleAnnotationInteraction(e, ann)}
               onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
             >
@@ -263,6 +323,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
         // 2. Floating Text Annotation
         if (isText && rects.length > 0) {
           const r = rects[0];
+          const pt = rotatePointFromCanonical({ x: r.x1, y: r.y1 }, normRot);
           return (
             <div
               key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id}
@@ -271,7 +332,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                 isPulsing && 'ring-2 ring-primary ring-offset-1',
               )}
-              style={{ left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`, borderColor: colorHex, color: colorHex }}
+              style={{ left: `${pt.x * 100}%`, top: `${pt.y * 100}%`, borderColor: colorHex, color: colorHex }}
               onClick={(e) => handleAnnotationInteraction(e, ann)}
               onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
             >
@@ -286,31 +347,25 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
         // 3. Highlight / Underline / Strike / Rect (Area) Overlays
         if (rects.length > 0) {
           const isHighlight = !isRect && !isUnderline && !isStrike;
-          const displayRects = rects.map((rawRect, rIdx) => {
-            const r = draggingRectState && draggingRectState.annotationId === ann.id && draggingRectState.rectIdx === rIdx ? draggingRectState.rect : rawRect;
-            return { ...r };
-          });
+          const displayRectsRaw = rects.map((rawRect, rIdx) =>
+            draggingRectState &&
+            draggingRectState.annotationId === ann.id &&
+            draggingRectState.rectIdx === rIdx
+              ? { ...draggingRectState.rect }
+              : rotateRectFromCanonical(rawRect, normRot),
+          );
 
-          // Normalize vertical overlap between adjacent line rects to avoid dark seams
-          if (isHighlight && displayRects.length > 1) {
-            displayRects.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-            for (let i = 0; i < displayRects.length - 1; i++) {
-              const curr = displayRects[i];
-              const next = displayRects[i + 1];
-              if (next.y1 < curr.y2 && next.y2 > curr.y2) {
-                const splitY = (curr.y2 + next.y1) / 2;
-                curr.y2 = splitY;
-                curr.height = Math.max(0.001, curr.y2 - curr.y1);
-                next.y1 = splitY;
-                next.height = Math.max(0.001, next.y2 - next.y1);
-              }
-            }
-          }
+          const displayRects = isHighlight
+            ? splitVerticalOverlaps(displayRectsRaw)
+            : displayRectsRaw;
 
           if (isHighlight) {
             return (
               <div key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id} className={cn('absolute inset-0 pointer-events-none', isPulsing && 'z-30')}>
-                <div className="absolute inset-0 pointer-events-none" style={{ mixBlendMode: 'multiply', opacity: 0.35 }}>
+                <div
+                  className="absolute inset-0 pointer-events-none transition-opacity duration-200"
+                  style={{ mixBlendMode: 'multiply', opacity: isPulsing ? 0.58 : 0.35 }}
+                >
                   {displayRects.map((r, rIdx) => (
                     <div
                       key={`bg-${ann.id}-${rIdx}`} className="absolute rounded-[1px]"
@@ -324,85 +379,110 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                   ))}
                 </div>
 
-                {displayRects.map((r, rIdx) => (
-                  <div
-                    key={`hit-${ann.id}-${rIdx}`}
-                    className={cn(
-                      'absolute pointer-events-auto group/rect',
-                      isEraser ? 'cursor-crosshair hover:bg-destructive/20' : 'cursor-pointer hover:bg-black/5',
-                      isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
-                    )}
-                    style={{
-                      left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
-                      width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
-                      height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
-                    }}
-                    onClick={(e) => handleAnnotationInteraction(e, ann)}
-                    onMouseEnter={(e) => {
-                      if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
-                      if (ann.comment?.trim()) {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const containerRect = overlayRef.current?.getBoundingClientRect();
-                        if (containerRect) {
-                          setHoveredCommentAnn({
-                            comment: ann.comment.trim(),
-                            x: rect.left - containerRect.left + rect.width / 2,
-                            y: rect.top - containerRect.top - 6,
-                          });
+                {displayRects.map((r, rIdx) => {
+                  const isActive = activeAnnotationId === ann.id;
+                  return (
+                    <div
+                      key={`hit-${ann.id}-${rIdx}`}
+                      className={cn(
+                        'absolute pointer-events-auto group/rect',
+                        isEraser ? 'cursor-crosshair hover:bg-destructive/20' : 'cursor-pointer',
+                        isActive && 'outline-1 outline-dashed outline-primary/80 z-20',
+                      )}
+                      style={{
+                        left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
+                        width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                        height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
+                      }}
+                      onMouseDown={recordMouseDown}
+                      onClick={(e) => handleAnnotationInteraction(e, ann)}
+                      onMouseEnter={(e) => {
+                        if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
+                        if (ann.comment?.trim()) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const containerRect = overlayRef.current?.getBoundingClientRect();
+                          if (containerRect) {
+                            setHoveredCommentAnn({
+                              comment: ann.comment.trim(),
+                              x: rect.left - containerRect.left + rect.width / 2,
+                              y: rect.top - containerRect.top - 6,
+                            });
+                          }
                         }
-                      }
-                    }}
-                    onMouseLeave={() => setHoveredCommentAnn(null)}
-                  >
-                    {ann.comment?.trim() && rIdx === 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100">
-                        <MessageSquare className="size-2 text-primary-foreground fill-current" />
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      }}
+                      onMouseLeave={() => setHoveredCommentAnn(null)}
+                    >
+                      {ann.comment?.trim() && rIdx === 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100">
+                          <MessageSquare className="size-2 text-primary-foreground fill-current" />
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           }
 
-          return displayRects.map((r, rIdx) => (
-            <div
-              key={`${ann.id}-${rIdx}`} id={rIdx === 0 ? `annotation-${ann.id}` : undefined} data-annotation-id={ann.id}
-              className={cn(
-                'absolute pointer-events-auto group/rect',
-                isEraser ? 'cursor-crosshair hover:opacity-40' : isRect && onUpdateAnnotation ? 'cursor-move' : 'cursor-pointer',
-                isRect && 'border-2 rounded-sm',
-                isUnderline && 'border-b-2 rounded-none',
-                isStrike && "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
-                isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
-              )}
-              style={{
-                left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
-                width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
-                height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
-                borderColor: isRect || isUnderline ? colorHex : undefined,
-                color: isStrike ? colorHex : undefined,
-                backgroundColor: isUnderline || isStrike ? 'transparent' : isRect ? `${colorHex}25` : colorHex,
-                opacity: isRect ? 0.95 : 1,
-              }}
-              onMouseDown={(e) => { if (isRect && !isEraser && onUpdateAnnotation) startRectDrag(e, ann, rIdx, r, 'move'); }}
-              onClick={(e) => handleAnnotationInteraction(e, ann)}
-              onMouseEnter={(e) => {
-                if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
-                if (ann.comment?.trim()) {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const containerRect = overlayRef.current?.getBoundingClientRect();
-                  if (containerRect) {
-                    setHoveredCommentAnn({
-                      comment: ann.comment.trim(),
-                      x: rect.left - containerRect.left + rect.width / 2,
-                      y: rect.top - containerRect.top - 6,
-                    });
-                  }
+          return displayRects.map((r, rIdx) => {
+            const passiveUnderline = isUnderline && !isEraser;
+            const handleHoverEnter = (e: React.MouseEvent<HTMLElement>) => {
+              if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
+              if (ann.comment?.trim()) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const containerRect = overlayRef.current?.getBoundingClientRect();
+                if (containerRect) {
+                  setHoveredCommentAnn({
+                    comment: ann.comment.trim(),
+                    x: rect.left - containerRect.left + rect.width / 2,
+                    y: rect.top - containerRect.top - 6,
+                  });
                 }
-              }}
-              onMouseLeave={() => setHoveredCommentAnn(null)}
-            >
+              }
+            };
+
+            return (
+              <div
+                key={`${ann.id}-${rIdx}`} id={rIdx === 0 ? `annotation-${ann.id}` : undefined} data-annotation-id={ann.id}
+                className={cn(
+                  'absolute group/rect',
+                  passiveUnderline
+                    ? 'pointer-events-none'
+                    : cn(
+                        'pointer-events-auto',
+                        isEraser ? 'cursor-crosshair hover:opacity-40' : isRect && onUpdateAnnotation ? 'cursor-move' : 'cursor-pointer',
+                      ),
+                  isRect && 'border-2 rounded-sm',
+                  isUnderline && 'border-b-2 rounded-none',
+                  isStrike && "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
+                  isPulsing && (isRect ? 'ring-1 ring-primary/60 z-30' : 'z-30'),
+                )}
+                style={{
+                  left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
+                  width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                  height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
+                  borderColor: isRect || isUnderline ? colorHex : undefined,
+                  color: isStrike ? colorHex : undefined,
+                  backgroundColor: isUnderline || isStrike ? (isPulsing ? `${colorHex}18` : 'transparent') : isRect ? `${colorHex}25` : colorHex,
+                  opacity: isRect ? 0.95 : 1,
+                }}
+                onMouseDown={passiveUnderline ? undefined : (e) => {
+                  if (isRect && !isEraser && onUpdateAnnotation) startRectDrag(e, ann, rIdx, r, 'move');
+                  else recordMouseDown(e);
+                }}
+                onClick={passiveUnderline ? undefined : (e) => handleAnnotationInteraction(e, ann)}
+                onMouseEnter={passiveUnderline ? undefined : handleHoverEnter}
+                onMouseLeave={passiveUnderline ? undefined : () => setHoveredCommentAnn(null)}
+              >
+                {passiveUnderline && (
+                  <span
+                    className="absolute left-0 right-0 -bottom-[2px] h-[6px] pointer-events-auto cursor-pointer"
+                    onMouseDown={recordMouseDown}
+                    onClick={(e) => handleAnnotationInteraction(e, ann)}
+                    onMouseEnter={handleHoverEnter}
+                    onMouseLeave={() => setHoveredCommentAnn(null)}
+                  />
+                )}
               {ann.comment?.trim() && rIdx === 0 && !isRect && (
                 <span className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100">
                   <MessageSquare className="size-2 text-primary-foreground fill-current" />
@@ -424,7 +504,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 </>
               )}
             </div>
-          ));
+            );
+          });
         }
 
         return null;
@@ -449,26 +530,124 @@ interface AnnotationQuickEditCardProps {
   onUpdateAnnotation?: (
     annotationId: string,
     expectedVersion: number | undefined,
-    dto: { color?: string; comment?: string; tags?: string[] },
+    dto: {
+      color?: string;
+      comment?: string;
+      tags?: string[];
+      type?: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area';
+    },
   ) => Promise<unknown>;
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
-  onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
+  onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
   onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onUpdateTooltip: React.Dispatch<React.SetStateAction<ActiveHighlightTooltipState | null>>;
   onClose: () => void;
 }
 
 export function AnnotationQuickEditCard({
-  tooltip, visiblePage, onUpdateAnnotation, onDeleteAnnotation, onAddToNote, onAskAi, onUpdateTooltip, onClose,
+  tooltip,
+  visiblePage,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
+  onAddToNote,
+  onAskAi,
+  onUpdateTooltip,
+  onClose,
 }: AnnotationQuickEditCardProps) {
   const [tooltipComment, setTooltipComment] = useState<string>(tooltip.comment || '');
-  const [tooltipTagsInput, setTooltipTagsInput] = useState<string>(() => (tooltip.ann.tags || []).map((t) => `#${t}`).join(' '));
-  const [isSavingComment, setIsSavingComment] = useState<boolean>(false);
+  const [tagsList, setTagsList] = useState<string[]>(() => tooltip.ann.tags || []);
+  const [isEditingComment, setIsEditingComment] = useState<boolean>(Boolean(tooltip.comment));
+  const [isTagsExpanded, setIsTagsExpanded] = useState<boolean>(Boolean(tooltip.ann.tags && tooltip.ann.tags.length > 0));
+  const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
+  const [newTagInput, setNewTagInput] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     setTooltipComment(tooltip.comment || '');
-    setTooltipTagsInput((tooltip.ann.tags || []).map((t) => `#${t}`).join(' '));
+    setTagsList(tooltip.ann.tags || []);
+    setIsEditingComment(Boolean(tooltip.comment));
+    setIsTagsExpanded(Boolean(tooltip.ann.tags && tooltip.ann.tags.length > 0));
   }, [tooltip.id, tooltip.comment, tooltip.ann.tags]);
+
+  const persistChanges = async (commentVal: string, tagsVal: string[]) => {
+    const targetAnn = tooltip.ann;
+    const trimmed = commentVal.trim();
+    const commentUnchanged = (targetAnn.comment || '') === trimmed;
+    const prevTags = targetAnn.tags || [];
+    const tagsUnchanged =
+      prevTags.length === tagsVal.length &&
+      prevTags.every((t, idx) => t === tagsVal[idx]);
+
+    if (commentUnchanged && tagsUnchanged) return;
+
+    setIsSaving(true);
+    try {
+      let nextVersion =
+        typeof targetAnn.version === 'number'
+          ? targetAnn.version + 1
+          : undefined;
+      if (onUpdateAnnotation) {
+        const updated = (await onUpdateAnnotation(
+          targetAnn.id,
+          targetAnn.version,
+          { comment: trimmed, tags: tagsVal },
+        )) as Partial<ReaderAnnotation> | undefined;
+        if (typeof updated?.version === 'number') nextVersion = updated.version;
+      }
+      onUpdateTooltip((prev) =>
+        prev
+          ? {
+              ...prev,
+              comment: trimmed,
+              ann: {
+                ...prev.ann,
+                comment: trimmed,
+                tags: tagsVal,
+                ...(nextVersion !== undefined ? { version: nextVersion } : {}),
+              },
+            }
+          : null,
+      );
+    } catch {
+      // Keep draft intact on transient error
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCardCommentSave = async () => {
+    await persistChanges(tooltipComment, tagsList);
+    if (!tooltipComment.trim()) {
+      setIsEditingComment(false);
+    }
+  };
+
+  const handleAddTag = async () => {
+    const cleaned = newTagInput.replace(/^#+/, '').trim();
+    if (!cleaned) {
+      setIsAddingTag(false);
+      return;
+    }
+    if (!tagsList.includes(cleaned)) {
+      const nextTags = [...tagsList, cleaned];
+      setTagsList(nextTags);
+      setNewTagInput('');
+      await persistChanges(tooltipComment, nextTags);
+    } else {
+      setNewTagInput('');
+    }
+    setIsAddingTag(false);
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    const nextTags = tagsList.filter((t) => t !== tagToRemove);
+    setTagsList(nextTags);
+    await persistChanges(tooltipComment, nextTags);
+    if (nextTags.length === 0) {
+      setIsTagsExpanded(false);
+    }
+  };
 
   const handleCardColorChange = async (colorHex: string) => {
     const targetAnn = tooltip.ann;
@@ -476,7 +655,11 @@ export function AnnotationQuickEditCard({
     onUpdateTooltip((prev) => (prev ? { ...prev, color: colorHex } : null));
     if (onUpdateAnnotation) {
       try {
-        const updated = (await onUpdateAnnotation(targetAnn.id, targetAnn.version, { color: colorHex })) as Partial<ReaderAnnotation> | undefined;
+        const updated = (await onUpdateAnnotation(
+          targetAnn.id,
+          targetAnn.version,
+          { color: colorHex },
+        )) as Partial<ReaderAnnotation> | undefined;
         const nextVersion =
           typeof updated?.version === 'number'
             ? updated.version
@@ -486,8 +669,13 @@ export function AnnotationQuickEditCard({
         onUpdateTooltip((prev) =>
           prev
             ? {
-                ...prev, color: colorHex,
-                ann: { ...prev.ann, color: colorHex, ...(nextVersion !== undefined ? { version: nextVersion } : {}) },
+                ...prev,
+                color: colorHex,
+                ann: {
+                  ...prev.ann,
+                  color: colorHex,
+                  ...(nextVersion !== undefined ? { version: nextVersion } : {}),
+                },
               }
             : null,
         );
@@ -497,208 +685,272 @@ export function AnnotationQuickEditCard({
     }
   };
 
-  const handleCardCommentSave = async () => {
+  const handleToggleAnnotationType = async () => {
     const targetAnn = tooltip.ann;
-    const trimmed = tooltipComment.trim();
-    const parsedTags = Array.from(
-      new Set(tooltipTagsInput.split(/[\s,;]+/).map((t) => t.replace(/^#+/, '').trim()).filter(Boolean)),
-    );
-    const prevTags = targetAnn.tags || [];
-    const commentUnchanged = (targetAnn.comment || '') === trimmed;
-    const tagsUnchanged = prevTags.length === parsedTags.length && prevTags.every((t, idx) => t === parsedTags[idx]);
-    if (commentUnchanged && tagsUnchanged) return;
-
-    setIsSavingComment(true);
-    try {
-      let nextVersion = typeof targetAnn.version === 'number' ? targetAnn.version + 1 : undefined;
-      if (onUpdateAnnotation) {
-        const updated = (await onUpdateAnnotation(targetAnn.id, targetAnn.version, {
-          comment: trimmed, tags: parsedTags,
-        })) as Partial<ReaderAnnotation> | undefined;
-        if (typeof updated?.version === 'number') nextVersion = updated.version;
-      }
+    const currentType = targetAnn.type || 'highlight';
+    const nextType: 'highlight' | 'underline' =
+      currentType === 'underline' ? 'highlight' : 'underline';
+    if (onUpdateAnnotation) {
+      await onUpdateAnnotation(targetAnn.id, targetAnn.version, {
+        type: nextType,
+      });
       onUpdateTooltip((prev) =>
         prev
           ? {
-              ...prev, comment: trimmed,
-              ann: { ...prev.ann, comment: trimmed, tags: parsedTags, ...(nextVersion !== undefined ? { version: nextVersion } : {}) },
+              ...prev,
+              ann: { ...prev.ann, type: nextType },
             }
           : null,
       );
-    } catch {
-      // Keep draft comment intact so user does not lose text on transient failure
-    } finally {
-      setIsSavingComment(false);
     }
   };
 
-  const typeLabel = (() => {
+  const handleAddToNoteAction = () => {
+    if (onAddToNote) {
+      const text = tooltip.quote || tooltipComment || tooltip.comment || '';
+      onAddToNote(text, pageNumber, tooltip.ann.id);
+    }
+  };
+
+  const typeBadgeLetter = (() => {
     const t = tooltip.ann.type || 'highlight';
-    if (t === 'note') return 'Sticky Note';
-    if (t === 'underline') return 'Underline';
-    if (t === 'strike' || t === 'strikethrough') return 'Strikethrough';
-    if (t === 'rect' || t === 'area' || t === 'image') return 'Area';
-    if (t === 'ink') return 'Freehand Ink';
-    if (t === 'text') return 'Text';
-    return 'Highlight';
+    if (t === 'underline') return 'U';
+    if (t === 'note') return 'N';
+    return 'A';
   })();
 
-  const pageNumber = tooltip.ann.pageNumber || (tooltip.ann.pageIndex !== undefined ? tooltip.ann.pageIndex + 1 : visiblePage);
+  const pageNumber =
+    tooltip.ann.pageNumber ||
+    (tooltip.ann.pageIndex !== undefined
+      ? tooltip.ann.pageIndex + 1
+      : visiblePage);
   const displayPageLabel = tooltip.ann.pageLabel?.trim() || String(pageNumber);
 
   return (
     <div
-      className="absolute z-50 rounded-md border border-border bg-background p-2.5 shadow-raised-200 text-12 select-none w-72 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
+      className="absolute z-50 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 text-12 select-none w-64 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
       style={{ top: `${tooltip.top}px`, left: `${tooltip.left}px` }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* 1. Header: Type Badge, Page, & Action Buttons */}
-      <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-1.5 mb-2">
-        <div className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: tooltip.color }} />
-          <span className="text-11 font-semibold text-foreground">{typeLabel}</span>
-          <span className="text-10 text-muted-foreground font-mono">p. {displayPageLabel}</span>
+      {/* 1. Header: [Type Icon] Page X  ... (Options Menu) */}
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            className="size-4 rounded-xs flex items-center justify-center text-[10px] font-bold border shrink-0 transition-colors"
+            style={{
+              color: tooltip.color,
+              borderColor: `${tooltip.color}90`,
+              backgroundColor: `${tooltip.color}15`,
+            }}
+          >
+            {typeBadgeLetter}
+          </span>
+          <span className="text-12 font-medium text-foreground truncate">
+            Page {displayPageLabel}
+          </span>
+          {isSaving && (
+            <Loader2 className="size-2.5 animate-spin text-muted-foreground ml-1" />
+          )}
         </div>
-        <div className="flex items-center gap-0.5">
-          {onAskAi && (tooltip.quote || tooltipComment || tooltip.comment) && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => { onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber); onClose(); }}
-                  className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="Ask AI"
+
+        {/* ... More Options Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              aria-label="More options"
+            >
+              <MoreHorizontal className="size-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 text-12 font-sans">
+            {onAddToNote && (
+              <>
+                <DropdownMenuItem
+                  onClick={handleAddToNoteAction}
+                  className="gap-2 cursor-pointer"
                 >
-                  <img src="/Chat.svg" alt="AI Assistant" className="size-3.5 rounded-full object-cover shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">Ask AI</TooltipContent>
-            </Tooltip>
-          )}
-          {onAddToNote && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => { onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id); onClose(); }}
-                  className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="Add to Note"
+                  <StickyNote className="size-3.5 text-foreground" />
+                  <span>Add to Note</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+
+            {/* Color Palette (8 Zotero Colors with Checkmark on Active) */}
+            {ANNOTATION_PALETTE_COLORS.map((c) => {
+              const isSelected =
+                (tooltip.color || DEFAULT_ANNOTATION_COLOR).toLowerCase() ===
+                c.hex.toLowerCase();
+              return (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => handleCardColorChange(c.hex)}
+                  className="flex items-center justify-between cursor-pointer py-1"
                 >
-                  <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">Add to Note</TooltipContent>
-            </Tooltip>
-          )}
-          {onDeleteAnnotation && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => { onDeleteAnnotation(tooltip.ann); onClose(); }}
-                  className="size-6 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  aria-label="Delete annotation"
-                >
-                  <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">Delete annotation</TooltipContent>
-            </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button" onClick={onClose} aria-label="Close"
-                className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="size-3.5 rounded-sm shrink-0 border border-black/15 dark:border-white/20"
+                      style={{ backgroundColor: c.hex }}
+                    />
+                    <span className="truncate">{c.label}</span>
+                  </div>
+                  {isSelected && (
+                    <Check className="size-3.5 text-foreground shrink-0" />
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+
+            <DropdownMenuSeparator />
+
+            {/* Convert between Highlight and Underline */}
+            {(tooltip.ann.type === 'highlight' ||
+              !tooltip.ann.type ||
+              tooltip.ann.type === 'underline') && (
+              <DropdownMenuItem
+                onClick={handleToggleAnnotationType}
+                className="gap-2 cursor-pointer"
               >
-                <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+                <Underline className="size-3.5 text-foreground" />
+                <span>
+                  {tooltip.ann.type === 'underline'
+                    ? 'Convert to Highlight'
+                    : 'Convert to Underline'}
+                </span>
+              </DropdownMenuItem>
+            )}
+
+            {onDeleteAnnotation && (
+              <DropdownMenuItem
+                onClick={() => {
+                  onDeleteAnnotation(tooltip.ann);
+                  onClose();
+                }}
+                className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Delete</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* 2. Comment Area */}
+      <div className="px-3 py-1">
+        {isEditingComment || tooltipComment ? (
+          <textarea
+            ref={commentTextareaRef}
+            rows={2}
+            placeholder="Add comment..."
+            value={tooltipComment}
+            onChange={(e) => setTooltipComment(e.target.value)}
+            onBlur={handleCardCommentSave}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleCardCommentSave();
+              }
+            }}
+            className="w-full text-12 p-1.5 rounded border border-border/80 bg-background text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditingComment(true);
+              setTimeout(() => commentTextareaRef.current?.focus(), 50);
+            }}
+            className="text-12 text-muted-foreground hover:text-foreground text-left py-1 cursor-pointer transition-colors block w-full"
+          >
+            Add comment
+          </button>
+        )}
+      </div>
+
+      {/* 3. Tags Area */}
+      <div className="px-3 pb-2.5 pt-1 border-t border-border-subtle/50 mt-1">
+        {!isTagsExpanded && tagsList.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setIsTagsExpanded(true);
+              setIsAddingTag(true);
+            }}
+            className="text-11 text-muted-foreground hover:text-foreground flex items-center gap-1.5 cursor-pointer transition-colors"
+          >
+            <span>Add tags...</span>
+          </button>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-11 text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Tag className="size-3 text-orange-500" />
+                <span>{tagsList.length} Tags</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddingTag(true)}
+                className="size-4.5 rounded hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Add tag"
+              >
+                <Plus className="size-3" />
               </button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6} className="text-11">Close</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
+            </div>
 
-      {/* 2. Standard 8-Color Annotation Palette Picker */}
-      <div className="flex items-center justify-between gap-1 pb-2 border-b border-border-subtle">
-        <span className="text-10 font-medium text-muted-foreground">Color:</span>
-        <div className="flex items-center gap-1">
-          {ANNOTATION_PALETTE_COLORS.map((c) => {
-            const isSelected = (tooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
-            return (
-              <Tooltip key={c.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={`Change to ${c.label}`}
-                    onClick={() => handleCardColorChange(c.hex)}
-                    className={cn(
-                      'size-3.5 rounded-full border border-border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden',
-                      isSelected && 'ring-2 ring-primary ring-offset-1',
-                    )}
-                    style={{ backgroundColor: c.hex }}
-                  />
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6} className="text-11">
-                  {c.label}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
-        </div>
-      </div>
+            {tagsList.length > 0 && (
+              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto">
+                {tagsList.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-10 bg-muted text-foreground border border-border/60"
+                  >
+                    <span>{tag}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(tag)}
+                      className="hover:text-destructive cursor-pointer"
+                    >
+                      <X className="size-2.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
 
-      {/* 3. Quote Block (if exists) */}
-      {tooltip.quote && (
-        <div className="my-2 px-2 py-1.5 rounded-sm bg-muted/60 border border-border-subtle flex items-start gap-1.5">
-          <span className="w-1 self-stretch rounded-full shrink-0 my-0.5" style={{ backgroundColor: tooltip.color }} />
-          <p className="text-11 leading-snug text-foreground italic select-text line-clamp-4">&ldquo;{tooltip.quote}&rdquo;</p>
-        </div>
-      )}
-
-      {/* 4. Editable Comment / Note Section */}
-      <div className="space-y-1 mt-2">
-        <div className="flex items-center justify-between text-10 text-muted-foreground font-medium">
-          <span>Comment</span>
-          {isSavingComment && (
-            <span className="text-primary flex items-center gap-0.5 text-10">
-              <Loader2 className="size-2.5 animate-spin" /> Saving...
-            </span>
-          )}
-        </div>
-        <textarea
-          rows={2}
-          placeholder="Add comment or thought..."
-          value={tooltipComment}
-          onChange={(e) => setTooltipComment(e.target.value)}
-          onBlur={handleCardCommentSave}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              handleCardCommentSave();
-            }
-          }}
-          className="w-full text-11 p-1.5 rounded border border-border bg-muted text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary font-sans leading-relaxed"
-        />
-      </div>
-
-      {/* 5. Editable Tags */}
-      <div className="space-y-1 mt-2 pt-1.5 border-t border-border-subtle">
-        <span className="text-10 text-muted-foreground font-medium block">Tags</span>
-        <input
-          type="text"
-          placeholder="Add #tags (space or comma separated)..."
-          value={tooltipTagsInput}
-          onChange={(e) => setTooltipTagsInput(e.target.value)}
-          onBlur={handleCardCommentSave}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleCardCommentSave();
-            }
-          }}
-          className="w-full text-11 px-1.5 py-1 rounded border border-border bg-muted text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-        />
+            {(isAddingTag || tagsList.length === 0) && (
+              <div className="flex items-center gap-1 pt-0.5">
+                <Tag className="size-3 text-muted-foreground shrink-0" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Tag name..."
+                  value={newTagInput}
+                  onChange={(e) => setNewTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    } else if (e.key === 'Escape') {
+                      setIsAddingTag(false);
+                      setNewTagInput('');
+                    }
+                  }}
+                  onBlur={() => {
+                    if (newTagInput.trim()) {
+                      handleAddTag();
+                    } else if (tagsList.length > 0) {
+                      setIsAddingTag(false);
+                    }
+                  }}
+                  className="flex-1 text-11 px-1.5 py-0.5 rounded border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

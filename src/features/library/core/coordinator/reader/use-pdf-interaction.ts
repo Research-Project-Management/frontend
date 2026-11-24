@@ -14,8 +14,16 @@ import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader/s
 import {
   calculatePointsBoundingBox,
   simplifyPointsRdp,
-  smoothPointsToSvgPath,
+  getFreehandStrokePath,
 } from '@/features/library/domain/reader/ink-canvas';
+import { DEFAULT_ANNOTATION_COLOR } from '@/features/library/domain/reader/reader';
+import {
+  extractSelectionSegmentsByPage,
+  normalizePdfSelectionText,
+  rotatePointToCanonical,
+  rotateRectToCanonical,
+  type SelectionPageSegment,
+} from '@/features/library/domain/reader/annotation-geometry';
 import { searchReaderAttachmentAnchors } from '@/features/library/sdk/queries/reader.queries';
 
 export { cropCanvasSelectionToDataUrl };
@@ -78,6 +86,7 @@ interface UsePdfViewerInteractionParams {
   activeTool: ReaderAnnotationTool;
   activeColor?: string;
   interactionMode: 'select' | 'hand';
+  rotation?: number;
   isSuspended?: boolean;
   onAnnotate?: (
     selectedText: string,
@@ -95,6 +104,7 @@ export function usePdfViewerInteraction({
   activeTool,
   activeColor,
   interactionMode,
+  rotation = 0,
   isSuspended = false,
   onAnnotate,
 }: UsePdfViewerInteractionParams) {
@@ -106,6 +116,7 @@ export function usePdfViewerInteraction({
   const [showFloatingMenu, setShowFloatingMenu] = useState<boolean>(false);
   const [selectedPageNum, setSelectedPageNum] = useState<number>(1);
   const [selectedRects, setSelectedRects] = useState<AnnotationRect[]>([]);
+  const [selectedPageSegments, setSelectedPageSegments] = useState<SelectionPageSegment[]>([]);
   const [activeHighlightTooltip, setActiveHighlightTooltip] =
     useState<ActiveHighlightTooltipState | null>(null);
 
@@ -254,8 +265,11 @@ export function usePdfViewerInteraction({
         setInkDrawing(null);
         if (pts.length >= 2) {
           const simplified = simplifyPointsRdp(pts, 0.0006);
-          const box = calculatePointsBoundingBox(simplified, 0.005);
-          const svgPath = smoothPointsToSvgPath(simplified, box);
+          const canonicalPts = simplified.map((pt) =>
+            rotatePointToCanonical(pt, rotation),
+          );
+          const box = calculatePointsBoundingBox(canonicalPts, 0.005);
+          const svgPath = getFreehandStrokePath(canonicalPts, box);
           const rect: AnnotationRect = {
             x1: box.x1,
             y1: box.y1,
@@ -265,7 +279,7 @@ export function usePdfViewerInteraction({
             height: box.height,
             paths: [svgPath],
           };
-          void onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'ink');
+          void onAnnotate?.('', pageNum, activeColor || DEFAULT_ANNOTATION_COLOR, [rect], 'ink');
         }
         return;
       }
@@ -296,20 +310,23 @@ export function usePdfViewerInteraction({
           height: normH,
         });
 
-        const rect: AnnotationRect = {
-          x1: normX1,
-          y1: normY1,
-          x2: normX1 + normW,
-          y2: normY1 + normH,
-          width: normW,
-          height: normH,
-          ...(imageDataUrl ? { imageDataUrl } : {}),
-        };
+        const rect = rotateRectToCanonical(
+          {
+            x1: normX1,
+            y1: normY1,
+            x2: normX1 + normW,
+            y2: normY1 + normH,
+            width: normW,
+            height: normH,
+            ...(imageDataUrl ? { imageDataUrl } : {}),
+          },
+          rotation,
+        );
 
-        void onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'rect');
+        void onAnnotate?.('', pageNum, activeColor || DEFAULT_ANNOTATION_COLOR, [rect], 'rect');
       }
     },
-    [activeColor, onAnnotate],
+    [activeColor, onAnnotate, rotation],
   );
 
   const handlePageClick = useCallback(
@@ -327,11 +344,12 @@ export function usePdfViewerInteraction({
         const rect = pageEl.getBoundingClientRect();
         const normX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         const normY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        const canonicalPt = rotatePointToCanonical({ x: normX, y: normY }, rotation);
         const noteRect: AnnotationRect = {
-          x1: normX,
-          y1: normY,
-          x2: Math.min(1, normX + 0.03),
-          y2: Math.min(1, normY + 0.03),
+          x1: canonicalPt.x,
+          y1: canonicalPt.y,
+          x2: Math.min(1, canonicalPt.x + 0.03),
+          y2: Math.min(1, canonicalPt.y + 0.03),
           width: 0.03,
           height: 0.03,
         };
@@ -340,7 +358,7 @@ export function usePdfViewerInteraction({
         const created = await onAnnotate?.(
           '',
           pageNum,
-          activeColor || '#ffd400',
+          activeColor || DEFAULT_ANNOTATION_COLOR,
           [noteRect],
           'note',
         );
@@ -366,7 +384,7 @@ export function usePdfViewerInteraction({
             id: ann.id,
             quote: ann.quoteText,
             comment: ann.comment || '',
-            color: ann.color || activeColor || '#ffd400',
+            color: ann.color || activeColor || DEFAULT_ANNOTATION_COLOR,
             top,
             left,
             ann,
@@ -374,7 +392,7 @@ export function usePdfViewerInteraction({
         }
       }
     },
-    [activeTool, activeColor, onAnnotate, scrollContainerRef],
+    [activeTool, activeColor, onAnnotate, rotation, scrollContainerRef],
   );
 
   const handleSaveInlineText = useCallback(() => {
@@ -384,17 +402,21 @@ export function usePdfViewerInteraction({
       return;
     }
     const text = currInput.text.trim();
+    const canonicalPt = rotatePointToCanonical(
+      { x: currInput.normX, y: currInput.normY },
+      rotation,
+    );
     const annotationRect: AnnotationRect = {
-      x1: currInput.normX,
-      y1: currInput.normY,
-      x2: Math.min(1, currInput.normX + 0.25),
-      y2: Math.min(1, currInput.normY + 0.04),
+      x1: canonicalPt.x,
+      y1: canonicalPt.y,
+      x2: Math.min(1, canonicalPt.x + 0.25),
+      y2: Math.min(1, canonicalPt.y + 0.04),
       width: 0.25,
       height: 0.04,
     };
-    onAnnotate?.(text, currInput.pageNum, activeColor || '#ffd400', [annotationRect], 'text');
+    onAnnotate?.(text, currInput.pageNum, activeColor || DEFAULT_ANNOTATION_COLOR, [annotationRect], 'text');
     setInlineTextInput(null);
-  }, [activeColor, onAnnotate]);
+  }, [activeColor, onAnnotate, rotation]);
 
   const openAnnotationCard = useCallback(
     (ann: ReaderAnnotation, el?: HTMLElement) => {
@@ -431,7 +453,7 @@ export function usePdfViewerInteraction({
         id: ann.id,
         quote: ann.quoteText,
         comment: ann.comment,
-        color: ann.color || '#ffd400',
+        color: ann.color || DEFAULT_ANNOTATION_COLOR,
         top,
         left,
         ann,
@@ -444,7 +466,7 @@ export function usePdfViewerInteraction({
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
-    const text = selection.toString().trim();
+    const text = normalizePdfSelectionText(selection.toString());
     const container = scrollContainerRef.current;
     if (!text || !container || !container.contains(selection.anchorNode)) return;
 
@@ -482,72 +504,31 @@ export function usePdfViewerInteraction({
       setMenuPosition({ top, left });
       setSelectedText(text);
 
-      const startNode = range.startContainer;
-      const startEl = (
-        startNode.nodeType === Node.ELEMENT_NODE
-          ? startNode
-          : startNode.parentElement
-      ) as HTMLElement | null;
-      const anchorNode = selection.anchorNode;
-      const anchorEl = (
-        anchorNode?.nodeType === Node.ELEMENT_NODE
-          ? anchorNode
-          : anchorNode?.parentElement
-      ) as HTMLElement | null;
-      const ancestorEl = (
-        range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
-          ? range.commonAncestorContainer
-          : range.commonAncestorContainer.parentElement
-      ) as HTMLElement | null;
-
-      const pageEl =
-        startEl?.closest('[data-page-num]') as HTMLElement | null ??
-        anchorEl?.closest('[data-page-num]') as HTMLElement | null ??
-        ancestorEl?.closest('[data-page-num]') as HTMLElement | null ??
-        container.querySelector(`[data-page-num="${visiblePage}"]`) as HTMLElement | null;
-
-      const pNum = pageEl ? Number(pageEl.dataset.pageNum) : visiblePage;
+      const segments = extractSelectionSegmentsByPage(
+        range,
+        container,
+        text,
+        visiblePage,
+        rotation,
+      );
+      const primarySegment = segments[0];
+      const pNum = primarySegment ? primarySegment.pageNum : visiblePage;
+      const relative = primarySegment ? primarySegment.rects : [];
+      setSelectedPageSegments(segments);
       setSelectedPageNum(pNum);
-
-      let relative: AnnotationRect[] = [];
-      if (pageEl) {
-        const pageRect = pageEl.getBoundingClientRect();
-        if (pageRect.width > 0 && pageRect.height > 0) {
-          const clientRects = Array.from(range.getClientRects()).filter(
-            (cr) => cr.width > 0.5 && cr.height > 0.5,
-          );
-          const rectsToUse =
-            clientRects.length > 0 ? clientRects : [range.getBoundingClientRect()];
-          relative = rectsToUse
-            .map((cr) => {
-              const x1 = Math.max(0, (cr.left - pageRect.left) / pageRect.width);
-              const y1 = Math.max(0, (cr.top - pageRect.top) / pageRect.height);
-              const width = Math.min(1 - x1, cr.width / pageRect.width);
-              const height = Math.min(1 - y1, cr.height / pageRect.height);
-              return { x1, y1, x2: x1 + width, y2: y1 + height, width, height };
-            })
-            .filter((r) => r.width > 0.001 && r.height > 0.001);
-
-          // Sort in reading order and eliminate vertical overlap between consecutive lines
-          relative.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
-          for (let i = 0; i < relative.length - 1; i++) {
-            const curr = relative[i];
-            const next = relative[i + 1];
-            if (next.y1 < curr.y2 && next.y2 > curr.y2) {
-              const splitY = Number(((curr.y2 + next.y1) / 2).toFixed(4));
-              curr.y2 = splitY;
-              curr.height = Number(Math.max(0.001, curr.y2 - curr.y1).toFixed(4));
-              next.y1 = splitY;
-              next.height = Number(Math.max(0.001, next.y2 - next.y1).toFixed(4));
-            }
-          }
-        }
-      }
       setSelectedRects(relative);
 
       if ((activeTool === 'highlight' || activeTool === 'underline') && onAnnotate) {
-        onAnnotate(text, pNum, activeColor || '#ffd400', relative, activeTool);
+        const colorToUse = activeColor || DEFAULT_ANNOTATION_COLOR;
+        const targets =
+          segments.length > 0
+            ? segments
+            : [{ pageNum: pNum, text, rects: relative }];
+        for (const seg of targets) {
+          void onAnnotate(seg.text, seg.pageNum, colorToUse, seg.rects, activeTool);
+        }
         setShowFloatingMenu(false);
+        setSelectedPageSegments([]);
         window.getSelection()?.removeAllRanges();
         return;
       }
@@ -556,7 +537,7 @@ export function usePdfViewerInteraction({
     } catch {
       setShowFloatingMenu(false);
     }
-  }, [scrollContainerRef, visiblePage, activeTool, activeColor, onAnnotate]);
+  }, [scrollContainerRef, visiblePage, activeTool, activeColor, rotation, onAnnotate]);
 
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0, scrollLeft: 0, scrollTop: 0 });
@@ -623,6 +604,7 @@ export function usePdfViewerInteraction({
     setShowFloatingMenu,
     selectedPageNum,
     selectedRects,
+    selectedPageSegments,
     activeHighlightTooltip,
     setActiveHighlightTooltip,
     inlineTextInput,

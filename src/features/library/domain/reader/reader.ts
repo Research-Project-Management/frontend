@@ -52,8 +52,10 @@ export {
   type PdfOutlineNode,
 };
 
+export const DEFAULT_ANNOTATION_COLOR = '#ffd400';
+
 const ANNOTATION_COLORS = {
-  yellow: { id: 'yellow', name: 'Yellow', semanticLabel: 'General / Important', bg: 'rgba(255, 212, 0, 0.35)', border: '#ffd400' },
+  yellow: { id: 'yellow', name: 'Yellow', semanticLabel: 'General / Important', bg: 'rgba(255, 212, 0, 0.35)', border: DEFAULT_ANNOTATION_COLOR },
   red: { id: 'red', name: 'Red', semanticLabel: 'Disagreement / Critical Error', bg: 'rgba(255, 102, 102, 0.35)', border: '#ff6666' },
   green: { id: 'green', name: 'Green', semanticLabel: 'Methodology / Supporting Evidence', bg: 'rgba(95, 178, 54, 0.35)', border: '#5fb236' },
   blue: { id: 'blue', name: 'Blue', semanticLabel: 'Definition / Background', bg: 'rgba(46, 168, 229, 0.35)', border: '#2ea8e5' },
@@ -317,7 +319,7 @@ export const PdfAnnotationEngine = {
       }
 
       if (rawColors.length > 0) {
-        const itemColor = (a.color || '#ffd400').toLowerCase();
+        const itemColor = (a.color || DEFAULT_ANNOTATION_COLOR).toLowerCase();
         const itemColorId = this.resolveColorId(itemColor);
         const matchesColor = rawColorSet.has(itemColor) || resolvedColorIds.has(itemColorId);
         if (!matchesColor) return false;

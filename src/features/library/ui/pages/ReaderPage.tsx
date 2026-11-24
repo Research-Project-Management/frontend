@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import {
   useReader, useExportAnnotatedPdf, evictWarmObjectUrl, prefetchReaderDocumentBlob,
+  markReaderMounted, markReaderUnmounted,
 } from "@/features/library/core/coordinator/reader/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
@@ -32,8 +33,8 @@ const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar
 const BibtexModal = dynamic(() => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog), { ssr: false });
 const AiCompanionSidebar = dynamic(() => import("@/features/ai").then((m) => m.CompanionDrawer), { ssr: false, loading: () => null });
 
-const Viewer = dynamic<import("@/features/library/ui/reader/viewer/Viewer").ViewerProps>(
-  () => import("@/features/library/ui/reader/viewer/Viewer"),
+const Viewer = dynamic<import("@/features/library/ui/reader/viewer/PdfViewer").ViewerProps>(
+  () => import("@/features/library/ui/reader/viewer/PdfViewer"),
   {
     ssr: false,
     loading: () => (
@@ -102,14 +103,15 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   // Multi-Tab Store
   const {
     tabs, activeTabId, openReader, closeTab, closeOtherTabs, reorderTabs, setActiveTab, updateTabState,
-    activeColor, setActiveColor, activeTool, setActiveTool, bookmarks, toggleBookmark,
+    activeColor, setActiveColor, activeTool, setActiveTool,
+    pendingCitationNav, clearCitationNavigate,
   } = useReaderStore(
     useShallow((s) => ({
       tabs: s.tabs, activeTabId: s.activeTabId, openReader: s.openReader,
       closeTab: s.closeTab, closeOtherTabs: s.closeOtherTabs, reorderTabs: s.reorderTabs, setActiveTab: s.setActiveTab, updateTabState: s.updateTabState,
       activeColor: s.activeColor, setActiveColor: s.setActiveColor,
       activeTool: s.activeTool, setActiveTool: s.setActiveTool,
-      bookmarks: s.bookmarks, toggleBookmark: s.toggleBookmark,
+      pendingCitationNav: s.pendingCitationNav, clearCitationNavigate: s.clearCitationNavigate,
     })),
   );
 
@@ -118,6 +120,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   // Tri-State Tab Memory Pool (Zotero 5-tab baseline, dynamically scaled 3..8 by device RAM)
   const [standbyViewers, setStandbyViewers] = useState<WarmViewerPoolItem[]>(() => warmViewerPool.getValuesMruOrder());
+
+  useEffect(() => {
+    markReaderMounted();
+    return () => {
+      markReaderUnmounted();
+    };
+  }, []);
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === "library") return;
@@ -341,16 +350,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setFallbackSecondaryPage(activeTab?.secondaryPage ?? 1);
   }, [paper?.id, effectiveAttachmentId]);
 
-  const currentPaperBookmarks = useMemo(() => (paper?.id ? bookmarks[paper.id] ?? [] : []), [paper?.id, bookmarks]);
-
-  const handleToggleBookmarkPage = useCallback(
-    (page: number) => {
-      if (!paper?.id || page < 1) return;
-      toggleBookmark(paper.id, page);
-    },
-    [paper?.id, toggleBookmark],
-  );
-
   const handleToggleReadingMode = useCallback(() => setIsReadingMode((v) => !v), []);
 
   const handleOpenInSplitView = useCallback(
@@ -385,6 +384,22 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const { pageHistory, forwardHistory, handleNavigateToPageWithHistory, handleNavigateBack, handleNavigateForward } = useReaderTabHistory({
     effectiveTabId, visiblePage, onNavigateToPage: handleNavigateToPage, onNavigateToAnnotation: actions.handleNavigateToAnnotation,
   });
+
+  useEffect(() => {
+    if (!pendingCitationNav) return;
+    if (paper?.id === pendingCitationNav.paperId) {
+      handleNavigateToPageWithHistory(pendingCitationNav.pageNumber);
+      clearCitationNavigate();
+      return;
+    }
+    const routeTargetId = paperId || (effectiveTabId !== "library" ? effectiveTabId : undefined);
+    if (routeTargetId !== pendingCitationNav.paperId) {
+      router.push(getPaperUrl(pendingCitationNav.paperId));
+    }
+  }, [
+    pendingCitationNav, paper?.id, paperId, effectiveTabId,
+    handleNavigateToPageWithHistory, clearCitationNavigate, router, getPaperUrl,
+  ]);
 
   const handleSelectNextTab = useCallback(() => {
     if (tabs.length <= 1) return;
@@ -550,7 +565,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError,
       onRetry: actions.handleRetryPdf,
       attachmentId: effectiveAttachmentId || undefined, spaceId,
-      onAddToNote: handleAddToNoteAndExitReadingMode, onAskAi: handleAskAiWithSelection,
+      onAskAi: handleAskAiWithSelection,
+      onAddToNote: handleAddToNoteAndExitReadingMode,
       onAnnotate: handleAnnotateWithLock, annotations,
       onDeleteAnnotation: handleDeleteAnnotationProp, onUpdateAnnotation: handleUpdateAnnotationProp,
       fulltext, paper: paper || undefined, zoom, onZoomChange: handleSetCustomZoom,
@@ -560,7 +576,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }),
     [
       pdfBlobUrl, pdfLoading, pdfError, actions.handleRetryPdf, effectiveAttachmentId, spaceId,
-      handleAddToNoteAndExitReadingMode, handleAskAiWithSelection,
+      handleAskAiWithSelection, handleAddToNoteAndExitReadingMode,
       handleAnnotateWithLock, annotations, handleDeleteAnnotationProp, handleUpdateAnnotationProp,
       fulltext, paper, zoom, handleSetCustomZoom, setFitMode, rotation, themeMode, interactionMode,
       activeColor, activeTool, setActiveColor, setActiveTool,
@@ -647,8 +663,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             isOpen={isSidebarOpen} onClose={handleCloseSidebar} onToggleOpen={handleToggleSidebar}
             currentPage={visiblePage} totalPages={numPages} onJumpToPage={handleNavigateToPageWithHistory}
             fulltext={fulltext} paper={paper} spaceId={spaceId} attachmentId={effectiveAttachmentId}
-            pdfBlobUrl={pdfBlobUrl} pdfDocument={sharedPdfDocument} bookmarkedPages={currentPaperBookmarks}
-            onToggleBookmarkPage={paper?.id ? handleToggleBookmarkPage : undefined}
+            pdfBlobUrl={pdfBlobUrl} pdfDocument={sharedPdfDocument}
             selectedIds={selectedAnnotationIds} onSelectIds={setSelectedAnnotationIds}
             onToggleSelect={handleToggleSelectAnnotation} onBatchChangeColor={handleBatchChangeColor}
             onBatchDelete={handleBatchDelete} onBatchAddToNote={handleBatchAddToNote}

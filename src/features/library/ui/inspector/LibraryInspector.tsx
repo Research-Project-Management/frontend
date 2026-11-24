@@ -403,39 +403,57 @@ function LibraryInspectorContent({
                     count={noteCount}
                     isExpanded={expandedSections.notes}
                     onToggleExpand={() => toggleSection('notes')}
-                    onAdd={() => {
-                      setExpandedSections((prev) => ({ ...prev, notes: true }));
-                      setIsAddingNote(true);
-                    }}
+                    onAdd={
+                      isReader
+                        ? undefined
+                        : () => {
+                            setExpandedSections((prev) => ({ ...prev, notes: true }));
+                            setIsAddingNote(true);
+                          }
+                    }
                     actionSlot={
                       isReader && effectiveCanEdit ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setExpandedSections((prev) => ({ ...prev, notes: true }));
-                                void extractNotesState.extract?.();
-                              }}
-                              disabled={extractNotesState.isExtracting}
-                              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden disabled:opacity-50"
-                              aria-label="Extract from PDF highlights"
+                              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+                              aria-label="Add note"
                             >
                               {extractNotesState.isExtracting ? (
                                 <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
                               ) : (
-                                <FileText
+                                <Plus
                                   className="size-3.5 text-foreground shrink-0"
                                   strokeWidth={1.5}
                                 />
                               )}
                             </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            From PDF Highlights
-                          </TooltipContent>
-                        </Tooltip>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-60 text-12">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setExpandedSections((prev) => ({ ...prev, notes: true }));
+                                setIsAddingNote(true);
+                              }}
+                              className="cursor-pointer gap-2"
+                            >
+                              <Plus className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span>Add Item Note</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={extractNotesState.isExtracting}
+                              onClick={() => {
+                                setExpandedSections((prev) => ({ ...prev, notes: true }));
+                                void extractNotesState.extract?.();
+                              }}
+                              className="cursor-pointer gap-2"
+                            >
+                              <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                              <span>Add Item Note from Annotations</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       ) : undefined
                     }
                     contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-0.5"

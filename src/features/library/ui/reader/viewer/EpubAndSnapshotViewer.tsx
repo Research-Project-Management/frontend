@@ -20,7 +20,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { useReaderDocumentBlobLoader } from '@/features/library/core/coordinator/reader/use-reader';
-import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader/reader';
+import {
+  ANNOTATION_PALETTE_COLORS,
+  DEFAULT_ANNOTATION_COLOR,
+} from '@/features/library/domain/reader/reader';
 import type {
   ReaderNavigationTarget,
   ReaderAnnotation,
@@ -33,7 +36,7 @@ import {
   unpackEpubArchiveChapters,
   highlightReaderHtml,
   type EpubChapter,
-} from './ViewerPageCanvas';
+} from '@/features/library/domain/reader/epub-html';
 
 export type { EpubChapter };
 
@@ -86,7 +89,7 @@ export function EpubAndSnapshotViewer({
   sourceUrl,
   themeMode = 'normal',
   zoom = 1.0,
-  activeColor = '#ffd400',
+  activeColor = DEFAULT_ANNOTATION_COLOR,
   onSelectColor,
   annotations = [],
   onOutlineLoad,
@@ -266,7 +269,7 @@ export function EpubAndSnapshotViewer({
 
       setActiveHighlightTooltip({
         id: matchedAnn.id,
-        color: matchedAnn.color || '#ffd400',
+        color: matchedAnn.color || DEFAULT_ANNOTATION_COLOR,
         comment: matchedAnn.comment || '',
         quote: matchedAnn.quoteText || matchedAnn.text || markEl.textContent || '',
         top,
@@ -591,7 +594,6 @@ export function EpubAndSnapshotViewer({
               visiblePage={currentPageNum}
               onUpdateAnnotation={onUpdateAnnotation}
               onDeleteAnnotation={onDeleteAnnotation}
-              onAddToNote={onAddToNote}
               onAskAi={onAskAi}
               onUpdateTooltip={setActiveHighlightTooltip}
               onClose={() => setActiveHighlightTooltip(null)}

@@ -11,7 +11,7 @@ vi.mock('@/features/library/core/coordinator/reader/use-reader', () => ({
   useReaderDocumentBlobLoader: () => mockLoadDocumentBlob,
 }));
 
-vi.mock('@/features/library/ui/reader/viewer/ViewerPageCanvas', () => ({
+vi.mock('@/features/library/domain/reader/epub-html', () => ({
   sanitizeReaderHtml: (html: string) => html,
   unpackEpubArchiveChapters: vi.fn().mockResolvedValue([
     { id: 'ch1', title: 'Chapter 1: Introduction', htmlContent: '<p>This is Chapter 1 content.</p>' },

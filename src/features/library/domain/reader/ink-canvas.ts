@@ -7,6 +7,8 @@
  * for stylus, mouse, and touch drawing in the academic PDF reader.
  */
 
+import { getStroke } from 'perfect-freehand';
+
 export interface NormalizedPoint {
   x: number; // 0.0 to 1.0 relative to page width
   y: number; // 0.0 to 1.0 relative to page height
@@ -190,4 +192,46 @@ export function smoothPointsToSvgPath(
   d += ` L ${last.x} ${last.y}`;
 
   return d;
+}
+
+/**
+ * Converts normalized points into a closed, pressure/velocity-smoothed SVG outline path
+ * using `perfect-freehand` in [0, 100] viewBox coordinates.
+ */
+export function getFreehandStrokePath(
+  points: readonly NormalizedPoint[],
+  relativeBox?: { x1: number; y1: number; width: number; height: number },
+  size = 1.6,
+): string {
+  if (points.length === 0) return '';
+
+  const w = relativeBox ? Math.max(0.001, relativeBox.width) : 1;
+  const h = relativeBox ? Math.max(0.001, relativeBox.height) : 1;
+  const ox = relativeBox ? relativeBox.x1 : 0;
+  const oy = relativeBox ? relativeBox.y1 : 0;
+
+  const scaled: Array<[number, number]> = points.map((p) => [
+    ((p.x - ox) / w) * 100,
+    ((p.y - oy) / h) * 100,
+  ]);
+
+  const outline = getStroke(scaled, {
+    size,
+    thinning: 0.45,
+    smoothing: 0.55,
+    streamline: 0.5,
+    simulatePressure: true,
+    last: true,
+  });
+
+  if (outline.length === 0) return '';
+
+  const average = (a: number, b: number) => ((a + b) / 2).toFixed(2);
+  let d = `M ${outline[0][0].toFixed(2)} ${outline[0][1].toFixed(2)} Q `;
+  for (let i = 0; i < outline.length; i++) {
+    const [x0, y0] = outline[i];
+    const [x1, y1] = outline[(i + 1) % outline.length];
+    d += `${x0.toFixed(2)},${y0.toFixed(2)} ${average(x0, x1)},${average(y0, y1)} `;
+  }
+  return `${d}Z`;
 }

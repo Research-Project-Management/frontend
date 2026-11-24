@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Bookmark, Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight, RotateCw, RotateCcw } from 'lucide-react';
+import { Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight, RotateCw, RotateCcw } from 'lucide-react';
 import { setupPdfWorker, getSharedPdfDocumentOptions, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -24,21 +24,17 @@ const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   pageNum,
   isCurrent,
-  isBookmarked = false,
   showPdfCanvas = true,
   pdfDocument,
   onJumpToPage,
-  onToggleBookmarkPage,
   onRotatePageRight,
   onRotatePageLeft,
 }: {
   pageNum: number;
   isCurrent: boolean;
-  isBookmarked?: boolean;
   showPdfCanvas?: boolean;
   pdfDocument?: unknown;
   onJumpToPage: (page: number) => void;
-  onToggleBookmarkPage?: (page: number) => void;
   onRotatePageRight?: (page: number) => void;
   onRotatePageLeft?: (page: number) => void;
 }) {
@@ -53,34 +49,6 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
               : "border-border hover:border-border/80 bg-card",
           )}
         >
-          {onToggleBookmarkPage && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleBookmarkPage(pageNum);
-              }}
-              aria-label={
-                isBookmarked
-                  ? `Remove bookmark on page ${pageNum}`
-                  : `Bookmark page ${pageNum}`
-              }
-              className={cn(
-                "absolute top-1.5 right-1.5 z-10 size-5 rounded-sm flex items-center justify-center transition-opacity cursor-pointer",
-                isBookmarked
-                  ? "opacity-100 bg-background/90 text-foreground"
-                  : "opacity-0 group-hover:opacity-100 bg-background/80 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Bookmark
-                className={cn(
-                  "size-3 shrink-0",
-                  isBookmarked && "fill-foreground text-foreground",
-                )}
-                strokeWidth={1.5}
-              />
-            </button>
-          )}
           <button
             type="button"
             onClick={() => onJumpToPage(pageNum)}
@@ -139,18 +107,6 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
             <span>Rotate Page Left</span>
           </ContextMenuItem>
         )}
-        {onToggleBookmarkPage && (
-          <>
-            <ContextMenuSeparator />
-            <ContextMenuItem
-              onClick={() => onToggleBookmarkPage(pageNum)}
-              className="cursor-pointer gap-2"
-            >
-              <Bookmark className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>{isBookmarked ? 'Remove Bookmark' : 'Bookmark Page'}</span>
-            </ContextMenuItem>
-          </>
-        )}
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -160,13 +116,10 @@ export interface ThumbnailsViewProps {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   totalPages: number;
   currentPage: number;
-  bookmarkedPages: number[];
-  showBookmarkedPagesOnly: boolean;
   isEnabled: boolean;
   pdfDocument?: unknown;
   pdfBlobUrl?: string | null;
   onJumpToPage: (page: number) => void;
-  onToggleBookmarkPage?: (page: number) => void;
   onRotatePageRight?: (page: number) => void;
   onRotatePageLeft?: (page: number) => void;
 }
@@ -175,13 +128,10 @@ export function ThumbnailsView({
   scrollContainerRef,
   totalPages,
   currentPage,
-  bookmarkedPages,
-  showBookmarkedPagesOnly,
   isEnabled,
   pdfDocument,
   pdfBlobUrl,
   onJumpToPage,
-  onToggleBookmarkPage,
   onRotatePageRight,
   onRotatePageLeft,
 }: ThumbnailsViewProps) {
@@ -203,21 +153,11 @@ export function ThumbnailsView({
     };
   }, [pdfBlobUrl]);
 
-  const bookmarkedPagesSet = useMemo(
-    () => new Set(bookmarkedPages),
-    [bookmarkedPages],
-  );
-
-  const filteredPageNumbers = useMemo(() => {
-    if (showBookmarkedPagesOnly) {
-      return [...bookmarkedPages]
-        .filter((p) => p >= 1 && p <= totalPages)
-        .sort((a, b) => a - b);
-    }
+  const pageNumbers = useMemo(() => {
     return Array.from({ length: Math.max(0, totalPages) }, (_, i) => i + 1);
-  }, [showBookmarkedPagesOnly, bookmarkedPages, totalPages]);
+  }, [totalPages]);
 
-  const numRows = Math.ceil(filteredPageNumbers.length / 2);
+  const numRows = Math.ceil(pageNumbers.length / 2);
   const thumbVirtualizer = useVirtualizer({
     count: numRows,
     getScrollElement: () => scrollContainerRef.current,
@@ -255,25 +195,14 @@ export function ThumbnailsView({
     );
   }
 
-  if (showBookmarkedPagesOnly && filteredPageNumbers.length === 0) {
-    return (
-      <PlaneEmptyState
-        variant="document"
-        title="No bookmarked pages"
-        description="Bookmark pages from the toolbar or thumbnail cards to quickly jump back to them."
-        isCompact
-      />
-    );
-  }
-
   const gridElement = (
     <div
       className="relative w-full p-1"
       style={{ height: `${thumbVirtualizer.getTotalSize()}px` }}
     >
       {thumbVirtualizer.getVirtualItems().map((virtualRow) => {
-        const p1 = filteredPageNumbers[virtualRow.index * 2];
-        const p2 = filteredPageNumbers[virtualRow.index * 2 + 1] ?? null;
+        const p1 = pageNumbers[virtualRow.index * 2];
+        const p2 = pageNumbers[virtualRow.index * 2 + 1] ?? null;
         if (p1 === undefined) return null;
         return (
           <div
@@ -288,11 +217,9 @@ export function ThumbnailsView({
             <LazyThumbnailPage
               pageNum={p1}
               isCurrent={p1 === currentPage}
-              isBookmarked={bookmarkedPagesSet.has(p1)}
               showPdfCanvas={showPdfCanvas}
               pdfDocument={effectivePdfDoc}
               onJumpToPage={onJumpToPage}
-              onToggleBookmarkPage={onToggleBookmarkPage}
               onRotatePageRight={onRotatePageRight}
               onRotatePageLeft={onRotatePageLeft}
             />
@@ -300,11 +227,9 @@ export function ThumbnailsView({
               <LazyThumbnailPage
                 pageNum={p2}
                 isCurrent={p2 === currentPage}
-                isBookmarked={bookmarkedPagesSet.has(p2)}
                 showPdfCanvas={showPdfCanvas}
                 pdfDocument={effectivePdfDoc}
                 onJumpToPage={onJumpToPage}
-                onToggleBookmarkPage={onToggleBookmarkPage}
                 onRotatePageRight={onRotatePageRight}
                 onRotatePageLeft={onRotatePageLeft}
               />
@@ -502,24 +427,12 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
       <button
         type="button"
         onClick={() => onSelect(section)}
-        className="flex-1 min-w-0 flex items-center justify-between gap-1.5 text-left cursor-pointer outline-none py-0.5"
+        className="flex-1 min-w-0 flex items-center text-left cursor-pointer outline-none py-0.5"
       >
         <span className="truncate flex-1">
           {section.num ? `${section.num} ` : ""}
           {section.title}
         </span>
-        {section.page && (
-          <span
-            className={cn(
-              "text-11 font-mono tabular-nums shrink-0 ml-1",
-              isCurrent
-                ? "text-foreground font-medium"
-                : "text-muted-foreground group-hover:text-foreground",
-            )}
-          >
-            {section.page}
-          </span>
-        )}
       </button>
     </div>
   );
@@ -544,9 +457,10 @@ export function OutlineTreeView({
 }: OutlineTreeViewProps) {
   if (filteredSections.length > 0) {
     const isSearchingOutline = Boolean(outlineFilter.trim());
-    const showChevronSlot = !isSearchingOutline && filteredSections.some((s) => s.hasChildren);
+    const showChevronSlot =
+      !isSearchingOutline && filteredSections.some((s) => s.hasChildren);
     return (
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 p-1">
         {filteredSections.map((s, idx) => (
           <OutlineNodeItem
             key={s.id || idx}

@@ -1,27 +1,23 @@
 import { create } from 'zustand';
+import { DEFAULT_ANNOTATION_COLOR } from '@/features/library/domain/reader/reader';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import {
   loadReaderStorageState,
   saveReaderTabsToStorage,
-  saveReaderBookmarksToStorage,
   READER_TABS_STORAGE_KEY,
-  READER_BOOKMARKS_STORAGE_KEY,
 } from '../adapters/project-context.adapter';
 import {
   normalizeReaderZoom,
   normalizeReaderTab,
   resolveNextActiveTabOnClose,
   enforceMaxReaderTabs,
-  enforceMaxBookmarkedItems,
   MAX_READER_TABS,
-  MAX_BOOKMARKED_ITEMS,
 } from '@/features/library/domain/reader/tab-pool';
 import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/types/reader.types';
 
 export {
   normalizeReaderZoom,
   MAX_READER_TABS,
-  MAX_BOOKMARKED_ITEMS,
 };
 export type { ReaderFitMode, ReaderTab, ReaderTheme };
 
@@ -35,13 +31,19 @@ export type ReaderAnnotationTool =
   | 'ink'
   | 'eraser';
 
+export interface PendingCitationNav {
+  paperId: string;
+  pageNumber: number;
+  timestamp: number;
+}
+
 interface ReaderStoreState {
   tabs: ReaderTab[];
   activeTabId: string;
   readingPaperId: string | null;
   activeColor: string;
   activeTool: ReaderAnnotationTool;
-  bookmarks: Record<string, number[]>;
+  pendingCitationNav: PendingCitationNav | null;
   openReader: (paperId: string, title?: string, projectId?: string | null) => void;
   closeReader: (paperId?: string) => void;
   openTab: (tab: ReaderTab) => void;
@@ -51,6 +53,8 @@ interface ReaderStoreState {
   setActiveTab: (id: string) => void;
   setActiveColor: (color: string) => void;
   setActiveTool: (tool: ReaderAnnotationTool) => void;
+  requestCitationNavigate: (paperId: string, pageNumber: number) => void;
+  clearCitationNavigate: () => void;
   updateTabState: (
     paperId: string,
     patch: Partial<
@@ -73,20 +77,17 @@ interface ReaderStoreState {
       >
     >,
   ) => void;
-  toggleBookmark: (paperId: string, pageNumber: number) => boolean;
-  setBookmarks: (paperId: string, pages: number[]) => void;
 }
 
-const EMPTY_BOOKMARKS: number[] = [];
 const initial = loadReaderStorageState();
 
 export const useReaderStore = create<ReaderStoreState>((set, get) => ({
   tabs: initial.tabs,
   activeTabId: initial.activeTabId,
   readingPaperId: initial.activeTabId !== 'library' ? initial.activeTabId : null,
-  activeColor: '#ffd400',
+  activeColor: DEFAULT_ANNOTATION_COLOR,
   activeTool: 'select',
-  bookmarks: initial.bookmarks,
+  pendingCitationNav: null,
 
   openReader: (paperId: string, title?: string, projectId?: string | null) => {
     const { tabs, activeTabId, readingPaperId } = get();
@@ -323,61 +324,23 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
     set({ tabs: mergedTabs });
   },
 
-  toggleBookmark: (paperId: string, pageNumber: number) => {
-    const safePage = Math.max(1, Math.floor(pageNumber));
-    const prevBookmarks = get().bookmarks;
-    const current = prevBookmarks[paperId] || EMPTY_BOOKMARKS;
-    const exists = current.includes(safePage);
-    const nextPages = exists
-      ? current.filter((p) => p !== safePage)
-      : [...current, safePage].sort((a, b) => a - b);
-
-    const updated: Record<string, number[]> = { ...prevBookmarks };
-    delete updated[paperId];
-    if (nextPages.length > 0) {
-      updated[paperId] = nextPages;
-    }
-    const nextBookmarks = saveReaderBookmarksToStorage(
-      enforceMaxBookmarkedItems(updated),
-      undefined,
-      paperId,
-    );
-    multiTabBus.publish({ type: 'READER_BOOKMARKS_SYNC' });
-    set({ bookmarks: nextBookmarks });
-    return !exists;
+  requestCitationNavigate: (paperId: string, pageNumber: number) => {
+    const cleanId = paperId.trim();
+    if (!cleanId || cleanId === 'library') return;
+    if (!Number.isFinite(pageNumber) || pageNumber < 1) return;
+    set({
+      pendingCitationNav: {
+        paperId: cleanId,
+        pageNumber: Math.max(1, Math.floor(pageNumber)),
+        timestamp: Date.now(),
+      },
+    });
   },
 
-  setBookmarks: (paperId: string, pages: number[]) => {
-    if (!paperId || paperId === 'library') return;
-    const normalizedPages = Array.from(
-      new Set(
-        pages
-          .filter((p): p is number => typeof p === 'number' && Number.isFinite(p) && p >= 1)
-          .map((p) => Math.max(1, Math.floor(p))),
-      ),
-    ).sort((a, b) => a - b);
-
-    const prevBookmarks = get().bookmarks;
-    const current = prevBookmarks[paperId] || EMPTY_BOOKMARKS;
-    if (
-      current.length === normalizedPages.length &&
-      current.every((val, idx) => val === normalizedPages[idx])
-    ) {
-      return;
+  clearCitationNavigate: () => {
+    if (get().pendingCitationNav !== null) {
+      set({ pendingCitationNav: null });
     }
-
-    const updated: Record<string, number[]> = { ...prevBookmarks };
-    delete updated[paperId];
-    if (normalizedPages.length > 0) {
-      updated[paperId] = normalizedPages;
-    }
-    const nextBookmarks = saveReaderBookmarksToStorage(
-      enforceMaxBookmarkedItems(updated),
-      undefined,
-      paperId,
-    );
-    multiTabBus.publish({ type: 'READER_BOOKMARKS_SYNC' });
-    set({ bookmarks: nextBookmarks });
   },
 }));
 
@@ -396,22 +359,18 @@ export function rehydrateReaderStoreFromStorage(): void {
     tabs: latest.tabs,
     activeTabId: nextActiveId,
     readingPaperId: nextActiveId !== 'library' ? nextActiveId : null,
-    bookmarks: latest.bookmarks,
   });
 }
 
 if (typeof window !== 'undefined') {
   multiTabBus.subscribe((event) => {
-    if (event.type === 'READER_TABS_SYNC' || event.type === 'READER_BOOKMARKS_SYNC') {
+    if (event.type === 'READER_TABS_SYNC') {
       rehydrateReaderStoreFromStorage();
     }
   });
 
   window.addEventListener('storage', (e: StorageEvent) => {
-    if (
-      e.key === READER_TABS_STORAGE_KEY ||
-      e.key === READER_BOOKMARKS_STORAGE_KEY
-    ) {
+    if (e.key === READER_TABS_STORAGE_KEY) {
       rehydrateReaderStoreFromStorage();
     }
   });

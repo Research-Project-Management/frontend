@@ -5,9 +5,8 @@ import { LazyThumbnailPage } from '@/features/library/ui/reader/ReaderThumbnails
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 
 describe('ReaderThumbnailsPanel Context Menu Parity (Zotero 7)', () => {
-  it('renders Rotate Page Right, Rotate Page Left, and Bookmark Page in thumbnail context menu', () => {
+  it('renders Rotate Page Right and Rotate Page Left in thumbnail context menu', () => {
     const onJumpToPage = vi.fn();
-    const onToggleBookmarkPage = vi.fn();
     const onRotatePageRight = vi.fn();
     const onRotatePageLeft = vi.fn();
 
@@ -16,10 +15,8 @@ describe('ReaderThumbnailsPanel Context Menu Parity (Zotero 7)', () => {
         <LazyThumbnailPage
           pageNum={3}
           isCurrent={false}
-          isBookmarked={false}
           showPdfCanvas={false}
           onJumpToPage={onJumpToPage}
-          onToggleBookmarkPage={onToggleBookmarkPage}
           onRotatePageRight={onRotatePageRight}
           onRotatePageLeft={onRotatePageLeft}
         />
@@ -31,11 +28,9 @@ describe('ReaderThumbnailsPanel Context Menu Parity (Zotero 7)', () => {
 
     const rotateRightItem = screen.getByText('Rotate Page Right');
     const rotateLeftItem = screen.getByText('Rotate Page Left');
-    const bookmarkItem = screen.getByText('Bookmark Page');
 
     expect(rotateRightItem).toBeInTheDocument();
     expect(rotateLeftItem).toBeInTheDocument();
-    expect(bookmarkItem).toBeInTheDocument();
 
     fireEvent.click(rotateRightItem);
     expect(onRotatePageRight).toHaveBeenCalledWith(3);
@@ -43,9 +38,5 @@ describe('ReaderThumbnailsPanel Context Menu Parity (Zotero 7)', () => {
     fireEvent.contextMenu(pageCard);
     fireEvent.click(screen.getByText('Rotate Page Left'));
     expect(onRotatePageLeft).toHaveBeenCalledWith(3);
-
-    fireEvent.contextMenu(pageCard);
-    fireEvent.click(screen.getByText('Bookmark Page'));
-    expect(onToggleBookmarkPage).toHaveBeenCalledWith(3);
   });
 });

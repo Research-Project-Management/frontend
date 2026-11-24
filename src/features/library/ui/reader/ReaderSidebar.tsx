@@ -7,7 +7,6 @@ import {
   Loader2,
   Download,
   FileText,
-  Bookmark,
   Filter,
   ArrowUpDown,
   MoreHorizontal,
@@ -157,15 +156,13 @@ interface ReaderSidebarProps {
   onToggleOpen?: () => void;
   currentPage: number;
   totalPages?: number;
-  onJumpToPage: (page: number, annotationId?: string) => void;
+  onJumpToPage: (page: number, annotationId?: string, yRatio?: number) => void;
   fulltext?: DocumentFulltext | null;
   paper?: ReaderDocument | null;
   spaceId?: string;
   attachmentId?: string;
   pdfBlobUrl?: string | null;
   pdfDocument?: unknown;
-  bookmarkedPages?: number[];
-  onToggleBookmarkPage?: (page: number) => void;
   selectedIds?: Set<string>;
   onSelectIds?: (ids: Set<string>) => void;
   onToggleSelect?: (id: string) => void;
@@ -218,8 +215,6 @@ export function ReaderSidebar({
   attachmentId,
   pdfBlobUrl,
   pdfDocument,
-  bookmarkedPages = [],
-  onToggleBookmarkPage,
   selectedIds,
   onSelectIds,
   onToggleSelect,
@@ -254,7 +249,6 @@ export function ReaderSidebar({
   const [annotationsSortBy, setAnnotationsSortBy] = useState<
     "position" | "newest" | "oldest" | "color"
   >("position");
-  const [showBookmarkedPagesOnly, setShowBookmarkedPagesOnly] = useState(false);
   const [selectedOutlineId, setSelectedOutlineId] = useState<string | null>(
     null,
   );
@@ -401,15 +395,8 @@ export function ReaderSidebar({
             />
           ) : (
             <>
-              <h2 className="text-12 font-semibold text-foreground truncate flex items-center gap-1.5">
-                <span>{panelTitle}</span>
-                {activeTab === "annotations" &&
-                  annotations &&
-                  annotations.length > 0 && (
-                    <span className="text-10 font-normal text-muted-foreground tabular-nums">
-                      ({annotations.length})
-                    </span>
-                  )}
+              <h2 className="text-12 font-semibold text-foreground truncate">
+                {panelTitle}
               </h2>
 
               <div className="flex items-center gap-0.5 shrink-0">
@@ -427,27 +414,6 @@ export function ReaderSidebar({
                   >
                     <Search
                       className="size-3.5 shrink-0 text-foreground"
-                      strokeWidth={1.5}
-                    />
-                  </HeaderIconButton>
-                )}
-
-                {activeTab === "pages" && (
-                  <HeaderIconButton
-                    onClick={() => setShowBookmarkedPagesOnly((v) => !v)}
-                    label={
-                      showBookmarkedPagesOnly
-                        ? "Show all pages"
-                        : `Show bookmarked pages only (${bookmarkedPages.length})`
-                    }
-                  >
-                    <Bookmark
-                      className={cn(
-                        "size-3.5 shrink-0 transition-colors",
-                        showBookmarkedPagesOnly
-                          ? "fill-foreground text-foreground"
-                          : "text-foreground",
-                      )}
                       strokeWidth={1.5}
                     />
                   </HeaderIconButton>
@@ -660,7 +626,7 @@ export function ReaderSidebar({
               filteredSections={filteredSections} activeOutlineSectionId={activeOutlineSectionId}
               collapsedOutlineIds={collapsedOutlineIds} outlineFilter={outlineFilter}
               onToggleCollapse={toggleOutlineCollapse}
-              onSelectSection={(s) => { setSelectedOutlineId(s.id); onJumpToPage(s.page || 1); }}
+              onSelectSection={(s) => { setSelectedOutlineId(s.id); onJumpToPage(s.page || 1, undefined, s.yRatio); }}
             />
           ) : activeTab === "annotations" ? (
             paper ? (
@@ -686,9 +652,8 @@ export function ReaderSidebar({
           ) : (
             <ThumbnailsView
               scrollContainerRef={thumbContainerRef} totalPages={totalPages} currentPage={currentPage}
-              bookmarkedPages={bookmarkedPages} showBookmarkedPagesOnly={showBookmarkedPagesOnly}
               isEnabled={activeTab === "pages" && isOpen} pdfDocument={pdfDocument} pdfBlobUrl={pdfBlobUrl}
-              onJumpToPage={onJumpToPage} onToggleBookmarkPage={onToggleBookmarkPage}
+              onJumpToPage={onJumpToPage}
               onRotatePageRight={onRotatePageRight} onRotatePageLeft={onRotatePageLeft}
             />
           )}

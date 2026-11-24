@@ -11,11 +11,9 @@ export {
   type LibrarySchemaRegistrySnapshot,
   DEFAULT_READER_TABS,
   MAX_READER_TABS,
-  MAX_BOOKMARKED_ITEMS,
   MIN_READER_ZOOM,
   MAX_READER_ZOOM,
   enforceMaxReaderTabs,
-  enforceMaxBookmarkedItems,
   normalizeReaderZoom,
   normalizeReaderFitMode,
   normalizeReaderTheme,
@@ -34,10 +32,8 @@ export {
   loadReaderStorageState,
   mergeReaderTabsWithStorage,
   saveReaderTabsToStorage,
-  saveReaderBookmarksToStorage,
   READER_TABS_STORAGE_KEY,
   READER_ACTIVE_TAB_STORAGE_KEY,
-  READER_BOOKMARKS_STORAGE_KEY,
   FEED_READ_IDS_STORAGE_KEY,
 } from './local-storage.adapter';
 

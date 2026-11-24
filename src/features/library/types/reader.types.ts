@@ -372,6 +372,7 @@ export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
 export interface PdfOutlineItem {
   title: string;
   pageNumber: number;
+  yRatio?: number;
   dest?: unknown;
   items?: PdfOutlineItem[];
 }
@@ -379,6 +380,7 @@ export interface PdfOutlineItem {
 export interface ReaderNavigationTarget {
   pageNumber: number;
   annotationId?: string;
+  yRatio?: number;
   coords?: AnnotationRect;
   timestamp: number;
 }
@@ -509,6 +511,7 @@ export interface PdfSearchCycleResult {
 export interface PdfOutlineNode {
   title: string;
   pageNumber: number;
+  yRatio?: number;
   items?: PdfOutlineNode[];
   children?: PdfOutlineNode[];
 }
@@ -518,6 +521,7 @@ export interface FlattenedOutlineSection {
   num: string;
   title: string;
   page?: number;
+  yRatio?: number;
   level: number;
   hasChildren: boolean;
   parentId: string | null;
@@ -533,6 +537,13 @@ export interface PdfOutlineProxyDoc {
   >;
   getDestination?: (dest: string) => Promise<Array<unknown> | null>;
   getPageIndex?: (ref: unknown) => Promise<number>;
+  getPage?: (pageNum: number) => Promise<{
+    getViewport?: (params: { scale: number }) => {
+      width?: number;
+      height: number;
+      convertToViewportPoint?: (x: number, y: number) => [number, number];
+    };
+  }>;
 }
 
 

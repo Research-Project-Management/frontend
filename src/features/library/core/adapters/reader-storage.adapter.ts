@@ -4,7 +4,9 @@
  * and offline sessions for academic papers (PDFs).
  */
 
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import { withWebLock } from '@/shared/lib/multi-tab';
+import { isQuotaExceededError } from '@/shared/utils/storage-error.util';
 
 const STORAGE_DB_NAME = 'flux:library:doc_storage:v1';
 const STORAGE_STORE_NAME = 'pdf_binaries';
@@ -151,18 +153,6 @@ export function isValidDocumentBinary(
   return true;
 }
 
-function isQuotaExceededError(err: unknown): boolean {
-  if (!err || typeof err !== 'object') return false;
-  const domErr = err as { name?: string; code?: number; message?: string };
-  return (
-    domErr.name === 'QuotaExceededError' ||
-    domErr.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    domErr.code === 22 ||
-    domErr.code === 1014 ||
-    Boolean(domErr.message && domErr.message.toLowerCase().includes('quota'))
-  );
-}
-
 export interface StoredDocumentMeta {
   key: string;
   sizeBytes: number;
@@ -180,9 +170,23 @@ export interface StorageStats {
   usageBytes?: number;
 }
 
+interface StoredDocumentRecord extends StoredDocumentMeta {
+  buffer?: ArrayBuffer;
+}
+
+interface ReaderStorageDbSchema extends DBSchema {
+  [STORAGE_STORE_NAME]: {
+    key: string;
+    value: StoredDocumentRecord;
+    indexes: {
+      lastAccessedAt: number;
+    };
+  };
+}
+
 class DocumentStorageService {
   private memoryFallback = new Map<string, { buffer: ArrayBuffer; meta: StoredDocumentMeta }>();
-  private idbPromise: Promise<IDBDatabase | null> | null = null;
+  private idbPromise: Promise<IDBPDatabase<ReaderStorageDbSchema> | null> | null = null;
   private maxDiskBytes = MAX_READER_DISK_CEILING_BYTES;
   private maxCachedDocs = Math.floor(MAX_READER_DISK_CEILING_BYTES / ARXIV_MEAN_PAPER_BYTES);
   private isOpfsSupported = false;
@@ -217,47 +221,32 @@ class DocumentStorageService {
     }
   }
 
-  private openIndexedDb(): Promise<IDBDatabase | null> {
+  private openIndexedDb(): Promise<IDBPDatabase<ReaderStorageDbSchema> | null> {
     if (typeof window === 'undefined' || typeof window.indexedDB === 'undefined') {
       return Promise.resolve(null);
     }
     if (this.idbPromise) return this.idbPromise;
 
-    this.idbPromise = new Promise((resolve) => {
-      try {
-        const req = window.indexedDB.open(STORAGE_DB_NAME, 1);
-        req.onupgradeneeded = (e) => {
-          const db = (e.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains(STORAGE_STORE_NAME)) {
-            const store = db.createObjectStore(STORAGE_STORE_NAME, { keyPath: 'key' });
-            store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
-          }
-        };
-        req.onsuccess = () => {
-          const db = req.result;
-          // Multi-tab IndexedDB safety: release connection if another tab initiates a version upgrade
-          db.onversionchange = () => {
-            try {
-              db.close();
-            } catch {
-              // ignore
-            }
-            this.idbPromise = null;
-          };
-          resolve(db);
-        };
-        req.onerror = () => {
-          this.idbPromise = null;
-          resolve(null);
-        };
-        req.onblocked = () => {
-          this.idbPromise = null;
-          resolve(null);
-        };
-      } catch {
+    this.idbPromise = openDB<ReaderStorageDbSchema>(STORAGE_DB_NAME, 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORAGE_STORE_NAME)) {
+          const store = db.createObjectStore(STORAGE_STORE_NAME, { keyPath: 'key' });
+          store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
+        }
+      },
+      blocked: () => {
         this.idbPromise = null;
-        resolve(null);
-      }
+      },
+      blocking: () => {
+        this.idbPromise?.then((db) => db?.close()).catch(() => {});
+        this.idbPromise = null;
+      },
+      terminated: () => {
+        this.idbPromise = null;
+      },
+    }).catch(() => {
+      this.idbPromise = null;
+      return null;
     });
 
     return this.idbPromise;
@@ -316,14 +305,9 @@ class DocumentStorageService {
     // 2. Try IndexedDB (Tier 4B)
     const db = await this.openIndexedDb();
     if (db) {
-      const writeToIdb = () =>
-        new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-          const store = tx.objectStore(STORAGE_STORE_NAME);
-          store.put({ ...meta, buffer });
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
+      const writeToIdb = async () => {
+        await db.put(STORAGE_STORE_NAME, { ...meta, buffer });
+      };
 
       try {
         await writeToIdb();
@@ -394,13 +378,7 @@ class DocumentStorageService {
     const db = await this.openIndexedDb();
     if (db) {
       try {
-        const record = await new Promise<{ buffer: ArrayBuffer; mimeType?: string } | null>((resolve) => {
-          const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-          const req = tx.objectStore(STORAGE_STORE_NAME).get(key);
-          req.onsuccess = () => resolve(req.result || null);
-          req.onerror = () => resolve(null);
-        });
-
+        const record = await db.get(STORAGE_STORE_NAME, key);
         if (record && record.buffer) {
           void this.touchAccess(key);
           return new Blob([record.buffer], { type: record.mimeType || 'application/pdf' });
@@ -437,12 +415,11 @@ class DocumentStorageService {
     }
     const db = await this.openIndexedDb();
     if (db) {
-      return new Promise<boolean>((resolve) => {
-        const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-        const req = tx.objectStore(STORAGE_STORE_NAME).count(IDBKeyRange.only(key));
-        req.onsuccess = () => resolve(req.result > 0);
-        req.onerror = () => resolve(false);
-      });
+      try {
+        return (await db.count(STORAGE_STORE_NAME, key)) > 0;
+      } catch {
+        return false;
+      }
     }
     return false;
   }
@@ -464,12 +441,8 @@ class DocumentStorageService {
     const db = await this.openIndexedDb();
     if (db) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-          tx.objectStore(STORAGE_STORE_NAME).delete(key);
-          tx.oncomplete = () => { deleted = true; resolve(); };
-          tx.onerror = () => reject(tx.error);
-        });
+        await db.delete(STORAGE_STORE_NAME, key);
+        deleted = true;
       } catch {
         // Ignore
       }
@@ -520,12 +493,7 @@ class DocumentStorageService {
     const db = await this.openIndexedDb();
     if (db) {
       try {
-        await new Promise<void>((resolve, reject) => {
-          const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-          tx.objectStore(STORAGE_STORE_NAME).clear();
-          tx.oncomplete = () => resolve();
-          tx.onerror = () => reject(tx.error);
-        });
+        await db.clear(STORAGE_STORE_NAME);
       } catch {
         // Ignore
       }
@@ -609,70 +577,36 @@ class DocumentStorageService {
   private async saveMetaToIndexedDb(meta: StoredDocumentMeta): Promise<void> {
     const db = await this.openIndexedDb();
     if (!db) return;
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-      tx.objectStore(STORAGE_STORE_NAME).put(meta);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    await db.put(STORAGE_STORE_NAME, meta);
   }
 
   private async getMetaFromIndexedDb(key: string): Promise<StoredDocumentMeta | null> {
     const db = await this.openIndexedDb();
     if (!db) return null;
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-      const req = tx.objectStore(STORAGE_STORE_NAME).get(key);
-      req.onsuccess = () => resolve((req.result as StoredDocumentMeta) || null);
-      req.onerror = () => resolve(null);
-    });
+    try {
+      return (await db.get(STORAGE_STORE_NAME, key)) ?? null;
+    } catch {
+      return null;
+    }
   }
 
   private async getAllMetas(): Promise<StoredDocumentMeta[]> {
     const db = await this.openIndexedDb();
     if (!db) return [];
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORAGE_STORE_NAME);
-      if (typeof store.openCursor === 'function') {
-        const metas: StoredDocumentMeta[] = [];
-        const req = store.openCursor();
-        req.onsuccess = () => {
-          const cursor = req.result;
-          if (cursor) {
-            const val = cursor.value as StoredDocumentMeta;
-            if (val && typeof val.key === 'string') {
-              metas.push({
-                key: val.key,
-                sizeBytes: val.sizeBytes ?? 0,
-                lastAccessedAt: val.lastAccessedAt ?? 0,
-                createdAt: val.createdAt ?? 0,
-                mimeType: val.mimeType || 'application/pdf',
-              });
-            }
-            cursor.continue();
-          } else {
-            resolve(metas);
-          }
-        };
-        req.onerror = () => resolve(metas);
-        return;
-      }
-      const req = store.getAll();
-      req.onsuccess = () => {
-        const rows = (req.result as StoredDocumentMeta[]) || [];
-        resolve(
-          rows.map((val) => ({
-            key: val.key,
-            sizeBytes: val.sizeBytes ?? 0,
-            lastAccessedAt: val.lastAccessedAt ?? 0,
-            createdAt: val.createdAt ?? 0,
-            mimeType: val.mimeType || 'application/pdf',
-          })),
-        );
-      };
-      req.onerror = () => resolve([]);
-    });
+    try {
+      const rows = await db.getAll(STORAGE_STORE_NAME);
+      return rows
+        .filter((val) => val && typeof val.key === 'string')
+        .map((val) => ({
+          key: val.key,
+          sizeBytes: val.sizeBytes ?? 0,
+          lastAccessedAt: val.lastAccessedAt ?? 0,
+          createdAt: val.createdAt ?? 0,
+          mimeType: val.mimeType || 'application/pdf',
+        }));
+    } catch {
+      return [];
+    }
   }
 
   private async touchAccess(key: string): Promise<void> {
@@ -684,14 +618,12 @@ class DocumentStorageService {
     if (!db) return;
     try {
       const tx = db.transaction(STORAGE_STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORAGE_STORE_NAME);
-      const req = store.get(key);
-      req.onsuccess = () => {
-        if (req.result) {
-          req.result.lastAccessedAt = now;
-          store.put(req.result);
-        }
-      };
+      const existing = await tx.store.get(key);
+      if (existing) {
+        existing.lastAccessedAt = now;
+        await tx.store.put(existing);
+      }
+      await tx.done;
     } catch {
       // Ignore
     }

@@ -107,33 +107,17 @@ export const useAiCompanionStore = create<AiCompanionState>()(
 
 export interface AiUIState {
   isSidebarOpen: boolean;
-  sidebarWidth: number;
-  searchQuery: string;
-  isSearchVisible: boolean;
 
   toggleSidebar: () => void;
-  setSidebarOpen: (isOpen: boolean) => void;
-  setSearchQuery: (query: string) => void;
-  toggleSearchVisible: () => void;
-  setSearchVisible: (visible: boolean) => void;
 }
 
 export const useAiUIStore = create<AiUIState>()(
   persist(
     (set) => ({
       isSidebarOpen: true,
-      sidebarWidth: 260,
-      searchQuery: '',
-      isSearchVisible: false,
 
       toggleSidebar: () =>
         set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-      setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
-      setSearchQuery: (query: string) => set({ searchQuery: query }),
-      toggleSearchVisible: () =>
-        set((state) => ({ isSearchVisible: !state.isSearchVisible })),
-      setSearchVisible: (visible: boolean) =>
-        set({ isSearchVisible: visible }),
     }),
     {
       name: 'ai-ui-storage',

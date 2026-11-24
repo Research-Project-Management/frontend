@@ -1,12 +1,12 @@
 import { apiDelete, apiGet, apiPost } from '@/shared/lib/api';
 import type {
-  GitHubProjectStatus,
+  GitHubPageStatus,
   IntegrationProvider,
   IntegrationStatusItem,
-  PullProjectGithubPayload,
-  PullProjectGithubResult,
-  PushProjectGithubPayload,
-  PushProjectGithubResult,
+  PullPageGithubPayload,
+  PullPageGithubResult,
+  PushPageGithubPayload,
+  PushPageGithubResult,
   RemoteCollection,
   SyncCollectionPayload,
   SyncCollectionResult,
@@ -107,35 +107,23 @@ export const integrationService = {
     return apiPost('/api/v1/integrations/github/repos', data);
   },
 
-  /**
-   * Gets GitHub link status and details for a project.
-   */
-  async getProjectGithubLink(projectId: string): Promise<GitHubProjectStatus> {
-    return apiGet<GitHubProjectStatus>(`/api/v1/integrations/github/projects/${projectId}`);
+  async getPageGithubLink(pageId: string): Promise<GitHubPageStatus> {
+    return apiGet<GitHubPageStatus>(`/api/v1/integrations/github/pages/${pageId}`);
   },
 
-  /**
-   * Links a project to a GitHub repository.
-   */
-  async linkProjectGithub(data: {
-    projectId: string;
+  async linkPageGithub(data: {
+    pageId: string;
     repoFullName: string;
     branch?: string;
-  }): Promise<{ linkId: string; projectId: string; repoFullName: string; branch: string }> {
-    return apiPost('/api/v1/integrations/github/projects/link', data);
+  }): Promise<{ linkId: string; pageId: string; repoFullName: string; branch: string }> {
+    return apiPost('/api/v1/integrations/github/pages/link', data);
   },
 
-  /**
-   * Pushes project files as a commit to GitHub repository.
-   */
-  async pushProjectGithub(payload: PushProjectGithubPayload): Promise<PushProjectGithubResult> {
-    return apiPost<PushProjectGithubResult>('/api/v1/integrations/github/projects/push', payload);
+  async pushPageGithub(payload: PushPageGithubPayload): Promise<PushPageGithubResult> {
+    return apiPost<PushPageGithubResult>('/api/v1/integrations/github/pages/push', payload);
   },
 
-  /**
-   * Pulls files from GitHub repository into the project.
-   */
-  async pullProjectGithub(payload: PullProjectGithubPayload): Promise<PullProjectGithubResult> {
-    return apiPost<PullProjectGithubResult>('/api/v1/integrations/github/projects/pull', payload);
+  async pullPageGithub(payload: PullPageGithubPayload): Promise<PullPageGithubResult> {
+    return apiPost<PullPageGithubResult>('/api/v1/integrations/github/pages/pull', payload);
   },
 };

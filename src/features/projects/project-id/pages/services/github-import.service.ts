@@ -46,7 +46,7 @@ export const githubImportService = {
   },
 
   importRepo: async (dto: {
-    projectId: string;
+    pageId: string;
     repoFullName: string;
     branch?: string;
   }): Promise<{
@@ -57,6 +57,6 @@ export const githubImportService = {
     rootDocId?: string;
     rootDocPath?: string;
   }> => {
-    return await apiPost('/integrations/github/projects/import', dto);
+    return await apiPost('/integrations/github/pages/import', dto);
   },
 };

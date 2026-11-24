@@ -1,11 +1,5 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
-import { logger } from '@/shared/lib/logger';
-import type {
-  ChatSession,
-  ChatSessionDetail,
-  CreateChatSessionInput,
-  StoredChatMessage,
-} from '../types/session';
+import { apiDelete, apiGet, apiPatch } from '@/shared/lib/api';
+import type { ChatSession, ChatSessionDetail } from '../types/session';
 import { normalizeSpaceId } from './flux';
 
 export async function fetchSessions(
@@ -31,22 +25,6 @@ export async function getSession(chatId: string): Promise<ChatSessionDetail> {
   return data.chat ?? data;
 }
 
-export async function createSession(
-  input: CreateChatSessionInput,
-): Promise<ChatSessionDetail> {
-  const cleanSpaceId = normalizeSpaceId(input.spaceId);
-  const data = await apiPost<ChatSessionDetail & { chat?: ChatSessionDetail }>(
-    '/api/ai/chats',
-    {
-      title: input.title,
-      spaceId: cleanSpaceId,
-      messages: input.messages ?? [],
-      documentIds: input.documentIds,
-    },
-  );
-  return data.chat ?? data;
-}
-
 export async function renameSession(
   chatId: string,
   title: string,
@@ -60,36 +38,4 @@ export async function renameSession(
 
 export async function deleteSession(chatId: string): Promise<void> {
   await apiDelete(`/api/ai/chats/${encodeURIComponent(chatId)}`);
-}
-
-export async function getPageChat(
-  pageId: string,
-): Promise<{ chatId: string | null; messages: StoredChatMessage[] }> {
-  try {
-    const data = await apiGet<
-      | StoredChatMessage[]
-      | {
-          id?: string;
-          chatId?: string;
-          chat?: { id?: string; messages?: StoredChatMessage[] } | null;
-          messages?: StoredChatMessage[];
-        }
-    >(`/api/ai/chats/page/${encodeURIComponent(pageId)}`);
-
-    if (Array.isArray(data)) {
-      return { chatId: null, messages: data };
-    }
-    const chatId = data?.chat?.id ?? data?.id ?? data?.chatId ?? null;
-    const messages = Array.isArray(data?.chat?.messages)
-      ? data.chat.messages
-      : (data?.messages ?? []);
-    return { chatId, messages };
-  } catch (err) {
-    logger.debug('[sessions] Failed to load page chat', { pageId, err });
-    return { chatId: null, messages: [] };
-  }
-}
-
-export async function clearPageChat(pageId: string): Promise<void> {
-  await apiDelete(`/api/ai/chats/page/${encodeURIComponent(pageId)}`);
 }

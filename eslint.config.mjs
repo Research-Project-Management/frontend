@@ -125,17 +125,6 @@ const NO_BARREL_PATHS = [
   },
 ];
 
-const NO_AI_SDK_PATHS = [
-  {
-    name: 'ai',
-    message: 'Only features/ai/engine/vercel.ts may import from ai SDK.',
-  },
-  {
-    name: '@ai-sdk/react',
-    message: 'Only features/ai/engine/vercel.ts may import from @ai-sdk/react.',
-  },
-];
-
 const eslintConfig = [
   {
     ignores: [
@@ -254,26 +243,13 @@ const eslintConfig = [
     },
   },
   {
-    name: 'ai-isolate-vercel-sdk',
-    files: ['src/features/ai/**/*.{ts,tsx}'],
-    ignores: ['src/features/ai/engine/vercel.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
-        },
-      ],
-    },
-  },
-  {
     name: 'ai-layer-types-is-pure',
     files: ['src/features/ai/types/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          paths: [...NO_BARREL_PATHS],
           patterns: [
             {
               group: [
@@ -283,10 +259,8 @@ const eslintConfig = [
                 '../ui/**',
                 'react',
                 'react/**',
-                'ai',
-                '@ai-sdk/react',
               ],
-              message: 'features/ai/types/ must stay pure without transport, engine, context, ui, React, or AI SDK imports.',
+              message: 'features/ai/types/ must stay pure without transport, engine, context, ui, or React imports.',
             },
           ],
         },
@@ -300,7 +274,7 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          paths: [...NO_BARREL_PATHS],
           patterns: [
             {
               group: [
@@ -309,8 +283,6 @@ const eslintConfig = [
                 '../ui/**',
                 'react',
                 'react/**',
-                'ai',
-                '@ai-sdk/react',
               ],
               message: 'features/ai/transport/ may depend only on types/ and shared network utilities.',
             },
@@ -326,7 +298,7 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          paths: [...NO_BARREL_PATHS],
           patterns: [
             {
               group: [

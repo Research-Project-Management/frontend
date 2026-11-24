@@ -23,7 +23,7 @@ export interface RemoteCollection {
 }
 
 export interface SyncCollectionPayload {
-  projectId: string;
+  pageId: string;
   collectionId: string;
   collectionName?: string;
   targetBibFile?: string;
@@ -38,26 +38,26 @@ export interface SyncCollectionResult {
   bibtexLength: number;
 }
 
-export interface GitHubProjectLink {
+export interface GitHubPageLink {
   id: string;
   repoFullName: string;
   branch: string;
   lastSyncedAt?: string | null;
 }
 
-export interface GitHubProjectStatus {
+export interface GitHubPageStatus {
   isConnected: boolean;
   accountName?: string | null;
-  link: GitHubProjectLink | null;
+  link: GitHubPageLink | null;
 }
 
-export interface PushProjectGithubPayload {
-  projectId: string;
+export interface PushPageGithubPayload {
+  pageId: string;
   commitMessage?: string;
   branch?: string;
 }
 
-export interface PushProjectGithubResult {
+export interface PushPageGithubResult {
   success: boolean;
   repoFullName: string;
   branch: string;
@@ -67,12 +67,12 @@ export interface PushProjectGithubResult {
   syncedAt: string;
 }
 
-export interface PullProjectGithubPayload {
-  projectId: string;
+export interface PullPageGithubPayload {
+  pageId: string;
   branch?: string;
 }
 
-export interface PullProjectGithubResult {
+export interface PullPageGithubResult {
   success: boolean;
   repoFullName: string;
   branch: string;

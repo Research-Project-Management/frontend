@@ -15,7 +15,6 @@ export interface ThreadSnapshot {
   readonly error: Error | null;
   readonly mode: TurnMode;
   readonly spaceId: string | null;
-  readonly pageId: string | null;
   readonly documentIds: readonly string[];
 }
 
@@ -27,7 +26,6 @@ export interface ThreadEngineCallbacks {
 export interface ThreadEngineInit {
   threadKey: string;
   chatId?: string | null;
-  pageId?: string | null;
   spaceId?: string | null;
   mode?: TurnMode;
   documentIds?: string[];
@@ -47,7 +45,6 @@ export interface ThreadEngine {
     chatId?: string | null;
     title?: string;
     spaceId?: string | null;
-    pageId?: string | null;
     mode?: TurnMode;
     documentIds?: string[];
     callbacks?: ThreadEngineCallbacks;

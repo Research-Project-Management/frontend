@@ -4,34 +4,6 @@ import React, { useId, useState } from 'react';
 import { Brain, ChevronDown } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
-export function parseThinkingContent(raw: string): {
-  thinking: string | null;
-  answer: string;
-  isThinkingOpen: boolean;
-} {
-  const openIdx = raw.indexOf('<think>');
-  if (openIdx === -1) {
-    return { thinking: null, answer: raw, isThinkingOpen: false };
-  }
-
-  const closeIdx = raw.indexOf('</think>', openIdx);
-  if (closeIdx === -1) {
-    return {
-      thinking: raw.slice(openIdx + 7),
-      answer: raw.slice(0, openIdx).trim(),
-      isThinkingOpen: true,
-    };
-  }
-
-  return {
-    thinking: raw.slice(openIdx + 7, closeIdx).trim(),
-    answer: [raw.slice(0, openIdx).trim(), raw.slice(closeIdx + 8).trimStart()]
-      .filter(Boolean)
-      .join('\n\n'),
-    isThinkingOpen: false,
-  };
-}
-
 export interface ThinkingPartProps {
   content: string;
   isStreaming?: boolean;

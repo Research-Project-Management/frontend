@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { History, Loader2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchAiCheckpoints, rewindAiThread } from '../../engine/queries';
+import { fluxTransport } from '../../engine/queries';
 
 export interface RewindCheckpointItem {
   checkpoint_id: string;
@@ -59,7 +59,7 @@ export function RewindMenu({
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetchAiCheckpoints(chatId, spaceId, 20);
+      const res = await fluxTransport.listCheckpoints(chatId, spaceId, 20);
       setItems(dedupeByTurnBoundary(res.checkpoints ?? []));
     } catch (err) {
       setItems([]);
@@ -76,7 +76,11 @@ export function RewindMenu({
     setRewindingId(ckpt.checkpoint_id);
     setErrorMsg('');
     try {
-      const res = await rewindAiThread(chatId, ckpt.checkpoint_id, spaceId);
+      const res = await fluxTransport.rewindThread(
+        chatId,
+        ckpt.checkpoint_id,
+        spaceId,
+      );
       toast.success(`Rewound conversation to ${res.message_count} message(s)`);
       setOpen(false);
       onRewound?.(res.message_count);

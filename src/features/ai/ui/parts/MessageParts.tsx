@@ -13,6 +13,7 @@ import type { Components } from 'react-markdown';
 import { cn } from '@/shared/lib/utils';
 import { renderMarkdown } from '@/shared/components/markdown/render-markdown';
 import { getFileCategoryMeta } from '../../context/source.port';
+import { parseThinkBlocks } from '../../engine/history';
 import type {
   EditorPatchItem,
   FluxMessage,
@@ -28,7 +29,7 @@ import {
 import { HitlApprovalPart } from './HitlApprovalPart';
 import { InlineCitation } from './InlineCitation';
 import { SourcesPart } from './SourcesPart';
-import { ThinkingPart, parseThinkingContent } from './ThinkingPart';
+import { ThinkingPart } from './ThinkingPart';
 import { ToolTraceGroup, type TracePartData } from './ToolPart';
 import { WidgetsPart } from './WidgetsPart';
 
@@ -157,18 +158,18 @@ export const MessageParts = memo(function MessageParts({
     if (message.parts.length > 0) return message.parts;
 
     const fallback: MessagePart[] = [];
-    const { thinking, answer, isThinkingOpen } = parseThinkingContent(
+    const { reasoning, text, isReasoningOpen } = parseThinkBlocks(
       message.content || '',
     );
-    if (thinking !== null) {
+    if (reasoning !== null) {
       fallback.push({
         type: 'reasoning',
-        text: thinking,
-        streaming: isThinkingOpen && isStreaming,
+        text: reasoning,
+        streaming: isReasoningOpen && isStreaming,
       });
     }
-    if (answer) {
-      fallback.push({ type: 'text', text: answer, streaming: isStreaming });
+    if (text) {
+      fallback.push({ type: 'text', text, streaming: isStreaming });
     }
     if (message.widgets && message.widgets.length > 0) {
       fallback.push({ type: 'widgets', widgets: message.widgets });

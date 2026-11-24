@@ -255,7 +255,6 @@ export class FluxHttpTransport implements AiTransportPort {
         chatId: request.chatId,
         decision: request.decision,
         spaceId: spaceId ?? undefined,
-        pageId: request.pageId ?? undefined,
         documentIds:
           request.documentIds && request.documentIds.length > 0
             ? request.documentIds

@@ -33,10 +33,8 @@ export function ChatSidebar() {
   const deleteMutation = useDeleteAiSession(activeSpaceId);
 
   const toggleSidebar = useAiUIStore((s) => s.toggleSidebar);
-  const searchQuery = useAiUIStore((s) => s.searchQuery);
-  const setSearchQuery = useAiUIStore((s) => s.setSearchQuery);
-  const isSearchVisible = useAiUIStore((s) => s.isSearchVisible);
-  const setSearchVisible = useAiUIStore((s) => s.setSearchVisible);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchVisible, setSearchVisible] = useState(false);
 
   const [isRecentsCollapsed, setIsRecentsCollapsed] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);

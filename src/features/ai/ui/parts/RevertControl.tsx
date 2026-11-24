@@ -8,7 +8,7 @@ import {
   Loader2,
   RotateCcw,
 } from 'lucide-react';
-import { revertAiTurn } from '../../engine/queries';
+import { fluxTransport } from '../../engine/queries';
 import type {
   RevertibleTurnItem,
   RevertibleTurnWidget,
@@ -59,7 +59,7 @@ export function RevertControl({ widget }: { widget: RevertibleTurnWidget }) {
       ((targetIds?.length ?? 0) < pending.length || revertedTotal > 0);
 
     try {
-      const res = await revertAiTurn(
+      const res = await fluxTransport.revertTurn(
         widget.data.traceId,
         widget.data.spaceId,
         isSelective ? targetIds : undefined,

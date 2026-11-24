@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import {
   AlertTriangle,
   BarChart3,
@@ -33,7 +32,6 @@ export interface ToolMeta {
 }
 
 export type ToolPartData = Extract<MessagePart, { type: 'tool' }>;
-export type ToolUIComponent = React.ComponentType<{ part: ToolPartData }>;
 
 export const TOOL_META: Record<string, ToolMeta> = {
   // Editor Agent (LaTeX Pages)

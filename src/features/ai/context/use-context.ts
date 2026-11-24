@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { hydrateSourceNames } from './hydrate';
 import {
   getRagDocumentId,
   sourceEntryToAttachedPayload,
@@ -142,18 +141,6 @@ export function useTurnContext({
     setSources([]);
   }, []);
 
-  const hydrateIds = useCallback(
-    async (ids: string[]) => {
-      if (!ids.length) {
-        setSources([]);
-        return;
-      }
-      const hydrated = await hydrateSourceNames(ids, spaceId);
-      setSources(hydrated);
-    },
-    [spaceId],
-  );
-
   const handleUploadFiles = useCallback(
     async (files: File[], overrideSpaceId?: string | null) => {
       const uploaded = await uploadFiles(files, overrideSpaceId);
@@ -191,7 +178,6 @@ export function useTurnContext({
     removeSource,
     toggleSource,
     clearSources,
-    hydrateIds,
     uploadFiles: handleUploadFiles,
   };
 }

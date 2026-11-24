@@ -84,7 +84,7 @@ describe('RewindMenu', () => {
     fireEvent.click(screen.getByText('Summarize this paper'));
 
     await waitFor(() => {
-      expect(rewindSpy).toHaveBeenCalledWith('chat-1', 'ckpt-2', 'sp-1', undefined);
+      expect(rewindSpy).toHaveBeenCalledWith('chat-1', 'ckpt-2', 'sp-1');
       expect(onRewound).toHaveBeenCalledWith(2);
     });
   });

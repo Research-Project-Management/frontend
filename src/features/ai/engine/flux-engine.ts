@@ -418,7 +418,6 @@ export class FluxThreadEngine implements ThreadEngine {
   private error: Error | null = null;
   private mode: TurnMode;
   private spaceId: string | null;
-  private pageId: string | null;
   private documentIds: string[];
   private callbacks?: ThreadEngineCallbacks;
 
@@ -434,7 +433,6 @@ export class FluxThreadEngine implements ThreadEngine {
     this.transport = transport;
     this.threadKey = init.threadKey;
     this.chatId = init.chatId ?? null;
-    this.pageId = init.pageId ?? null;
     this.spaceId = init.spaceId ?? null;
     this.mode = init.mode ?? 'chat';
     this.documentIds = init.documentIds ? [...init.documentIds] : [];
@@ -498,7 +496,6 @@ export class FluxThreadEngine implements ThreadEngine {
           spaceId: ctx.spaceId !== undefined ? ctx.spaceId : this.spaceId,
           chatId: ctx.chatId !== undefined ? ctx.chatId : this.chatId,
           documentIds: ctx.documentIds !== undefined ? ctx.documentIds : this.documentIds,
-          editor: ctx.editor ?? (this.pageId ? { pageId: this.pageId } : undefined),
         },
         signal,
       }),
@@ -528,7 +525,6 @@ export class FluxThreadEngine implements ThreadEngine {
         chatId,
         decision: wireDecision,
         spaceId: spaceId !== undefined ? spaceId : this.spaceId,
-        pageId: this.pageId,
         documentIds: this.documentIds.length > 0 ? this.documentIds : undefined,
         signal,
       }),
@@ -591,7 +587,6 @@ export class FluxThreadEngine implements ThreadEngine {
     chatId?: string | null;
     title?: string;
     spaceId?: string | null;
-    pageId?: string | null;
     mode?: TurnMode;
     documentIds?: string[];
     callbacks?: ThreadEngineCallbacks;
@@ -600,7 +595,6 @@ export class FluxThreadEngine implements ThreadEngine {
     if (meta.chatId !== undefined && meta.chatId !== this.chatId) { this.chatId = meta.chatId; changed = true; }
     if (meta.title !== undefined && meta.title !== this.title) { this.title = meta.title; changed = true; }
     if (meta.spaceId !== undefined && meta.spaceId !== this.spaceId) { this.spaceId = meta.spaceId; changed = true; }
-    if (meta.pageId !== undefined && meta.pageId !== this.pageId) { this.pageId = meta.pageId; changed = true; }
     if (meta.mode !== undefined && meta.mode !== this.mode) { this.mode = meta.mode; changed = true; }
     if (meta.documentIds !== undefined) {
       const docsChanged =
@@ -629,7 +623,7 @@ export class FluxThreadEngine implements ThreadEngine {
   rebindKey(newKey: string): void {
     if (this.threadKey === newKey) return;
     this.threadKey = newKey;
-    if (!this.chatId && !newKey.startsWith('draft:') && !newKey.startsWith('page:')) {
+    if (!this.chatId && !newKey.startsWith('draft:')) {
       this.chatId = newKey;
     }
     this.rebuildAndNotify();
@@ -777,7 +771,6 @@ export class FluxThreadEngine implements ThreadEngine {
       error: this.error,
       mode: this.mode,
       spaceId: this.spaceId,
-      pageId: this.pageId,
       documentIds: this.documentIds,
     };
   }

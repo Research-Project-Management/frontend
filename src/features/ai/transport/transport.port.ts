@@ -12,7 +12,6 @@ export interface ResumeRequest {
   chatId: string;
   decision: unknown;
   spaceId?: string | null;
-  pageId?: string | null;
   documentIds?: string[];
   signal?: AbortSignal;
 }
@@ -26,9 +25,4 @@ export interface AiTransportPort {
   stream(request: StreamRequest): Promise<StreamResult>;
   resume(request: ResumeRequest): Promise<StreamResult>;
   cancel(chatId: string, spaceId?: string | null): Promise<void>;
-  reconnect?(
-    chatId: string,
-    spaceId?: string | null,
-    signal?: AbortSignal,
-  ): Promise<StreamResult | null>;
 }

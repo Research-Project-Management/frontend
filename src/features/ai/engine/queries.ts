@@ -40,7 +40,6 @@ export const aiKeys = {
   sessions: (spaceId?: string | null) =>
     [...aiKeys.all, 'sessions', keyScope(spaceId)] as const,
   session: (chatId: string) => [...aiKeys.all, 'session', chatId] as const,
-  pageChat: (pageId: string) => [...aiKeys.all, 'page-chat', pageId] as const,
   documents: (spaceId?: string | null) =>
     [...aiKeys.all, 'documents', keyScope(spaceId)] as const,
   documentContent: (docId: string, spaceId?: string | null) =>
@@ -165,48 +164,7 @@ export function useDeleteAiDocument(spaceId?: string | null) {
   });
 }
 
-/** Revert all or selected AI mutations recorded for a specific turn trace ID. */
-export async function revertAiTurn(
-  traceId: string,
-  spaceId?: string | null,
-  entityIds?: string[],
-) {
-  return fluxTransport.revertTurn(
-    traceId,
-    normalizeSpaceId(spaceId) ?? undefined,
-    entityIds,
-  );
-}
-
-/** Fetch recent LangGraph checkpoint history for a chat thread. */
-export async function fetchAiCheckpoints(
-  chatId: string,
-  spaceId?: string | null,
-  limit?: number,
-) {
-  return fluxTransport.listCheckpoints(
-    chatId,
-    normalizeSpaceId(spaceId) ?? undefined,
-    limit,
-  );
-}
-
-/** Rewind a chat thread to a prior LangGraph checkpoint and optionally undo turn effects. */
-export async function rewindAiThread(
-  chatId: string,
-  checkpointId: string,
-  spaceId?: string | null,
-  revertTraceIds?: string[],
-) {
-  return fluxTransport.rewindThread(
-    chatId,
-    checkpointId,
-    normalizeSpaceId(spaceId) ?? undefined,
-    revertTraceIds,
-  );
-}
-
-export type { AiModelInfo };
+export { fluxTransport, type AiModelInfo };
 
 /** Fetch the platform-managed LLM Model Catalog options for the AI selector. */
 export function useAiModelsQuery() {

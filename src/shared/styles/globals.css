@@ -1807,6 +1807,21 @@
   contain-intrinsic-size: auto 44px;
 }
 
+.cm-editor .cm-line.cm-visual-hidden-line,
+.cm-editor .cm-line.cm-visual-comment-hidden {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+}
+
 
 
 

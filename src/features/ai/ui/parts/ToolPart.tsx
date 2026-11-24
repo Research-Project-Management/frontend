@@ -3,14 +3,12 @@
 import React, { useState } from 'react';
 import {
   AlertCircle,
-  ArrowRight,
   CheckCircle2,
   ChevronRight,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { MessagePart } from '../../types/message';
-import { getAgentMeta } from '../registry/agents';
 import { getToolMeta, type ToolPartData } from '../registry/tools';
 
 export type TracePartData =
@@ -114,38 +112,6 @@ export function ToolPart({ part }: { part: ToolPartData }) {
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
-}
-
-export function AgentHandoffPart({
-  part,
-}: {
-  part: Extract<MessagePart, { type: 'agent-handoff' }>;
-}) {
-  const names = part.to
-    .split(',')
-    .map((id) => getAgentMeta(id.trim()).label)
-    .join(', ');
-
-  return (
-    <div className="flex items-center justify-between gap-2 py-1 text-xs text-muted-foreground">
-      <div className="flex items-center gap-2 min-w-0">
-        <ArrowRight className="size-3 text-ai shrink-0" />
-        <span className="truncate">
-          Delegating to{' '}
-          <strong className="font-semibold text-foreground">{names}</strong>
-        </span>
-      </div>
-      {part.status === 'calling' && (
-        <Loader2 className="size-3 text-ai animate-spin shrink-0" />
-      )}
-      {part.status === 'done' && (
-        <CheckCircle2 className="size-3 text-success/80 shrink-0" />
-      )}
-      {part.status === 'error' && (
-        <AlertCircle className="size-3 text-destructive shrink-0" />
       )}
     </div>
   );

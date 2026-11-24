@@ -1,7 +1,6 @@
 import {
   apiDelete,
   apiGet,
-  apiPost,
   getAuthToken,
   getEffectiveBaseUrl,
 } from '@/shared/lib/api';
@@ -107,27 +106,6 @@ export async function fetchDocuments(
   );
   if (Array.isArray(res)) return res;
   return res?.documents ?? [];
-}
-
-export async function fetchDocumentsBulk(
-  ids: string[],
-  spaceId?: string | null,
-): Promise<Array<{ id: string; name: string; size: number }>> {
-  if (!ids.length) return [];
-  const cleanId = normalizeSpaceId(spaceId);
-  const data = await apiPost<
-    | Array<{ id: string; name?: string; title?: string; size?: number }>
-    | { documents?: Array<{ id: string; name?: string; title?: string; size?: number }> }
-  >('/api/ai/documents/bulk', {
-    ids,
-    spaceId: cleanId,
-  });
-  const list = Array.isArray(data) ? data : (data?.documents ?? []);
-  return list.map((d) => ({
-    id: d.id,
-    name: d.name || d.title || d.id,
-    size: d.size ?? 0,
-  }));
 }
 
 export async function fetchDocumentContent(

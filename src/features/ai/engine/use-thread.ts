@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { QueryClientContext } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getPageChat, getSession } from '../transport/sessions';
+import { getSession } from '../transport/sessions';
 import type { TurnContext, TurnMode } from '../types/context';
 import type { HitlDecision } from '../types/message';
 import type { ThreadEngine, ThreadEngineCallbacks } from './engine.port';
@@ -21,7 +21,6 @@ import { invalidateAiSessions } from './queries';
 export interface UseAiThreadOptions {
   threadKey: string;
   chatId?: string | null;
-  pageId?: string | null;
   spaceId?: string | null;
   mode?: TurnMode;
   onChatIdAssigned?: (chatId: string, title?: string) => void;
@@ -31,7 +30,6 @@ export interface UseAiThreadOptions {
 export function useAiThread({
   threadKey,
   chatId = null,
-  pageId = null,
   spaceId = null,
   mode = 'chat',
   onChatIdAssigned,
@@ -83,7 +81,6 @@ export function useAiThread({
 
   const engine = threadPool.getOrCreate(threadKey, {
     chatId,
-    pageId,
     spaceId,
     mode,
     callbacks: engineCallbacks,
@@ -100,12 +97,11 @@ export function useAiThread({
 
     engine.setMeta({
       chatId,
-      pageId,
       mode,
       callbacks: engineCallbacks,
       ...(isWarmSwitch ? {} : { spaceId }),
     });
-  }, [engine, chatId, pageId, spaceId, mode, engineCallbacks]);
+  }, [engine, chatId, spaceId, mode, engineCallbacks]);
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => engine.subscribe(onStoreChange),
@@ -115,16 +111,12 @@ export function useAiThread({
 
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
-  // Hydrate persisted history ONLY when opening an existing chat/page whose engine
+  // Hydrate persisted history ONLY when opening an existing chat whose engine
   // does not already hold fresh messages in memory (eliminates post-stream flash).
   const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     const snap = engine.getSnapshot();
-    const targetKey = chatId
-      ? `chat:${chatId}`
-      : pageId
-        ? `page:${pageId}`
-        : null;
+    const targetKey = chatId ? `chat:${chatId}` : null;
 
     if (!targetKey) {
       hydratedKeyRef.current = null;
@@ -135,10 +127,7 @@ export function useAiThread({
       return;
     }
 
-    if (
-      snap.messages.length > 0 &&
-      ((chatId && snap.chatId === chatId) || (pageId && snap.pageId === pageId))
-    ) {
+    if (snap.messages.length > 0 && snap.chatId === chatId) {
       hydratedKeyRef.current = targetKey;
       return;
     }
@@ -151,51 +140,33 @@ export function useAiThread({
     hydratedKeyRef.current = targetKey;
     engine.setLoadingHistory(true);
 
-    if (chatId) {
-      getSession(chatId)
-        .then((session) => {
-          if (cancelled) return;
-          engine.hydrateMessages(
-            mapStoredMessagesToFlux(session.messages || []),
-            {
-              chatId: session.id || chatId,
-              title: session.title || 'Chat',
-              spaceId: session.spaceId ?? session.projectId ?? spaceId,
-              documentIds: session.documentIds ?? [],
-            },
-          );
-        })
-        .catch(() => {
-          if (cancelled) return;
-          engine.setLoadingHistory(false);
-          if (latestRef.current.onSessionNotFound) {
-            latestRef.current.onSessionNotFound();
-          } else {
-            toast.error('Failed to load chat history');
-          }
-        });
-    } else if (pageId) {
-      getPageChat(pageId)
-        .then((res) => {
-          if (cancelled) return;
-          engine.hydrateMessages(
-            mapStoredMessagesToFlux(res.messages || []),
-            {
-              chatId: res.chatId,
-              spaceId,
-            },
-          );
-        })
-        .catch(() => {
-          if (cancelled) return;
-          engine.setLoadingHistory(false);
-        });
-    }
+    getSession(chatId!)
+      .then((session) => {
+        if (cancelled) return;
+        engine.hydrateMessages(
+          mapStoredMessagesToFlux(session.messages || []),
+          {
+            chatId: session.id || chatId,
+            title: session.title || 'Chat',
+            spaceId: session.spaceId ?? session.projectId ?? spaceId,
+            documentIds: session.documentIds ?? [],
+          },
+        );
+      })
+      .catch(() => {
+        if (cancelled) return;
+        engine.setLoadingHistory(false);
+        if (latestRef.current.onSessionNotFound) {
+          latestRef.current.onSessionNotFound();
+        } else {
+          toast.error('Failed to load chat history');
+        }
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [engine, chatId, pageId, spaceId]);
+  }, [engine, chatId, spaceId]);
 
   const send = useCallback(
     async (text: string, context?: TurnContext) => {

@@ -3,25 +3,7 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { uploadDocument } from '../transport/docs';
-import type { SourceAdapter, SourceEntry, UploadingFile } from './source.port';
-
-export const uploadSourceAdapter: SourceAdapter<{
-  id: string;
-  name: string;
-  size?: number;
-}> = {
-  type: 'upload',
-  toSourceEntry(item) {
-    if (!item?.id) return null;
-    return {
-      id: item.id,
-      name: item.name || 'Document',
-      size: item.size,
-      enabled: true,
-      sourceType: 'upload',
-    };
-  },
-};
+import type { SourceEntry, UploadingFile } from './source.port';
 
 export function useFileUpload(spaceId?: string | null) {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
@@ -64,13 +46,14 @@ export function useFileUpload(spaceId?: string | null) {
               ),
             );
           });
-          const entry = uploadSourceAdapter.toSourceEntry({
-            id: res.id,
-            name: res.name || file.name,
-            size: res.size ?? file.size,
-          });
-          if (entry) {
-            uploaded.push(entry);
+          if (res.id) {
+            uploaded.push({
+              id: res.id,
+              name: res.name || file.name || 'Document',
+              size: res.size ?? file.size,
+              enabled: true,
+              sourceType: 'upload',
+            });
           }
         } catch (err) {
           toast.error(

@@ -128,7 +128,7 @@ export function ImportGithubModal({
 
     try {
       const result = await githubImportService.importRepo({
-        projectId,
+        pageId: projectId,
         repoFullName: selectedRepo,
         branch: selectedBranch,
       });

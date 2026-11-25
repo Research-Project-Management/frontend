@@ -45,16 +45,6 @@ export interface PdfToolbarProps {
   onNextPage: () => void;
   onJumpToPage?: (page: number) => void;
 
-  // Display modes
-  invertColors?: boolean;
-  onToggleInvertColors?: () => void;
-  isSpreadView?: boolean;
-  onToggleSpreadView?: () => void;
-  isSearchOpen?: boolean;
-  onToggleSearch?: () => void;
-  syncScroll?: boolean;
-  onToggleSyncScroll?: () => void;
-
   // Actions
   pdfUrl?: string | null;
   showLog?: boolean;

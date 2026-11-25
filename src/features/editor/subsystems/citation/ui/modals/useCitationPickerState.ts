@@ -40,7 +40,11 @@ import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { useCitationPickerActions } from './useCitationPickerActions';
-import { type CollectionNode } from '../subcomponents/CitationCollectionTreePane';
+export interface CollectionNode {
+  id: string;
+  name: string;
+  children?: CollectionNode[];
+}
 
 export type CitationStyle =
   | 'latex-cite'

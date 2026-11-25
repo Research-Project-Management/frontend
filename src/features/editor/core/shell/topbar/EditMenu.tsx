@@ -9,14 +9,11 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { ShieldCheck } from 'lucide-react';
 import { useSearchStore } from '../../store/search.store';
 
 export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
-  const { engine } = useEditorInstance();
-
   const handleUndo = () => editorCommandBus.dispatch({ type: 'editor:undo' });
   const handleRedo = () => editorCommandBus.dispatch({ type: 'editor:redo' });
   const handleSelectAll = () => editorCommandBus.dispatch({ type: 'editor:select-all' });

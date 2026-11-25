@@ -52,25 +52,37 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
           <MenubarSubTrigger className="cursor-pointer">
             <span className="whitespace-nowrap">Math</span>
           </MenubarSubTrigger>
-          <MenubarSubContent className="min-w-40 text-xs select-none">
+          <MenubarSubContent className="min-w-44 text-xs select-none">
             <MenubarItem
-              onClick={() => insertSnippet('$E = mc^2$')}
+              onClick={() => {
+                editorCommandBus.dispatch({ type: 'editor:format', format: 'inlineMath' });
+                engine?.focus();
+              }}
               className="cursor-pointer"
             >
               <span className="whitespace-nowrap">Inline math</span>
             </MenubarItem>
             <MenubarItem
-              onClick={() => insertSnippet('\\[\n  \\int_{a}^{b} f(x)\\,dx\n\\]\n')}
+              onClick={() => insertSnippet('\\[\n  \n\\]\n')}
               className="cursor-pointer"
             >
               <span className="whitespace-nowrap">Display math</span>
+            </MenubarItem>
+            <MenubarItem
+              onClick={() => {
+                editorCommandBus.dispatch({ type: 'editor:format', format: 'equation' });
+                engine?.focus();
+              }}
+              className="cursor-pointer"
+            >
+              <span className="whitespace-nowrap">Equation</span>
             </MenubarItem>
             {aiAssistEnabled && (
               <MenubarItem
                 onClick={() => editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'equation-generator' })}
                 className="cursor-pointer"
               >
-                <span className="whitespace-nowrap">Generate equation with AIâ€¦</span>
+                <span className="whitespace-nowrap">Create with AI</span>
               </MenubarItem>
             )}
           </MenubarSubContent>
@@ -128,7 +140,10 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
 
         {/* 7. Link */}
         <MenubarItem
-          onClick={() => insertSnippet('\\href{https://example.com}{Link text}')}
+          onClick={() => {
+            editorCommandBus.dispatch({ type: 'editor:format', format: 'link' });
+            engine?.focus();
+          }}
           className="cursor-pointer"
         >
           <span className="whitespace-nowrap">Link</span>
@@ -136,7 +151,10 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
 
         {/* 8. Cross reference */}
         <MenubarItem
-          onClick={() => insertSnippet('\\ref{fig:figure}')}
+          onClick={() => {
+            editorCommandBus.dispatch({ type: 'editor:format', format: 'ref' });
+            engine?.focus();
+          }}
           className="cursor-pointer"
         >
           <span className="whitespace-nowrap">Cross-reference</span>
@@ -166,7 +184,7 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
               onClick={() => insertSnippet('\\printbibliography\n')}
               className="cursor-pointer"
             >
-              <span className="whitespace-nowrap">\\printbibliography (biblatex)</span>
+              <span className="whitespace-nowrap">{'\\printbibliography (biblatex)'}</span>
             </MenubarItem>
             <MenubarItem
               onClick={() => insertSnippet(`\\bibliography{${bibStem}}\n`)}
@@ -176,7 +194,7 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
             </MenubarItem>
             <MenubarSub>
               <MenubarSubTrigger className="cursor-pointer">
-                <span className="whitespace-nowrap">\\bibliographystyle</span>
+                <span className="whitespace-nowrap">{'\\bibliographystyle'}</span>
               </MenubarSubTrigger>
               <MenubarSubContent className="min-w-36 text-xs select-none">
                 {['plain', 'ieeetr', 'alpha', 'abbrv', 'acm', 'unsrt', 'apalike'].map((style) => (
@@ -216,7 +234,7 @@ function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
 
         {/* 13. Title */}
         <MenubarItem
-          onClick={() => insertSnippet('\\title{Document Title}\n')}
+          onClick={() => insertSnippet('\\title{}\n')}
           className="flex items-center gap-2 cursor-pointer"
         >
           <Heading className="size-3.5 text-foreground shrink-0" />

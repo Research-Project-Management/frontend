@@ -71,7 +71,9 @@ export function useProjectSearchActions({
     if (!re) return;
 
     const content = engine.getContent();
-    const replaced = content.replace(re, replaceText);
+    const replaced = useRegex
+      ? content.replace(re, replaceText)
+      : content.replace(re, () => replaceText);
     if (replaced !== content) {
       engine.setContent(replaced);
       engine.focus();

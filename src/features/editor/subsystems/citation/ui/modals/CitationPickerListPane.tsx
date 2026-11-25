@@ -50,7 +50,7 @@ export interface CitationPickerListPaneProps {
 }
 
 export function CitationPickerListPane({
-  activeView,
+  activeView: _activeView,
   search,
   onSearchChange,
   onKeyDown,
@@ -77,14 +77,9 @@ export function CitationPickerListPane({
   const isSorted = sortBy !== 'default';
 
   return (
-    <div
-      className={cn(
-        'w-full md:w-[330px] lg:w-[360px] border-r border-border/70 flex flex-col min-h-0 bg-background shrink-0 h-full overflow-hidden',
-        activeView !== 'list' && 'hidden md:flex',
-      )}
-    >
+    <div className="w-full flex-1 flex flex-col min-h-0 bg-background h-full overflow-hidden">
       {/* Search Header with Unified Filter/Sort Icon Button */}
-      <div className="px-3 py-2.5 shrink-0 flex items-center gap-1.5 border-b border-border/70">
+      <div className="px-4 py-2 shrink-0 flex items-center gap-1.5">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <Input
@@ -174,7 +169,7 @@ export function CitationPickerListPane({
       </div>
 
       {isIdentifier && effectiveProjectId && (
-        <div className="mx-3 mb-2 p-2 rounded-md border border-border bg-muted/40 flex items-center justify-between gap-2 shrink-0">
+        <div className="mx-4 mb-2 p-2 rounded-md border border-border bg-muted/40 flex items-center justify-between gap-2 shrink-0">
           <div className="min-w-0">
             <p className="text-11 font-medium text-foreground truncate">
               {search.trim().startsWith('10.') ? 'DOI detected' : 'Identifier detected'}
@@ -208,7 +203,7 @@ export function CitationPickerListPane({
         role="listbox"
         aria-label="Citations list"
         aria-activedescendant={selectedKey ? `citation-opt-${selectedKey}` : undefined}
-        className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1 sidebar-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-1 sidebar-scrollbar"
       >
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {filteredItems.length} citations found

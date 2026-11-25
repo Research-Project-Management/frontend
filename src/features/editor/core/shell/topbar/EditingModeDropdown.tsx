@@ -16,11 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '../../store/settings.store';
 

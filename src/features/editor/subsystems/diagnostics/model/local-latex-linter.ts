@@ -38,9 +38,6 @@ function countPrecedingBackslashes(line: string, index: number): number {
 function stripCommentPreservingEscapes(line: string): string {
   for (let i = 0; i < line.length; i++) {
     if (line[i] === '%' && countPrecedingBackslashes(line, i) % 2 === 0) {
-      if (i > 0 && /\d/.test(line[i - 1]) && /^\s*[a-zA-Z,;.)\]}]/.test(line.slice(i + 1))) {
-        continue;
-      }
       return line.slice(0, i);
     }
   }

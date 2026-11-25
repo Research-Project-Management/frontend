@@ -13,7 +13,7 @@ import {
 } from '@/shared/lib/api';
 import { PAGES_API_BASE } from './base';
 import { structure } from './structure.client';
-import { flushYjsProviders } from '../realtime/yjs-provider-pool';
+import { flushYjsProviders } from '../realtime/provider-pool';
 import { PageFileMapper, type RawPageFileRecord } from './doc-mapper';
 import type {
   DocstoreDocDto,

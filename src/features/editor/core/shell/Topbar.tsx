@@ -48,17 +48,11 @@ import { sessionCoordinator } from '../coordinator/session.coordinator';
 import { useSettingsStore } from '../store/settings.store';
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 
 export function Topbar() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
-  const storeProjectId = usePageStore(
-    (s) => s.projectId || extractProjectId(s.currentPage) || '',
-  );
   const routeProjectId = params?.projectId as string | undefined;
   const isPersonalPage = !routeProjectId || routeProjectId === 'personal';
-  const effectiveProjectId = isPersonalPage ? 'personal' : (routeProjectId || storeProjectId);
   const homeHref = isPersonalPage
     ? '/pages'
     : `/projects/${routeProjectId}/pages`;
@@ -74,8 +68,6 @@ export function Topbar() {
   );
 
   const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
-
-  const githubLink = usePageStore((s) => s.githubLink);
 
   const handleToggleHistory = useCallback(async () => {
     if (!isHistoryOpen) {
@@ -144,36 +136,8 @@ export function Topbar() {
           <ProjectTitleDropdown />
         </div>
 
-        {/* ── Right: History, Layout, Collaborators ── */}
+        {/* ── Right: Collaborators, History, Layout ── */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* GitHub Sync Status Indicator & Shortcut */}
-          {githubLink && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => {
-                    useSettingsStore.getState().setSettingsActiveTab('github');
-                    useSettingsStore.getState().setSettingsPanelOpen(true);
-                  }}
-                  aria-label={`GitHub: ${githubLink.repoFullName} (${githubLink.branch})`}
-                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none mr-0.5"
-                >
-                  <GitHubIcon className="size-3.5 shrink-0 text-foreground/70" />
-                  <span className="max-w-[110px] truncate text-11 font-mono">
-                    {githubLink.repoFullName.split('/')[1] || githubLink.repoFullName}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/70 font-mono">
-                    :{githubLink.branch}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-                GitHub: {githubLink.repoFullName} ({githubLink.branch})
-              </TooltipContent>
-            </Tooltip>
-          )}
-
           {/* Collaborator Presence Avatar Stack (Overleaf Parity: Before Action Buttons) */}
           <CollaboratorAvatarStack />
 
@@ -201,9 +165,9 @@ export function Topbar() {
                   type="button"
                   onClick={() => editorCommandBus.dispatch({ type: 'preview:attach' })}
                   aria-label="Re-attach PDF to editor"
-                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none animate-in fade-in duration-200"
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
                 >
-                  <ExternalLink className="size-3.5 shrink-0" />
+                  <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
                   <span className="hidden md:inline">Re-attach PDF</span>
                 </button>
               </TooltipTrigger>

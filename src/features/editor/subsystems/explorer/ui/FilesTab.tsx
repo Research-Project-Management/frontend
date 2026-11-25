@@ -34,7 +34,7 @@ const AddFilesModal = dynamic(
   { ssr: false },
 );
 
-const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
+const FilesTab = React.memo(function FilesTab(_props: { onClose?: () => void }) {
   const c = useFilesTabController();
 
   const renderTreeNode = useCallback(
@@ -217,7 +217,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onOpenFileModal={c.handleOpenFileModal}
           onStartCreateFolder={() => c.handleStartCreateFolder('')}
           onOpenUploadModal={c.handleOpenUploadModal}
-          onClose={onClose}
           sortBy={c.sortBy}
           sortDirection={c.sortDirection}
           onSortChange={c.handleSortChange}

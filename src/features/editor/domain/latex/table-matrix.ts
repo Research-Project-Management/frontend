@@ -41,6 +41,7 @@ export interface TableGrid {
   hasHeaderRow?: boolean;
   merges?: TableCellMerge[];
   borders?: TableBorderConfig;
+  wrapInTableEnv?: boolean;
 }
 
 export type MatrixType =
@@ -166,6 +167,7 @@ export function generateLatexTable(grid: TableGrid): string {
     hasHeaderRow = true,
     merges,
     borders,
+    wrapInTableEnv = true,
   } = grid;
 
   const effectiveBorders = resolveEffectiveBorders(style, borders);
@@ -206,7 +208,30 @@ export function generateLatexTable(grid: TableGrid): string {
     }
   }
 
-  // Wrap in environment
+  const tabIndent = wrapInTableEnv ? '  ' : '';
+  let tabular = `${tabIndent}\\begin{tabular}{${colSpec}}\n`;
+
+  if (useBooktabsRules) {
+    tabular += `    \\toprule\n`;
+  } else if (effectiveBorders.outer) {
+    tabular += `    \\hline\n`;
+  }
+
+  tabular += body;
+
+  if (useBooktabsRules) {
+    tabular += `    \\bottomrule\n`;
+  } else if (effectiveBorders.outer) {
+    tabular += `    \\hline\n`;
+  }
+
+  tabular += `${tabIndent}\\end{tabular}\n`;
+
+  if (!wrapInTableEnv) {
+    return tabular;
+  }
+
+  // Wrap in table float environment
   let result = `\\begin{table}[${placement}]\n`;
   if (centering) {
     result += `  \\centering\n`;
@@ -218,23 +243,7 @@ export function generateLatexTable(grid: TableGrid): string {
     result += `  \\label{${label}}\n`;
   }
 
-  result += `  \\begin{tabular}{${colSpec}}\n`;
-
-  if (useBooktabsRules) {
-    result += `    \\toprule\n`;
-  } else if (effectiveBorders.outer) {
-    result += `    \\hline\n`;
-  }
-
-  result += body;
-
-  if (useBooktabsRules) {
-    result += `    \\bottomrule\n`;
-  } else if (effectiveBorders.outer) {
-    result += `    \\hline\n`;
-  }
-
-  result += `  \\end{tabular}\n`;
+  result += tabular;
   result += `\\end{table}\n`;
 
   return result;
@@ -444,6 +453,7 @@ export function parseLatexTabular(latex: string): TableGrid | null {
     hasHeaderRow: hasHeader,
     merges,
     borders,
+    wrapInTableEnv: /\\begin\{table\*?\}/.test(latex),
   };
 }
 

@@ -42,7 +42,7 @@ export function resetEditorWorkspace(options: ResetEditorWorkspaceOptions = {}):
   useCompileStore.getState().resetCompiler();
   useViewerStore.getState().resetViewerState();
 
-  workspaceCoordinator.resetAllState();
+  workspaceCoordinator.resetAllState({ skipFlush, scopeId });
   warmEditorStatePool.clear();
 
   latexSymbolsIndex.clear();

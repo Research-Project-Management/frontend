@@ -40,7 +40,6 @@ export interface FileTreeToolbarProps {
   onOpenFileModal: () => void;
   onStartCreateFolder: () => void;
   onOpenUploadModal: () => void;
-  onClose?: () => void;
   sortBy?: 'name' | 'type';
   sortDirection?: 'asc' | 'desc';
   onSortChange?: (by: 'name' | 'type') => void;

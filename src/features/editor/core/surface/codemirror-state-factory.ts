@@ -218,6 +218,8 @@ export function applyExternalDiffToView(
   });
 }
 
+const boundAwarenessByView = new WeakMap<EditorView, YjsCollabOptions['awareness']>();
+
 export function reconfigureYjsBindingInView(
   view: EditorView,
   boundYTextRef: React.MutableRefObject<Y.Text | null>,
@@ -225,8 +227,10 @@ export function reconfigureYjsBindingInView(
   awareness: YjsCollabOptions['awareness'],
   collabAdapter: YjsCodeMirrorAdapter,
 ): void {
-  if (boundYTextRef.current === nextYText) return;
+  const prevAwareness = boundAwarenessByView.get(view);
+  if (boundYTextRef.current === nextYText && prevAwareness === awareness) return;
   boundYTextRef.current = nextYText;
+  boundAwarenessByView.set(view, awareness);
 
   if (nextYText) {
     const currentDocText = view.state.doc.toString();

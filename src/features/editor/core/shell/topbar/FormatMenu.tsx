@@ -44,7 +44,7 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
 
   // Platform-aware modifier label
   const isMac = useMemo(() => isMacPlatform(), []);
-  const modLabel = isMac ? 'âŒ˜' : 'Ctrl ';
+  const modLabel = isMac ? '⌘' : 'Ctrl ';
 
   const handleFormat = useCallback(
     (format: LatexFormatType) => {

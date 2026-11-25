@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * use-github-sync.ts
@@ -20,7 +20,7 @@ import {
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { clearYjsProviderPool, flushYjsProviders } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { clearYjsProviderPool, flushYjsProviders } from '@/features/editor/sdk/realtime/provider';
 import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
 const githubSyncKeys = {

@@ -131,10 +131,13 @@ export const registerUser = async (
   return res;
 };
 
+import { socketPool } from '@/shared/realtime/socket-pool';
+
 /**
  * Revokes the server-side refresh token and clears all local credentials.
  */
 export const logoutUser = async (): Promise<void> => {
+  socketPool.disconnectAll();
   removeAuthToken();
   setCachedUser(null);
   multiTabBus.publish({ type: 'AUTH_LOGOUT', reason: 'user_logout' });

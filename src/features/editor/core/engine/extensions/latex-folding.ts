@@ -26,6 +26,8 @@ const SECTION_WEIGHTS: Record<string, number> = {
 
 const SECTION_REGEX = /^\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\[[^\]]*\])?\{/;
 const BEGIN_ENV_REGEX = /\\begin\{([a-zA-Z*]+)\}/;
+const COMMENT_FOLD_OPEN_REGEX = /^%\s*\{/;
+const COMMENT_FOLD_CLOSE_REGEX = /^%\s*\}/;
 
 const MAX_FOLD_SCAN_LINES = 2500;
 
@@ -46,6 +48,27 @@ function computeLatexFoldRange(
   _lineEnd?: number,
 ): { from: number; to: number } | null {
   const line = state.doc.lineAt(lineStart);
+  const rawTrimmed = line.text.trim();
+
+  // 0. Overleaf Custom Comment Folding: % { ... % }
+  if (COMMENT_FOLD_OPEN_REGEX.test(rawTrimmed)) {
+    let depth = 1;
+    const maxCommentScanLine = Math.min(state.doc.lines, line.number + MAX_FOLD_SCAN_LINES);
+    for (let l = line.number + 1; l <= maxCommentScanLine; l++) {
+      const nextLine = state.doc.line(l);
+      const nextRawTrimmed = nextLine.text.trim();
+      if (COMMENT_FOLD_OPEN_REGEX.test(nextRawTrimmed)) {
+        depth++;
+      } else if (COMMENT_FOLD_CLOSE_REGEX.test(nextRawTrimmed)) {
+        depth--;
+        if (depth === 0 && nextLine.to > line.to) {
+          return { from: line.to, to: nextLine.to };
+        }
+      }
+    }
+    return null;
+  }
+
   const text = stripUnescapedComment(line.text).trim();
   if (!text) return null;
 

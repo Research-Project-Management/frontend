@@ -21,16 +21,13 @@ import {
   Italic,
   Sigma,
   Image as ImageIcon,
-  Link2,
   BookOpen,
   List,
   ListOrdered,
   Search,
-  Bookmark,
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { SourceVisualSwitcher } from './SourceVisualSwitcher';
 import { EditingModeDropdown } from '../shell/topbar/EditingModeDropdown';
 import {
@@ -40,7 +37,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
-import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useContainerWidth } from './useContainerWidth';
 import { cn } from '@/shared/lib/utils';
@@ -59,37 +55,16 @@ function ToolbarSeparator({ className }: { className?: string }) {
 }
 
 const iconButtonClass =
-  'size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-muted shrink-0';
+  'relative focus-visible:z-10 size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:bg-muted shrink-0';
 
 export function EditorToolbar({ className, readOnly = false }: EditorToolbarProps) {
   const [containerRef, containerWidth] = useContainerWidth<HTMLDivElement>();
   const actions = useEditorToolbarActions(readOnly);
   const aiEnabled = useSettingsStore((s) => s.aiAssistEnabled);
-  const [linkOpen, setLinkOpen] = React.useState(false);
-  const [linkUrl, setLinkUrl] = React.useState('');
-  const [linkText, setLinkText] = React.useState('');
-  const [crossRefLabels, setCrossRefLabels] = React.useState<string[]>([]);
-
-  const handleLinkOpenChange = (open: boolean) => {
-    if (open) {
-      setLinkUrl('');
-      setLinkText(actions.getSelectedText());
-    }
-    setLinkOpen(open);
-  };
-
-  const handleLinkSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!linkUrl.trim()) return;
-    actions.handleInsertLink(linkUrl, linkText);
-    setLinkOpen(false);
-  };
 
   const effectiveWidth = containerWidth > 0 ? containerWidth : 600;
   const showMath = effectiveWidth >= 540;
   const showSymbol = effectiveWidth >= 570;
-  const showLink = effectiveWidth >= 620;
-  const showCrossRef = effectiveWidth >= 660;
   const showCitation = effectiveWidth >= 700;
   const showFigure = effectiveWidth >= 740;
   const showTable = effectiveWidth >= 780;
@@ -101,7 +76,7 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
       role="toolbar"
       aria-label="Editor formatting tools"
       className={cn(
-        'h-9 min-h-[36px] px-1.5 flex items-center gap-0 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none w-full max-w-full',
+        'h-9 min-h-[36px] px-1.5 flex items-center gap-0.5 border-b border-border bg-surface select-none shrink-0 overflow-x-auto overflow-y-hidden scrollbar-none w-full max-w-full',
         className,
       )}
     >
@@ -206,15 +181,15 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
           <DropdownMenuContent align="start" className="w-52 text-xs">
             <DropdownMenuItem onClick={actions.handleInsertMath} className="flex items-center justify-between gap-2 cursor-pointer">
               <span>Inline math</span>
-              <span className="font-mono text-10 text-muted-foreground">$ ... $</span>
+              <span className="font-mono text-11 text-muted-foreground">$ ... $</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={actions.handleInsertDisplayMath} className="flex items-center justify-between gap-2 cursor-pointer">
               <span>Display math</span>
-              <span className="font-mono text-10 text-muted-foreground">\[ ... \]</span>
+              <span className="font-mono text-11 text-muted-foreground">\[ ... \]</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => actions.handleInsertEnvironment('equation')} className="flex items-center justify-between gap-2 cursor-pointer">
               <span>Equation</span>
-              <span className="font-mono text-10 text-muted-foreground">equation</span>
+              <span className="font-mono text-11 text-muted-foreground">equation</span>
             </DropdownMenuItem>
             {aiEnabled && (
               <>
@@ -242,103 +217,9 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
         </Tooltip>
       )}
 
-      {showLink && <ToolbarSeparator />}
+      {showCitation && <ToolbarSeparator />}
 
       {/* ── 5. Insert Objects (Dynamic container-based) ── */}
-      {showLink && (
-        <Popover open={linkOpen} onOpenChange={handleLinkOpenChange}>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="sm" disabled={readOnly} className={iconButtonClass} aria-label="Insert link">
-                  <Link2 className="size-3.5" />
-                </Button>
-              </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-              <span>Link</span>
-              <span className="ml-1.5 opacity-60">Ctrl+K</span>
-            </TooltipContent>
-          </Tooltip>
-          <PopoverContent align="start" className="w-72 p-3">
-            <form onSubmit={handleLinkSubmit} className="space-y-2.5">
-              <div className="space-y-1">
-                <label htmlFor="toolbar-link-url" className="text-11 font-medium text-muted-foreground">
-                  URL
-                </label>
-                <Input
-                  id="toolbar-link-url"
-                  type="text"
-                  placeholder="https://example.com"
-                  value={linkUrl}
-                  onChange={(e) => setLinkUrl(e.target.value)}
-                  autoFocus
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="toolbar-link-text" className="text-11 font-medium text-muted-foreground">
-                  Display text
-                </label>
-                <Input
-                  id="toolbar-link-text"
-                  type="text"
-                  placeholder="Link text (optional)"
-                  value={linkText}
-                  onChange={(e) => setLinkText(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="flex justify-end">
-                <Button type="submit" size="sm" disabled={!linkUrl.trim()} className="h-7 px-3 text-xs">
-                  Insert link
-                </Button>
-              </div>
-            </form>
-          </PopoverContent>
-        </Popover>
-      )}
-
-      {showCrossRef && (
-        <DropdownMenu onOpenChange={(open) => { if (open) setCrossRefLabels(actions.getDocumentLabels()); }}>
-          <Tooltip delayDuration={300}>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" disabled={readOnly} className={iconButtonClass} aria-label="Cross reference">
-                  <Bookmark className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-              <span>Cross-reference</span>
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="start" className="w-56 text-xs">
-            {crossRefLabels.length > 0 ? (
-              <div className="max-h-56 overflow-y-auto">
-                {crossRefLabels.map((label) => (
-                  <DropdownMenuItem
-                    key={label}
-                    onClick={() => actions.handleInsertCrossRef(label)}
-                    className="text-xs font-mono cursor-pointer"
-                  >
-                    <span className="truncate">{label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </div>
-            ) : (
-              <div className="px-2 py-2 text-xs text-muted-foreground">
-                No \label{'{}'} found in file
-              </div>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => actions.handleInsertCrossRef()} className="text-xs cursor-pointer">
-              Insert empty \ref{'{}'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-
       {showCitation && (
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
@@ -400,8 +281,6 @@ export function EditorToolbar({ className, readOnly = false }: EditorToolbarProp
         readOnly={readOnly}
         showMath={showMath}
         showSymbol={showSymbol}
-        showLink={showLink}
-        showCrossRef={showCrossRef}
         showCitation={showCitation}
         showFigure={showFigure}
         showTable={showTable}

@@ -168,6 +168,7 @@ export interface SpillableModelRecord {
   isDirty: boolean;
   isAuthoritative?: boolean;
   serverRev?: number;
+  contentVersion?: number;
   hash?: string | null;
   serverUpdatedAt?: string;
   lastActiveAt: number;
@@ -212,6 +213,7 @@ export function mergeModelRegistration(
   if (!existing.isDirty && incomingAuthoritative && initialData.content !== existing.content) {
     bytesDelta = measureUtf8Bytes(initialData.content) - measureUtf8Bytes(existing.content);
     existing.content = initialData.content;
+    existing.contentVersion = (existing.contentVersion ?? 0) + 1;
   }
   return bytesDelta;
 }

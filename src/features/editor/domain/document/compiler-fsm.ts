@@ -332,6 +332,7 @@ export function compilerFsmTransition(
         return {
           ...ctx,
           phase: 'done',
+          activeRunId: null,
           isSyncing: false,
           outcome: ctx.outcome && ctx.outcome !== 'success' ? ctx.outcome : 'failure',
         };

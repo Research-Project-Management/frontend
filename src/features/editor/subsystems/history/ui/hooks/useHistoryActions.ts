@@ -7,7 +7,7 @@ import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export
 import {
   clearYjsProviderPool,
   evictYjsProviderByDocId,
-} from '@/features/editor/sdk/realtime/yjs-socket-provider';
+} from '@/features/editor/sdk/realtime/provider';
 import {
   editorCommandBus,
   sessionCoordinator,

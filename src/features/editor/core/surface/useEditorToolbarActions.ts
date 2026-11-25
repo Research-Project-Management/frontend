@@ -147,7 +147,7 @@ export function useEditorToolbarActions(readOnly: boolean) {
   const handleInsertDisplayMath = () => {
     if (readOnly) return;
     if (editorMode === 'visual') {
-      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'displayMath' });
       return;
     }
     editorCommandBus.dispatch({
@@ -182,10 +182,10 @@ export function useEditorToolbarActions(readOnly: boolean) {
     if (typeof url === 'string') {
       const cleanUrl = url.trim();
       if (!cleanUrl) return;
-      const cleanText = typeof text === 'string' && text.trim() ? text.trim() : cleanUrl;
+      const cleanText = typeof text === 'string' ? text.trim() : '';
       editorCommandBus.dispatch({
         type: 'editor:insert-text',
-        text: `\\href{${cleanUrl}}{${cleanText}}`,
+        text: cleanText ? `\\href{${cleanUrl}}{${cleanText}}` : `\\url{${cleanUrl}}`,
       });
       editorCommandBus.dispatch({ type: 'editor:focus' });
       return;
@@ -246,7 +246,7 @@ export function useEditorToolbarActions(readOnly: boolean) {
         enumerate: 'orderedList',
         quote: 'quote',
         code: 'codeBlock',
-        equation: 'insertMath',
+        equation: 'equation',
       };
       const cmd = visualMap[env];
       if (cmd) {

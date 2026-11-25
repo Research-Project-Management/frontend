@@ -283,9 +283,9 @@ export async function synthesizeOfflineEditorBootstrap(
           title: workspaceTitle,
           mainFilePath,
           permissions: {
-            role: 'owner',
-            canEdit: true,
-            canCompile: true,
+            role: 'viewer',
+            canEdit: false,
+            canCompile: false,
           },
           githubLink: null,
         },

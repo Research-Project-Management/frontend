@@ -22,11 +22,7 @@ export const exportDocs = {
   },
 
   exportProjectZipUrl: (projectId: string, includeAux = false): string => {
-    const token = getAuthToken();
-    const tokenQuery = token
-      ? `?token=${encodeURIComponent(token)}&includeAux=${includeAux}`
-      : `?includeAux=${includeAux}`;
-    return `${PAGES_API_BASE}/spaces/${projectId}/export/zip${tokenQuery}`;
+    return `${PAGES_API_BASE}/spaces/${encodeURIComponent(projectId)}/export/zip?includeAux=${includeAux}`;
   },
 
   exportProjectZip: async (

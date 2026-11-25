@@ -23,7 +23,7 @@ import {
   editorCommandBus,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/provider';
 import { pageKeys, invalidateFileTreeQueries } from './document.queries';
 import { toast } from 'sonner';
 

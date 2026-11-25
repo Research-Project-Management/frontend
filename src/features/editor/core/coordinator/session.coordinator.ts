@@ -20,7 +20,7 @@ import {
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/provider';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useConnectivityStore } from '../store/connectivity.store';
@@ -280,8 +280,8 @@ export class SessionCoordinator {
     connStore.recordOnline();
     connStore.setIsSyncingOfflineQueue(true);
     try {
-      await this.flushAllPending();
       await this.replayPendingMutations();
+      await this.flushAllPending();
       if (useConnectivityStore.getState().offlinePendingCompile) {
         useConnectivityStore.getState().setOfflinePendingCompile(false);
         editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'external-trigger' });

@@ -6,7 +6,7 @@ import { sessionCoordinator } from '@/features/editor/core/coordinator/session.c
 import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/provider';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import {

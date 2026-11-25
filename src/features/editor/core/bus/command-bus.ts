@@ -359,6 +359,11 @@ export const VISUAL_COMMAND_STRATEGIES: Readonly<
   math: (engine) => engine.format('inlineMath'),
   inlineMath: (engine) => engine.format('inlineMath'),
   insertMath: (engine) => engine.format('inlineMath'),
+  displayMath: (engine) => {
+    engine.insertText('\\[\n  \n\\]\n');
+    engine.focus();
+  },
+  equation: (engine) => engine.format('equation'),
   section: (engine) => engine.format('section'),
   subsection: (engine) => engine.format('subsection'),
   subsubsection: (engine) => engine.format('subsubsection'),
@@ -465,7 +470,7 @@ export function registerDefaultBridges(): void {
       getEditorEngineOrNoop().openFind();
     }),
     editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
-      if (cmd.bibKey) {
+      if (cmd.bibKey && !cmd.textInserted) {
         getEditorEngineOrNoop().insertText(`\\cite{${cmd.bibKey}}`);
       }
     }),

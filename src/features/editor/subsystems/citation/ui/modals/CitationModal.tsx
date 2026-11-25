@@ -15,11 +15,16 @@ import {
   DialogClose,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { CitationCollectionTreePane } from '../subcomponents/CitationCollectionTreePane';
-import { CitationInspectorPane } from '../subcomponents/CitationInspectorPane';
 import { CitationRetractionAlertDialog } from '../subcomponents/CitationRetractionAlertDialog';
 import {
   CitationSpecs,
@@ -38,6 +43,8 @@ export const STYLE_OPTIONS: { id: CitationStyle; label: string; preview: string 
   { id: 'latex-autocite', label: '\\autocite', preview: '\\autocite{key}' },
   { id: 'markdown-bracket', label: 'Pandoc', preview: '[@key]' },
 ];
+
+const LATEX_COMMAND_OPTIONS = STYLE_OPTIONS.filter((opt) => opt.id.startsWith('latex-'));
 
 export interface CitationModalProps {
   open: boolean;
@@ -74,64 +81,36 @@ export function CitationModal({
     citedKeys: propsCitedKeys,
   });
 
+  const showSourceFilters = state.navCounts.bib > 0 && state.navCounts.library > 0;
+  const filterPills: { id: string; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'cited', label: 'In document' },
+    ...(showSourceFilters
+      ? [
+          { id: 'bib', label: 'Project .bib' },
+          { id: 'library', label: 'Library' },
+        ]
+      : []),
+  ];
+
+  const selectionCount = state.selectedKeys.size;
+  const isInsertDisabled = !state.selectedEntry && selectionCount === 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[94vw] sm:max-w-5xl md:max-w-6xl h-[700px] max-h-[88vh] min-h-0 sm:min-h-[520px] p-0 gap-0 overflow-hidden rounded-md border border-border shadow-raised-500 bg-background flex flex-col"
+        className="w-[94vw] sm:max-w-[560px] h-[540px] max-h-[84vh] p-0 gap-0 overflow-hidden rounded-lg border border-border bg-background flex flex-col"
       >
-        {/* Header with clear dividing line */}
-        <div className="h-12 px-4 sm:px-6 flex items-center justify-between shrink-0 bg-background border-b border-border">
-          <div className="flex items-center gap-3">
-            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-              Citations
-            </DialogTitle>
-
-            <div className="flex md:hidden items-center bg-muted/60 p-0.5 rounded-md border border-border/60 select-none">
-              <button
-                type="button"
-                onClick={() => state.setActiveView('tree')}
-                className={cn(
-                  'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
-                  state.activeView === 'tree'
-                    ? 'bg-background text-foreground font-semibold border border-border/60'
-                    : 'text-muted-foreground hover:text-foreground border border-transparent',
-                )}
-              >
-                Library
-              </button>
-              <button
-                type="button"
-                onClick={() => state.setActiveView('list')}
-                className={cn(
-                  'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer',
-                  state.activeView === 'list'
-                    ? 'bg-background text-foreground font-semibold border border-border/60'
-                    : 'text-muted-foreground hover:text-foreground border border-transparent',
-                )}
-              >
-                Papers ({state.filteredItems.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => state.setActiveView('detail')}
-                disabled={!state.selectedEntry}
-                className={cn(
-                  'px-2.5 py-1 text-11 rounded-md transition-colors font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
-                  state.activeView === 'detail'
-                    ? 'bg-background text-foreground font-semibold border border-border/60'
-                    : 'text-muted-foreground hover:text-foreground border border-transparent',
-                )}
-              >
-                Details
-              </button>
-            </div>
-          </div>
+        <div className="px-5 pt-4 pb-2 flex items-center justify-between shrink-0 bg-background">
+          <DialogTitle className="text-sm font-semibold text-foreground tracking-tight">
+            Insert citation
+          </DialogTitle>
 
           <DialogClose asChild>
             <button
               type="button"
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
               aria-label="Close"
             >
               <X className="size-4" />
@@ -139,21 +118,30 @@ export function CitationModal({
           </DialogClose>
         </div>
 
-        {/* 3-Column Cockpit Body */}
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden bg-background">
-          <CitationCollectionTreePane
-            activeView={state.activeView}
-            selectedNav={state.selectedNav}
-            navCounts={state.navCounts}
-            collectionTree={state.collectionTree}
-            onSelectNav={(navId) => {
-              state.setSelectedNav(navId);
-              state.setActiveView('list');
-            }}
-          />
+        <div className="px-4 pb-2 flex items-center gap-1 shrink-0 bg-background">
+          {filterPills.map((pill) => {
+            const isActive = state.selectedNav === pill.id;
+            return (
+              <button
+                key={pill.id}
+                type="button"
+                onClick={() => state.setSelectedNav(pill.id)}
+                className={cn(
+                  'px-2.5 py-1 text-11 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none',
+                  isActive
+                    ? 'bg-muted text-foreground font-medium'
+                    : 'bg-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
 
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background">
           <CitationPickerListPane
-            activeView={state.activeView}
+            activeView="list"
             search={state.search}
             onSearchChange={state.setSearch}
             onKeyDown={state.handleKeyDown}
@@ -177,20 +165,38 @@ export function CitationModal({
             onSelectCard={state.handleSelectCard}
             onSelectItem={state.handleSelectItem}
           />
-
-          <CitationInspectorPane
-            activeView={state.activeView}
-            selectedEntry={state.selectedEntry}
-            onBackToList={() => state.setActiveView('list')}
-            copyBibtex={state.copyBibtex}
-            copyKey={state.copyKey}
-            copyDoi={state.copyDoi}
-          />
         </div>
 
-        {/* Footer with clean, focused actions (Cancel & Insert Citation) */}
-        <div className="h-13 px-6 flex items-center justify-end shrink-0 bg-background border-t border-border">
-          {/* Action buttons */}
+        <div className="px-5 py-3 flex items-center justify-between gap-2 shrink-0 bg-background">
+          <Select
+            value={state.selectedStyle}
+            onValueChange={(v) => state.setSelectedStyle(v as CitationStyle)}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Citation command"
+              className="h-8 w-[132px] rounded-md border border-border bg-background px-2.5 text-xs font-mono text-foreground shadow-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              align="start"
+              sideOffset={4}
+              className="min-w-[var(--radix-select-trigger-width)] font-mono text-xs"
+            >
+              {LATEX_COMMAND_OPTIONS.map((opt) => (
+                <SelectItem
+                  key={opt.id}
+                  value={opt.id}
+                  className="font-mono text-xs cursor-pointer"
+                >
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -205,14 +211,14 @@ export function CitationModal({
               type="button"
               variant="default"
               size="sm"
-              disabled={!state.selectedEntry && state.selectedKeys.size === 0}
+              disabled={isInsertDisabled}
               onClick={state.handleInsertSelected}
               className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
             >
               <span>
-                {state.selectedKeys.size > 1
-                  ? `Insert ${state.selectedKeys.size} Citations`
-                  : 'Insert Citation'}
+                {selectionCount > 1
+                  ? `Insert ${selectionCount} citations`
+                  : 'Insert citation'}
               </span>
             </Button>
           </div>

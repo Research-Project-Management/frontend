@@ -53,7 +53,7 @@ export * from './pages/templates.client';
 export * from './pages/spelling.client';
 export * from './pages/git.client';
 export * from './pages/ai.client';
-export * from './realtime/yjs-socket-provider';
+export * from './realtime/provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
 

@@ -34,7 +34,7 @@ const LATEX_TRIGGER_REGEX =
 const MD_BRACKET_TRIGGER_REGEX = /\[@([a-zA-Z0-9_:-]*)$/;
 const MD_MULTI_TRIGGER_REGEX = /;\s*@([a-zA-Z0-9_:-]*)$/;
 const VIETNAMESE_DIACRITIC_REGEX =
-  /[Ã Ã¡áº£Ã£áº¡Äƒáº¯áº±áº³áºµáº·Ã¢áº¥áº§áº©áº«áº­Ä‘Ã¨Ã©áº»áº½áº¹Ãªáº¿á»á»ƒá»…á»‡Ã¬Ã­á»‰Ä©á»‹Ã²Ã³á»Ãµá»Ã´á»‘á»“á»•á»—á»™Æ¡á»›á»á»Ÿá»¡á»£Ã¹Ãºá»§Å©á»¥Æ°á»©á»«á»­á»¯á»±á»³Ã½á»·á»¹á»µ]/i;
+  /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
 const COMBINING_DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 const VIETNAMESE_SURNAME_REGEX =
   /^(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|dinh|doan|lam|trinh|mai|dao|cao|ha|luu|luong|thai|ta|phung|to|vuong|chu)(\s|$)/i;
@@ -296,13 +296,13 @@ export function isVietnameseAuthorName(name: string): boolean {
   const clean = name
     .normalize('NFD')
     .replace(COMBINING_DIACRITICS_REGEX, '')
-    .replace(/Ä‘/gi, 'd')
+    .replace(/đ/gi, 'd')
     .toLowerCase();
   return VIETNAMESE_SURNAME_REGEX.test(clean);
 }
 
 /**
- * Cultural format for author summary (e.g. "Nguyá»…n VÄƒn An vÃ  c.s." vs "Turing et al.")
+ * Cultural format for author summary (e.g. "Nguyá»…n VÄƒn An và c.s." vs "Turing et al.")
  */
 export function formatShortAuthor(rawAuthorStr?: string): string {
   if (!rawAuthorStr) return '';
@@ -334,7 +334,7 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
   if (authors.length === 2) {
     return `${firstAuthor} & ${formatSingle(authors[1])}`;
   }
-  return `${firstAuthor} ${isVietnameseAuthorName(authors[0]) ? 'vÃ  c.s.' : 'et al.'}`;
+  return `${firstAuthor} ${isVietnameseAuthorName(authors[0]) ? 'và c.s.' : 'et al.'}`;
 }
 
 function resolveRawAuthorString(entry: { author?: string; authors?: string[] }): string | undefined {

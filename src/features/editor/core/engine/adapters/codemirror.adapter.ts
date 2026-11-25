@@ -570,7 +570,11 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
   }
 
   openFind(): void {
-    openSearchPanel(this.view);
+    if (searchPanelOpen(this.view.state)) {
+      closeSearchPanel(this.view);
+    } else {
+      openSearchPanel(this.view);
+    }
   }
 
   setSearchQuery(spec: {

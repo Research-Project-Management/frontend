@@ -14,7 +14,7 @@ import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constan
 import {
   evictYjsProviderByDocId,
   getActiveYjsProvider,
-} from '@/features/editor/sdk/realtime/yjs-socket-provider';
+} from '@/features/editor/sdk/realtime/provider';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
 import {

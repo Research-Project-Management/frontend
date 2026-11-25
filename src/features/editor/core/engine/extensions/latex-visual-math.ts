@@ -22,6 +22,8 @@ import {
   type Extension,
 } from '@codemirror/state';
 import katex from 'katex';
+import 'katex/contrib/mhchem';
+import { findMatchingBrace } from './latex-visual-headings';
 
 // ── KaTeX Render Cache (LRU) ──────────────────────────────────────────────────
 
@@ -127,6 +129,7 @@ const DISPLAY_DOLLAR_REGEX = /\$\$([\s\S]*?)\$\$/g;
 const BRACKET_MATH_REGEX = /\\\[([\s\S]*?)\\\]/g;
 const ENV_MATH_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?)\}([\s\S]*?)\\end\{\1\}/g;
 const INLINE_DOLLAR_REGEX = /(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)/g;
+const CE_PREFIX_REGEX = /\\ce\{/g;
 
 function findMathSpans(text: string, offset: number): MathSpan[] {
   const spans: MathSpan[] = [];
@@ -196,6 +199,28 @@ function findMathSpans(text: string, offset: number): MathSpan[] {
       if (!overlaps) {
         spans.push({
           formula: match[1].trim(),
+          displayMode: false,
+          from,
+          to,
+        });
+      }
+    }
+  }
+
+  // 5. Standalone mhchem chemical formulas \ce{...} outside math spans
+  if (hasBackslash && text.indexOf('\\ce{') !== -1) {
+    CE_PREFIX_REGEX.lastIndex = 0;
+    while ((match = CE_PREFIX_REGEX.exec(text)) !== null) {
+      const openBrace = match.index + match[0].length - 1;
+      const closeBrace = findMatchingBrace(text, openBrace);
+      if (closeBrace === null) continue;
+      const from = offset + match.index;
+      const to = offset + closeBrace + 1;
+      CE_PREFIX_REGEX.lastIndex = closeBrace + 1;
+      const overlaps = spans.some((s) => from < s.to && to > s.from);
+      if (!overlaps) {
+        spans.push({
+          formula: text.slice(match.index, closeBrace + 1),
           displayMode: false,
           from,
           to,

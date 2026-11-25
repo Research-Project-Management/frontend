@@ -25,6 +25,7 @@ import {
   type Text,
 } from '@codemirror/state';
 import {
+  generateLatexTable,
   parseLatexTabular,
   type TableAlignment,
   type TableGrid,
@@ -635,6 +636,67 @@ class TableCardWidget extends WidgetType {
     );
   }
 
+  private commitGrid(view: EditorView, nextGrid: TableGrid): void {
+    if (view.state.readOnly) return;
+    const docLen = view.state.doc.length;
+    if (this.blockFrom < 0 || this.blockTo > docLen || this.blockFrom > this.blockTo) {
+      return;
+    }
+    const nextLatex = generateLatexTable(nextGrid).trimEnd();
+    view.dispatch({
+      changes: {
+        from: this.blockFrom,
+        to: this.blockTo,
+        insert: nextLatex,
+      },
+    });
+  }
+
+  private setupEditableCell(
+    cell: HTMLTableCellElement,
+    view: EditorView,
+    initialValue: string,
+    onCommit: (nextValue: string) => void,
+  ): void {
+    const isEditable = !view.state.readOnly;
+    cell.contentEditable = isEditable ? 'true' : 'false';
+    cell.spellcheck = false;
+    cell.textContent = initialValue;
+
+    if (!isEditable) return;
+
+    let cancelled = false;
+
+    const stopOnly = (e: Event) => {
+      e.stopPropagation();
+    };
+    cell.addEventListener('mousedown', stopOnly);
+    cell.addEventListener('click', stopOnly);
+    cell.addEventListener('dblclick', stopOnly);
+    cell.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        cell.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelled = true;
+        cell.textContent = initialValue;
+        cell.blur();
+      }
+    });
+    cell.addEventListener('blur', () => {
+      if (cancelled) {
+        cancelled = false;
+        return;
+      }
+      const nextValue = (cell.textContent ?? '').trim();
+      if (nextValue !== initialValue.trim()) {
+        onCommit(nextValue);
+      }
+    });
+  }
+
   toDOM(view: EditorView): HTMLElement {
     const totalRows = getTotalGridRows(this.grid);
     const captionText = this.grid.caption
@@ -677,7 +739,14 @@ class TableCardWidget extends WidgetType {
       for (let c = 0; c < this.grid.cols; c++) {
         const th = document.createElement('th');
         th.style.textAlign = mapAlignment(this.grid.alignments[c]);
-        th.textContent = this.grid.headers[c] ?? '';
+        this.setupEditableCell(th, view, this.grid.headers[c] ?? '', (nextVal) => {
+          const nextHeaders = [...this.grid.headers];
+          nextHeaders[c] = nextVal;
+          this.commitGrid(view, {
+            ...this.grid,
+            headers: nextHeaders,
+          });
+        });
         tr.appendChild(th);
       }
       thead.appendChild(tr);
@@ -685,16 +754,28 @@ class TableCardWidget extends WidgetType {
     }
 
     const tbody = document.createElement('tbody');
-    for (const row of this.grid.data) {
+    this.grid.data.forEach((row, r) => {
       const tr = document.createElement('tr');
       for (let c = 0; c < this.grid.cols; c++) {
         const td = document.createElement('td');
         td.style.textAlign = mapAlignment(this.grid.alignments[c]);
-        td.textContent = row[c] ?? '';
+        this.setupEditableCell(td, view, row[c] ?? '', (nextVal) => {
+          const nextData = this.grid.data.map((rowArr, idx) =>
+            idx === r
+              ? Array.from({ length: this.grid.cols }, (_, colIdx) =>
+                  colIdx === c ? nextVal : (rowArr[colIdx] ?? ''),
+                )
+              : [...rowArr],
+          );
+          this.commitGrid(view, {
+            ...this.grid,
+            data: nextData,
+          });
+        });
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
-    }
+    });
     table.appendChild(tbody);
 
     scrollWrap.appendChild(table);
@@ -926,6 +1007,17 @@ const visualFloatsTheme = EditorView.baseTheme({
   },
   '.cm-visual-table th, .cm-visual-table td': {
     padding: '6px 10px',
+  },
+  '.cm-visual-table th[contenteditable="true"], .cm-visual-table td[contenteditable="true"]': {
+    userSelect: 'text',
+    cursor: 'text',
+    outline: 'none',
+    transition: 'background-color 0.12s ease',
+  },
+  '.cm-visual-table th[contenteditable="true"]:focus, .cm-visual-table td[contenteditable="true"]:focus': {
+    outline: '1.5px solid var(--primary)',
+    outlineOffset: '-1.5px',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 6%, transparent)',
   },
   '.cm-visual-table th': {
     fontWeight: '600',

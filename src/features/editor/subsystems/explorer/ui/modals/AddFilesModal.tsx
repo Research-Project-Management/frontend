@@ -11,7 +11,6 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { usePageStore, syncShallowUrlParams } from '@/features/editor/core';
@@ -70,16 +69,10 @@ export default function AddFilesModal({
         showCloseButton={false}
         className="w-[95vw] sm:w-full max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground select-none"
       >
-        {/* Header with Title & Accessible Description */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-border shrink-0">
-          <div>
-            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-              Add files
-            </DialogTitle>
-            <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-              Create a new file, upload from your device, or import BibTeX from your library.
-            </DialogDescription>
-          </div>
+        <div className="flex items-center justify-between px-4 sm:px-6 pt-4 pb-2 shrink-0">
+          <DialogTitle className="text-sm font-semibold text-foreground tracking-tight">
+            Add files
+          </DialogTitle>
           <button
             type="button"
             onClick={handleClose}

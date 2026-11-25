@@ -148,7 +148,9 @@ export function attachCodeMirrorBusListeners(
     const activeDocId = usePageStore.getState().getActiveDocumentId();
     const shouldApply = anyCmd.fileId
       ? anyCmd.fileId === currentFileIdRef.current
-      : !isSecondaryRef.current || activeDocId === currentFileIdRef.current;
+      : getActiveEditorEngine() === engineAdapter ||
+        (!getActiveEditorEngine() &&
+          (!isSecondaryRef.current || activeDocId === currentFileIdRef.current));
 
     if (shouldApply && viewRef.current) {
       const liveYText = yTextRef.current;
@@ -186,6 +188,7 @@ export function attachCodeMirrorBusListeners(
     if (getActiveEditorEngine() === engineAdapter) {
       setActiveEditorEngine(null);
     }
+    engineAdapter.onDestroy?.();
     adapterRef.current = null;
     view.destroy();
     viewRef.current = null;

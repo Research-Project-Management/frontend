@@ -51,7 +51,6 @@ export function sessionFsmTransition(
 ): SessionFsmContext {
   switch (event.type) {
     case 'ACTIVATE': {
-      if (ctx.state === 'evicted') return ctx;
       if (ctx.state === 'dirty' || ctx.state === 'saving' || ctx.state === 'conflict') {
         return ctx; // Preserve dirty/saving/conflict state while activating
       }

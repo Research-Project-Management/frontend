@@ -11,6 +11,7 @@ import React from 'react';
 import {
   Underline,
   Sigma,
+  Omega,
   Table as TableIcon,
   Image as ImageIcon,
   Link2,
@@ -35,19 +36,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { cn } from '@/shared/lib/utils';
 
 export function OmegaIcon({ className }: { className?: string }) {
-  return (
-    <span className={cn('font-serif font-semibold text-xs leading-none select-none text-center', className)}>
-      Ω
-    </span>
-  );
+  return <Omega className={cn('size-3.5', className)} />;
 }
 
 export interface EditorToolbarOverflowMenuProps {
   readOnly: boolean;
   showMath: boolean;
   showSymbol: boolean;
-  showLink: boolean;
-  showCrossRef: boolean;
   showCitation: boolean;
   showFigure: boolean;
   showTable: boolean;
@@ -68,8 +63,6 @@ export function EditorToolbarOverflowMenu({
   readOnly,
   showMath,
   showSymbol,
-  showLink,
-  showCrossRef,
   showCitation,
   showFigure,
   showTable,
@@ -88,8 +81,6 @@ export function EditorToolbarOverflowMenu({
   const hasHiddenMainItems =
     !showMath ||
     !showSymbol ||
-    !showLink ||
-    !showCrossRef ||
     !showCitation ||
     !showFigure ||
     !showTable ||
@@ -115,7 +106,7 @@ export function EditorToolbarOverflowMenu({
           <span>More actions</span>
         </TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="start" className="w-48 text-xs z-50">
+      <DropdownMenuContent align="start" className="w-56 text-xs z-50">
         {!showMath && (
           <DropdownMenuItem onClick={onInsertMath} className="flex items-center gap-2 cursor-pointer">
             <Sigma className="size-3.5 text-muted-foreground" />
@@ -125,25 +116,14 @@ export function EditorToolbarOverflowMenu({
         {!showSymbol && (
           <DropdownMenuItem onClick={onInsertSymbol} className="flex items-center gap-2 cursor-pointer">
             <OmegaIcon />
-            <span>Insert Symbol (Ω)</span>
-          </DropdownMenuItem>
-        )}
-        {!showLink && (
-          <DropdownMenuItem onClick={onInsertLink} className="flex items-center gap-2 cursor-pointer">
-            <Link2 className="size-3.5 text-muted-foreground" />
-            <span>Insert link (Mod-k)</span>
-          </DropdownMenuItem>
-        )}
-        {!showCrossRef && (
-          <DropdownMenuItem onClick={onInsertCrossRef} className="flex items-center gap-2 cursor-pointer">
-            <Bookmark className="size-3.5 text-muted-foreground" />
-            <span>Cross-reference</span>
+            <span>Symbol</span>
           </DropdownMenuItem>
         )}
         {!showCitation && (
           <DropdownMenuItem onClick={onInsertCitation} className="flex items-center gap-2 cursor-pointer">
             <BookOpen className="size-3.5 text-muted-foreground" />
-            <span>Cite reference (Mod-Shift-k)</span>
+            <span>Cite reference</span>
+            <span className="ml-auto text-11 text-muted-foreground">Ctrl+Shift+K</span>
           </DropdownMenuItem>
         )}
         {!showFigure && (
@@ -159,21 +139,33 @@ export function EditorToolbarOverflowMenu({
           </DropdownMenuItem>
         )}
         {!showLists && (
-          <DropdownMenuItem onClick={() => onInsertEnvironment('itemize')} className="flex items-center gap-2 cursor-pointer">
-            <List className="size-3.5 text-muted-foreground" />
-            <span>Bulleted list</span>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem onClick={() => onInsertEnvironment('itemize')} className="flex items-center gap-2 cursor-pointer">
+              <List className="size-3.5 text-muted-foreground" />
+              <span>Bulleted list</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onInsertEnvironment('enumerate')} className="flex items-center gap-2 cursor-pointer">
+              <ListOrdered className="size-3.5 text-muted-foreground" />
+              <span>Numbered list</span>
+            </DropdownMenuItem>
+          </>
         )}
 
         {hasHiddenMainItems && <DropdownMenuSeparator />}
 
+        <DropdownMenuItem onClick={onInsertLink} className="flex items-center gap-2 cursor-pointer">
+          <Link2 className="size-3.5 text-muted-foreground" />
+          <span>Insert link</span>
+          <span className="ml-auto text-11 text-muted-foreground">Ctrl+K</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onInsertCrossRef} className="flex items-center gap-2 cursor-pointer">
+          <Bookmark className="size-3.5 text-muted-foreground" />
+          <span>Cross-reference</span>
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInlineFormat('underline')} className="flex items-center gap-2 cursor-pointer">
           <Underline className="size-3.5 text-muted-foreground" />
-          <span>Underline (Mod-u)</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onInsertEnvironment('enumerate')} className="flex items-center gap-2 cursor-pointer">
-          <ListOrdered className="size-3.5 text-muted-foreground" />
-          <span>Numbered list</span>
+          <span>Underline</span>
+          <span className="ml-auto text-11 text-muted-foreground">Ctrl+U</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onInsertEnvironment('quote')} className="flex items-center gap-2 cursor-pointer">
           <Quote className="size-3.5 text-muted-foreground" />
@@ -185,7 +177,8 @@ export function EditorToolbarOverflowMenu({
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onAddComment} className="flex items-center gap-2 cursor-pointer">
           <MessageSquarePlus className="size-3.5 text-muted-foreground" />
-          <span>Add Comment (Mod-Alt-m)</span>
+          <span>Add comment</span>
+          <span className="ml-auto text-11 text-muted-foreground">Ctrl+Alt+M</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

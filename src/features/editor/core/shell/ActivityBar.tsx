@@ -28,7 +28,6 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
-import { editorCommandBus } from '../bus/command-bus';
 import { useSettingsStore } from '../store/settings.store';
 
 interface ActivityItem {

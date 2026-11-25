@@ -1,4 +1,4 @@
-﻿/**
+/**
  * session-persistence.strategy.ts
  *
  * REST CAS retry, conflict resolution extraction, realtime Yjs flush, and
@@ -15,7 +15,7 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
-} from '@/features/editor/sdk/realtime/yjs-socket-provider';
+} from '@/features/editor/sdk/realtime/provider';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
 import { editorCommandBus } from '../bus/command-bus';

@@ -23,7 +23,7 @@ import { FilesTab } from '@/features/editor/subsystems/explorer';
 const PanelLoadingFallback = () => (
   <div className="flex h-full w-full items-center justify-center p-6 text-muted-foreground">
     <Loader2 className="h-5 w-5 animate-spin mr-2" />
-    <span className="text-xs">Loading viewlet...</span>
+    <span className="text-xs">Loading...</span>
   </div>
 );
 

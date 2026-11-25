@@ -13,7 +13,7 @@ import {
   isUnderVirtualFolder,
   parseVirtualFolderId,
 } from '@/features/editor/domain/document/document-naming';
-import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/provider';
 import type {
   WorkspaceCoordinatorPorts,
   WorkspaceNotificationPort,

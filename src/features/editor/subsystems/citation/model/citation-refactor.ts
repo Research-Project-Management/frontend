@@ -166,7 +166,7 @@ export async function executeProjectCitekeyRefactor(
   const { lruDocumentCache } = await import('@/features/editor/domain/document/lru-document-cache');
   const { latexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
   const { latexDependencyGraph } = await import('@/features/editor/domain/latex/dependency-graph');
-  const { applyTextDiff } = await import('@/features/editor/sdk/realtime/yjs-socket-provider');
+  const { applyTextDiff } = await import('@/features/editor/sdk/realtime/provider');
 
   const pageState = usePageStore.getState();
   const activeDoc = pageState.getActiveDocument();

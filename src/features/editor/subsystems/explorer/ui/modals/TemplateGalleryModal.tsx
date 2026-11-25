@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * TemplateGalleryModal.tsx
@@ -34,7 +34,7 @@ import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
-import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/provider';
 import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
 import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { pagesService } from '@/features/editor/sdk/pages.service';

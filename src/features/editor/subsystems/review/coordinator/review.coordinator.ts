@@ -1,7 +1,7 @@
 import type { EditorView } from '@codemirror/view';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { getActiveEditorEngine } from '@/features/editor/core/bus/engine-registry';
-import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/provider';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import {

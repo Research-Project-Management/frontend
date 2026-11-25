@@ -79,10 +79,8 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const pdfDocRef = useRef<PdfDocumentProxyLike | null>(null);
 
   const pdfSpreadView = useSettingsStore((s) => s.pdfSpreadView);
-  const togglePdfSpreadView = useSettingsStore((s) => s.togglePdfSpreadView);
   const pdfViewer = useSettingsStore((s) => s.pdfViewer);
   const syncScroll = useSettingsStore((s) => s.syncScroll);
-  const toggleSyncScroll = useSettingsStore((s) => s.toggleSyncScroll);
   const activeFilePath = usePageStore((s) => {
     const af = s.activeFilePage;
     if (af && 'path' in af && typeof af.path === 'string' && af.path) {
@@ -106,7 +104,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const numPages = useViewerStore((s: DocumentViewerState) => s.numPages);
   const setNumPages = useViewerStore((s: DocumentViewerState) => s.setNumPages);
   const invertColors = useViewerStore((s: DocumentViewerState) => s.invertColors);
-  const toggleInvertColors = useViewerStore((s: DocumentViewerState) => s.toggleInvertColors);
   const handlePrevPage = useViewerStore((s: DocumentViewerState) => s.prevPage);
   const handleNextPage = useViewerStore((s: DocumentViewerState) => s.nextPage);
 
@@ -252,7 +249,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     isRegexError,
     nextMatch,
     prevMatch,
-    toggleSearch,
     closeSearch,
     applyDomHighlights,
   } = usePdfSearch({
@@ -393,14 +389,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
             onToggleLog={handleToggleLog}
             onDownload={handleDownload}
             onJumpToPage={handleJumpToPage}
-            invertColors={invertColors}
-            onToggleInvertColors={toggleInvertColors}
-            isSpreadView={pdfSpreadView}
-            onToggleSpreadView={togglePdfSpreadView}
-            isSearchOpen={isSearchOpen}
-            onToggleSearch={toggleSearch}
-            syncScroll={syncScroll}
-            onToggleSyncScroll={toggleSyncScroll}
             errorCount={filteredDiagnostics.errors.length}
             warningCount={filteredDiagnostics.warnings.length}
             isDetached={isDetached}

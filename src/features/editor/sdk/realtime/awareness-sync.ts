@@ -1,5 +1,5 @@
-﻿/**
- * yjs-awareness-sync.ts
+/**
+ * awareness-sync.ts
  *
  * Line-offset indexing, Yjs text diffing, binary sync frame helpers,
  * remote cursor/presence mapping, and awareness synchronization helpers

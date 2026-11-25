@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useConversations, useInfiniteMessages, useSendMessage, useChatBadgeCounts } from '../hooks/use-chat-queries';
-import { useChatSocket } from '../hooks/use-chat-socket';
+import { useChatSocket } from '../realtime/useChatRealtime';
 import { ConversationItem, FilterTab } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';

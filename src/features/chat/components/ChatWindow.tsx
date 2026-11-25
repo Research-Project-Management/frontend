@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChatStore } from '../store/chat.store';
 import { useInfiniteMessages, useSendMessage, useAddReaction } from '../hooks/use-chat-queries';
-import { useChatSocket } from '../hooks/use-chat-socket';
+import { useChatSocket } from '../realtime/useChatRealtime';
 import { MessageItem } from './MessageItem';
 import { ChatInput } from './ChatInput';
 import { ChatMessage, ConversationItem, ChatAttachment } from '../types/chat.types';

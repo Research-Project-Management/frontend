@@ -1,5 +1,5 @@
 /**
- * yjs-socket-provider.ts
+ * provider.ts
  *
  * Real-Time Socket.IO & Yjs Collaboration Provider for Flux (Overleaf Parity).
  * Connects CodeMirror 6 (via y-codemirror.next) to Backend PagesGateway (/pages)
@@ -15,7 +15,7 @@ import type { CollaborationPresence } from '../pages/types';
 import {
   type YjsCrossTabBridge,
   type CrossTabProviderRole,
-} from './yjs-cross-tab-bridge';
+} from './cross-tab';
 import {
   buildLineStartsIndex,
   getOffsetFromRowCol,
@@ -33,7 +33,7 @@ import {
   type RemoteUserJoinedPayload,
   type ProjectChatMessage,
   type YjsSocketIOProviderOptions,
-} from './yjs-awareness-sync';
+} from './awareness-sync';
 import {
   createCrossTabBridgeForProvider,
   createRealtimeSocketInstance,
@@ -43,14 +43,14 @@ import {
   fetchProjectChatHistory,
   registerProviderSocketListeners,
   resolveCrossTabTransportConfig,
-} from './yjs-inbound-events';
+} from './inbound-events';
 import {
   emitMergedUpdatesBatch,
   executeInitiateYjsSync,
   executeRebuildFromServer,
   swapDocAndAwarenessAfterRebuild,
   type ServerRebuildContext,
-} from './yjs-server-rebuild';
+} from './server-rebuild';
 import {
   CursorBroadcastThrottler,
   extractNextLocalCursor,
@@ -59,7 +59,7 @@ import {
   handleUserJoinedHelper,
   handleUserLeftHelper,
   type CursorPresenceHost,
-} from './yjs-cursor-presence';
+} from './cursor-presence';
 
 export {
   buildLineStartsIndex,
@@ -662,7 +662,6 @@ export class YjsSocketIOProvider {
 
   public destroy(options?: { skipFlush?: boolean }): void {
     if (this.destroyed) return;
-    this.destroyed = true;
 
     if (options?.skipFlush) {
       if (this.updateBatchTimer) {
@@ -673,6 +672,8 @@ export class YjsSocketIOProvider {
     } else {
       this.flushPendingUpdates();
     }
+
+    this.destroyed = true;
 
     this.cursorThrottler.clear();
     if (this.updateBatchTimer) {
@@ -724,4 +725,4 @@ export {
   clearYjsProviderPool,
   subscribeYjsPoolCleared,
   getYjsPoolEpoch,
-} from './yjs-provider-pool';
+} from './provider-pool';

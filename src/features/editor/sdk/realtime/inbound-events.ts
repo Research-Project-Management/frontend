@@ -1,18 +1,19 @@
-﻿/**
- * yjs-inbound-events.ts
+/**
+ * inbound-events.ts
  *
  * Extracted Socket.IO inbound event registration & dispatch helpers for YjsSocketIOProvider.
  */
 
 import * as Y from 'yjs';
 import { io, type Socket } from 'socket.io-client';
+import { NAMESPACES, TRANSPORT_DEFAULTS } from '@/shared/realtime/config';
 import { getRealtimeBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import type { CollaborationPresence } from '../pages/types';
 import {
   YjsCrossTabBridge,
   type CrossTabProviderRole,
-} from './yjs-cross-tab-bridge';
+} from './cross-tab';
 import type {
   CompileProgressPayload,
   ConnectionStatus,
@@ -23,7 +24,7 @@ import type {
   RemotePresencePayload,
   RemoteUserJoinedPayload,
   YjsSocketIOProviderOptions,
-} from './yjs-awareness-sync';
+} from './awareness-sync';
 
 const RELAYABLE_SOCKET_EVENTS = [
   'compile:progress',
@@ -427,11 +428,12 @@ export function resolveCrossTabTransportConfig(
 
 export function createRealtimeSocketInstance(options: YjsSocketIOProviderOptions): Socket {
   const rawBase = (options.baseUrl || getRealtimeBaseUrl() || '').replace(/\/$/, '');
-  const socketUrl = rawBase ? `${rawBase}/pages` : '/pages';
+  const socketUrl = rawBase ? `${rawBase}${NAMESPACES.PAGES}` : NAMESPACES.PAGES;
   const user = options.user;
   const socketOpts = {
-    path: '/socket.io',
+    ...TRANSPORT_DEFAULTS,
     transports: ['polling', 'websocket'],
+    timeout: 10_000,
     auth: (cb: (data: Record<string, unknown>) => void) => {
       const currentToken = options.getToken?.() || options.token || getAuthToken() || undefined;
       cb({
@@ -442,11 +444,6 @@ export function createRealtimeSocketInstance(options: YjsSocketIOProviderOptions
         color: user?.color,
       });
     },
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
-    timeout: 10000,
   };
   const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket }).__fluxFakeSocket;
   return options.socketFactory?.(socketUrl, socketOpts) ?? fakeSocket ?? io(socketUrl, socketOpts);

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { io, type Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { getAuthToken, getRealtimeBaseUrl } from '@/shared/lib/api';
+import { NAMESPACES } from '@/shared/realtime/config';
+import { socketPool } from '@/shared/realtime/socket-pool';
 import type { UseRealtimeItemsOptions } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { UseRealtimeItemsOptions };
@@ -55,17 +56,7 @@ export function useRealtimeItems({
   useEffect(() => {
     if (!enabled || !projectId || typeof window === 'undefined') return;
 
-    const baseUrl = getRealtimeBaseUrl();
-    const socket: Socket = io(`${baseUrl || ''}/work-items`, {
-      path: '/socket.io',
-      auth: (cb) => cb({ token: getAuthToken() }),
-      transports: ['websocket', 'polling'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      reconnectionAttempts: Infinity,
-    });
+    const socket: Socket = socketPool.acquire(NAMESPACES.WORK_ITEMS);
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     let pendingInvalidateStates = false;
@@ -216,7 +207,7 @@ export function useRealtimeItems({
       if (socket.connected) {
         socket.emit(WORK_ITEMS_SOCKET_EVENTS.LEAVE, { projectId });
       }
-      socket.disconnect();
+      socketPool.release(NAMESPACES.WORK_ITEMS);
     };
   }, [projectId, enabled, queryClient]);
 }

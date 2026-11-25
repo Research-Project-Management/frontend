@@ -1,5 +1,5 @@
 /**
- * yjs-server-rebuild.ts
+ * server-rebuild.ts
  *
  * Server Yjs initial sync & HTTP-save-while-disconnected document rebuild helpers.
  */
@@ -7,12 +7,12 @@
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
-import type { YjsCrossTabBridge } from './yjs-cross-tab-bridge';
+import type { YjsCrossTabBridge } from './cross-tab';
 import {
   applyTextDiff,
   encodeMergedYjsUpdates,
   encodeYjsSyncStep1,
-} from './yjs-awareness-sync';
+} from './awareness-sync';
 
 export interface ServerRebuildContext {
   readonly spaceId: string;
@@ -185,7 +185,8 @@ export function emitMergedUpdatesBatch(opts: {
     (res?: { success?: boolean; error?: string }) => {
       if (!res?.success && !opts.isDestroyed()) {
         console.warn('[YjsSocketIOProvider] Server rejected doc:sync:update or timed out:', res?.error);
-        opts.onFailureRequeue(mergedData);
+        const rawMerged = opts.updates.length === 1 ? opts.updates[0] : Y.mergeUpdates(opts.updates);
+        opts.onFailureRequeue(rawMerged);
         return;
       }
       if (res?.success && !opts.isDestroyed() && opts.getPendingCount() === 0) {

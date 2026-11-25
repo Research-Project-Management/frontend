@@ -1,13 +1,13 @@
-﻿/**
- * yjs-provider-pool.ts
+/**
+ * provider-pool.ts
  *
  * Multi-tab resilient singleton pool management for YjsSocketIOProvider instances.
  * Implements Object Pool / Ref-Counted Registry pattern with O(1) secondary index
  * by `projectId:pageId` and `pageId` so lookups without `userId` never miss the fast path.
  */
 
-import { applyTextDiff, type YjsSocketIOProviderOptions } from './yjs-awareness-sync';
-import { YjsSocketIOProvider } from './yjs-socket-provider';
+import { applyTextDiff, type YjsSocketIOProviderOptions } from './awareness-sync';
+import { YjsSocketIOProvider } from './provider';
 
 interface PooledYjsEntry {
   key: string;
@@ -239,6 +239,16 @@ class YjsProviderPool {
         entry.provider.destroy({ skipFlush });
       }
     }
+    if (entries.length > 0) {
+      this.poolEpoch++;
+      for (const listener of this.clearedListeners) {
+        try {
+          listener();
+        } catch {
+          // Ignore listener error
+        }
+      }
+    }
     return entries.length;
   }
 
@@ -254,6 +264,16 @@ class YjsProviderPool {
       this.unindexEntry(entry);
       if (!entry.provider.isDestroyed) {
         entry.provider.destroy({ skipFlush });
+      }
+    }
+    if (entries.length > 0) {
+      this.poolEpoch++;
+      for (const listener of this.clearedListeners) {
+        try {
+          listener();
+        } catch {
+          // Ignore listener error
+        }
       }
     }
     return entries.length;

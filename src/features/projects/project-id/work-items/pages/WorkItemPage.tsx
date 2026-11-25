@@ -28,7 +28,7 @@ import {
   getItemBucketKey,
 } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { useTopbar } from '@/features/projects/project-id/work-items/hooks/use-topbar';
-import { useRealtimeItems } from '@/features/projects/project-id/work-items/hooks/use-realtime';
+import { useRealtimeItems } from '@/features/projects/project-id/work-items/realtime/useWorkItemsRealtime';
 import type {
   Item,
   ItemMutationInput,

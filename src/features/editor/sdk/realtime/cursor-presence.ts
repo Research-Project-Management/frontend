@@ -1,5 +1,5 @@
 /**
- * yjs-cursor-presence.ts
+ * cursor-presence.ts
  *
  * Extracted collaborator presence & throttled cursor awareness broadcast helpers
  * for YjsSocketIOProvider.
@@ -9,7 +9,7 @@ import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
 import type { CollaborationPresence } from '../pages/types';
-import type { CrossTabProviderRole, YjsCrossTabBridge } from './yjs-cross-tab-bridge';
+import type { CrossTabProviderRole, YjsCrossTabBridge } from './cross-tab';
 import {
   applyRemoteCursorAwareness,
   extractLocalCursorCoords,
@@ -21,7 +21,7 @@ import {
   type RemoteCursorSelection,
   type RemotePresencePayload,
   type RemoteUserJoinedPayload,
-} from './yjs-awareness-sync';
+} from './awareness-sync';
 
 export interface CursorPresenceHost {
   readonly getSocket: () => Socket | null;

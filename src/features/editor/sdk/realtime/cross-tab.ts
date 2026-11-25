@@ -1,5 +1,5 @@
 /**
- * yjs-cross-tab-bridge.ts
+ * cross-tab.ts
  *
  * Browser Cross-Tab CRDT Mesh & Single-Socket Leader-Follower Multiplexer
  * Built on native `BroadcastChannel` + W3C Web Locks (`navigator.locks`).
@@ -24,7 +24,7 @@ import {
   encodeYjsSyncStep1,
   type ConnectionStatus,
   type RemoteCursorData,
-} from './yjs-awareness-sync';
+} from './awareness-sync';
 
 export type CrossTabProviderRole = 'standalone' | 'leader' | 'follower';
 

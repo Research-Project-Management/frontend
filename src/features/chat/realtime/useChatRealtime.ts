@@ -5,7 +5,7 @@ import type { Socket } from 'socket.io-client';
 import { type InfiniteData, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChatStore } from '../store/chat.store';
-import { CHAT_QUERY_KEYS } from './use-chat-queries';
+import { CHAT_QUERY_KEYS } from '../hooks/use-chat-queries';
 import type { ChatMessage, MessagesPageResponse, MessageType } from '../types/chat.types';
 import {
   CHAT_SOCKET_EVENTS,
@@ -13,7 +13,7 @@ import {
   joinConversationRoom,
   leaveConversationRoom,
   releaseChatSocket,
-} from '../services/chat-socket.manager';
+} from './room-manager';
 
 interface TypingStatusPayload {
   conversationId: string;

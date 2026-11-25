@@ -9,7 +9,8 @@
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
  */
 
-import { CompilePipeline, type CompilerDiagnostic, type CompilerPort } from './compile-pipeline';
+import { logger } from '@/shared/lib/logger';
+import { CompilePipeline, type CompilerDiagnostic, type CompilerPort } from './pipeline';
 import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler.types';
 import { FlushBarrier } from './flush-barrier';
 import {
@@ -17,7 +18,7 @@ import {
   resolveForward,
   resolveReverse,
   type SyncTeXMap,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   diagnosticsCoordinator,
@@ -39,7 +40,7 @@ import {
   isNetworkError,
   useConnectivityStore,
 } from '@/features/editor/core/store/connectivity.store';
-import { useCompileStore } from './compiler.store';
+import { useCompileStore } from '../store/compiler.store';
 import { isCompilerFsmRunning } from '@/features/editor/domain/document/compiler-fsm';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import type {
@@ -62,7 +63,7 @@ import {
   updateDagNodesAndAliases,
   buildCompileDirtyFilesPayload,
   type CreateSnapshotOptions,
-} from './compilation-snapshot.provider';
+} from './snapshot';
 
 export { SnapshotProvider, buildPageStoreFilePaths, type CreateSnapshotOptions };
 
@@ -449,7 +450,7 @@ export class CompilerCoordinator {
       });
 
     if (hasCycleWarning) {
-      console.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
+      logger.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
     }
 
     const effectiveProjectId =

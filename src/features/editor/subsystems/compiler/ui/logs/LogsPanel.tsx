@@ -21,16 +21,16 @@ import type {
   ErrorExplanationDto,
 } from '@/features/editor/domain/types/compiler.types';
 import { parseLatexLog } from '@/features/editor/domain/latex/compiler-logs-parser';
-import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
-import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
-import { CompilerLogsFilterTabs } from './logs/CompilerLogsFilterTabs';
-import { CompilerLogsFooter } from './logs/CompilerLogsFooter';
-import { CompileOutcomeCard } from './logs/CompileOutcomeCard';
-import { RawLatexLogsViewer } from './logs/RawLatexLogsViewer';
+import { CompilerLogEntryRow } from './LogEntryRow';
+import { CompilerLogsHeader } from './Header';
+import { CompilerLogsFilterTabs } from './FilterTabs';
+import { CompilerLogsFooter } from './Footer';
+import { CompileOutcomeCard } from './OutcomeCard';
+import { RawLatexLogsViewer } from './RawLogsViewer';
 import {
   useCompilerLogsState,
   type CompilerLogVisibleRow,
-} from './hooks/useCompilerLogsState';
+} from '../../hooks/useLogsState';
 
 export { parseLatexLog };
 export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto };

@@ -7,9 +7,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fetchLogEntryExplanation } from '@/features/editor/subsystems/compiler/ui/hooks/useLogViewerActions';
-import { LogExplanationPanel } from './LogExplanationPanel';
-import { LogAiFixPanel } from './LogAiFixPanel';
+import { fetchLogEntryExplanation } from '@/features/editor/subsystems/compiler/hooks/useLogActions';
+import { LogExplanationPanel } from './ExplanationPanel';
+import { LogAiFixPanel } from './AiFixPanel';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 

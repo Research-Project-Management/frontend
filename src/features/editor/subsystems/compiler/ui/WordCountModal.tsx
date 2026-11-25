@@ -8,6 +8,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { logger } from '@/shared/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,6 @@ import { cn } from '@/shared/lib/utils';
 import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/pages.service';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
-  countLatexWords,
   EMPTY_TEXCOUNT_STATS,
   type TeXcountStats,
   type LatexWordCountResult,
@@ -44,7 +44,7 @@ import {
 } from '@/features/editor/domain/document/word-count';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
-export { countLatexWords, type TeXcountStats, type LatexWordCountResult, type WordCountSection };
+export { type TeXcountStats, type LatexWordCountResult, type WordCountSection };
 
 interface WordCountModalFile {
   id: string;
@@ -246,7 +246,7 @@ function WordCountModal({
           }
         })
         .catch((err) => {
-          console.warn('[WordCountDialog] Server word count error:', err);
+          logger.warn('[WordCountDialog] Server word count error', { error: err });
         })
         .finally(() => {
           if (active) setLoading(false);

@@ -9,11 +9,12 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { fetchLogEntryExplanation, useLogViewerActions } from './useLogViewerActions';
+import { logger } from '@/shared/lib/logger';
+import { fetchLogEntryExplanation, useLogViewerActions } from './useLogActions';
 import {
   useCompileStore,
   selectFilteredCompileDiagnostics,
-} from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+} from '@/features/editor/subsystems/compiler/store/compiler.store';
 import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
@@ -39,7 +40,7 @@ import {
   DEFAULT_MAIN_FILE,
   COMPILER_LOGS_VIRTUAL_THRESHOLD,
 } from '@/features/editor/domain/constants/editor.constants';
-import { type TabType } from '../logs/CompilerLogsFilterTabs';
+import { type TabType } from '../ui/logs/FilterTabs';
 
 export interface UseCompilerLogsStateOptions {
   log?: string | null;
@@ -313,7 +314,7 @@ export function useCompilerLogsState({
         })
         .catch((err) => {
           if (isMounted) {
-            console.warn('[CompilerLogs] Failed to fetch auxiliary files list:', err);
+            logger.warn('[CompilerLogs] Failed to fetch auxiliary files list', { error: err });
             setAuxFiles([]);
           }
         });
@@ -484,7 +485,7 @@ export function useCompilerLogsState({
           [key]: { loading: false, result },
         }));
       } catch (err) {
-        console.warn('[CompilerLogs] AI fix suggestion failed:', err);
+        logger.warn('[CompilerLogs] AI fix suggestion failed', { error: err });
         setFixState((prev) => ({
           ...prev,
           [key]: { loading: false },

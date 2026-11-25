@@ -27,28 +27,18 @@ import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler
 import {
   type SyncTeXNode,
   type SyncTeXMap,
-  forEachLine,
-  resolvePageForLine,
-  parseSyncTeX,
-  decompressSyncTeXData,
-  decompressSyncTeXBytes,
   resolveForwardDetail,
   resolveForward,
   resolveReverse,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import {
   createPdfBlobAndUrl,
   type PdfBlobResult,
-} from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
+} from '@/features/editor/subsystems/compiler/synctex/resolver';
 
 export {
   type SyncTeXNode,
   type SyncTeXMap,
-  forEachLine,
-  resolvePageForLine,
-  parseSyncTeX,
-  decompressSyncTeXData,
-  decompressSyncTeXBytes,
   resolveForwardDetail,
   resolveForward,
   resolveReverse,
@@ -435,42 +425,10 @@ export const CompilePipeline = {
         const url = resolvedPdf.url;
         const blob = resolvedPdf.blob;
 
-        // Fast-path: small plain text synctex parses immediately for testing & small docs
-        const isSmallOrPlain = Boolean(
-          data.synctex && !data.synctex.trimStart().startsWith('H4sI') && (data.synctex.startsWith('SyncTeX') || data.synctex.length < 5000),
-        );
-        let initialSyncMap: SyncTeXMap | null = null;
-        if (isSmallOrPlain && data.synctex) {
-          try {
-            initialSyncMap = parseSyncTeX(data.synctex);
-          } catch {}
-        }
-
-        // Offload heavy decompression and parsing to non-blocking promise for 0ms immediate PDF display
-        const synctexPayload = data.synctex;
-        const synctexUrl = data.synctexArtifactUrl;
-        const synctexPromise = synctexPayload
-          ? (async () => {
-              if (initialSyncMap) return initialSyncMap;
-              try {
-                const rawSyncTex = await decompressSyncTeXData(synctexPayload);
-                return rawSyncTex ? parseSyncTeX(rawSyncTex) : null;
-              } catch {
-                return null;
-              }
-            })()
-          : synctexUrl && typeof pagesService.compiler.fetchArtifactArrayBuffer === 'function'
-            ? (async () => {
-                try {
-                  const buf = await pagesService.compiler.fetchArtifactArrayBuffer(synctexUrl, currentSignal);
-                  if (!buf) return null;
-                  const rawSyncTex = await decompressSyncTeXBytes(buf);
-                  return rawSyncTex ? parseSyncTeX(rawSyncTex) : null;
-                } catch {
-                  return null;
-                }
-              })()
-            : Promise.resolve<SyncTeXMap | null>(null);
+        // SyncTeX resolution is authoritative on the backend (resolveForwardRemote / resolveReverseRemote).
+        // Avoid browser-side gzip decompression and k-d tree parsing on the main thread.
+        const initialSyncMap: SyncTeXMap | null = null;
+        const synctexPromise = Promise.resolve<SyncTeXMap | null>(null);
 
         if (isBuildSuccess && blob && onThumbnailGenerated) {
           const runGen = () => {
@@ -682,4 +640,4 @@ export const CompilePipeline = {
   resolveReverse,
 };
 
-export { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
+export { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/resolver';

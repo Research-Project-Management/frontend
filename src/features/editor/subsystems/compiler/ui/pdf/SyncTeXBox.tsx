@@ -11,7 +11,7 @@ import React from 'react';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 
 export interface SynctexHighlightState {
   page: number;

@@ -9,13 +9,13 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { editorCommandBus } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
-import { useViewerStore, type PdfFitMode, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
+import { useViewerStore, type PdfFitMode, type DocumentViewerState } from '@/features/editor/subsystems/compiler/store/viewer.store';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 
 export interface UsePdfZoomOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;

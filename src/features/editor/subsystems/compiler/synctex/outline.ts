@@ -5,8 +5,9 @@
  * and mapping backend-extracted LaTeX outline DTOs.
  */
 
+import { logger } from '@/shared/lib/logger';
 import type { LatexOutlineEntryDto } from '@/features/editor/sdk/pages/types';
-import { resolvePageForLine, type SyncTeXMap } from './synctex-index';
+import { resolveForward, type SyncTeXMap } from './synctex';
 
 export interface PdfOutlineItem {
   id: string;
@@ -115,7 +116,7 @@ export async function extractPdfBookmarks(
       ...item,
     }));
   } catch (err) {
-    console.warn('[pdf-outline] Failed to extract PDF bookmarks:', err);
+    logger.warn('[pdf-outline] Failed to extract PDF bookmarks', { error: err });
     return [];
   }
 }
@@ -400,7 +401,7 @@ export function extractOutlineFromContent(
     let page: number | null = null;
     if (synctexMap) {
       if ('lineToPage' in synctexMap) {
-        page = resolvePageForLine(synctexMap, entry.line);
+        page = resolveForward(entry.line, synctexMap, undefined, totalPages);
       } else if (entry.line in synctexMap) {
         page = (synctexMap as Record<number, number>)[entry.line] ?? null;
       }

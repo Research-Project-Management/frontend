@@ -15,6 +15,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { logger } from '@/shared/lib/logger';
 import {
   editorCommandBus,
   getActiveEditorEngine,
@@ -24,7 +25,7 @@ import {
   performRecursiveXyCut,
   type RawPdfTextContentItem,
 } from '@/features/editor/subsystems/compiler/synctex/xy-cut';
-import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex';
 
 export interface PdfSearchMatch {
   pageNum: number; // 1-based page number
@@ -424,7 +425,7 @@ export function usePdfSearch({
         }
       } catch (err) {
         if (searchGenerationRef.current === currentGen) {
-          console.warn('[usePdfSearch] Error during search:', err);
+          logger.warn('[usePdfSearch] Error during search', { error: err });
           matchesRef.current = [];
           setMatches([]);
         }

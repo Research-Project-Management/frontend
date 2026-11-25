@@ -11,8 +11,8 @@
 
 import { sessionCoordinator, getAllRegisteredEngines } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { useCompileStore } from './compiler.store';
-import type { DirtyFileItem } from './compile-pipeline';
+import { useCompileStore } from '../store/compiler.store';
+import type { DirtyFileItem } from './pipeline';
 
 export interface FlushBarrierDeps {
   dirtyFiles: DirtyFileItem[];

@@ -10,17 +10,17 @@
 import { useCallback, useEffect } from 'react';
 import { usePageStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
-import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
+import { useViewerStore } from '@/features/editor/subsystems/compiler/store/viewer.store';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
   type SyncTeXMap,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
+import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/pdf/PdfSurface';
 
 export interface ViewerPageFileEntry {
   id: string;

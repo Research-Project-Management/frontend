@@ -14,7 +14,7 @@ import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import { cn } from '@/shared/lib/utils';
 import {
   getCappedDevicePixelRatio,
@@ -23,7 +23,7 @@ import {
 import {
   PdfSyncTeXHighlightBox,
   type SynctexHighlightState,
-} from './PdfSyncTeXHighlightBox';
+} from './SyncTeXBox';
 
 export function extractPageDimensionsPt(page: {
   getViewport?: (params: { scale: number }) => { width?: number; height?: number };
@@ -204,8 +204,8 @@ export const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       className={cn(
         'relative flex items-center justify-center cursor-text shrink-0',
         isVisible
-          ? 'bg-background dark:bg-card shadow-sm ring-1 ring-border/60'
-          : 'bg-background/50 ring-1 ring-border/40 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none',
+          ? 'bg-background dark:bg-card border border-border shadow-xs'
+          : 'bg-background/50 border border-border/60 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none',
         isSpreadView && 'my-0',
       )}
       style={{

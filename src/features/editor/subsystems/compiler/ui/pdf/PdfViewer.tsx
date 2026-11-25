@@ -26,29 +26,29 @@ import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/ed
 import {
   useCompileStore,
   useFilteredCompileDiagnostics,
-} from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
-import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
+} from '@/features/editor/subsystems/compiler/store/compiler.store';
+import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/store/viewer.store';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import type { CompilerLogFocusTarget } from '@/features/editor/domain/types/compiler.types';
 import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
-import { CompilationErrorBanner } from './CompilationErrorBanner';
+import { CompilationErrorBanner } from '../ErrorBanner';
 import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
-import { CompilerLogs, parseLatexLog } from './CompilerLogs';
+import { CompilerLogs, parseLatexLog } from '../logs/LogsPanel';
 
-import { usePdfZoom } from './hooks/usePdfZoom';
-import { usePdfCompiler } from './hooks/usePdfCompiler';
-import { useViewerSyncTeX, type ViewerPageFileEntry } from './hooks/useViewerSyncTeX';
-import { useSynchronizedScroll } from './hooks/useSynchronizedScroll';
-import { usePdfSearch, type PdfDocumentProxyLike } from './hooks/usePdfSearch';
+import { usePdfZoom } from '../../hooks/usePdfZoom';
+import { usePdfCompiler } from '../../hooks/useCompiler';
+import { useViewerSyncTeX, type ViewerPageFileEntry } from '../../hooks/useSyncTeX';
+import { useSynchronizedScroll } from '../../hooks/useSyncScroll';
+import { usePdfSearch, type PdfDocumentProxyLike } from '../../hooks/usePdfSearch';
 
 const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 

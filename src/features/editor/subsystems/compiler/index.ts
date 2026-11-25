@@ -21,11 +21,11 @@ export {
   CompilePipeline,
   type CompilerPort,
   type CompileExecutionOptions,
-} from './coordinator/compile-pipeline';
+} from './coordinator/pipeline';
 export {
   useCompileStore,
   selectFilteredCompileDiagnostics,
-} from './coordinator/compiler.store';
+} from './store/compiler.store';
 export {
   createInitialCompilerFsmContext,
   compilerFsmTransition,
@@ -35,7 +35,7 @@ export {
 } from '@/features/editor/domain/document/compiler-fsm';
 export {
   useViewerStore,
-} from './coordinator/viewer.store';
+} from './store/viewer.store';
 
 // 2. SyncTeX & PDF Intelligence
 export {
@@ -44,9 +44,7 @@ export {
   resolveForward,
   resolveForwardDetail,
   resolveReverse,
-  parseSyncTeX,
-  buildKdTree2D,
-} from './synctex/synctex-index';
+} from './synctex/synctex';
 export {
   performRecursiveXyCut,
   computeBoundingBox,
@@ -59,12 +57,12 @@ export {
   cacheBackendOutline,
   OUTLINE_INDENT,
   type OutlineEntry,
-} from './synctex/pdf-outline';
+} from './synctex/outline';
 export {
   createPdfBlobAndUrl,
   extractDoiFromText,
   parsePdfDate,
-} from './synctex/pdf-resolver';
+} from './synctex/resolver';
 
 // 3. Log Parsing & Diagnostic Filtering
 export {
@@ -79,26 +77,26 @@ export {
 } from '@/features/editor/domain/latex/warning-filter';
 
 // 4. Presentation Layer (Thin Views & Controls)
-export { default as PdfViewer } from './ui/PdfViewer';
-export { default as DetachedPdfPlaceholder } from './ui/DetachedPdfPlaceholder';
+export { default as PdfViewer } from './ui/pdf/PdfViewer';
+export { default as DetachedPdfPlaceholder } from './ui/pdf/DetachedPlaceholder';
 export {
   default as PdfSurface,
   PdfSyncTeXHighlightBox,
   type SynctexHighlightState,
-} from './ui/PdfSurface';
-export { default as CompilerLogs } from './ui/CompilerLogs';
-export { CompileOutcomeCard } from './ui/logs/CompileOutcomeCard';
+} from './ui/pdf/PdfSurface';
+export { default as CompilerLogs } from './ui/logs/LogsPanel';
+export { CompileOutcomeCard } from './ui/logs/OutcomeCard';
 export { CompileButton } from './ui/CompileButton';
-export { default as CompilationErrorBanner } from './ui/CompilationErrorBanner';
+export { default as CompilationErrorBanner } from './ui/ErrorBanner';
 export {
   resolveProjectFileByLogPath,
-} from './ui/hooks/useLogViewerActions';
-export { default as PdfToolbar } from './ui/PdfToolbar';
-export { default as PdfFindBar } from './ui/PdfFindBar';
-export { default as PdfZoomControls } from './ui/PdfZoomControls';
-export { usePdfZoom } from './ui/hooks/usePdfZoom';
-export { usePdfSearch, buildPdfSearchRegex, escapePdfSearchRegExp } from './ui/hooks/usePdfSearch';
-export { useSynchronizedScroll } from './ui/hooks/useSynchronizedScroll';
+} from './hooks/useLogActions';
+export { default as PdfToolbar } from './ui/pdf/PdfToolbar';
+export { default as PdfFindBar } from './ui/pdf/PdfFindBar';
+export { default as PdfZoomControls } from './ui/pdf/PdfZoom';
+export { usePdfZoom } from './hooks/usePdfZoom';
+export { usePdfSearch, buildPdfSearchRegex, escapePdfSearchRegExp } from './hooks/usePdfSearch';
+export { useSynchronizedScroll } from './hooks/useSyncScroll';
 
 // 5. Pre-Compile Flush Barrier
 export {
@@ -110,7 +108,7 @@ import {
   compilerCoordinator,
   SnapshotProvider,
 } from './coordinator/compiler.coordinator';
-import { useCompileStore } from './coordinator/compiler.store';
+import { useCompileStore } from './store/compiler.store';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
 import { extractProjectId, extractSpaceId } from '@/features/editor/domain/types/core.types';
 import type { ProjectCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';

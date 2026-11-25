@@ -23,12 +23,12 @@ import {
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
   type SyncTeXMap,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import { cn } from '@/shared/lib/utils';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
-import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
+import { useViewerStore } from '@/features/editor/subsystems/compiler/store/viewer.store';
 
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -42,13 +42,13 @@ import {
   type SynctexHighlightState,
   type ClickIndicator,
   type PdfSyncTeXHighlightBoxProps,
-} from './PdfSyncTeXHighlightBox';
+} from './SyncTeXBox';
 import {
   OptimizedPDFPage,
   extractPageDimensionsPt,
   normalizePdfTextItem,
-} from './OptimizedPdfPage';
-import { usePdfViewportVirtualizer } from './hooks/usePdfViewportVirtualizer';
+} from './PdfPage';
+import { usePdfViewportVirtualizer } from '../../hooks/usePdfVirtualizer';
 
 if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
   pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;

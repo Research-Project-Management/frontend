@@ -25,8 +25,8 @@ import {
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
   type SyncTeXMap,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/PdfSurface';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
+import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/pdf/PdfSurface';
 
 export interface UseSynchronizedScrollProps {
   enabled: boolean;

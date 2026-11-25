@@ -9,14 +9,14 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+} from '@/features/editor/subsystems/compiler/synctex/synctex';
 import {
   PDF_VIEWPORT_BUFFER_PAGES,
   PDF_SPREAD_VIEWPORT_BUFFER_PAGES,
   PDF_PINNED_TARGET_TTL_MS,
 } from '@/features/editor/domain/constants/editor.constants';
 import { logger } from '@/shared/lib/utils';
-import { extractPageDimensionsPt } from '../OptimizedPdfPage';
+import { extractPageDimensionsPt } from '../ui/pdf/PdfPage';
 
 export interface UsePdfViewportVirtualizerOptions {
   pdfUrl: string | null;

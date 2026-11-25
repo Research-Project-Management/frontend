@@ -9,9 +9,9 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex';
 import { toast } from 'sonner';
 
 export interface UsePdfCompilerOptions {

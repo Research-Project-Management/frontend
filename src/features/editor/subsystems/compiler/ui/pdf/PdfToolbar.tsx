@@ -19,9 +19,9 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { CompileButton } from './CompileButton';
-import { PdfPaginationControls } from './PdfPaginationControls';
-import { PdfZoomControls } from './PdfZoomControls';
+import { CompileButton } from '../CompileButton';
+import { PdfPaginationControls } from './PdfPagination';
+import { PdfZoomControls } from './PdfZoom';
 
 export interface PdfToolbarProps {
   onCompile: () => void;

@@ -24,7 +24,7 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
-import { useCompileStore } from './compiler.store';
+import { useCompileStore } from '../store/compiler.store';
 
 const EM_EN_DASH_REGEX = /[\u2014\u2013]/g;
 const BOX_WARNING_MSG_REGEX = /^(Overfull|Underfull)\s*\\[hv]box/i;

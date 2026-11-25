@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import { useSettingsStore } from '@/features/editor/core';
 import { compilerSubsystem } from '@/features/editor/subsystems/compiler';
 

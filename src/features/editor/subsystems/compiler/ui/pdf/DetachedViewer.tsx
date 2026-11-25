@@ -12,6 +12,7 @@
 
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { logger } from '@/shared/lib/logger';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   editorCommandBus,
@@ -19,7 +20,7 @@ import {
   getSyncTexChannelName,
 } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
-import { useCompileStore } from '../coordinator/compiler.store';
+import { useCompileStore } from '../../store/compiler.store';
 
 const PdfViewer = dynamic(
   () => import('./PdfViewer'),
@@ -101,7 +102,7 @@ export function DetachedPdfViewer() {
       // Query main window for initial PDF and compiler state
       channel.postMessage({ type: 'preview:ready', ...(targetId ? { targetId } : {}) });
     } catch (err) {
-      console.warn('[DetachedPreview] BroadcastChannel failed to initialize:', err);
+      logger.warn('[DetachedPreview] BroadcastChannel failed to initialize', { error: err });
     }
 
     // Forward local PDF dual-scroll movements back to main window editor

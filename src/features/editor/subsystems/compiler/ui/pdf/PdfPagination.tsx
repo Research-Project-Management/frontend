@@ -11,7 +11,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
+import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/store/viewer.store';
 
 export interface PdfPaginationControlsProps {
   pageNumber?: number;

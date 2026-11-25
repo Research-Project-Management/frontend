@@ -6,14 +6,14 @@ import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
   formatBibEntryAuthorSummary,
   cleanBibtexTitle,
-} from '@/features/editor/subsystems/citation/model/citation-formatter';
+} from '../model/formatter';
 
 interface CitationPickerCardProps {
   entry: BibEntry;
   idx: number;
   isSelected: boolean;
   isChecked?: boolean;
-  isCited: boolean;
+  isCited?: boolean;
   onSelect: (entry: BibEntry, e?: React.MouseEvent) => void;
   onToggleCheck?: (key: string) => void;
   onDoubleClick: (entry: BibEntry) => void;
@@ -24,7 +24,7 @@ export const CitationPickerCard = memo(function CitationPickerCard({
   idx,
   isSelected,
   isChecked = false,
-  isCited,
+  isCited: _isCited,
   onSelect,
   onToggleCheck,
   onDoubleClick,
@@ -54,11 +54,11 @@ export const CitationPickerCard = memo(function CitationPickerCard({
       }}
       className={cn(
         'group flex flex-col gap-1 p-2.5 rounded-md cursor-pointer transition-colors border text-left select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
-        isChecked
-          ? 'bg-primary/5 border-primary/40 text-foreground'
-          : isSelected
-            ? 'bg-muted border-border text-foreground font-medium'
-            : 'border-transparent hover:bg-muted text-foreground',
+        isSelected
+          ? 'bg-muted border-border text-foreground'
+          : isChecked
+            ? 'bg-muted/50 border-transparent text-foreground'
+            : 'border-transparent hover:bg-muted/60 text-foreground',
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -89,14 +89,6 @@ export const CitationPickerCard = memo(function CitationPickerCard({
           </p>
         </div>
       </div>
-
-      {isCited && (
-        <div className="flex items-center pt-0.5 pl-5.5">
-          <span className="text-10 font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-            In Document
-          </span>
-        </div>
-      )}
     </div>
   );
 });

@@ -1,17 +1,9 @@
 /**
  * src/features/editor/subsystems/citation/index.ts
- *
- * Citation Subsystem Public Seam & Facade Port (Matt Pocock Deep Module).
- *
- * Responsibilities:
- * - BibTeX & BibLaTeX Parsing and Generation.
- * - Citation Key Auto-completion and Renaming Refactor Engine.
- * - Retracted Academic Literature Detection.
- * - Citation Picker Modal and Citation Sidebar Tab Presentation.
- * - CodeMirror 6 Hover Tooltip Extension.
+ * Citation Subsystem Public API.
  */
 
-// 1. Models & Pure Domain Algorithms
+// Model
 export {
   parseBibContent,
   parseMultipleBibContents,
@@ -22,17 +14,13 @@ export {
   detectDocumentCitationStyle,
   buildBibliographySection,
   injectBibliographyIntoDocument,
-} from './model/bibliography-generator';
+} from './model/bibliography';
 export {
-  validateCitationKey,
-  refactorCitationKeyInBibTeX,
-  refactorCitationKeyInLatex,
-  refactorCitationKeyAcrossFiles,
-  executeProjectCitekeyRefactor,
-} from './model/citation-refactor';
-export {
-  buildRetractedCitationMap,
-} from './model/retracted-citations';
+  resolveCitationScope,
+  PERSONAL_LIBRARY_SCOPE,
+  type CitationScope,
+} from './model/scope';
+export { buildRetractedCitationMap } from './model/retraction';
 export {
   extractCitationKeys,
   formatInTextCitationPreview,
@@ -43,20 +31,13 @@ export {
   formatCitationSnippet,
   formatItemAuthorSummary,
   formatItemToBibtex,
-} from './model/citation-formatter';
+} from './model/formatter';
 
-// 2. Presentation Layer (Thin Views)
-export { default as CitationTab } from './ui/CitationTab';
-export {
-  default as CitationModal,
-} from './ui/modals/CitationModal';
-export {
-  default as RenameCitationModal,
-} from './ui/modals/RenameCitationModal';
+// UI
+export { default as CitationModal } from './ui/CitationModal';
 
-// 3. Engine Extensions (CodeMirror 6)
+// Extensions
 export {
   citationHoverSource,
   latexCitationHoverTooltip,
-} from './extensions/latex-citation-hover';
-
+} from './extensions/citation-hover';

@@ -18,7 +18,7 @@ import {
   formatBibEntryToBibtex,
   parseBibtexAuthors,
   cleanBibtexTitle,
-} from '@/features/editor/subsystems/citation/model/citation-formatter';
+} from '../model/formatter';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 
 export function useCitationPickerActions() {

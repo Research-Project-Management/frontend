@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { filesQuery, pageKeys } from '@/features/editor/core/queries/document.queries';
-import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
+import { useEditorCitations } from './useCitation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractCitationKeys,
@@ -20,12 +20,12 @@ import {
   formatItemToBibtex,
   parseBibtexAuthors,
   cleanBibtexTitle,
-} from '@/features/editor/subsystems/citation/model/citation-formatter';
-import { validateIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
+} from '../model/formatter';
+import { validateIdentifier } from '../model/schema';
 import {
   buildRetractedCitationMap,
   type RetractedItemInfo,
-} from '@/features/editor/subsystems/citation/model/retracted-citations';
+} from '../model/retraction';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import type { BibEntryDto } from '@/features/editor/sdk/pages/types';
@@ -39,12 +39,18 @@ import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { useCitationPickerActions } from './useCitationPickerActions';
-export interface CollectionNode {
-  id: string;
-  name: string;
-  children?: CollectionNode[];
-}
+import { useCitationPickerActions } from './useCitationActions';
+import {
+  resolveCitationScope,
+  PERSONAL_LIBRARY_SCOPE,
+} from '../model/scope';
+import {
+  buildCollectionTree,
+  indexCollectionNodes,
+  entryMatchesCollection,
+  type CollectionNode,
+} from '../model/collection-tree';
+export type { CollectionNode };
 
 export type CitationStyle =
   | 'latex-cite'
@@ -120,27 +126,21 @@ export function useCitationPickerState({
   const storeSpaceId = usePageStore((s) => s.spaceId);
 
   const rootId = params?.pageId || storeParentPageId || currentPageId || '';
-  const effectiveProjectId =
-    propsProjectId ||
-    params?.projectId ||
-    storeProjectId ||
-    currentPageProjectId ||
-    storeSpaceId ||
-    rootId ||
-    '';
-  const librarySpaceId =
-    propsProjectId ||
-    params?.projectId ||
-    storeProjectId ||
-    currentPageProjectId ||
-    'user';
+  const { spaceId: effectiveProjectId, libraryScope } = resolveCitationScope({
+    propProjectId: propsProjectId,
+    routeProjectId: params?.projectId,
+    storeProjectId: storeProjectId || undefined,
+    pageProjectId: currentPageProjectId || undefined,
+    storeSpaceId: storeSpaceId || undefined,
+    pageId: rootId,
+  });
 
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>(defaultStyle);
   const [search, setSearch] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'default' | 'year-desc' | 'year-asc' | 'title-asc' | 'author-asc'>('default');
-  const [selectedNav, setSelectedNav] = useState<string>('all');
+  const [selectedNav, setSelectedNav] = useState<string>('library');
   const [activeView, setActiveView] = useState<'tree' | 'list' | 'detail'>('list');
   const [serverItems, setServerItems] = useState<BibEntry[]>([]);
   const [isSearchingServer, setIsSearchingServer] = useState(false);
@@ -163,11 +163,14 @@ export function useCitationPickerState({
   });
 
   const { libraryItems = [] } = useEditorCitations({
-    projectId: librarySpaceId,
+    projectId: libraryScope,
     enabled: open,
   });
 
-  const { collections: serverCollections = [] } = useCollections(librarySpaceId);
+  const { collections: serverCollections = [] } = useCollections({
+    spaceId: libraryScope,
+    enabled: open,
+  });
 
   const citedKeys = useMemo(() => {
     if (propsCitedKeys && propsCitedKeys.length > 0) return propsCitedKeys;
@@ -263,7 +266,7 @@ export function useCitationPickerState({
     if (open) {
       setSearch(initialQuery || '');
       setSelectedKey(initialKey || null);
-      setSelectedNav('all');
+      setSelectedNav('library');
       setActiveView(initialKey ? 'detail' : 'list');
       setServerItems([]);
       setTimeout(() => {
@@ -338,7 +341,7 @@ export function useCitationPickerState({
   }, [localBaseItems, serverItems]);
 
   const { data: retractedItems } = useRetractedItems(
-    librarySpaceId === 'user' ? '' : librarySpaceId,
+    libraryScope === PERSONAL_LIBRARY_SCOPE ? '' : libraryScope,
     open,
   );
   const retractedMap = useMemo(
@@ -350,51 +353,14 @@ export function useCitationPickerState({
     info: RetractedItemInfo;
   } | null>(null);
 
-  const collectionTree = useMemo<CollectionNode[]>(() => {
-    if (serverCollections && serverCollections.length > 0) {
-      const map = new Map<string, CollectionNode>();
-      const roots: CollectionNode[] = [];
-      for (const c of serverCollections) {
-        if (!c.id) continue;
-        map.set(c.id, { id: c.id, name: c.name, children: [] });
-      }
-      for (const c of serverCollections) {
-        if (!c.id) continue;
-        const node = map.get(c.id)!;
-        const colItem = c as typeof c & { parentId?: string; parent?: string };
-        const rawParent = colItem.parentId || colItem.parent;
-        if (rawParent && rawParent !== c.id && map.has(rawParent)) {
-          map.get(rawParent)!.children!.push(node);
-        } else {
-          roots.push(node);
-        }
-      }
-      return roots;
-    }
-    return [];
-  }, [serverCollections]);
+  const collectionTree = useMemo<CollectionNode[]>(
+    () => buildCollectionTree(serverCollections),
+    [serverCollections],
+  );
 
-  const collectionNodeMap = useMemo(() => {
-    const map = new Map<string, CollectionNode>();
-    const traverse = (nodes: CollectionNode[]) => {
-      for (const node of nodes) {
-        map.set(node.id, node);
-        if (node.children) traverse(node.children);
-      }
-    };
-    traverse(collectionTree);
-    return map;
-  }, [collectionTree]);
-
-  const entryMatchesCollection = useCallback(
-    (entry: BibEntry, node: CollectionNode): boolean => {
-      const colId = entry.collectionId;
-      const colIds = entry.collectionIds;
-      if (colId === node.id || colIds?.includes(node.id)) return true;
-      if (node.children?.some((child) => entryMatchesCollection(entry, child))) return true;
-      return false;
-    },
-    [],
+  const collectionNodeMap = useMemo(
+    () => indexCollectionNodes(collectionTree),
+    [collectionTree],
   );
 
   const navSpecMap = useMemo<Record<string, CitationPredicate>>(() => {
@@ -658,7 +624,6 @@ export function useCitationPickerState({
       return;
     }
     setSelectedKey(entry.key);
-    setSelectedKeys(new Set([entry.key.toLowerCase()]));
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setActiveView('detail');
     }
@@ -721,6 +686,7 @@ export function useCitationPickerState({
 
   return {
     effectiveProjectId,
+    rootId,
     selectedStyle,
     setSelectedStyle,
     search,

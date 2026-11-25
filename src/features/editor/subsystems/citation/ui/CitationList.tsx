@@ -20,8 +20,9 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { CitationPickerCard } from './CitationPickerCard';
+import { CitationPickerCard } from './CitationCard';
 
 export interface CitationPickerListPaneProps {
   activeView: 'tree' | 'list' | 'detail';
@@ -88,7 +89,7 @@ export function CitationPickerListPane({
             onChange={(e) => onSearchChange(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Search references..."
-            className="pl-8 pr-7 h-8 text-xs bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border rounded-md"
+            className="pl-8 pr-7 h-8 text-xs bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:border-border focus:outline-none shadow-none rounded-md"
           />
           {search && (
             <button
@@ -110,19 +111,11 @@ export function CitationPickerListPane({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className={cn(
-                'size-8 shrink-0 flex items-center justify-center rounded-md border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative',
-                isSorted
-                  ? 'bg-muted border-primary/40 text-primary font-medium'
-                  : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted',
-              )}
+              className="size-8 shrink-0 flex items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
               title="Sort references"
               aria-label="Sort references"
             >
               <ListFilter className="size-3.5" />
-              {isSorted && (
-                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-primary" />
-              )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44 text-xs">
@@ -203,7 +196,7 @@ export function CitationPickerListPane({
         role="listbox"
         aria-label="Citations list"
         aria-activedescendant={selectedKey ? `citation-opt-${selectedKey}` : undefined}
-        className="flex-1 min-h-0 overflow-y-auto px-4 py-2 space-y-1 sidebar-scrollbar"
+        className="flex-1 min-h-0 overflow-y-auto px-4 py-2 flex flex-col sidebar-scrollbar"
       >
         <div className="sr-only" aria-live="polite" aria-atomic="true">
           {filteredItems.length} citations found
@@ -217,13 +210,17 @@ export function CitationPickerListPane({
         )}
 
         {!isSearchingServer && filteredItems.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center px-4 space-y-1">
-            <p className="text-xs font-medium text-foreground">No citations found</p>
-            <p className="text-11 text-muted-foreground max-w-xs leading-normal">
-              {search
-                ? `No papers match "${search}". Try searching by author, title or DOI.`
-                : 'No citation entries found in this collection.'}
-            </p>
+          <div className="h-full flex-1 flex items-center justify-center px-4">
+            <PlaneEmptyState
+              variant={search ? 'search' : 'citations'}
+              isCompact
+              title="No citations found"
+              description={
+                search
+                  ? `No papers match "${search}". Try searching by author, title or DOI.`
+                  : 'No citation entries found in this collection.'
+              }
+            />
           </div>
         )}
 

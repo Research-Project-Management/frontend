@@ -21,7 +21,7 @@ import {
   PANDOC_BRACKET_REGEX,
   isVietnameseAuthorName,
   formatInTextCitationPreview,
-} from '@/features/editor/subsystems/citation/model/citation-formatter';
+} from '../model/formatter';
 import { formatRetractionReason } from '@/features/library/domain/system-views.policy';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 

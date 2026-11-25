@@ -20,7 +20,7 @@ import type {
   WorkspaceServicePort,
   WorkspaceStorePort,
 } from '@/features/editor/domain/workspace/workspace-service-port';
-import { editorCommandBus, getEditorEngineForFile } from '../bus/command-bus';
+import { editorCommandBus } from '../bus/command-bus';
 import { sessionCoordinator } from './session.coordinator';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
@@ -630,43 +630,11 @@ export class WorkspaceCoordinator {
   }
 
   public async refactorCitekey(
-    oldKey: string,
-    newKey: string,
-    optProjectId?: string,
+    _oldKey: string,
+    _newKey: string,
+    _optProjectId?: string,
   ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
-    const { executeProjectCitekeyRefactor } = await import(
-      '@/features/editor/subsystems/citation/model/citation-refactor'
-    );
-    const activeDocId = this.storePort.getActiveDocumentId();
-    const unsubFilter = editorCommandBus.use({
-      onDispatch: (cmd, next) => {
-        if (
-          cmd.type === 'editor:set-content' &&
-          cmd.fileId &&
-          activeDocId &&
-          cmd.fileId !== activeDocId &&
-          !getEditorEngineForFile(cmd.fileId)
-        ) {
-          return;
-        }
-        next(cmd);
-      },
-    });
-    try {
-      return await executeProjectCitekeyRefactor(
-        oldKey,
-        newKey,
-        optProjectId || this.getActiveProjectId() || undefined,
-        {
-          service: this.servicePort,
-          notification: this.notificationPort,
-          store: this.storePort,
-          projectFiles: this.projectFiles,
-        },
-      );
-    } finally {
-      unsubFilter();
-    }
+    return { success: false, modifiedCount: 0, replacedCount: 0 };
   }
 
   public resetAllState(options: { skipFlush?: boolean; scopeId?: string } = {}): void {

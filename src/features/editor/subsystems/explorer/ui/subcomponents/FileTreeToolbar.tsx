@@ -16,10 +16,12 @@ import {
   ChevronRight,
   FilePlus,
   FolderPlus,
+  Library,
   ListFilter,
   Plus,
   Upload,
 } from 'lucide-react';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,6 +122,19 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                 >
                   <Upload className="size-3.5 text-foreground" strokeWidth={1.5} />
                   <span>Upload Files</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() =>
+                    editorCommandBus.dispatch({
+                      type: 'dialog:open',
+                      dialog: 'citation-picker',
+                    })
+                  }
+                  className="flex items-center gap-2 cursor-pointer text-xs"
+                >
+                  <Library className="size-3.5 text-foreground" strokeWidth={1.5} />
+                  <span>Add from Library</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

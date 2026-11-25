@@ -11,6 +11,7 @@ import {
   apiPatch,
   apiDelete,
 } from '@/shared/lib/api';
+import type { BffEnvelope } from '@/shared/types/bff.types';
 import { PAGES_API_BASE } from './base';
 import { structure } from './structure.client';
 import { flushYjsProviders } from '../realtime/provider-pool';
@@ -302,14 +303,18 @@ export const bootstrap = {
     if (!id) {
       throw new Error('Workspace or page ID is required for editor bootstrap');
     }
-    const segment = options?.isProjectRoute ? 'spaces' : 'pages';
+    const segment = options?.isProjectRoute ? 'projects' : 'pages';
     const params: Record<string, string> = {};
     if (options?.fileId) {
       params.fileId = options.fileId;
     }
-    return await apiGet<EditorBootstrapResponseDto>(
-      `${PAGES_API_BASE}/${segment}/${encodeURIComponent(id)}/bootstrap`,
-      { params, signal: options?.signal },
+    const envelope = await apiGet<BffEnvelope<EditorBootstrapResponseDto>>(
+      `/api/v1/bff/web/${segment}/${encodeURIComponent(id)}/editor-bootstrap`,
+      {
+        params,
+        signal: options?.signal,
+      },
     );
+    return envelope.data;
   },
 };

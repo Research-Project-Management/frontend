@@ -134,7 +134,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
         <MenubarSeparator />
 
         <MenubarItem
-          onClick={() => useSettingsStore.getState().setIsHistoryOpen(true)}
+          onClick={() => editorCommandBus.dispatch({ type: 'history:open' })}
           className="cursor-pointer flex items-center gap-2"
         >
           <History className="size-3.5 text-foreground/80 shrink-0" />

@@ -3,14 +3,15 @@
 import React, { useState } from 'react';
 import {
   Tag,
-  Clock,
-  Loader2,
   User,
   MoreVertical,
   Download,
   RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,8 @@ function formatVersionTime(dateStr?: string | null): string {
 export interface TimelineSidebarProps {
   versions: ProjectVersionListItem[];
   isLoadingVersions: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   historyMode: 'single' | 'compare';
   onHistoryModeChange: (mode: 'single' | 'compare') => void;
   filter: 'all' | 'labelled';
@@ -59,6 +62,8 @@ export interface TimelineSidebarProps {
 export function TimelineSidebar({
   versions,
   isLoadingVersions,
+  error,
+  onRetry,
   historyMode,
   onHistoryModeChange,
   filter,
@@ -84,65 +89,92 @@ export function TimelineSidebar({
 
   return (
     <aside className="w-full md:w-80 lg:w-88 border-t md:border-t-0 md:border-l border-border max-h-60 md:max-h-none flex flex-col bg-surface shrink-0 overflow-hidden">
-      {/* Header: Tabs + Compare toggle */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border shrink-0 bg-background/50">
-        <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5 text-xs font-medium">
+      {/* Top Filter: Full-width Segmented Control */}
+      <div className="px-3 py-2 border-b border-border shrink-0 bg-background">
+        <div
+          role="tablist"
+          aria-label="History filter"
+          className="flex items-center gap-1"
+        >
           <button
             type="button"
+            role="tab"
+            aria-selected={filter === 'all'}
             onClick={() => setFilter('all')}
             className={cn(
-              'px-2 py-1 rounded-sm transition-colors cursor-pointer whitespace-nowrap',
+              'flex-1 py-1 text-xs font-medium text-center rounded-sm transition-colors cursor-pointer',
               filter === 'all'
-                ? 'bg-background text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-muted text-foreground font-semibold'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             All history
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={filter === 'labelled'}
             onClick={() => setFilter('labelled')}
             className={cn(
-              'px-2 py-1 rounded-sm transition-colors cursor-pointer whitespace-nowrap',
+              'flex-1 py-1 text-xs font-medium text-center rounded-sm transition-colors cursor-pointer',
               filter === 'labelled'
-                ? 'bg-background text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-muted text-foreground font-semibold'
+                : 'text-muted-foreground hover:text-foreground',
             )}
           >
             Labels
           </button>
         </div>
-
-        <Button
-          type="button"
-          variant={historyMode === 'compare' ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={() =>
-            onHistoryModeChange(historyMode === 'compare' ? 'single' : 'compare')
-          }
-          className="h-7 px-2.5 text-xs font-medium cursor-pointer whitespace-nowrap shrink-0"
-        >
-          {historyMode === 'compare' ? 'Exit compare' : 'Compare versions'}
-        </Button>
       </div>
 
       {/* Versions List */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 sidebar-scrollbar">
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-2 space-y-1.5 sidebar-scrollbar">
         {isLoadingVersions ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs gap-2">
-            <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-primary" />
-            <span>Loading history...</span>
+          <div className="space-y-1.5">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="p-2.5 rounded-md border border-border/70 bg-card space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3.5 w-24 rounded-sm" />
+                    <Skeleton className="h-3.5 w-8 rounded-sm" />
+                  </div>
+                  <Skeleton className="size-4 rounded-sm shrink-0" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Skeleton className="size-3 rounded-full shrink-0" />
+                  <Skeleton className="h-3 w-20 rounded-sm" />
+                </div>
+              </div>
+            ))}
           </div>
+        ) : error ? (
+          <PlaneErrorState
+            isCompact
+            title="Failed to load history"
+            description="Could not fetch version history."
+            error={error as PlaneErrorStateProps['error']}
+            action={
+              onRetry ? (
+                <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs cursor-pointer">
+                  Try again
+                </Button>
+              ) : undefined
+            }
+          />
         ) : filteredVersions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs text-center px-4">
-            <Clock className="size-6 mb-2 opacity-40" />
-            <p className="font-medium text-foreground">No versions found</p>
-            <p className="text-[11px] mt-0.5">
-              {filter === 'labelled'
+          <PlaneEmptyState
+            isCompact
+            variant="document"
+            title="No versions found"
+            description={
+              filter === 'labelled'
                 ? 'No labelled versions yet.'
-                : 'Versions appear automatically as you edit.'}
-            </p>
-          </div>
+                : 'Versions appear automatically as you edit.'
+            }
+          />
         ) : (
           filteredVersions.map((v) => {
             const isTarget = selectedTargetVersion === v.version;

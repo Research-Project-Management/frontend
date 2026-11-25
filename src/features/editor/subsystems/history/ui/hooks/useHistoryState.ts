@@ -6,7 +6,7 @@ export type HistoryFilter = 'all' | 'labelled';
 export type DiffViewMode = 'split' | 'unified';
 
 export function useHistoryState(initialVersion?: number) {
-  const [mode, setMode] = useState<HistoryMode>('single');
+  const [mode, setMode] = useState<HistoryMode>('compare');
   const [filter, setFilter] = useState<HistoryFilter>('all');
   const [diffView, setDiffView] = useState<DiffViewMode>('unified');
   const [targetVersion, setTargetVersion] = useState<number | null>(initialVersion ?? null);

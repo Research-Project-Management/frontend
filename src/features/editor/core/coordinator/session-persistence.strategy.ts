@@ -107,10 +107,17 @@ export async function persistWithRetry(
           hash?: string | null;
           updatedAt?: string;
           page?: { rev?: number; hash?: string | null; updatedAt?: string };
+          data?: {
+            rev?: number;
+            hash?: string | null;
+            updatedAt?: string;
+            page?: { rev?: number; hash?: string | null; updatedAt?: string };
+          };
         };
-        const rev = r.rev ?? r.page?.rev;
-        const hash = r.hash ?? r.page?.hash;
-        const updatedAt = r.updatedAt ?? r.page?.updatedAt;
+        const rev = r.rev ?? r.page?.rev ?? r.data?.rev ?? r.data?.page?.rev;
+        const hash = r.hash ?? r.page?.hash ?? r.data?.hash ?? r.data?.page?.hash;
+        const updatedAt =
+          r.updatedAt ?? r.page?.updatedAt ?? r.data?.updatedAt ?? r.data?.page?.updatedAt;
         if (rev !== undefined || hash !== undefined || updatedAt !== undefined) {
           lruDocumentCache.updateServerVersion(fileId, {
             rev,
@@ -215,7 +222,8 @@ export async function handleSaveConflictOrError(
   fileId: string,
   sentContent: string,
   err: unknown,
-): Promise<void> {
+  sentVersion?: number,
+): Promise<boolean> {
   const model = lruDocumentCache.getModel(fileId);
   const status = (err as { status?: number })?.status;
   const isConflict =
@@ -225,7 +233,6 @@ export async function handleSaveConflictOrError(
     (err instanceof Error && CONFLICT_ERROR_MSG_REGEX.test(err.message));
 
   if (isConflict) {
-    host.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
     const errObj =
       err && typeof err === 'object' ? (err as Record<string, unknown>) : undefined;
     const details = (err as { details?: Record<string, unknown> })?.details;
@@ -269,11 +276,44 @@ export async function handleSaveConflictOrError(
       }
     }
 
+    const localContent = model?.content ?? sentContent;
+
+    // Case A: Server already has identical content — resync rev cleanly without conflict UI
+    if (
+      typeof resolvedRemoteContent === 'string' &&
+      resolvedRemoteContent === localContent
+    ) {
+      if (remoteRev !== undefined) {
+        lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
+      }
+      await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
+      useConnectivityStore.getState().setSyncStatus('synced');
+      return true;
+    }
+
+    // Case B: Stale local serverRev (e.g. after Yjs/self-save) — server matches our last synced snapshot
+    const cachedSynced = await syncedDocCacheStore.get(fileId).catch(() => null);
+    if (
+      typeof resolvedRemoteContent === 'string' &&
+      remoteRev !== undefined &&
+      cachedSynced?.content === resolvedRemoteContent
+    ) {
+      lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
+      try {
+        await persistWithRetry(host.persistenceAdapter, fileId, sentContent, remoteRev);
+        await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
+        useConnectivityStore.getState().setSyncStatus('synced');
+        return true;
+      } catch {
+        // Fall through to real conflict reporting if retry fails
+      }
+    }
+
+    host.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
     if (remoteRev !== undefined) {
       lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
     }
     const hasAuthoritativeRemote = typeof resolvedRemoteContent === 'string';
-    const localContent = model?.content ?? sentContent;
     host.unsyncedEdits.flushNow(fileId, localContent, model?.projectId);
     host.conflicts.recordConflict(
       fileId,
@@ -285,7 +325,7 @@ export async function handleSaveConflictOrError(
       },
     );
     useConnectivityStore.getState().setSyncStatus('error');
-    return;
+    return false;
   }
 
   host.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
@@ -296,6 +336,7 @@ export async function handleSaveConflictOrError(
   } else {
     useConnectivityStore.getState().setSyncStatus('error');
   }
+  return false;
 }
 
 const pendingRealtimeFlushVersions = new Map<string, number>();
@@ -308,10 +349,24 @@ function commitCleanState(
   currentVersion: number,
   savedAt?: string,
 ): void {
+  const model = lruDocumentCache.getModel(docId);
   host.clearUnsyncedEdit(docId);
   lruDocumentCache.markSaved(docId);
   lruDocumentCache.markClean(docId);
   clearWorkspaceTabDirty(docId, projectId);
+  if (model) {
+    const effectiveProjectId = host.resolveEffectiveProjectId(model.projectId);
+    void syncedDocCacheStore.put({
+      id: docId,
+      projectId: effectiveProjectId,
+      title: model.filePath || docId,
+      content: model.content,
+      filePath: model.filePath,
+      rev: model.serverRev,
+      hash: model.hash,
+      updatedAt: savedAt ? new Date(savedAt).getTime() : Date.now(),
+    });
+  }
   host.transitionFsm(docId, {
     type: 'SAVE_SUCCESS',
     savedVersion,
@@ -393,7 +448,17 @@ export async function flushViaRestCasStrategy(
     return clean;
   } catch (err) {
     useConnectivityStore.getState().decrementPending();
-    await handleSaveConflictOrError(host, fileId, sentContent, err);
+    const resolvedCleanly = await handleSaveConflictOrError(
+      host,
+      fileId,
+      sentContent,
+      err,
+      sentVersion,
+    );
+    if (resolvedCleanly) {
+      useConnectivityStore.getState().setLastSavedAt(new Date());
+      return true;
+    }
     console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
     return false;
   }

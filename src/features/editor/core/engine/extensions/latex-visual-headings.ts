@@ -76,15 +76,29 @@ export function findMatchingBrace(text: string, openBraceIndex: number): number 
  * escaped punctuation) into clean display text for Visual Mode cards and tooltips.
  */
 export function cleanInlineLatexText(raw: string): string {
-  return raw
+  let out = raw
     .replace(/\\thanks\{[^{}]*\}/g, '')
     .replace(/\\label\{[^{}]*\}/g, '')
-    .replace(/\\and\b/g, ', ')
-    .replace(/\\\\/g, ' · ')
+    .replace(/\\color(?:\[[^\]]*\])?\{[^{}]*\}/g, '')
+    .replace(/\\textcolor(?:\[[^\]]*\])?\{[^{}]*\}\{([^{}]*)\}/g, '$1')
     .replace(
-      /\\(?:textbf|textit|emph|underline|texttt|textrm|textsf|textsc|url|ref)\*?\{([^{}]*)\}/g,
-      '$1',
+      /\\(?:tiny|scriptsize|footnotesize|small|normalsize|large|Large|LARGE|huge|Huge|bfseries|itshape|mdseries|rmfamily|sffamily|ttfamily|centering)\b/g,
+      '',
     )
+    .replace(/\\today\b/g, () => new Date().toLocaleDateString())
+    .replace(/\\and\b/g, ', ')
+    .replace(/\\\\(?:\s*\[[^\]]*\])?/g, ' · ');
+
+  // Unwrap nested inline formatting commands (e.g. \textbf{\color{...} Title})
+  const inlineWrapper =
+    /\\(?:textbf|textit|emph|underline|texttt|textrm|textsf|textsc|url|ref)\*?\{([^{}]*)\}/g;
+  for (let pass = 0; pass < 4; pass++) {
+    const next = out.replace(inlineWrapper, '$1');
+    if (next === out) break;
+    out = next;
+  }
+
+  return out
     .replace(/\\([%&_$#])/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
@@ -169,28 +183,29 @@ const visualHeadingsTheme = EditorView.baseTheme({
   },
 
   // Heading title text formatting: applied strictly to the heading content between braces
+  // Strictly respects Flux DESIGN.md 600 weight ceiling & optical gray foreground tokens
   '.cm-visual-heading-chapter': {
-    fontSize: '1.55rem',
-    fontWeight: '800',
+    fontSize: '1.5rem',
+    fontWeight: '600',
     letterSpacing: '-0.02em',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
   },
   '.cm-visual-heading-h1': {
-    fontSize: '1.35rem',
-    fontWeight: '700',
+    fontSize: '1.3rem',
+    fontWeight: '600',
     letterSpacing: '-0.015em',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
   },
   '.cm-visual-heading-h2': {
-    fontSize: '1.18rem',
+    fontSize: '1.15rem',
     fontWeight: '600',
     letterSpacing: '-0.01em',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
   },
   '.cm-visual-heading-h3': {
-    fontSize: '1.08rem',
+    fontSize: '1.05rem',
     fontWeight: '600',
-    color: 'var(--foreground, #0f172a)',
+    color: 'var(--foreground)',
   },
   '.cm-visual-heading-paragraph': {
     fontSize: '1rem',
@@ -203,13 +218,13 @@ const visualHeadingsTheme = EditorView.baseTheme({
     fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.88em',
     fontWeight: '400',
-    color: 'var(--muted-foreground, #64748b)',
+    color: 'var(--muted-foreground)',
     opacity: '0.8',
-    transition: 'opacity 0.15s ease',
+    transition: 'opacity 150ms ease',
   },
 
   '.cm-visual-bold-text': {
-    fontWeight: '700',
+    fontWeight: '600',
   },
   '.cm-visual-italic-text': {
     fontStyle: 'italic',
@@ -222,9 +237,9 @@ const visualHeadingsTheme = EditorView.baseTheme({
     fontFamily:
       'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     fontSize: '0.9em',
-    backgroundColor: 'var(--muted, #f1f5f9)',
-    padding: '0 3px',
-    borderRadius: '3px',
+    backgroundColor: 'var(--muted)',
+    padding: '0 4px',
+    borderRadius: '4px',
   },
 });
 

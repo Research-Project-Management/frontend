@@ -19,7 +19,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -38,6 +38,7 @@ import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocum
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
+import { resolveCitationScope } from '@/features/editor/subsystems/citation/model/scope';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
@@ -46,9 +47,7 @@ const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
 const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings/ui/SettingsModal'), { ssr: false });
 const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
-const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationModal'), { ssr: false });
-const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
-const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
+const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/CitationModal'), { ssr: false });
 const TableModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/table/TableModal'), { ssr: false });
 const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/EquationModal'), { ssr: false });
 const FigureModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/FigureModal'), { ssr: false });
@@ -119,6 +118,7 @@ function ConnectedWordCountModal({ open, projectId, rootPageId, engine }: Connec
 }
 
 export function WorkbenchLayout() {
+  const router = useRouter();
   const { projectId: routeProjectId, pageId, draftId } = useParams<{
     projectId?: string;
     pageId?: string;
@@ -127,10 +127,12 @@ export function WorkbenchLayout() {
 
   const storeProjectId = usePageStore((s) => s.projectId);
   const spaceId = usePageStore((s) => s.spaceId);
-  const rawProjectId = routeProjectId || storeProjectId || undefined;
-  // Anti-Corruption Adapter for Library SDK (which still expects 'user' | projectId)
-  const resolvedLibraryScope =
-    rawProjectId || (spaceId ? 'user' : undefined);
+  const { libraryScope } = resolveCitationScope({
+    routeProjectId,
+    storeProjectId: storeProjectId || undefined,
+    storeSpaceId: spaceId || undefined,
+  });
+  const hasWorkspaceScope = Boolean(routeProjectId || storeProjectId || spaceId);
   const rootPageId = pageId ?? draftId ?? null;
 
   // Ensure active document and workspace store are always hydrated even in viewer-only or history modes
@@ -152,8 +154,6 @@ export function WorkbenchLayout() {
   const [wordCountOpen, setWordCountOpen] = useState(false);
   const [citationPickerOpen, setCitationPickerOpen] = useState(false);
   const [citationPickerInitialQuery, setCitationPickerInitialQuery] = useState<string | undefined>(undefined);
-  const [renameCitationOpen, setRenameCitationOpen] = useState(false);
-  const [renameCitationOldKey, setRenameCitationOldKey] = useState('');
   const [tableWizardOpen, setTableWizardOpen] = useState(false);
   const [tableWizardTab, setTableWizardTab] = useState<'table' | 'import' | 'ai' | 'matrix'>('table');
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
@@ -164,9 +164,9 @@ export function WorkbenchLayout() {
 
   // Sync workspace library references into latexSymbolsIndex once workspace scope is resolved
   const { data: libraryData } = useViewItems(
-    resolvedLibraryScope || 'user',
+    libraryScope,
     'all',
-    { enabled: Boolean(resolvedLibraryScope) },
+    { enabled: hasWorkspaceScope },
   );
   useEffect(() => {
     if (libraryData?.items && libraryData.items.length > 0) {
@@ -185,10 +185,6 @@ export function WorkbenchLayout() {
       } else if (cmd.dialog === 'citation-picker') {
         setCitationPickerInitialQuery(cmd.payload?.initialQuery || undefined);
         setCitationPickerOpen(true);
-      } else if (cmd.dialog === 'rename-symbol' || cmd.dialog === 'rename-citation') {
-        const key = cmd.payload?.oldKey || cmd.payload?.key || '';
-        setRenameCitationOldKey(key);
-        setRenameCitationOpen(true);
       } else if (cmd.dialog === 'table-wizard' || cmd.dialog === 'matrix-wizard') {
         const requestedTab = cmd.payload?.initialTab;
         const initialTab: 'table' | 'import' | 'ai' | 'matrix' =
@@ -227,9 +223,6 @@ export function WorkbenchLayout() {
       }
       if (!cmd.dialog || cmd.dialog === 'citation-picker') {
         setCitationPickerOpen(false);
-      }
-      if (!cmd.dialog || cmd.dialog === 'rename-symbol' || cmd.dialog === 'rename-citation') {
-        setRenameCitationOpen(false);
       }
       if (!cmd.dialog || cmd.dialog === 'table-wizard' || cmd.dialog === 'matrix-wizard') {
         setTableWizardOpen(false);
@@ -278,7 +271,13 @@ export function WorkbenchLayout() {
     });
 
     const unsubHistory = editorCommandBus.subscribe('history:open', () => {
-      useSettingsStore.getState().setIsHistoryOpen(true);
+      const targetPageId = rootPageId || currentPageId;
+      if (!targetPageId) return;
+      const isPersonal = !routeProjectId || routeProjectId === 'personal';
+      const url = isPersonal
+        ? `/pages/${targetPageId}/history`
+        : `/projects/${routeProjectId}/pages/${targetPageId}/history`;
+      router.push(url);
     });
 
     return () => {
@@ -295,18 +294,6 @@ export function WorkbenchLayout() {
   const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
   const isEditorOnly = layout === 'editor-only';
   const isViewerOnly = layout === 'viewer-only';
-
-  if (isHistoryOpen) {
-    return (
-      <HistoryPage
-        open={isHistoryOpen}
-        onOpenChange={(open) => setIsHistoryOpen(open)}
-        onClose={() => setIsHistoryOpen(false)}
-        projectId={rawProjectId}
-        pageId={rootPageId || currentPageId}
-      />
-    );
-  }
 
   return (
     <>
@@ -330,7 +317,7 @@ export function WorkbenchLayout() {
       {wordCountOpen && (
         <ConnectedWordCountModal
           open={wordCountOpen}
-          projectId={rawProjectId}
+          projectId={routeProjectId || storeProjectId || undefined}
           rootPageId={rootPageId}
           engine={engine}
         />
@@ -347,19 +334,6 @@ export function WorkbenchLayout() {
             }
           }}
           initialQuery={citationPickerInitialQuery}
-        />
-      )}
-
-      {renameCitationOpen && (
-        <RenameCitationModal
-          open={renameCitationOpen}
-          oldKey={renameCitationOldKey}
-          onOpenChange={(open) => {
-            setRenameCitationOpen(open);
-            if (!open) {
-              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'rename-symbol' });
-            }
-          }}
         />
       )}
 

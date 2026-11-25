@@ -144,13 +144,8 @@ export const compiler = {
       pageId?: string;
     },
   ): Promise<WordCountResponse> => {
-    const endpoint = projectId
-      ? `${PAGES_API_BASE}/spaces/${projectId}/word-count`
-      : options?.pageId
-        ? `${PAGES_API_BASE}/pages/${options.pageId}/word-count`
-        : `${PAGES_API_BASE}/word-count`;
     return await apiPost<WordCountResponse>(
-      endpoint,
+      `${PAGES_API_BASE}/word-count`,
       {
         ...(source !== undefined ? { source } : {}),
         ...(projectId ? { spaceId: projectId } : {}),

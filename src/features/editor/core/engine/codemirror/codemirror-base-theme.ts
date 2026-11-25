@@ -72,12 +72,12 @@ export const editorBaseTheme = EditorView.theme({
     cursor: 'pointer',
   },
   '.cm-gutter.cm-lineNumbers': {
-    minWidth: '30px',
+    minWidth: '40px',
   },
   '.cm-lineNumbers .cm-gutterElement': {
     justifyContent: 'flex-end',
     padding: '0 4px 0 8px',
-    minWidth: '30px',
+    minWidth: '40px',
     fontVariantNumeric: 'tabular-nums',
     cursor: 'pointer',
   },
@@ -144,11 +144,20 @@ export const editorBaseTheme = EditorView.theme({
     color: 'var(--primary, #0969DA)',
     fontWeight: '600',
   },
+  '.cm-panels': {
+    backgroundColor: 'var(--background)',
+    color: 'var(--foreground)',
+  },
+  '.cm-panels.cm-panels-top': {
+    borderBottom: '1px solid var(--border)',
+  },
+  '.cm-panels.cm-panels-bottom': {
+    borderTop: '1px solid var(--border)',
+  },
   '.cm-panel.cm-search': {
     padding: '6px 12px',
     backgroundColor: 'var(--background)',
     color: 'var(--foreground)',
-    borderTop: '1px solid var(--border)',
     fontSize: '12px',
     display: 'flex',
     flexWrap: 'wrap',
@@ -304,27 +313,34 @@ export function createConfiguredLineNumbers(): Extension {
 
 export const visualModeTheme = EditorView.theme({
   '&': {
-    backgroundColor: 'var(--background, #ffffff)',
+    backgroundColor: 'var(--canvas)',
+    color: 'var(--foreground)',
   },
   '.cm-scroller': {
-    backgroundColor: 'var(--background, #ffffff)',
+    backgroundColor: 'var(--canvas)',
   },
   '.cm-gutters': {
     display: 'none !important',
   },
+  '.cm-activeLine': {
+    backgroundColor: 'transparent !important',
+  },
   '.cm-content': {
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif !important',
-    backgroundColor: 'var(--background, #ffffff)',
-    maxWidth: '760px',
+    fontFamily: 'var(--font-sans) !important',
+    fontWeight: 'var(--font-weight-regular, 450)',
+    lineHeight: '1.65',
+    color: 'var(--foreground)',
+    backgroundColor: 'var(--canvas)',
+    maxWidth: '720px',
     minHeight: '100%',
     margin: '0 auto',
-    paddingTop: '24px',
-    paddingBottom: '48px',
+    paddingTop: '28px',
+    paddingBottom: '64px',
     paddingLeft: '36px',
     paddingRight: '36px',
   },
   '.cm-line': {
-    fontFamily: 'var(--font-sans), ui-sans-serif, system-ui, -apple-system, sans-serif !important',
+    fontFamily: 'var(--font-sans) !important',
   },
 });
 

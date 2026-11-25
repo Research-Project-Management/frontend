@@ -2,15 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 
 import ProjectsSidebar from '@/features/projects/shell/components/Sidebar';
+import { useWebProjectBootstrap } from '@/features/shell/hooks/use-web-bff';
 
 export default function ProjectsLayout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const params = useParams();
+  const activeProjectId =
+    typeof params?.projectId === 'string' ? params.projectId : undefined;
+  useWebProjectBootstrap(activeProjectId);
 
   useEffect(() => {
     setMounted(true);

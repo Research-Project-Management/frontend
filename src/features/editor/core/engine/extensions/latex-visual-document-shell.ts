@@ -102,14 +102,14 @@ class PreambleHeaderWidget extends WidgetType {
     bar.type = 'button';
     bar.className = 'cm-visual-preamble-pill';
     bar.setAttribute('aria-expanded', 'false');
-    bar.title = 'Click to view or edit raw LaTeX preamble';
-
     const pkgLabel =
       this.meta.packageCount === 1
         ? '1 package'
         : `${this.meta.packageCount} packages`;
+    bar.title = `Preamble (${this.meta.docClass}, ${pkgLabel}) — click to view or edit`;
+
     const labelText = document.createElement('span');
-    labelText.textContent = `Preamble · ${this.meta.docClass} · ${pkgLabel}`;
+    labelText.textContent = 'Preamble';
 
     const chevron = document.createElement('span');
     chevron.className = 'cm-visual-preamble-chevron';
@@ -344,20 +344,27 @@ const visualDocumentShellTheme = EditorView.baseTheme({
     display: 'inline-flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '3px 10px',
-    fontSize: '11.5px',
+    padding: '3px 8px',
+    fontSize: '12px',
     fontWeight: '500',
     fontFamily: 'var(--font-sans)',
     color: 'var(--muted-foreground)',
-    backgroundColor: 'var(--muted)',
+    backgroundColor: 'var(--canvas)',
     border: '1px solid var(--border)',
-    borderRadius: '9999px',
+    borderRadius: '6px',
     cursor: 'pointer',
-    transition: 'background-color 120ms ease, color 120ms ease',
+    opacity: '0.8',
+    transition: 'background-color 120ms ease, color 120ms ease, opacity 120ms ease',
   },
   '.cm-visual-preamble-pill:hover': {
     color: 'var(--foreground)',
     backgroundColor: 'var(--accent)',
+    opacity: '1',
+  },
+  '.cm-visual-preamble-pill:focus-visible': {
+    outline: '1.5px solid var(--primary)',
+    outlineOffset: '1px',
+    opacity: '1',
   },
   '.cm-visual-preamble-chevron': {
     fontSize: '10.5px',

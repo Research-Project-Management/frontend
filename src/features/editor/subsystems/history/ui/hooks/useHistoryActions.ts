@@ -68,6 +68,7 @@ export function useHistoryActions({
   const {
     data: versions = [],
     isLoading: isLoadingVersions,
+    error: versionsError,
     refetch: refetchVersions,
   } = useQuery({
     queryKey: historyKeys.versions(spaceId, pageId || undefined),
@@ -103,7 +104,12 @@ export function useHistoryActions({
     targetVersion !== null &&
     baseVersion !== targetVersion;
 
-  const { data: diffData, isLoading: isLoadingDiff } = useQuery<ProjectDiffResponse | null>({
+  const {
+    data: diffData,
+    isLoading: isLoadingDiff,
+    error: diffError,
+    refetch: refetchDiff,
+  } = useQuery<ProjectDiffResponse | null>({
     queryKey: ['project-history-diff', spaceId, pageId, baseVersion, targetVersion],
     queryFn: () =>
       pagesService.history.compareProjectVersions(spaceId, baseVersion!, targetVersion!, scope),
@@ -112,7 +118,12 @@ export function useHistoryActions({
     gcTime: 10 * 60_000,
   });
 
-  const { data: snapshot, isLoading: isLoadingSnapshot } = useQuery<ProjectSnapshotDetail | null>({
+  const {
+    data: snapshot,
+    isLoading: isLoadingSnapshot,
+    error: snapshotError,
+    refetch: refetchSnapshot,
+  } = useQuery<ProjectSnapshotDetail | null>({
     queryKey: ['project-snapshot', spaceId, pageId, targetVersion],
     queryFn: () =>
       targetVersion ? pagesService.history.getProjectSnapshot(spaceId, targetVersion, scope) : null,
@@ -282,10 +293,16 @@ export function useHistoryActions({
   return {
     versions,
     isLoadingVersions,
+    versionsError,
+    refetchVersions,
     diffData,
     isLoadingDiff,
+    diffError,
+    refetchDiff,
     snapshot,
     isLoadingSnapshot,
+    snapshotError,
+    refetchSnapshot,
     addLabel,
     deleteLabel,
     restoreProject,

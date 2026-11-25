@@ -75,6 +75,7 @@ export function TableModal({
   initialTab = 'table',
   initialLatex = '',
 }: TableModalProps) {
+  const isEditMode = Boolean(initialLatex?.trim());
   const {
     tab,
     setTab,
@@ -314,44 +315,47 @@ export function TableModal({
           <div className="flex items-center justify-between gap-3">
             <div>
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                Insert Table
+                {isEditMode ? 'Edit Table' : 'Insert Table'}
               </DialogTitle>
               <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-                Build a table, import spreadsheet data, or generate one with AI.
+                {isEditMode
+                  ? 'Modify table cells, alignment, borders, and caption.'
+                  : 'Build a table, import spreadsheet data, or generate one with AI.'}
               </DialogDescription>
             </div>
 
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) => setTab(v as TableTab)}
-              className="shrink-0 mr-8"
-            >
-              <TabsList className="h-7 bg-muted p-0.5 border border-border rounded-md">
-                <TabsTrigger
-                  value="table"
-                  className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <TableIcon className="size-3.5" />
-                  <span>Table</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="import"
-                  className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FileSpreadsheet className="size-3.5" />
-                  <span>Import</span>
-                </TabsTrigger>
-                {aiEnabled && (
+            {!isEditMode && (
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) => setTab(v as TableTab)}
+                className="shrink-0 mr-8"
+              >
+                <TabsList className="h-7 bg-muted p-0.5 border border-border rounded-md">
                   <TabsTrigger
-                    value="ai"
+                    value="table"
                     className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Sparkles className="size-3.5 text-ai" />
-                    <span>Create with AI</span>
+                    <TableIcon className="size-3.5" />
+                    <span>Table</span>
                   </TabsTrigger>
-                )}
-              </TabsList>
-            </Tabs>
+                  <TabsTrigger
+                    value="import"
+                    className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="size-3.5" />
+                    <span>Import</span>
+                  </TabsTrigger>
+                  {aiEnabled && (
+                    <TabsTrigger
+                      value="ai"
+                      className="text-xs min-h-[26px] h-6 px-2.5 rounded-sm flex items-center gap-1.5 cursor-pointer text-ai"
+                    >
+                      <span>Create with AI</span>
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </Tabs>
+            )}
           </div>
         </DialogHeader>
 
@@ -764,11 +768,7 @@ export function TableModal({
                 disabled={isGenerating || (!prompt.trim() && !image)}
                 className="h-8 px-3 text-xs bg-ai text-ai-foreground hover:bg-ai-hover font-medium cursor-pointer gap-1.5 shadow-none"
               >
-                {isGenerating ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="size-3.5" />
-                )}
+                {isGenerating && <Loader2 className="size-3.5 animate-spin" />}
                 <span>{isGenerating ? 'Generating...' : 'Generate Table'}</span>
               </Button>
             </div>
@@ -793,7 +793,7 @@ export function TableModal({
             className="gap-1.5 h-8 text-xs font-medium cursor-pointer"
           >
             <Check className="size-3.5" />
-            <span>Insert Table</span>
+            <span>{isEditMode ? 'Update Table' : 'Insert Table'}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

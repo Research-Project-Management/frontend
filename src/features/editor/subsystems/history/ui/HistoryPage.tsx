@@ -8,11 +8,10 @@
 
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { RotateCcw, Columns2, AlignJustify, Loader2, ArrowLeft } from 'lucide-react';
+import { RotateCcw, Loader2, ArrowLeft } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { cn } from '@/shared/lib/utils';
 
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { usePageStore } from '@/features/editor/core';
@@ -25,18 +24,12 @@ import { DiffPane } from './components/DiffPane';
 import { TimelineSidebar } from './components/TimelineSidebar';
 
 export interface HistoryPageProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  onClose?: () => void;
   projectId?: string;
   pageId?: string;
   initialVersion?: number;
 }
 
 export function HistoryPage({
-  open = true,
-  onOpenChange,
-  onClose,
   projectId: propProjectId,
   pageId: propPageId,
   initialVersion,
@@ -54,10 +47,7 @@ export function HistoryPage({
   const spaceId =
     storeSpaceId || propProjectId || params?.projectId || currentPageProjectId || pageId || '';
 
-  const handleClose = useCallback(() => {
-    if (onClose) return onClose();
-    if (onOpenChange) return onOpenChange(false);
-
+  const handleBackToEditor = useCallback(() => {
     const isPersonal = !params?.projectId || params.projectId === 'personal';
     if (isPersonal) {
       router.push(pageId ? `/pages/${pageId}` : '/pages');
@@ -66,12 +56,12 @@ export function HistoryPage({
         pageId ? `/projects/${params.projectId}/pages/${pageId}` : `/projects/${params.projectId}/pages`,
       );
     }
-  }, [onClose, onOpenChange, params?.projectId, pageId, router]);
+  }, [params?.projectId, pageId, router]);
 
   const state = useHistoryState(initialVersion);
 
   const actions = useHistoryActions({
-    open,
+    open: true,
     spaceId,
     pageId,
     projectTitle: currentPageTitle,
@@ -81,7 +71,7 @@ export function HistoryPage({
     activeFile: state.activeFile,
     onRestoredProject: () => {
       state.setConfirmRestore(false);
-      handleClose();
+      handleBackToEditor();
     },
     onRestoredFile: () => {
       state.setConfirmFileRestore(false);
@@ -105,15 +95,12 @@ export function HistoryPage({
   useHistoryAutoSelect(actions.versions, sidebarFiles, state);
 
   useEffect(() => {
-    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose();
+      if (e.key === 'Escape') handleBackToEditor();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, handleClose]);
-
-  if (!open) return null;
+  }, [handleBackToEditor]);
 
   const versionBadge =
     state.mode === 'single' && state.targetVersion != null
@@ -125,8 +112,8 @@ export function HistoryPage({
   return (
     <div
       role="region"
-      aria-label="Project Version History"
-      className="fixed inset-0 z-50 flex flex-col w-screen h-screen bg-background overflow-hidden select-none font-sans"
+      aria-label="Version History"
+      className="flex flex-col w-full h-screen bg-background overflow-hidden select-none font-sans"
     >
       {/* Top Header Bar */}
       <header className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background shrink-0 select-none gap-3">
@@ -134,56 +121,22 @@ export function HistoryPage({
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleClose}
+            onClick={handleBackToEditor}
             className="gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer -ml-1 h-8"
             title="Return to the manuscript editor"
           >
             <ArrowLeft className="size-4" />
             <span>Back to editor</span>
           </Button>
-          <div className="h-4 w-px bg-border/60" />
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-foreground tracking-tight">Project History</h2>
-            {versionBadge && (
+          {versionBadge && (
+            <>
+              <div className="h-4 w-px bg-border/60" />
               <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
                 {versionBadge}
               </Badge>
-            )}
-          </div>
+            </>
+          )}
         </div>
-
-        {state.mode === 'compare' && (
-          <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-muted-foreground shrink-0">
-            <button
-              type="button"
-              onClick={() => state.setDiffView('unified')}
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors cursor-pointer',
-                state.diffView === 'unified'
-                  ? 'bg-muted text-foreground'
-                  : 'hover:text-foreground',
-              )}
-              title="Unified Diff View"
-            >
-              <AlignJustify className="size-3.5" />
-              <span className="hidden md:inline">Unified</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => state.setDiffView('split')}
-              className={cn(
-                'flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-sm transition-colors cursor-pointer',
-                state.diffView === 'split'
-                  ? 'bg-muted text-foreground'
-                  : 'hover:text-foreground',
-              )}
-              title="Side-by-Side Split Diff View"
-            >
-              <Columns2 className="size-3.5" />
-              <span className="hidden md:inline">Split</span>
-            </button>
-          </div>
-        )}
       </header>
 
       {/* Project Restore Confirmation Bar */}
@@ -231,13 +184,19 @@ export function HistoryPage({
           activeFilePath={state.activeFile}
           onSelectFile={state.setActiveFile}
           isLoading={state.mode === 'single' ? actions.isLoadingSnapshot : actions.isLoadingDiff}
+          error={state.mode === 'single' ? actions.snapshotError : actions.diffError}
+          onRetry={() =>
+            void (state.mode === 'single' ? actions.refetchSnapshot() : actions.refetchDiff())
+          }
           versionLabel={versionBadge?.replace(' → ', '→')}
         />
 
-        {state.mode === 'single' ? (
+        {state.mode === 'single' || state.baseVersion === state.targetVersion ? (
           <SnapshotFileView
             snapshot={actions.snapshot}
             isLoading={actions.isLoadingSnapshot}
+            error={actions.snapshotError}
+            onRetry={() => void actions.refetchSnapshot()}
             activeFile={state.activeFile}
             version={state.targetVersion}
             isRestoring={actions.restoreFile.isPending}
@@ -249,6 +208,8 @@ export function HistoryPage({
           <DiffPane
             diffData={actions.diffData}
             isLoadingDiff={actions.isLoadingDiff}
+            error={actions.diffError}
+            onRetry={() => void actions.refetchDiff()}
             activeFilePath={state.activeFile}
             viewMode={state.diffView}
             selectedBaseVersion={state.baseVersion}
@@ -263,6 +224,8 @@ export function HistoryPage({
         <TimelineSidebar
           versions={actions.versions}
           isLoadingVersions={actions.isLoadingVersions}
+          error={actions.versionsError}
+          onRetry={() => void actions.refetchVersions()}
           historyMode={state.mode}
           onHistoryModeChange={state.setMode}
           filter={state.filter}

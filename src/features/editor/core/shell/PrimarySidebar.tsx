@@ -32,11 +32,6 @@ const SearchTab = dynamic(() => import('@/features/editor/subsystems/search').th
   loading: PanelLoadingFallback,
 });
 
-const CitationTab = dynamic(() => import('@/features/editor/subsystems/citation').then((m) => m.CitationTab), {
-  ssr: false,
-  loading: PanelLoadingFallback,
-});
-
 const ReviewTab = dynamic(() => import('@/features/editor/subsystems/review').then((m) => m.ReviewTab), {
   ssr: false,
   loading: PanelLoadingFallback,
@@ -61,8 +56,6 @@ export function PrimarySidebar() {
         return <FilesTab onClose={handleClose} />;
       case 'search':
         return <SearchTab />;
-      case 'citations':
-        return <CitationTab onClose={handleClose} />;
       case 'review':
         return <ReviewTab onClose={handleClose} />;
       case 'ai':

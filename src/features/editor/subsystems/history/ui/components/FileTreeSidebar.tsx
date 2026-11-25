@@ -1,7 +1,11 @@
 'use client';
 
 import React from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 import { cn } from '@/shared/lib/utils';
 
 export interface FileTreeItem {
@@ -17,8 +21,12 @@ export interface FileTreeSidebarProps {
   activeFilePath: string | null;
   onSelectFile: (path: string) => void;
   isLoading?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   versionLabel?: string;
 }
+
+const FILE_SKELETON_WIDTHS = ['w-28', 'w-36', 'w-24', 'w-32', 'w-20', 'w-28'];
 
 export function FileTreeSidebar({
   mode,
@@ -26,6 +34,8 @@ export function FileTreeSidebar({
   activeFilePath,
   onSelectFile,
   isLoading = false,
+  error,
+  onRetry,
   versionLabel,
 }: FileTreeSidebarProps) {
   return (
@@ -44,16 +54,44 @@ export function FileTreeSidebar({
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-0.5 sidebar-scrollbar">
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto p-1.5 space-y-0.5 sidebar-scrollbar">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-muted-foreground text-xs gap-2">
-            <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-            <span>Loading files...</span>
+          <div className="space-y-1 p-0.5">
+            {FILE_SKELETON_WIDTHS.map((widthClass, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-2 px-2 py-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Skeleton className="size-3.5 rounded-sm shrink-0" />
+                  <Skeleton className={cn('h-3.5 rounded-sm', widthClass)} />
+                </div>
+                {mode === 'compare' && <Skeleton className="h-3 w-7 rounded-sm shrink-0" />}
+              </div>
+            ))}
           </div>
+        ) : error ? (
+          <PlaneErrorState
+            isCompact
+            title="Failed to load files"
+            description="Could not load snapshot files."
+            error={error as PlaneErrorStateProps['error']}
+            action={
+              onRetry ? (
+                <Button size="sm" variant="outline" onClick={onRetry} className="h-7 text-xs cursor-pointer">
+                  Try again
+                </Button>
+              ) : undefined
+            }
+          />
         ) : files.length === 0 ? (
-          <div className="py-8 px-3 text-center text-xs text-muted-foreground">
-            {mode === 'compare' ? 'No changed files' : 'No files in snapshot'}
-          </div>
+          <PlaneEmptyState
+            isCompact
+            variant="document"
+            title={mode === 'compare' ? 'No changed files' : 'No files in snapshot'}
+            description={
+              mode === 'compare'
+                ? 'No files changed between these versions.'
+                : 'This snapshot does not contain any files.'
+            }
+          />
         ) : (
           files.map((file) => {
             const isActive = file.path === activeFilePath;

@@ -5,10 +5,12 @@ import {
   FileText,
   RotateCcw,
   Loader2,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 import { SplitDiffView } from './SplitDiffView';
@@ -17,6 +19,8 @@ import { UnifiedDiffView } from './UnifiedDiffView';
 export interface DiffPaneProps {
   diffData: ProjectDiffResponse | null | undefined;
   isLoadingDiff: boolean;
+  error?: unknown;
+  onRetry?: () => void;
   activeFilePath: string | null;
   viewMode: 'split' | 'unified';
   selectedBaseVersion: number | null;
@@ -27,9 +31,28 @@ export interface DiffPaneProps {
   setConfirmingFileRestore: (confirming: boolean) => void;
 }
 
+const DIFF_LINE_WIDTHS = [
+  '58%',
+  '72%',
+  '40%',
+  '82%',
+  '64%',
+  '32%',
+  '76%',
+  '54%',
+  '68%',
+  '36%',
+  '80%',
+  '48%',
+  '60%',
+  '42%',
+];
+
 export function DiffPane({
   diffData,
   isLoadingDiff,
+  error,
+  onRetry,
   activeFilePath,
   viewMode,
   selectedBaseVersion,
@@ -50,25 +73,59 @@ export function DiffPane({
 
   if (isLoadingDiff) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-xs gap-2 bg-background">
-        <Loader2 className="size-6 animate-spin text-primary" />
-        <span>
-          Computing differences between v{selectedBaseVersion} and v{selectedTargetVersion}...
-        </span>
+      <main className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-muted/40 border-b border-border shrink-0">
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-3.5 rounded-sm shrink-0" />
+            <Skeleton className="h-3.5 w-36 rounded-sm" />
+            <Skeleton className="h-4 w-12 rounded-sm" />
+          </div>
+          <Skeleton className="h-7 w-24 rounded-md" />
+        </div>
+        <div className="flex-1 overflow-hidden p-4 space-y-2">
+          {DIFF_LINE_WIDTHS.map((width, idx) => (
+            <div key={idx} className="flex items-center gap-3">
+              <Skeleton className="h-3 w-7 rounded-sm shrink-0 opacity-60" />
+              <Skeleton className="h-3 w-7 rounded-sm shrink-0 opacity-40" />
+              <Skeleton className="h-3.5 rounded-sm" style={{ width }} />
+            </div>
+          ))}
+        </div>
+      </main>
+    );
+  }
+
+  if (error) {
+    return (
+      <main className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+        <PlaneErrorState
+          title="Failed to load diff"
+          description="Could not compute differences between the selected versions."
+          error={error as PlaneErrorStateProps['error']}
+          action={
+            onRetry ? (
+              <Button size="sm" variant="outline" onClick={onRetry} className="h-8 text-xs cursor-pointer">
+                Try again
+              </Button>
+            ) : undefined
+          }
+        />
       </main>
     );
   }
 
   if (!diffData || diffData.files.length === 0) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-xs p-6 text-center bg-background">
-        <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
-          <Check className="size-6 text-success" />
-        </div>
-        <h3 className="font-semibold text-foreground text-sm">No differences detected</h3>
-        <p className="text-muted-foreground text-xs mt-1 max-w-sm">
-          The files in Version {selectedTargetVersion} are identical to Version {selectedBaseVersion}.
-        </p>
+      <main className="flex-1 flex flex-col overflow-hidden bg-background min-w-0">
+        <PlaneEmptyState
+          variant="document"
+          title="No differences detected"
+          description={
+            selectedTargetVersion != null && selectedBaseVersion != null
+              ? `The files in Version ${selectedTargetVersion} are identical to Version ${selectedBaseVersion}.`
+              : 'Select two versions to compare changes.'
+          }
+        />
       </main>
     );
   }
@@ -161,28 +218,25 @@ export function DiffPane({
 
         {/* Diff Viewer Area */}
         <div className="flex-1 p-3 overflow-hidden min-h-0">
-          {viewMode === 'split' ? (
-            activeFileDiff ? (
-              <SplitDiffView
-                fileDiff={activeFileDiff}
-                baseVersion={selectedBaseVersion || 1}
-                targetVersion={selectedTargetVersion || 2}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-                Select a file from the left tree to view changes.
-              </div>
-            )
-          ) : activeFileDiff ? (
-            <UnifiedDiffView
+          {!activeFileDiff ? (
+            <PlaneEmptyState
+              isCompact
+              variant="document"
+              title="No file selected"
+              description="Select a file from the left tree to view changes."
+            />
+          ) : viewMode === 'split' ? (
+            <SplitDiffView
               fileDiff={activeFileDiff}
               baseVersion={selectedBaseVersion || 1}
               targetVersion={selectedTargetVersion || 2}
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-              Select a file from the left tree to view changes.
-            </div>
+            <UnifiedDiffView
+              fileDiff={activeFileDiff}
+              baseVersion={selectedBaseVersion || 1}
+              targetVersion={selectedTargetVersion || 2}
+            />
           )}
         </div>
       </div>

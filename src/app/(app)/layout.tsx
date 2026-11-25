@@ -10,6 +10,7 @@ import AppLoading from './loading';
 
 import Topbar from '@/features/shell/components/Topbar';
 import Sidebar from '@/features/shell/components/Sidebar';
+import { useWebWorkspaceShell } from '@/features/shell/hooks/use-web-bff';
 import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 import { useAiCompanionStore } from '@/features/ai';
@@ -59,6 +60,7 @@ export default function AppLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
+  useWebWorkspaceShell(Boolean(user));
   const isPaperReader = pathname.includes('/library/papers/');
   const isProjectWorkspace = isProjectWorkspaceRoute(pathname);
 

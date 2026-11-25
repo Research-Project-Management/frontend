@@ -422,14 +422,10 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
   const badge = document.createElement('span');
   badge.className = 'cm-visual-float-badge';
   badge.textContent = opts.badgeText;
-  left.appendChild(badge);
-
   if (opts.metaText) {
-    const meta = document.createElement('span');
-    meta.className = 'cm-visual-float-meta';
-    meta.textContent = opts.metaText;
-    left.appendChild(meta);
+    badge.title = opts.metaText;
   }
+  left.appendChild(badge);
 
   if (opts.label) {
     const labelEl = document.createElement('code');
@@ -544,14 +540,10 @@ class FigureCardWidget extends WidgetType {
         const pathEl = document.createElement('div');
         pathEl.className = 'cm-visual-figure-path';
         pathEl.textContent = img.path;
-        info.appendChild(pathEl);
-
         if (img.options) {
-          const optsEl = document.createElement('div');
-          optsEl.className = 'cm-visual-figure-options';
-          optsEl.textContent = img.options;
-          info.appendChild(optsEl);
+          pathEl.title = img.options;
         }
+        info.appendChild(pathEl);
 
         row.append(iconWrap, info);
         preview.appendChild(row);
@@ -564,7 +556,8 @@ class FigureCardWidget extends WidgetType {
 
           const thumbImg = document.createElement('img');
           thumbImg.className = 'cm-visual-figure-thumb';
-          thumbImg.alt = img.path;
+          thumbImg.alt = this.meta.caption || img.path;
+          thumbImg.title = img.options ? `${img.path} (${img.options})` : img.path;
           thumbWrap.appendChild(thumbImg);
           preview.appendChild(thumbWrap);
 
@@ -572,12 +565,14 @@ class FigureCardWidget extends WidgetType {
           if (cachedBlobUrl) {
             thumbImg.src = cachedBlobUrl;
             thumbWrap.style.display = 'flex';
+            row.style.display = 'none';
           } else {
             void loadAuthorizedImageBlobUrl(resolvedAssetUrl).then((blobUrl) => {
               if (!thumbWrap.isConnected) return;
               if (blobUrl) {
                 thumbImg.src = blobUrl;
                 thumbWrap.style.display = 'flex';
+                row.style.display = 'none';
               } else {
                 thumbWrap.remove();
               }
@@ -861,7 +856,7 @@ const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-float-card': {
     margin: '12px 0',
     border: '1px solid var(--border)',
-    borderRadius: '12px',
+    borderRadius: '8px',
     backgroundColor: 'var(--card)',
     overflow: 'hidden',
     fontFamily: 'var(--font-sans)',
@@ -872,8 +867,8 @@ const visualFloatsTheme = EditorView.baseTheme({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px',
-    padding: '7px 12px',
-    backgroundColor: 'var(--muted)',
+    padding: '6px 12px',
+    backgroundColor: 'transparent',
     borderBottom: '1px solid var(--border-subtle)',
   },
   '.cm-visual-float-header-left': {
@@ -886,12 +881,9 @@ const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-float-badge': {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '1px 8px',
-    borderRadius: '9999px',
-    fontSize: '11px',
+    fontSize: '11.5px',
     fontWeight: '600',
-    backgroundColor: 'var(--accent)',
-    color: 'var(--foreground)',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-float-meta': {
     fontSize: '11.5px',
@@ -899,9 +891,10 @@ const visualFloatsTheme = EditorView.baseTheme({
   },
   '.cm-visual-float-label': {
     fontSize: '11px',
+    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace',
     padding: '1px 6px',
     borderRadius: '4px',
-    backgroundColor: 'var(--background)',
+    backgroundColor: 'var(--muted)',
     border: '1px solid var(--border)',
     color: 'var(--muted-foreground)',
   },
@@ -910,6 +903,11 @@ const visualFloatsTheme = EditorView.baseTheme({
     alignItems: 'center',
     gap: '6px',
     flexShrink: '0',
+    opacity: '0',
+    transition: 'opacity 150ms ease',
+  },
+  '.cm-visual-float-card:hover .cm-visual-float-actions, .cm-visual-float-card:focus-within .cm-visual-float-actions': {
+    opacity: '1',
   },
   '.cm-visual-float-edit-btn, .cm-visual-float-wizard-btn': {
     fontSize: '11px',
@@ -921,10 +919,15 @@ const visualFloatsTheme = EditorView.baseTheme({
     color: 'var(--muted-foreground)',
     cursor: 'pointer',
     flexShrink: '0',
+    transition: 'color 120ms ease, border-color 120ms ease',
   },
   '.cm-visual-float-edit-btn:hover, .cm-visual-float-wizard-btn:hover': {
     color: 'var(--foreground)',
     borderColor: 'var(--primary)',
+  },
+  '.cm-visual-float-edit-btn:focus-visible, .cm-visual-float-wizard-btn:focus-visible': {
+    outline: '1.5px solid var(--primary)',
+    outlineOffset: '1px',
   },
   '.cm-visual-float-body': {
     padding: '12px 14px',
@@ -949,12 +952,12 @@ const visualFloatsTheme = EditorView.baseTheme({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '34px',
-    height: '34px',
-    borderRadius: '8px',
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
     backgroundColor: 'var(--background)',
     border: '1px solid var(--border)',
-    color: 'var(--primary)',
+    color: 'var(--muted-foreground)',
     flexShrink: '0',
   },
   '.cm-visual-figure-info': {

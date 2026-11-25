@@ -40,7 +40,6 @@ interface ActivityItem {
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: 'files', label: 'File Tree', tooltip: 'Files', icon: Files },
   { id: 'search', label: 'Search in Project', tooltip: 'Search', icon: Search },
-  { id: 'citations', label: 'Citations & BibTeX', tooltip: 'Citations', icon: BookMarked },
   { id: 'review', label: 'Review & Comments', tooltip: 'Review', icon: MessageSquareText },
   { id: 'ai', label: 'AI Assistant', tooltip: 'AI Assistant', icon: Bot },
 ];

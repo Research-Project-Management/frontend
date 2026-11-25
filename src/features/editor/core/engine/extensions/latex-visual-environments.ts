@@ -47,8 +47,14 @@ class ListMarkerWidget extends WidgetType {
   }
 }
 
-const BEGIN_ENV_RE = /^\s*\\begin\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
-const END_ENV_RE = /^\s*\\end\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
+const CALLOUT_ENV_NAMES =
+  'theorem|lemma|corollary|proposition|definition|remark|example|proof|abstract';
+const BEGIN_ENV_RE = new RegExp(
+  `^\\s*\\\\begin\\{(quote|itemize|enumerate|description|${CALLOUT_ENV_NAMES})\\}(?:\\[[^\\]]*\\])?\\s*(?:%.*)?$`,
+);
+const END_ENV_RE = new RegExp(
+  `^\\s*\\\\end\\{(quote|itemize|enumerate|description|${CALLOUT_ENV_NAMES})\\}\\s*(?:%.*)?$`,
+);
 const ITEM_LINE_RE = /^(\s*\\item(?:\[([^\]]*)\])?(?:\s+|$))/;
 const FULL_COMMENT_LINE_RE = /^\s*%.*$/;
 
@@ -81,7 +87,20 @@ const DECO_LIST_DEPTH: Record<number, Decoration> = {
   4: Decoration.line({ class: 'cm-visual-list-line cm-visual-list-d4' }),
 };
 
-type EnvKind = 'quote' | 'itemize' | 'enumerate' | 'description';
+type EnvKind =
+  | 'quote'
+  | 'itemize'
+  | 'enumerate'
+  | 'description'
+  | 'theorem'
+  | 'lemma'
+  | 'corollary'
+  | 'proposition'
+  | 'definition'
+  | 'remark'
+  | 'example'
+  | 'proof'
+  | 'abstract';
 
 interface EnvStackFrame {
   kind: EnvKind;
@@ -322,7 +341,7 @@ const visualEnvironmentsTheme = EditorView.baseTheme({
     display: 'inline-block',
     minWidth: '1.1em',
     fontWeight: '600',
-    color: 'var(--primary)',
+    color: 'var(--muted-foreground)',
     userSelect: 'none',
     marginRight: '4px',
   },

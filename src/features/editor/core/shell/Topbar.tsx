@@ -70,11 +70,9 @@ export function Topbar() {
   const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
 
   const handleToggleHistory = useCallback(async () => {
-    if (!isHistoryOpen) {
-      await sessionCoordinator.flushAllPending();
-    }
-    toggleHistory();
-  }, [isHistoryOpen, toggleHistory]);
+    await sessionCoordinator.flushAllPending();
+    editorCommandBus.dispatch({ type: 'history:open' });
+  }, []);
 
   return (
       <nav

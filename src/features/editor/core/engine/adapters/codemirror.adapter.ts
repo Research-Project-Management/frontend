@@ -212,7 +212,7 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     italic: ['\\textit{', '}'],
     underline: ['\\underline{', '}'],
     inlineMath: ['$', '$'],
-    displayMath: ['\n', '\n'],
+    displayMath: ['\\[\n  ', '\n\\]'],
     equation: ['\\begin{equation}\n  ', '\n\\end{equation}'],
     code: ['\\texttt{', '}'],
     strikethrough: ['\\sout{', '}'],

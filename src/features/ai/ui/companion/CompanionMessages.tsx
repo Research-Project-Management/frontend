@@ -8,6 +8,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import type { EditorPatchItem, FluxMessage, HitlDecision } from '../../types/message';
 import { CompanionHero } from '../parts/CompanionHero';
@@ -116,13 +117,24 @@ export const CompanionMessages = React.memo(function CompanionMessages({
       <div
         role="status"
         aria-live="polite"
-        className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2"
+        aria-label="Loading conversation"
+        className="flex flex-col h-full p-4 space-y-4 overflow-hidden"
       >
-        <Loader2
-          className="size-5 animate-spin motion-reduce:animate-none text-foreground"
-          aria-hidden="true"
-        />
-        <span className="text-12 font-medium">Loading conversation...</span>
+        <div className="flex justify-end">
+          <Skeleton className="h-9 w-2/3 rounded-lg" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3.5 w-4/5 rounded-sm" />
+          <Skeleton className="h-3.5 w-full rounded-sm" />
+          <Skeleton className="h-3.5 w-3/5 rounded-sm" />
+        </div>
+        <div className="flex justify-end">
+          <Skeleton className="h-8 w-1/2 rounded-lg" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-3.5 w-5/6 rounded-sm" />
+          <Skeleton className="h-3.5 w-2/3 rounded-sm" />
+        </div>
       </div>
     );
   }

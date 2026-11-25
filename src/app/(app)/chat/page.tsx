@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { ChatView } from '@/features/chat/components/ChatView';
 
 export const metadata: Metadata = {
-  title: 'Messages & Channels · Flux',
+  title: 'Messages',
   description: 'Unified Messenger, Discord-style Project Channels, and Collaborative Discussions',
 };
 

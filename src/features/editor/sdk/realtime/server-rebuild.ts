@@ -7,6 +7,7 @@
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
+import { logger } from '@/shared/lib/logger';
 import type { YjsCrossTabBridge } from './cross-tab';
 import {
   applyTextDiff,
@@ -52,7 +53,7 @@ export function executeRebuildFromServer(ctx: ServerRebuildContext): void {
         return;
       }
       if (!res?.success) {
-        console.warn('[YjsSocketIOProvider] Server rebuild failed; will retry on reconnect:', res?.error);
+        logger.warn('[YjsSocketIOProvider] Server rebuild failed; will retry on reconnect', { error: res?.error });
         freshDoc.destroy();
         return;
       }
@@ -61,7 +62,7 @@ export function executeRebuildFromServer(ctx: ServerRebuildContext): void {
           ctx.applySyncFrame(res.data as Uint8Array | ArrayLike<number>, freshDoc, false);
         }
       } catch (err) {
-        console.warn('[YjsSocketIOProvider] Error applying server state during rebuild:', err);
+        logger.warn('[YjsSocketIOProvider] Error applying server state during rebuild', { error: err });
         freshDoc.destroy();
         return;
       }
@@ -101,7 +102,7 @@ export function executeInitiateYjsSync(
         try {
           ctx.applySyncFrame(res.data as Uint8Array | ArrayLike<number>, currentDoc, true);
         } catch (err) {
-          console.warn('[YjsSocketIOProvider] Error processing sync:step2 from server:', err);
+          logger.warn('[YjsSocketIOProvider] Error processing sync:step2 from server', { error: err });
         }
       }
       const initialContent = ctx.getInitialContent();
@@ -184,7 +185,7 @@ export function emitMergedUpdatesBatch(opts: {
     },
     (res?: { success?: boolean; error?: string }) => {
       if (!res?.success && !opts.isDestroyed()) {
-        console.warn('[YjsSocketIOProvider] Server rejected doc:sync:update or timed out:', res?.error);
+        logger.warn('[YjsSocketIOProvider] Server rejected doc:sync:update or timed out', { error: res?.error });
         const rawMerged = opts.updates.length === 1 ? opts.updates[0] : Y.mergeUpdates(opts.updates);
         opts.onFailureRequeue(rawMerged);
         return;

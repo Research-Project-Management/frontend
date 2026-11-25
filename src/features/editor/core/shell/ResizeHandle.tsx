@@ -325,8 +325,8 @@ export function ResizeHandle({
           aria-label={toggleTitle}
           title={toggleTitle}
           className={cn(
-            'absolute top-[42%] -translate-y-1/2 left-0 right-0 z-30 flex items-center justify-center',
-            'w-full h-11 rounded-none p-0',
+            'absolute top-1/2 -translate-y-1/2 left-0 right-0 z-30 flex items-center justify-center',
+            'w-full h-10 rounded-none p-0',
             'bg-background/90 border-y border-border text-muted-foreground',
             'hover:bg-accent hover:text-foreground hover:border-border',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
@@ -335,15 +335,15 @@ export function ResizeHandle({
           )}
         >
           {isPointingLeft ? (
-            <ChevronLeft className="w-2.5 h-3.5 shrink-0 text-current" strokeWidth={2.5} />
+            <ChevronLeft className="w-2 h-3 shrink-0 text-current" strokeWidth={2.25} />
           ) : (
-            <ChevronRight className="w-2.5 h-3.5 shrink-0 text-current" strokeWidth={2.5} />
+            <ChevronRight className="w-2 h-3 shrink-0 text-current" strokeWidth={2.25} />
           )}
         </button>
       )}
 
       {/* ── 3 Clean Vertical Grip Dots strictly inside 10px groove ────────── */}
-      {showGripDots && !isHorizontal && (
+      {showGripDots && !showCollapseButton && !isHorizontal && (
         <div
           aria-hidden="true"
           className="pointer-events-none select-none absolute top-[58%] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-[3px]"

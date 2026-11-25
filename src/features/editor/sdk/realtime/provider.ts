@@ -9,6 +9,7 @@
 import * as Y from 'yjs';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { type Socket } from 'socket.io-client';
+import { logger } from '@/shared/lib/logger';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 import type { CollaborationPresence } from '../pages/types';
@@ -258,7 +259,7 @@ export class YjsSocketIOProvider {
       try {
         listener();
       } catch (err) {
-        console.warn('[YjsSocketIOProvider] synced listener error:', err);
+        logger.warn('[YjsSocketIOProvider] Synced listener error', { error: err });
       }
     }
     this.broadcastLeaderPresence();
@@ -285,7 +286,7 @@ export class YjsSocketIOProvider {
       try {
         listener(status);
       } catch (err) {
-        console.warn('[YjsSocketIOProvider] status listener error:', err);
+        logger.warn('[YjsSocketIOProvider] Status listener error', { error: err });
       }
     }
     this.broadcastLeaderPresence();
@@ -311,7 +312,7 @@ export class YjsSocketIOProvider {
         window.addEventListener('online', this.handleOnline);
       }
     } catch (err) {
-      console.warn('[YjsSocketIOProvider] Failed to initialize Socket.IO client:', err);
+      logger.warn('[YjsSocketIOProvider] Failed to initialize Socket.IO client', { error: err });
       this.status = 'disconnected';
       this.emitStatus('disconnected');
     }
@@ -368,7 +369,7 @@ export class YjsSocketIOProvider {
             const raw = payload.data instanceof Uint8Array ? payload.data : new Uint8Array(payload.data);
             Y.applyUpdate(this.doc, raw, 'socket.io');
           } catch (applyErr) {
-            console.warn('[YjsSocketIOProvider] Error applying incoming sync:update:', applyErr);
+            logger.warn('[YjsSocketIOProvider] Error applying incoming sync:update', { error: applyErr });
           }
         }
       },
@@ -376,7 +377,7 @@ export class YjsSocketIOProvider {
         try {
           this.applySyncFrame(payload.data, this.doc, false);
         } catch (err) {
-          console.warn('[YjsSocketIOProvider] Error applying incoming sync:step2:', err);
+          logger.warn('[YjsSocketIOProvider] Error applying incoming sync:step2', { error: err });
         }
       },
       onRemoteCursor: (data) => this.handleRemoteCursor(data),
@@ -517,7 +518,7 @@ export class YjsSocketIOProvider {
               try {
                 listener(this);
               } catch (err) {
-                console.warn('[YjsSocketIOProvider] doc-replaced listener error:', err);
+                logger.warn('[YjsSocketIOProvider] doc-replaced listener error', { error: err });
               }
             }
             this.emitSynced();

@@ -8,6 +8,7 @@ import {
   Cell,
   Tooltip as RechartsTooltip,
 } from 'recharts';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { BreakdownCard, BreakdownTooltip } from './BreakdownCard';
 import { getWorkloadStates } from '../../utils/your-work.utils';
 
@@ -80,7 +81,7 @@ export const StateBreakdown = React.memo<StateBreakdownProps>(function StateBrea
                 </div>
               </>
             ) : (
-              <div className="size-36 rounded-full border-4 border-muted/60 animate-pulse" />
+              <Skeleton className="size-36 rounded-full border-4 border-muted/60 bg-transparent" />
             )}
           </div>
 

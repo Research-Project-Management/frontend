@@ -12,6 +12,7 @@ import type { Virtualizer } from '@tanstack/react-virtual';
 import { Search, X, Loader2, ListFilter, Check } from 'lucide-react';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -203,9 +204,20 @@ export function CitationPickerListPane({
         </div>
 
         {isSearchingServer && (
-          <div className="flex items-center justify-center py-8 text-foreground gap-2">
-            <Loader2 className="size-3.5 animate-spin text-foreground motion-reduce:animate-none" />
-            <span className="text-xs">Searching references...</span>
+          <div className="space-y-2 py-1">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="p-3 rounded-md border border-border/60 bg-card space-y-2"
+              >
+                <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-3 w-28 rounded-sm" />
+                  <Skeleton className="h-3 w-12 rounded-sm" />
+                </div>
+                <Skeleton className="h-3 w-1/2 rounded-sm opacity-70" />
+              </div>
+            ))}
           </div>
         )}
 

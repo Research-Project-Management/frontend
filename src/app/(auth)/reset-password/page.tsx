@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import ResetPasswordContent from '@/features/auth/pages/reset-password-page';
 
 export const metadata: Metadata = {
-  title: 'Reset Password · Flux',
+  title: 'Reset Password',
   description: 'Set a new password for your Flux account',
 };
 

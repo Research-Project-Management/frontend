@@ -18,7 +18,7 @@ import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import {
   extractDocumentContentString,
   type Page,

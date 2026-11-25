@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
   Dialog,
   DialogContent,
@@ -305,15 +307,24 @@ export function TemplatePickerDialog({
             {/* Template List */}
             <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 thin-scrollbar">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-2 text-muted-foreground">
-                  <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground" />
-                  <span className="text-12">Loading templates...</span>
+                <div className="space-y-2 py-1">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="p-3 rounded-md border border-border/60 bg-card space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-6 rounded-sm shrink-0" />
+                        <Skeleton className="h-3.5 w-36 rounded-sm" />
+                      </div>
+                      <Skeleton className="h-3 w-4/5 rounded-sm opacity-70" />
+                    </div>
+                  ))}
                 </div>
               ) : templates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-1.5 text-muted-foreground text-center p-4">
-                  <span className="text-12 font-medium text-foreground">No templates found</span>
-                  <span className="text-11 text-muted-foreground">Try selecting another category or clear search.</span>
-                </div>
+                <PlaneEmptyState
+                  isCompact
+                  variant="search"
+                  title="No templates found"
+                  description="Try selecting another category or clear search."
+                />
               ) : (
                 templates.map((tmpl) => {
                   const isSelected = activeTemplate?.id === tmpl.id;

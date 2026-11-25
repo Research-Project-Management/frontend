@@ -187,7 +187,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     compartments = createEditorCompartments(),
   } = options;
 
-  const showLineNumbers = !enableVisualMode && Boolean(showLineNumbersOption);
+  const showLineNumbers = Boolean(showLineNumbersOption);
 
   const extensions: Extension[] = [
     editorCompartmentsFacet.of(compartments),
@@ -276,7 +276,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
   return extensions;
 }
 
-export function reconfigureVisualMode(
+  export function reconfigureVisualMode(
   view: EditorView,
   enabled: boolean,
   compartments: EditorCompartmentMap = getViewCompartments(view),
@@ -288,10 +288,11 @@ export function reconfigureVisualMode(
         enabled ? createVisualModeExtensions() : [],
       ),
       compartments.lineNumbers.reconfigure(
-        !enabled && showLineNumbers
+        showLineNumbers
           ? [createConfiguredLineNumbers(), createFoldGutter(), highlightActiveLineGutter()]
           : [],
       ),
+      EditorView.scrollIntoView(view.state.selection.main.head, { y: 'center' }),
     ],
   });
 }
@@ -343,8 +344,8 @@ export function computeCompartmentReconfigEffects(
     );
   }
 
-  const prevEffectiveLineNumbers = !prev.visualMode && prev.lineNumbers;
-  const nextEffectiveLineNumbers = !next.visualMode && next.lineNumbers;
+  const prevEffectiveLineNumbers = prev.lineNumbers;
+  const nextEffectiveLineNumbers = next.lineNumbers;
 
   if (prev.visualMode !== next.visualMode) {
     effects.push(
@@ -432,10 +433,12 @@ export function computeCompartmentReconfigEffects(
     );
   }
 
-  if ((prev.enableMathPreview ?? true) !== (next.enableMathPreview ?? true)) {
+  const prevEffectiveMathPreview = !prev.visualMode && (prev.enableMathPreview ?? true);
+  const nextEffectiveMathPreview = !next.visualMode && (next.enableMathPreview ?? true);
+  if (prevEffectiveMathPreview !== nextEffectiveMathPreview) {
     effects.push(
       compartments.mathPreview.reconfigure(
-        next.enableMathPreview ?? true ? latexMathHoverTooltip : [],
+        nextEffectiveMathPreview ? latexMathHoverTooltip : [],
       ),
     );
   }

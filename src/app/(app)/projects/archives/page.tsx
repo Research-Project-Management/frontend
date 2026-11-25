@@ -2,7 +2,7 @@
 import ArchivePage from '@/features/projects/shell/pages/ArchivePage';
 
 export const metadata: Metadata = {
-  title: 'Archived Projects · Flux',
+  title: 'Archived Projects',
   description: 'Manage and restore your archived research projects.',
 };
 

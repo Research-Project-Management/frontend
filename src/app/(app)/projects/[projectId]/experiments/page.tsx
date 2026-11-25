@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import ExperimentsPage from '@/features/experiments/pages/ExperimentsPage';
 
 export const metadata: Metadata = {
-  title: 'Experiments · Flux',
+  title: 'Experiments',
   description: 'Project experiment tracking, model benchmarks, and dataset management',
 };
 

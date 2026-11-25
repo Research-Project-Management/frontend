@@ -2,6 +2,8 @@
 
 import React, { useMemo } from 'react';
 import { cn } from '@/shared/lib/utils';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { ActivityFeedItem } from './ActivityFeedItem';
 import type { YourWorkActivityEvent } from '../../schemas/your-work.schema';
 
@@ -36,13 +38,25 @@ export const ActivityFeedList = React.memo<ActivityFeedListProps>(function Activ
   const listContent = (
     <div className="rounded-md bg-muted/30 overflow-hidden divide-y divide-border/40 shadow-none">
       {isLoading ? (
-        <div className="p-8 text-center text-12 text-muted-foreground">
-          Loading recent activities...
+        <div className="divide-y divide-border/40">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-start gap-3 px-4 py-3">
+              <Skeleton className="size-7 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                <Skeleton className="h-3 w-1/3 rounded-sm opacity-60" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : displayItems.length === 0 ? (
-        <div className={`text-center ${emptyPadding} text-muted-foreground text-12 font-medium italic`}>
-          No activity yet.
-        </div>
+        <PlaneEmptyState
+          isCompact
+          variant="document"
+          title="No activity yet"
+          description="Recent activity will appear here as you work."
+          className={emptyPadding}
+        />
       ) : (
         displayItems.map((activity: YourWorkActivityEvent, idx: number) => (
           <ActivityFeedItem

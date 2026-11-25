@@ -19,6 +19,7 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { uuidv7 } from '@/shared/utils/uuid.util';
+import { logger } from '@/shared/lib/logger';
 import type { CollaborationPresence } from '../pages/types';
 import {
   encodeYjsSyncStep1,
@@ -138,7 +139,7 @@ export class YjsCrossTabBridge {
         data: step1,
       });
     } catch (err) {
-      console.warn('[YjsCrossTabBridge] BroadcastChannel init failed:', err);
+      logger.warn('[YjsCrossTabBridge] BroadcastChannel init failed', { error: err });
     }
   }
 
@@ -255,7 +256,7 @@ export class YjsCrossTabBridge {
         .catch((err: unknown) => {
           const name = (err as { name?: string })?.name;
           if (!this.disposed && name !== 'AbortError') {
-            console.warn('[YjsCrossTabBridge] Leader promotion wait failed:', err);
+            logger.warn('[YjsCrossTabBridge] Leader promotion wait failed', { error: err });
           }
         });
     };
@@ -278,7 +279,7 @@ export class YjsCrossTabBridge {
       })
       .catch((err: unknown) => {
         if (!this.disposed) {
-          console.warn('[YjsCrossTabBridge] Initial leader election error:', err);
+          logger.warn('[YjsCrossTabBridge] Initial leader election error', { error: err });
           this.role = 'standalone';
           this.options.onBecameLeader();
         }

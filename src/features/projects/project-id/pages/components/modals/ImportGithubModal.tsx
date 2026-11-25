@@ -23,6 +23,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import { githubImportService, GitHubRepoItem } from '../../services/github-import.service';
 import { pageKeys } from '../../hooks/use-page';
@@ -231,9 +232,13 @@ export function ImportGithubModal({
 
               <div className="h-44 border border-border rounded-md overflow-y-auto divide-y divide-border/60 bg-muted/5">
                 {isReposLoading ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                    <span className="text-12">Loading repositories...</span>
+                  <div className="p-2 space-y-1.5">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-center gap-2 px-2 py-1.5">
+                        <Skeleton className="size-3.5 rounded-sm shrink-0" />
+                        <Skeleton className="h-3.5 w-44 rounded-sm" />
+                      </div>
+                    ))}
                   </div>
                 ) : filteredRepos.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-12 text-muted-foreground">
@@ -274,9 +279,10 @@ export function ImportGithubModal({
                   <span>Target Branch</span>
                 </label>
                 {isBranchesLoading ? (
-                  <div className="flex items-center gap-2 text-12 text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none" />
-                    <span>Loading branches...</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-7 w-16 rounded-sm" />
+                    ))}
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">

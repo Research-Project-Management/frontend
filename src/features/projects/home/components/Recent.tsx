@@ -7,6 +7,7 @@ import { useRecentItems } from '../hooks/use-home';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -106,13 +107,13 @@ export default function Recent() {
           {[1, 2, 3, 4].map((n) => (
             <div
               key={n}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md animate-pulse motion-reduce:animate-none"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md"
             >
-              <div className="size-4 rounded bg-muted shrink-0" />
-              <div className="h-3 w-12 rounded bg-muted/60 shrink-0" />
-              <div className="h-3.5 w-64 rounded bg-muted flex-1" />
-              <div className="h-3 w-16 rounded bg-muted/40 shrink-0" />
-              <div className="size-5 rounded-full bg-muted shrink-0" />
+              <Skeleton className="size-4 rounded-sm shrink-0" />
+              <Skeleton className="h-3 w-12 rounded-sm opacity-60 shrink-0" />
+              <Skeleton className="h-3.5 w-64 rounded-sm flex-1" />
+              <Skeleton className="h-3 w-16 rounded-sm opacity-40 shrink-0" />
+              <Skeleton className="size-5 rounded-full shrink-0" />
             </div>
           ))}
         </div>

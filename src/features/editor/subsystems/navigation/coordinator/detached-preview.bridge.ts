@@ -5,6 +5,7 @@
  * synchronization between the Main Editor Window and the Detached PDF Preview Window.
  */
 
+import { logger } from '@/shared/lib/logger';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import {
@@ -14,7 +15,7 @@ import {
 import { getSyncTexChannelName } from '@/features/editor/domain/constants/editor.constants';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 
 export interface DetachedPreviewNavigationCallbacks {
   onJumpToCode: (payload: {
@@ -90,9 +91,9 @@ export class DetachedPreviewBridge {
       this.attachChannelListeners();
     } catch (err) {
       this.currentChannelName = null;
-      console.warn(
-        '[DetachedPreviewBridge] BroadcastChannel initialization failed:',
-        err,
+      logger.warn(
+        '[DetachedPreviewBridge] BroadcastChannel initialization failed',
+        { error: err },
       );
     }
   }

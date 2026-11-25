@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import { uploadFile } from '../services/upload.service';
 import { storageKeys } from '../constants/storage.keys';
 import {
@@ -83,7 +84,7 @@ export function useTopbar({
           `Failed to upload ${file.name}`,
       });
 
-      await uploadPromise.catch((err) => console.error(err));
+      await uploadPromise.catch((err) => logger.error('[useTopbar] Upload failed', err));
     },
     [spaceId],
   );
@@ -195,7 +196,7 @@ export function useTopbar({
               await performSingleFileUpload(file, destFolder);
             }
           } catch (err) {
-            console.error(err);
+            logger.error('[useTopbar] Action failed', err);
           }
         }
       } finally {

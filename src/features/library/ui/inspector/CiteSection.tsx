@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { safeHttpUrl } from "@/features/library/domain/system-views.policy";
 import { cn, copyToClipboard } from "@/shared/lib/utils";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -506,9 +507,9 @@ export default function CiteSection({ item, spaceId }: CiteSectionProps) {
           <div>
             {isLoading && !cslData ? (
               <div className="space-y-1.5 py-1 select-none">
-                <div className="h-3.5 bg-muted rounded animate-pulse w-full" />
-                <div className="h-3.5 bg-muted rounded animate-pulse w-4/5" />
-                <div className="h-3.5 bg-muted rounded animate-pulse w-2/3" />
+                <Skeleton className="h-3.5 w-full rounded-sm" />
+                <Skeleton className="h-3.5 w-4/5 rounded-sm" />
+                <Skeleton className="h-3.5 w-2/3 rounded-sm" />
               </div>
             ) : isExportFormat ? (
               <pre className="font-mono text-12 text-foreground whitespace-pre select-text overflow-x-auto leading-relaxed">

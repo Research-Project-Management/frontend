@@ -14,6 +14,8 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { ProjectAvatar } from '@/shared/components/icons';
 import {
   useMyProjectInvitations,
@@ -106,22 +108,30 @@ export function ProjectInvitesModal({
             </div>
 
             {isLoading ? (
-              <div className="flex items-center justify-center p-8 text-muted-foreground">
-                <Loader2 className="size-5 animate-spin motion-reduce:animate-none mr-2" />
-                <span className="text-12">Loading invitations...</span>
+              <div className="space-y-2 py-1">
+                {[1, 2].map((i) => (
+                  <div key={i} className="rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <Skeleton className="size-8 rounded-md shrink-0" />
+                      <div className="space-y-1.5 flex-1">
+                        <Skeleton className="h-3.5 w-36 rounded-sm" />
+                        <Skeleton className="h-3 w-24 rounded-sm opacity-70" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Skeleton className="h-7 w-14 rounded-md" />
+                      <Skeleton className="h-7 w-14 rounded-md" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : invitations.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-6 text-center text-13 text-muted-foreground bg-muted/10 space-y-2">
-                <div className="size-10 rounded-full bg-muted/60 text-muted-foreground/70 flex items-center justify-center mx-auto">
-                  <Mail className="size-5" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground text-12">No pending project invitations</p>
-                  <p className="text-11 text-muted-foreground mt-1 max-w-xs mx-auto">
-                    When other researchers invite you to collaborate on their project, their invitations will appear here.
-                  </p>
-                </div>
-              </div>
+              <PlaneEmptyState
+                isCompact
+                variant="document"
+                title="No pending project invitations"
+                description="When other researchers invite you to collaborate on their project, their invitations will appear here."
+              />
             ) : (
               <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                 {invitations.map((inv) => (

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import {
   loadCollectionSources,
@@ -277,13 +278,18 @@ export function LibraryTab({
             <div
               role="status"
               aria-live="polite"
-              className="flex items-center justify-center py-12 text-muted-foreground gap-2 text-12"
+              aria-label="Loading library papers"
+              className="space-y-1.5 py-1"
             >
-              <Loader2
-                className="size-4 animate-spin motion-reduce:animate-none"
-                aria-hidden="true"
-              />
-              <span>Loading library papers...</span>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                  <Skeleton className="size-4 mt-0.5 rounded-sm shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-4/5 rounded-sm" />
+                    <Skeleton className="h-3 w-1/2 rounded-sm opacity-70" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : papers.length === 0 ? (
             <PlaneEmptyState

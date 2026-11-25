@@ -8,11 +8,13 @@
 
 import React, { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { RotateCcw, Loader2, ArrowLeft } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { usePageStore } from '@/features/editor/core';
 
@@ -44,8 +46,21 @@ export function HistoryPage({
   const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || '');
 
   const pageId = propPageId || params?.pageId || storeRootPageId || currentPageId || '';
+  const knownSpaceId =
+    storeSpaceId || propProjectId || params?.projectId || currentPageProjectId || '';
+
+  const { data: resolvedPage } = useQuery({
+    queryKey: ['history-page-meta', pageId],
+    queryFn: () => pagesService.docs.getById(pageId),
+    enabled: !knownSpaceId && !!pageId,
+    staleTime: 5 * 60_000,
+  });
+
   const spaceId =
-    storeSpaceId || propProjectId || params?.projectId || currentPageProjectId || pageId || '';
+    knownSpaceId ||
+    resolvedPage?.spaceId ||
+    extractProjectId(resolvedPage) ||
+    '';
 
   const handleBackToEditor = useCallback(() => {
     const isPersonal = !params?.projectId || params.projectId === 'personal';
@@ -93,6 +108,11 @@ export function HistoryPage({
   }, [state.mode, actions.snapshot, actions.diffData]);
 
   useHistoryAutoSelect(actions.versions, sidebarFiles, state);
+
+  useEffect(() => {
+    const t = currentPageTitle.trim();
+    document.title = t ? `History · ${t} · Flux` : 'History · Flux';
+  }, [currentPageTitle]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

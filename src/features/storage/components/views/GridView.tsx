@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Star, Folder, Loader2 } from 'lucide-react';
+import { Star, Folder } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useInfiniteSentinel } from '../../hooks/use-storage';
 import type { StorageItem, StorageViewProps } from '@/features/storage/types/storage.types';
 import { getFileType, getFileIcon, formatFileSize, createFolderDropHandlers } from '../../utils/storage.util';
@@ -336,12 +337,19 @@ export const GridView = React.memo(function GridView({
         </div>
       )}
 
-      {/* Sentinel & Load more spinner */}
+      {/* Sentinel & Load more skeleton */}
       <div ref={sentinelRef} className="col-span-full py-2 flex items-center justify-center min-h-6">
         {isFetchingNextPage && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
-            <Loader2 className="size-4 animate-spin text-primary shrink-0" />
-            <span>Loading more files...</span>
+          <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 py-1">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="rounded-md border border-border bg-card p-3 flex items-center gap-2.5">
+                <Skeleton className="size-7 rounded-sm shrink-0" />
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Skeleton className="h-3 w-4/5 rounded-sm" />
+                  <Skeleton className="h-2.5 w-1/2 rounded-sm" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

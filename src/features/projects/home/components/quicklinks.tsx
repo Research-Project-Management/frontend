@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { copyToClipboard } from '@/shared/lib/utils';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useQuicklinks } from '../hooks/use-quicklinks';
 
 const QuicklinkModal = dynamic(
@@ -81,12 +82,12 @@ export default function Quicklinks() {
             {[1, 2, 3].map((n) => (
               <div
                 key={n}
-                className="h-[74px] rounded-md border border-border bg-card p-3.5 flex items-center gap-3.5 animate-pulse motion-reduce:animate-none"
+                className="h-[74px] rounded-md border border-border bg-card p-3.5 flex items-center gap-3.5"
               >
-                <div className="size-10 rounded-md bg-muted shrink-0" />
+                <Skeleton className="size-10 rounded-md shrink-0" />
                 <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-3.5 w-24 bg-muted rounded" />
-                  <div className="h-2.5 w-16 bg-muted rounded" />
+                  <Skeleton className="h-3.5 w-24 rounded-sm" />
+                  <Skeleton className="h-2.5 w-16 rounded-sm" />
                 </div>
               </div>
             ))}

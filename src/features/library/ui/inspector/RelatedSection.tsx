@@ -10,6 +10,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Separator } from '@/shared/components/ui/separator';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
   Tooltip,
   TooltipTrigger,
@@ -234,9 +236,13 @@ export default function RelatedSection(props: RelatedSectionProps) {
 
       {/* Loading state */}
       {isLoading && (
-        <div className="p-3 text-center text-foreground flex items-center justify-center gap-2">
-          <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />
-          <span className="text-11">Loading related items...</span>
+        <div className="p-2 space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-2 px-1 py-1">
+              <Skeleton className="size-3.5 rounded-sm shrink-0" />
+              <Skeleton className="h-3.5 w-4/5 rounded-sm" />
+            </div>
+          ))}
         </div>
       )}
 
@@ -452,33 +458,32 @@ export default function RelatedSection(props: RelatedSectionProps) {
                 className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar"
               >
                 {availableItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
-                    <div className="size-9 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="size-4 text-muted-foreground" strokeWidth={1.5} />
-                    </div>
-                    <div className="space-y-0.5">
-                      <p className="text-12 font-medium text-foreground">No references available</p>
-                      <p className="text-12 text-muted-foreground max-w-[280px]">
-                        {searchQuery || selectedCollectionFilter !== 'all'
-                          ? 'No items match your search in this collection.'
-                          : 'All available items in this collection are already linked.'}
-                      </p>
-                    </div>
-                    {(searchQuery || selectedCollectionFilter !== 'all') && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSearchQuery('');
-                          setSelectedCollectionFilter('all');
-                        }}
-                        className="h-7 text-12 mt-1"
-                      >
-                        Reset filters
-                      </Button>
-                    )}
-                  </div>
+                  <PlaneEmptyState
+                    isCompact
+                    variant="citations"
+                    title="No references available"
+                    description={
+                      searchQuery || selectedCollectionFilter !== 'all'
+                        ? 'No items match your search in this collection.'
+                        : 'All available items in this collection are already linked.'
+                    }
+                    action={
+                      searchQuery || selectedCollectionFilter !== 'all' ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSelectedCollectionFilter('all');
+                          }}
+                          className="h-7 text-12"
+                        >
+                          Reset filters
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   <div className="space-y-0.5">
                     {availableItems.map((targetItem: Item) => {

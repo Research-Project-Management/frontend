@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useReviewState } from './hooks/useReviewState';
 import {
   useDeleteComment,
@@ -175,9 +175,23 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
           {/* Main Feed */}
           <div className="flex-1 overflow-y-auto min-h-0 p-3">
             {isCommentsLoading || isSuggestionsLoading ? (
-              <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin motion-reduce:animate-none shrink-0" />
-                <span className="text-xs">Loading review items…</span>
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-md border border-border/60 bg-card space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="size-5 rounded-full shrink-0" />
+                        <Skeleton className="h-3.5 w-24 rounded-sm" />
+                      </div>
+                      <Skeleton className="h-3 w-10 rounded-sm" />
+                    </div>
+                    <Skeleton className="h-3.5 w-full rounded-sm" />
+                    <Skeleton className="h-3.5 w-2/3 rounded-sm" />
+                  </div>
+                ))}
               </div>
             ) : totalAllItems === 0 ? (
               showAddForm ? null : <EmptyReviewState />

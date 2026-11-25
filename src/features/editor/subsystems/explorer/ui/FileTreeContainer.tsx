@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type {
@@ -362,11 +363,8 @@ export function FileTreeContainer({
         <div className="flex flex-col py-1 space-y-0.5">
           {[65, 80, 45, 75, 55].map((w, i) => (
             <div key={i} className="flex h-8 items-center gap-2 px-3">
-              <div className="size-4 rounded-md bg-muted animate-pulse motion-reduce:animate-none shrink-0" />
-              <div
-                className="h-3 rounded-md bg-muted animate-pulse motion-reduce:animate-none"
-                style={{ width: `${w}%` }}
-              />
+              <Skeleton className="size-3.5 rounded-sm shrink-0" />
+              <Skeleton className="h-3 rounded-sm" style={{ width: `${w}%` }} />
             </div>
           ))}
         </div>

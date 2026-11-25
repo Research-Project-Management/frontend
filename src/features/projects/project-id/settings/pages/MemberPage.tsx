@@ -11,6 +11,7 @@ import { DeleteModal } from '@/features/settings/components/labels/DeleteModal';
 import { toast } from 'sonner';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
@@ -176,9 +177,10 @@ export default function MemberPage() {
       <PageLayout>
         <PageHeader title="Members" icon={Users} />
         <PageContent maxWidth="lg">
-          <div className="text-13 text-muted-foreground">
-            Error loading project members.
-          </div>
+          <PlaneErrorState
+            title="Unable to load project members"
+            description="Could not fetch team members for this project."
+          />
         </PageContent>
       </PageLayout>
     );
@@ -311,36 +313,42 @@ export default function MemberPage() {
       </PageContent>
 
       {/* Add Member Dialog */}
-      <AddMemberDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        existingMemberIds={existingMemberIds}
-        onAdd={addMembers}
-        isLoading={isAdding}
-      />
+      {addDialogOpen && (
+        <AddMemberDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          existingMemberIds={existingMemberIds}
+          onAdd={addMembers}
+          isLoading={isAdding}
+        />
+      )}
 
       {/* Remove Member Confirmation Modal */}
-      <DeleteModal
-        isOpen={Boolean(deletingMember)}
-        onClose={() => setDeletingMember(null)}
-        onConfirm={confirmDelete}
-        title="Remove member"
-        description={`Are you sure you want to remove ${deletingMember?.user.name || 'this member'} from the project? They will lose access to all project resources.`}
-        confirmText="Remove member"
-        cancelText="Cancel"
-      />
+      {Boolean(deletingMember) && (
+        <DeleteModal
+          isOpen={Boolean(deletingMember)}
+          onClose={() => setDeletingMember(null)}
+          onConfirm={confirmDelete}
+          title="Remove member"
+          description={`Are you sure you want to remove ${deletingMember?.user.name || 'this member'} from the project? They will lose access to all project resources.`}
+          confirmText="Remove member"
+          cancelText="Cancel"
+        />
+      )}
 
       {/* Transfer Ownership Confirmation Modal */}
-      <DeleteModal
-        isOpen={Boolean(transferringMember)}
-        onClose={() => setTransferringMember(null)}
-        onConfirm={confirmTransfer}
-        title="Transfer project ownership"
-        description={`Are you sure you want to transfer ownership of this project to ${transferringMember?.user.name || 'this member'}? You will no longer be the project owner and cannot undo this action.`}
-        confirmText="Transfer ownership"
-        cancelText="Cancel"
-        loading={isTransferringOwnership}
-      />
+      {Boolean(transferringMember) && (
+        <DeleteModal
+          isOpen={Boolean(transferringMember)}
+          onClose={() => setTransferringMember(null)}
+          onConfirm={confirmTransfer}
+          title="Transfer project ownership"
+          description={`Are you sure you want to transfer ownership of this project to ${transferringMember?.user.name || 'this member'}? You will no longer be the project owner and cannot undo this action.`}
+          confirmText="Transfer ownership"
+          cancelText="Cancel"
+          loading={isTransferringOwnership}
+        />
+      )}
     </PageLayout>
   );
 }

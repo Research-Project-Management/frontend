@@ -21,6 +21,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import { usePageActions } from '../../hooks/use-page';
 import type { Page } from '../../types/page.types';
 import { formatDate } from '@/shared/lib/utils';
@@ -37,6 +47,7 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
   const params = useParams<{ projectId?: string }>();
   const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [pendingDeletePage, setPendingDeletePage] = useState<{ id: string; title: string } | null>(null);
   const { deletePage, duplicatePage, updateStatus } = usePageActions();
 
   const handleSort = (column: 'title' | 'author' | 'updatedAt' | 'status') => {
@@ -99,12 +110,11 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
   };
 
   const handleDelete = (pageId: string, pageTitle: string) => {
-    if (window.confirm(`Are you sure you want to delete "${pageTitle}"?`)) {
-      deletePage.mutate(pageId);
-    }
+    setPendingDeletePage({ id: pageId, title: pageTitle });
   };
 
   return (
+    <>
     <div className="flex-1 w-full overflow-x-auto select-none scrollbar-none pb-8 touch-pan-x">
       <table className="w-full min-w-[780px] table-fixed text-left border-collapse">
         {/* Golden Ratio Proportions: 36% Title | 12% Status | 16% Author | 22% Labels | 10% Updated | 4% Actions */}
@@ -378,6 +388,40 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
         </tbody>
       </table>
     </div>
+
+    {pendingDeletePage && (
+      <AlertDialog
+        open={Boolean(pendingDeletePage)}
+        onOpenChange={(open) => !open && setPendingDeletePage(null)}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete page?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">&ldquo;{pendingDeletePage.title}&rdquo;</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="sm" className="h-8 text-xs cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={() => {
+                deletePage.mutate(pendingDeletePage.id);
+                setPendingDeletePage(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+    </>
   );
 });
 

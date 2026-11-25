@@ -451,29 +451,31 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
         </div>
       )}
 
-      <AlertDialog open={isPullConfirmOpen} onOpenChange={setIsPullConfirmOpen}>
-        <AlertDialogContent className="w-[95vw] sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Pull from GitHub?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
-              Local files will be updated with commits from{' '}
-              <code className="text-foreground font-mono">{linkedRepo?.branch || 'main'}</code>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="h-8 text-xs"
-              onClick={() => {
-                setIsPullConfirmOpen(false);
-                pullMutation.mutate({ branch: linkedRepo?.branch || 'main' });
-              }}
-            >
-              Pull
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {isPullConfirmOpen && (
+        <AlertDialog open={isPullConfirmOpen} onOpenChange={setIsPullConfirmOpen}>
+          <AlertDialogContent className="w-[95vw] sm:max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Pull from GitHub?</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs">
+                Local files will be updated with commits from{' '}
+                <code className="text-foreground font-mono">{linkedRepo?.branch || 'main'}</code>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="h-8 text-xs"
+                onClick={() => {
+                  setIsPullConfirmOpen(false);
+                  pullMutation.mutate({ branch: linkedRepo?.branch || 'main' });
+                }}
+              >
+                Pull
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

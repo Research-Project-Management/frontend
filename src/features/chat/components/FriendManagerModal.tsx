@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/shared/lib/logger';
 import {
   UserPlus,
   Search,
@@ -62,7 +63,7 @@ export function FriendManagerModal() {
       const users = await chatService.searchUsers(query);
       setSearchResults(users);
     } catch (err: any) {
-      console.error('Search users error:', err);
+      logger.error('[FriendManagerModal] Search users failed', err);
     } finally {
       setIsSearching(false);
     }

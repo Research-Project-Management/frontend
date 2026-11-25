@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
 import { editorCommandBus } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -363,7 +364,7 @@ export function useFileUpload({
               id: `zip-${zipItem.name}`,
             });
           } catch (err: unknown) {
-            console.error('Failed to unpack zip:', err);
+            logger.error('[useFileUpload] Failed to unpack zip', err);
             toast.error(`Failed to unpack ${zipItem.file.name}: ${(err as Error)?.message || 'Unknown error'}`, {
               id: `zip-${zipItem.name}`,
             });
@@ -468,7 +469,7 @@ export function useFileUpload({
               resolution,
             );
           } catch (err) {
-            console.error('Failed to upload tex:', err);
+            logger.error('[useFileUpload] Failed to upload tex', err);
             return null;
           } finally {
             onFileSettled();
@@ -501,7 +502,7 @@ export function useFileUpload({
               skipInvalidation: true,
             });
           } catch (err) {
-            console.error('Failed to upload asset:', err);
+            logger.error('[useFileUpload] Failed to upload asset', err);
           } finally {
             onFileSettled();
           }
@@ -522,7 +523,7 @@ export function useFileUpload({
                 try {
                   await upsertTexFile(file, cleanRelativePath, conflict, resolution);
                 } catch (err) {
-                  console.error('Failed to upload folder tex:', err);
+                  logger.error('[useFileUpload] Failed to upload folder tex', err);
                 } finally {
                   onFileSettled();
                 }
@@ -539,7 +540,7 @@ export function useFileUpload({
                     skipInvalidation: true,
                   });
                 } catch (uploadErr) {
-                  console.error('Failed:', uploadErr);
+                  logger.error('[useFileUpload] Failed to upload folder asset', uploadErr);
                 } finally {
                   onFileSettled();
                 }
@@ -547,7 +548,7 @@ export function useFileUpload({
             }),
           );
         } catch (err) {
-          console.error('Fatal error:', err);
+          logger.error('[useFileUpload] Fatal folder upload error', err);
           for (let i = 0; i < folderItems.length; i++) onFileSettled();
         }
       })();

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -134,7 +135,7 @@ export function CreateFolderModal({ spaceId, parentId }: CreateFolderModalProps)
       setFolderName('');
     } catch (error) {
       toast.error('Failed to create folder');
-      console.error(error);
+      logger.error('[SingleInputModal] Operation failed', error);
     }
   };
 
@@ -195,7 +196,7 @@ export function RenameModal() {
       close();
     } catch (error) {
       toast.error('Failed to rename');
-      console.error(error);
+      logger.error('[SingleInputModal] Operation failed', error);
     }
   };
 

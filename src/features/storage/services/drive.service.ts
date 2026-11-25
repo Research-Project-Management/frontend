@@ -5,6 +5,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiDelete, getAuthToken } from '@/shared/lib/api';
+import { logger } from '@/shared/lib/logger';
 import { API_BASE_URL } from '@/config/env';
 import { fetchAuthorized } from '@/shared/lib/file-client';
 import type {
@@ -358,7 +359,7 @@ export const previewServices = {
 
       return canvas.toDataURL('image/png');
     } catch (error) {
-      console.warn('Failed to generate PDF preview:', error);
+      logger.warn('[driveService] Failed to generate PDF preview', { error });
       return null;
     }
   },

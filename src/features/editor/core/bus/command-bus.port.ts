@@ -141,7 +141,7 @@ export type EditorCommand =
   | { type: 'dialog:close'; dialog?: DialogName }
   | { type: 'synctex:forward'; line?: number; column?: number; filePath?: string; fileId?: string }
   | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
-  | { type: 'synctex:map-updated'; map: import('@/features/editor/subsystems/compiler/synctex/synctex-index').SyncTeXMap | null }
+  | { type: 'synctex:map-updated'; map: import('@/features/editor/subsystems/compiler/synctex/synctex').SyncTeXMap | null }
   | { type: 'document:content-updated'; docId: string; content: string }
   | { type: 'document:persisted'; docId: string; rev?: number; version?: number; savedAt?: string }
   | { type: 'document:conflict'; docId: string; remoteContent: string; localContent: string }

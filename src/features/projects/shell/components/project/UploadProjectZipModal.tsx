@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/shared/lib/logger';
 import {
   Upload,
   FolderArchive,
@@ -104,7 +105,7 @@ export function UploadProjectZipModal({
       setExtractedProject(parsed);
       setProjectName(parsed.name);
     } catch (err: unknown) {
-      console.error('[UploadProjectZipModal] Parse error:', err);
+      logger.error('[UploadProjectZipModal] Parse error', err);
       setParseError(err instanceof Error ? err.message : 'Failed to read ZIP archive. The file might be corrupted.');
       setExtractedProject(null);
     } finally {
@@ -166,7 +167,7 @@ export function UploadProjectZipModal({
       // Navigate to the editor for this project's root document
       router.push(`/editor/${result.rootPageId}`);
     } catch (err: unknown) {
-      console.error('[UploadProjectZipModal] Import failed:', err);
+      logger.error('[UploadProjectZipModal] Import failed', err);
       toast.error(err instanceof Error ? err.message : 'Failed to import project files.');
       setIsImporting(false);
     }

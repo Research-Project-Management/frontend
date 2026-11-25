@@ -24,6 +24,7 @@ import {
 import katex from 'katex';
 import 'katex/contrib/mhchem';
 import { findMatchingBrace } from './latex-visual-headings';
+import { findBeginDocumentLine } from './latex-visual-document-shell';
 
 // ── KaTeX Render Cache (LRU) ──────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ const KATEX_CACHE_MAX = 250;
 const katexHtmlCache = new Map<string, string>();
 
 function renderKaTeXCached(formula: string, displayMode: boolean): string | null {
+  if (!formula || !formula.trim()) return null;
   const key = `${displayMode ? 'D:' : 'I:'}${formula}`;
   const cached = katexHtmlCache.get(key);
   if (cached !== undefined) {
@@ -42,7 +44,7 @@ function renderKaTeXCached(formula: string, displayMode: boolean): string | null
   try {
     const html = katex.renderToString(formula, {
       displayMode,
-      throwOnError: false,
+      throwOnError: true,
       output: 'htmlAndMathml',
     });
     if (katexHtmlCache.size >= KATEX_CACHE_MAX) {
@@ -125,10 +127,10 @@ interface MathSpan {
   readonly to: number;
 }
 
-const DISPLAY_DOLLAR_REGEX = /\$\$([\s\S]*?)\$\$/g;
-const BRACKET_MATH_REGEX = /\\\[([\s\S]*?)\\\]/g;
+const DISPLAY_DOLLAR_REGEX = /(?<!\\)\$\$([\s\S]*?)(?<!\\)\$\$/g;
+const BRACKET_MATH_REGEX = /(?<!\\)\\\[([\s\S]*?)(?<!\\)\\\]/g;
 const ENV_MATH_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?)\}([\s\S]*?)\\end\{\1\}/g;
-const INLINE_DOLLAR_REGEX = /(?<!\$)\$(?!\$)([^\$\n]+?)(?<!\$)\$(?!\$)/g;
+const INLINE_DOLLAR_REGEX = /(?<!\\|\$)\$(?!\$)([^\$\n]+?)(?<!\\|\$)\$(?!\$)/g;
 const CE_PREFIX_REGEX = /\\ce\{/g;
 
 function findMathSpans(text: string, offset: number): MathSpan[] {
@@ -243,7 +245,6 @@ const visualMathTheme = EditorView.baseTheme({
     cursor: 'pointer',
     backgroundColor: 'color-mix(in srgb, var(--primary) 5%, transparent)',
     border: '1px solid transparent',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
     verticalAlign: 'baseline',
     '&:hover': {
       backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
@@ -263,7 +264,6 @@ const visualMathTheme = EditorView.baseTheme({
     cursor: 'pointer',
     backgroundColor: 'color-mix(in srgb, var(--primary) 3%, transparent)',
     border: '1px solid var(--border-subtle)',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
     '&:hover': {
       backgroundColor: 'color-mix(in srgb, var(--primary) 7%, transparent)',
       borderColor: 'color-mix(in srgb, var(--primary) 30%, transparent)',
@@ -277,6 +277,19 @@ const visualMathTheme = EditorView.baseTheme({
 
 // ── StateField (Required by CM6 for multi-line block replace decorations) ──
 
+const mathSpansCache = new WeakMap<EditorState['doc'], MathSpan[]>();
+
+function getCachedMathSpans(doc: EditorState['doc']): MathSpan[] {
+  const cached = mathSpansCache.get(doc);
+  if (cached) return cached;
+  const beginLine = findBeginDocumentLine(doc);
+  const startOffset = beginLine ? beginLine.to : 0;
+  const spans = findMathSpans(doc.sliceString(startOffset), startOffset);
+  spans.sort((a, b) => a.from - b.from);
+  mathSpansCache.set(doc, spans);
+  return spans;
+}
+
 function computeMathDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const doc = state.doc;
@@ -286,14 +299,19 @@ function computeMathDecorations(state: EditorState): DecorationSet {
     return builder.finish();
   }
 
-  const allSpans = findMathSpans(doc.toString(), 0);
-  allSpans.sort((a, b) => a.from - b.from);
+  const allSpans = getCachedMathSpans(doc);
 
   let lastTo = -1;
   for (const span of allSpans) {
     if (span.from < lastTo) {
       continue;
     }
+
+    // Do not replace with a broken/empty KaTeX widget (prevents red "undefined" boxes)
+    if (!span.formula || renderKaTeXCached(span.formula, span.displayMode) === null) {
+      continue;
+    }
+
     lastTo = span.to;
 
     // If the cursor or selection touches or intersects this math span, reveal raw LaTeX
@@ -333,5 +351,6 @@ const visualMathField = StateField.define<DecorationSet>({
 
 export const latexVisualMath = (): Extension => [
   visualMathField,
+  EditorView.atomicRanges.of((view) => view.state.field(visualMathField, false) ?? Decoration.none),
   visualMathTheme,
 ];

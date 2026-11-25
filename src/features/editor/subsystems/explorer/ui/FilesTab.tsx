@@ -268,28 +268,30 @@ const FilesTab = React.memo(function FilesTab(_props: { onClose?: () => void }) 
         />
       </div>
 
-      <UploadConflictDialog
-        open={c.uploadDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
+      {c.uploadDialogOpen && (
+        <UploadConflictDialog
+          open={c.uploadDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              c.setUploadDialogOpen(false);
+              c.setPendingUploads([]);
+            }
+          }}
+          pendingUploads={c.pendingUploads}
+          onRemoveItem={(i) => c.setPendingUploads((prev) => prev.filter((_, j) => j !== i))}
+          onSetResolution={(i, resolution) =>
+            c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, resolution } : p)))
+          }
+          onToggleUnpackZip={(i, unpack) =>
+            c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, unpackZip: unpack } : p)))
+          }
+          onCancel={() => {
             c.setUploadDialogOpen(false);
             c.setPendingUploads([]);
-          }
-        }}
-        pendingUploads={c.pendingUploads}
-        onRemoveItem={(i) => c.setPendingUploads((prev) => prev.filter((_, j) => j !== i))}
-        onSetResolution={(i, resolution) =>
-          c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, resolution } : p)))
-        }
-        onToggleUnpackZip={(i, unpack) =>
-          c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, unpackZip: unpack } : p)))
-        }
-        onCancel={() => {
-          c.setUploadDialogOpen(false);
-          c.setPendingUploads([]);
-        }}
-        onConfirm={c.handleConfirmUpload}
-      />
+          }}
+          onConfirm={c.handleConfirmUpload}
+        />
+      )}
 
       {c.isAddFilesModalOpen && (
         <AddFilesModal
@@ -302,12 +304,14 @@ const FilesTab = React.memo(function FilesTab(_props: { onClose?: () => void }) 
         />
       )}
 
-      <DeleteFileDialog
-        fileToDelete={c.fileToDelete}
-        isPending={c.isDeletePending}
-        onClose={() => c.setFileToDelete(null)}
-        onConfirm={c.handleConfirmDelete}
-      />
+      {c.fileToDelete && (
+        <DeleteFileDialog
+          fileToDelete={c.fileToDelete}
+          isPending={c.isDeletePending}
+          onClose={() => c.setFileToDelete(null)}
+          onConfirm={c.handleConfirmDelete}
+        />
+      )}
     </>
   );
 });

@@ -103,15 +103,6 @@ export function useEditorToolbarActions(readOnly: boolean) {
     if (readOnly) return;
     setCurrentStyle(option.label);
 
-    if (editorMode === 'visual') {
-      editorCommandBus.dispatch({
-        type: 'editor:visual-command',
-        command: option.visualCommand,
-        level: option.visualLevel,
-      });
-      return;
-    }
-
     editorCommandBus.dispatch({
       type: 'editor:format',
       format: option.id as LatexFormatType,
@@ -121,11 +112,6 @@ export function useEditorToolbarActions(readOnly: boolean) {
   const handleInlineFormat = (format: 'bold' | 'italic' | 'underline') => {
     if (readOnly) return;
 
-    if (editorMode === 'visual') {
-      editorCommandBus.dispatch({ type: 'editor:visual-command', command: format });
-      return;
-    }
-
     editorCommandBus.dispatch({
       type: 'editor:format',
       format,
@@ -134,10 +120,6 @@ export function useEditorToolbarActions(readOnly: boolean) {
 
   const handleInsertMath = () => {
     if (readOnly) return;
-    if (editorMode === 'visual') {
-      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
-      return;
-    }
     editorCommandBus.dispatch({
       type: 'editor:format',
       format: 'inlineMath',
@@ -146,15 +128,10 @@ export function useEditorToolbarActions(readOnly: boolean) {
 
   const handleInsertDisplayMath = () => {
     if (readOnly) return;
-    if (editorMode === 'visual') {
-      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'displayMath' });
-      return;
-    }
     editorCommandBus.dispatch({
-      type: 'editor:insert-text',
-      text: '\\[\n  \n\\]\n',
+      type: 'editor:format',
+      format: 'displayMath',
     });
-    editorCommandBus.dispatch({ type: 'editor:focus' });
   };
 
   const handleOpenEquationModal = () => {

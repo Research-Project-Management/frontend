@@ -10,7 +10,8 @@ import { CreatorFields } from './CreatorFields';
 import { GeneralFields, ExtraAuditFields } from './GeneralFields';
 import { DynamicInspectorField } from './NoteMarkdownEditor';
 import { INSPECTOR_FIELD_DESCRIPTORS, prepareInspectorFieldContext, resolveInspectorFieldValue, buildInspectorFieldPatch } from '@/features/library/domain/metadata/field-schema';
-import { FileText, Loader2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { FileText, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Document, Page } from 'react-pdf';
 import { setupPdfWorker, getSharedPdfDocumentOptions, getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
 import { usePdf } from '@/features/library/core/coordinator/reader/use-reader';
@@ -449,9 +450,12 @@ export function PdfPageCanvas({
   return (
     <div ref={canvasContainerRef} className="relative w-full flex flex-col items-center justify-center min-h-[220px]">
       {pdfLoading ? (
-        <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
-          <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
-          <span className="text-12 font-medium">Loading document...</span>
+        <div className="h-60 w-full rounded-md border border-border bg-card p-5 flex flex-col gap-3">
+          <Skeleton className="h-4 w-2/3 rounded-sm mx-auto" />
+          <Skeleton className="h-3 w-full rounded-sm" />
+          <Skeleton className="h-3 w-5/6 rounded-sm" />
+          <Skeleton className="h-3 w-full rounded-sm" />
+          <Skeleton className="h-3 w-3/4 rounded-sm" />
         </div>
       ) : pdfBlobUrl ? (
         <Document
@@ -469,9 +473,12 @@ export function PdfPageCanvas({
             setNumPages(0);
           }}
           loading={
-            <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
-              <Loader2 className="size-5 animate-spin text-foreground shrink-0" />
-              <span className="text-12 font-medium">Loading preview...</span>
+            <div className="h-60 w-full rounded-md border border-border bg-card p-5 flex flex-col gap-3">
+              <Skeleton className="h-4 w-2/3 rounded-sm mx-auto" />
+              <Skeleton className="h-3 w-full rounded-sm" />
+              <Skeleton className="h-3 w-5/6 rounded-sm" />
+              <Skeleton className="h-3 w-full rounded-sm" />
+              <Skeleton className="h-3 w-3/4 rounded-sm" />
             </div>
           }
           error={

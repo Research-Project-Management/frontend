@@ -14,6 +14,7 @@
  */
 
 import { EditorView } from '@codemirror/view';
+import { logger } from '@/shared/lib/logger';
 import {
   isTableData,
   parseTableToLatex,
@@ -71,7 +72,7 @@ export function createLatexSmartPasteExtension(options: LatexSmartPasteOptions =
                 onFileTreeUpdated();
               })
               .catch((err) => {
-                console.error('[SmartPaste] Image upload failed:', err);
+                logger.error('[SmartPaste] Image upload failed', err);
               });
           }
           return true;

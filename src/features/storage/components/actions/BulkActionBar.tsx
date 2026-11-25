@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logger } from '@/shared/lib/logger';
 import {
   Download,
   Star,
@@ -99,7 +100,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
       await downloadFileAuthorized(zipUrl, `flux_research_export_${Date.now()}.zip`);
       toast.success('Downloaded ZIP archive');
     } catch (err) {
-      console.error('Failed to trigger bulk ZIP download', err);
+      logger.error('[BulkActionBar] Failed to trigger bulk ZIP download', err);
       toast.error('Failed to download ZIP archive');
     } finally {
       setIsDownloading(false);

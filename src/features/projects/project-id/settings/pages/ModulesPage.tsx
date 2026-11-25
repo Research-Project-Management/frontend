@@ -7,6 +7,7 @@ import { LayoutGrid, MessageSquare, BarChart3, Archive, Microscope } from 'lucid
 import { WorkItemsIcon, WikiIcon } from '@/shared/components/icons';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
 import type { ModuleDef } from '../types/module.types';
@@ -76,9 +77,10 @@ export default function ModulesPage() {
       <PageLayout>
         <PageHeader title="Modules" icon={LayoutGrid} />
         <PageContent maxWidth="lg">
-          <div className="text-13 text-muted-foreground">
-            Error loading project.
-          </div>
+          <PlaneErrorState
+            title="Unable to load project modules"
+            description="Could not fetch project modules."
+          />
         </PageContent>
       </PageLayout>
     );

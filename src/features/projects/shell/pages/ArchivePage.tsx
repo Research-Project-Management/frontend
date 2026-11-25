@@ -134,12 +134,14 @@ export function ArchivePage() {
         )}
       </main>
 
-      <DeletePermanentModal
-        project={deleteConfirmProject}
-        onClose={() => setDeleteConfirmProject(null)}
-        onConfirm={handleDeletePermanent}
-        isDeleting={deleteProjectMutation.isPending}
-      />
+      {Boolean(deleteConfirmProject) && (
+        <DeletePermanentModal
+          project={deleteConfirmProject}
+          onClose={() => setDeleteConfirmProject(null)}
+          onConfirm={handleDeletePermanent}
+          isDeleting={deleteProjectMutation.isPending}
+        />
+      )}
     </div>
   );
 }

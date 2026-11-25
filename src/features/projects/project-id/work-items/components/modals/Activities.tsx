@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Textarea } from '@/shared/components/ui/textarea';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { SmilePlus, History } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -430,15 +432,25 @@ export function Activities({
       {/* Activity Timeline List */}
       <div className="space-y-3 pt-1">
         {activityLoading ? (
-          <div className="rounded-md bg-muted px-3 py-2 text-xs text-foreground/70">
-            Loading activity...
+          <div className="space-y-2.5 py-1">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <Skeleton className="size-6 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-48 rounded-sm" />
+                  <Skeleton className="h-3 w-24 rounded-sm opacity-60" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : null}
 
         {activityError ? (
-          <div className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            Could not load activity. Please try again.
-          </div>
+          <PlaneErrorState
+            isCompact
+            title="Unable to load activity"
+            description="Could not load activity for this work item."
+          />
         ) : null}
 
         {filteredActivities.length > 0 ? (

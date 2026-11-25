@@ -3,7 +3,8 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight, RotateCw, RotateCcw } from 'lucide-react';
+import { ListTree, LayoutGrid, Highlighter, ChevronRight, RotateCw, RotateCcw } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { setupPdfWorker, getSharedPdfDocumentOptions, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -257,14 +258,13 @@ export function ThumbnailsView({
         setLoadedThumbPdfDoc(null);
       }}
       loading={
-        <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
-          <Loader2
-            className="size-5 animate-spin text-muted-foreground"
-            strokeWidth={1.5}
-          />
-          <p className="text-11 font-sans text-muted-foreground">
-            Loading thumbnails...
-          </p>
+        <div className="grid grid-cols-2 gap-3 p-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-1.5">
+              <Skeleton className="aspect-[3/4] w-full rounded-sm" />
+              <Skeleton className="h-2.5 w-8 mx-auto rounded-sm" />
+            </div>
+          ))}
         </div>
       }
       error={

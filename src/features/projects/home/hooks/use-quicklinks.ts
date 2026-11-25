@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { logger } from '@/shared/lib/logger';
 import type { Quicklink } from '../types/home.types';
 
 const quicklinksMemoryCache = new Map<string, Quicklink[]>();
@@ -31,7 +32,7 @@ export function useQuicklinks(spaceId: string = 'default') {
         quicklinksMemoryCache.set(storageKey, []);
       }
     } catch (e) {
-      console.error('Failed to load quicklinks', e);
+      logger.error('[useQuicklinks] Failed to load quicklinks', e);
     } finally {
       setIsLoaded(true);
     }

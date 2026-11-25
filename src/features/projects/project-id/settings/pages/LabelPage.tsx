@@ -28,6 +28,7 @@ const DeleteModal = dynamic(
 );
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import {
   Tag,
@@ -496,9 +497,10 @@ export default function LabelPage() {
       <PageLayout>
         <PageHeader title="Labels" icon={Tag} />
         <PageContent maxWidth="lg">
-          <div className="text-13 text-muted-foreground">
-            Error loading project.
-          </div>
+          <PlaneErrorState
+            title="Unable to load project labels"
+            description="Could not fetch project labels."
+          />
         </PageContent>
       </PageLayout>
     );

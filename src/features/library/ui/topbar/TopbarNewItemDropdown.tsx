@@ -33,7 +33,6 @@ import {
   Map,
   Palette,
   Download,
-  Loader2,
   UploadCloud,
   Settings2,
   RefreshCw,
@@ -42,6 +41,7 @@ import {
 import { toast } from "sonner";
 import { ZoteroLineIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui/button";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -386,9 +386,13 @@ export function TopbarNewItemDropdown({
             className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
           >
             {isLoading ? (
-              <div className="py-2.5 px-3 flex items-center justify-center gap-2 text-12 text-muted-foreground">
-                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-                <span>Loading types...</span>
+              <div className="py-1.5 px-2 space-y-1.5">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center gap-2.5 h-7 px-1">
+                    <Skeleton className="size-3.5 rounded-sm shrink-0" />
+                    <Skeleton className="h-3 w-28 rounded-sm" />
+                  </div>
+                ))}
               </div>
             ) : primaryTypes.length === 0 ? (
               <div className="py-2.5 px-3 text-12 text-muted-foreground text-center">

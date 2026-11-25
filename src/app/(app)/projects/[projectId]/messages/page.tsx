@@ -7,9 +7,10 @@ import {
   Hash,
   Plus,
   MessageSquare,
-  Loader2,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,10 @@ const CreateChannelModal = dynamic(
 );
 
 export default function ProjectMessagesPage() {
+  useEffect(() => {
+    document.title = 'Messages · Flux';
+  }, []);
+
   const params = useParams<{ projectId: string }>();
   const projectId = params?.projectId || '';
 
@@ -121,9 +126,19 @@ export default function ProjectMessagesPage() {
       {/* Main Messaging Canvas */}
       <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden">
         {isChannelsLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            <span className="text-12 text-muted-foreground font-medium">Loading project discussion...</span>
+          <div className="flex-1 flex flex-col p-4 space-y-4 overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-start gap-3">
+                <Skeleton className="size-8 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3.5 w-24 rounded-sm" />
+                    <Skeleton className="h-3 w-12 rounded-sm opacity-60" />
+                  </div>
+                  <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : activeChannel ? (
           <ChatWindow
@@ -132,25 +147,21 @@ export default function ProjectMessagesPage() {
             showSidebarToggle={false}
           />
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <MessageSquare className="size-6 text-muted-foreground" />
-            </div>
-            <h3 className="text-14 font-semibold text-foreground mb-1">
-              No discussions yet
-            </h3>
-            <p className="text-12 text-muted-foreground max-w-sm mb-4">
-              Start conversations and share ideas with team members working on this project.
-            </p>
-            <Button
-              size="sm"
-              onClick={() => openCreateChannelModal(projectId)}
-              className="gap-1.5 h-8 text-12 font-medium cursor-pointer"
-            >
-              <Plus className="size-3.5" />
-              Create #general channel
-            </Button>
-          </div>
+          <PlaneEmptyState
+            variant="document"
+            title="No discussions yet"
+            description="Start conversations and share ideas with team members working on this project."
+            action={
+              <Button
+                size="sm"
+                onClick={() => openCreateChannelModal(projectId)}
+                className="gap-1.5 h-8 text-12 font-medium cursor-pointer"
+              >
+                <Plus className="size-3.5" />
+                Create #general channel
+              </Button>
+            }
+          />
         )}
       </div>
 

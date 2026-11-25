@@ -17,13 +17,11 @@ import {
   Plus,
   Trash2,
   FileSpreadsheet,
-  Sparkles,
   Loader2,
   Merge,
   Split,
   Upload,
   X,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
@@ -748,10 +746,7 @@ export function TableModal({
                       : 'border-border bg-muted/15 hover:bg-muted/30',
                   )}
                 >
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <Upload className="size-4" />
-                    <ImageIcon className="size-4" />
-                  </div>
+                  <Upload className="size-4 text-muted-foreground" />
                   <span className="text-xs font-medium text-foreground">
                     Drop a screenshot of a table or click to upload
                   </span>
@@ -768,7 +763,7 @@ export function TableModal({
                 disabled={isGenerating || (!prompt.trim() && !image)}
                 className="h-8 px-3 text-xs bg-ai text-ai-foreground hover:bg-ai-hover font-medium cursor-pointer gap-1.5 shadow-none"
               >
-                {isGenerating && <Loader2 className="size-3.5 animate-spin" />}
+                {isGenerating && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />}
                 <span>{isGenerating ? 'Generating...' : 'Generate Table'}</span>
               </Button>
             </div>

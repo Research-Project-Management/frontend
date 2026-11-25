@@ -8,8 +8,8 @@ import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import { openInNewTab } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { cn } from "@/shared/lib/utils";
-import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
   useReader, useExportAnnotatedPdf, evictWarmObjectUrl, prefetchReaderDocumentBlob,
   markReaderMounted, markReaderUnmounted,
@@ -39,12 +39,12 @@ const Viewer = dynamic<import("@/features/library/ui/reader/viewer/PdfViewer").V
     ssr: false,
     loading: () => (
       <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-muted">
-        <div className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md animate-pulse select-none w-[600px] max-w-[90vw] h-[848px] max-h-[85vh]">
-          <div className="h-4 w-3/4 bg-muted rounded-sm mb-4" />
-          <div className="h-2.5 w-1/2 bg-muted rounded-sm mb-6" />
+        <div className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md select-none w-[600px] max-w-[90vw] h-[848px] max-h-[85vh]">
+          <Skeleton className="h-4 w-3/4 rounded-sm mb-4" />
+          <Skeleton className="h-2.5 w-1/2 rounded-sm mb-6" />
           <div className="space-y-2 flex-1">
             {[100, 100, 92, 100, 80].map((w, i) => (
-              <div key={i} className="h-2 bg-muted rounded-sm" style={{ width: `${w}%` }} />
+              <Skeleton key={i} className="h-2 rounded-sm" style={{ width: `${w}%` }} />
             ))}
           </div>
         </div>
@@ -682,9 +682,16 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {/* 4. MAIN DOCUMENT CANVAS (PDF / EPUB / WEB SNAPSHOT) */}
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2.5">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" strokeWidth={1.5} />
-              <p className="text-12 text-muted-foreground font-sans">Loading document...</p>
+            <div className="flex-1 flex items-center justify-center overflow-hidden p-4 bg-muted">
+              <div className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md select-none w-[600px] max-w-[90vw] h-[848px] max-h-[85vh]">
+                <Skeleton className="h-5 w-3/4 rounded-sm mb-3" />
+                <Skeleton className="h-3 w-1/2 rounded-sm mb-6" />
+                <div className="space-y-2.5 flex-1">
+                  {[100, 100, 92, 100, 80, 96, 88, 70].map((w, i) => (
+                    <Skeleton key={i} className="h-2.5 rounded-sm" style={{ width: `${w}%` }} />
+                  ))}
+                </div>
+              </div>
             </div>
           ) : !paper ? (
             <PlaneEmptyState variant="document" title="Document not found" description="The document could not be found or you do not have permission." />

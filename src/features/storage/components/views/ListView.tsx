@@ -2,11 +2,11 @@ import React, { useState, useMemo } from 'react';
 import {
   Star,
   Folder,
-  Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useInfiniteSentinel } from '../../hooks/use-storage';
 import type { StorageItem, StorageViewProps } from '@/features/storage/types/storage.types';
 import { useStorageSelectionStore } from '@/features/storage/store/storage-ui.store';
@@ -336,9 +336,13 @@ export const ListView = React.memo(function ListView({
         </AnimatePresence>
         <div ref={sentinelRef} className="py-2 flex items-center justify-center min-h-6">
           {isFetchingNextPage && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 animate-pulse">
-              <Loader2 className="size-4 animate-spin text-primary shrink-0" />
-              <span>Loading more files...</span>
+            <div className="w-full space-y-1.5 py-1">
+              {[60, 45, 70].map((w, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-md">
+                  <Skeleton className="size-4 rounded-sm shrink-0" />
+                  <Skeleton className="h-3.5 rounded-sm" style={{ width: `${w}%` }} />
+                </div>
+              ))}
             </div>
           )}
         </div>

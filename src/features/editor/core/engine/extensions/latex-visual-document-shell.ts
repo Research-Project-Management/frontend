@@ -3,10 +3,8 @@
  *
  * CodeMirror 6 Visual Mode Document Shell Extension (Overleaf Visual Editor Parity).
  * - Collapses the LaTeX preamble (`0 .. \begin{document}`) via a `StateField` multi-line block
- *   widget (`PreambleHeaderWidget`) displaying package summary + clean Document Header
- *   (`\title`, `\author`, `\date`), with 1-click toggle to inspect/edit raw preamble.
- * - Hides `\maketitle` and `\end{document}` lines when unfocused, revealing them cleanly
- *   when the cursor enters that line.
+ *   widget (`PreambleHeaderWidget`) displaying the clean Document Header (`\title`, `\author`, `\date`).
+ * - Hides `\maketitle` and `\end{document}` lines in Visual Mode.
  */
 
 import {
@@ -26,17 +24,31 @@ import {
 } from '@codemirror/state';
 import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
-export const togglePreambleEffect = StateEffect.define<boolean>();
+const togglePreambleEffect = StateEffect.define<boolean>();
+
+const preambleExpandedField = StateField.define<boolean>({
+  create() {
+    return false;
+  },
+  update(value, tr) {
+    for (const e of tr.effects) {
+      if (e.is(togglePreambleEffect)) return e.value;
+    }
+    return value;
+  },
+});
 
 interface PreambleMetadata {
-  docClass: string;
-  packageCount: number;
   title?: string;
   author?: string;
   date?: string;
 }
 
-function extractBalancedMacroValue(text: string, macroName: string): string | undefined {
+function extractBalancedMacroValue(
+  text: string,
+  macroName: string,
+  preserveLineBreaks = false,
+): string | undefined {
   const re = new RegExp(`\\\\${macroName}(?:\\[[^\\]]*\\])?\\{`, 'g');
   let match: RegExpExecArray | null;
   while ((match = re.exec(text)) !== null) {
@@ -48,50 +60,37 @@ function extractBalancedMacroValue(text: string, macroName: string): string | un
     const openBrace = match.index + match[0].length - 1;
     const closeBrace = findMatchingBrace(text, openBrace);
     if (closeBrace !== null) {
-      const value = cleanInlineLatexText(text.slice(openBrace + 1, closeBrace));
-      if (value) return value;
+      const rawInner = text.slice(openBrace + 1, closeBrace);
+      if (preserveLineBreaks) {
+        const lines = rawInner
+          .replace(/\\(?:and|AND|And)\b/g, '\n\n')
+          .replace(/\\\\(?:\s*\[[^\]]*\])?/g, '\n')
+          .split('\n')
+          .map((l) => cleanInlineLatexText(l))
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+        if (lines) return lines;
+      } else {
+        const value = cleanInlineLatexText(rawInner);
+        if (value) return value;
+      }
     }
   }
   return undefined;
 }
 
 function parsePreambleMetadata(preambleText: string): PreambleMetadata {
-  const classMatch = preambleText.match(/\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/);
-  const docClass = classMatch?.[1]?.trim() || 'article';
-
-  let packageCount = 0;
-  const pkgRegex = /\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g;
-  let pkgMatch: RegExpExecArray | null;
-  while ((pkgMatch = pkgRegex.exec(preambleText)) !== null) {
-    const lineStart = preambleText.lastIndexOf('\n', pkgMatch.index) + 1;
-    if (/(?:^|[^\\])%/.test(preambleText.slice(lineStart, pkgMatch.index))) continue;
-    const names = pkgMatch[1]!.split(',').map((s) => s.trim()).filter(Boolean);
-    packageCount += Math.max(1, names.length);
-  }
-
   return {
-    docClass,
-    packageCount,
-    title: extractBalancedMacroValue(preambleText, 'title'),
-    author: extractBalancedMacroValue(preambleText, 'author'),
-    date: extractBalancedMacroValue(preambleText, 'date'),
+    title: extractBalancedMacroValue(preambleText, 'title', false),
+    author: extractBalancedMacroValue(preambleText, 'author', true),
+    date: extractBalancedMacroValue(preambleText, 'date', false),
   };
 }
 
-class PreambleHeaderWidget extends WidgetType {
-  constructor(readonly meta: PreambleMetadata) {
-    super();
-  }
-
+class CollapsedPreambleBarWidget extends WidgetType {
   override eq(other: WidgetType): boolean {
-    return (
-      other instanceof PreambleHeaderWidget &&
-      other.meta.docClass === this.meta.docClass &&
-      other.meta.packageCount === this.meta.packageCount &&
-      other.meta.title === this.meta.title &&
-      other.meta.author === this.meta.author &&
-      other.meta.date === this.meta.date
-    );
+    return other instanceof CollapsedPreambleBarWidget;
   }
 
   toDOM(view: EditorView): HTMLElement {
@@ -100,54 +99,23 @@ class PreambleHeaderWidget extends WidgetType {
 
     const bar = document.createElement('button');
     bar.type = 'button';
-    bar.className = 'cm-visual-preamble-pill';
+    bar.className = 'cm-visual-preamble-bar';
     bar.setAttribute('aria-expanded', 'false');
-    const pkgLabel =
-      this.meta.packageCount === 1
-        ? '1 package'
-        : `${this.meta.packageCount} packages`;
-    bar.title = `Preamble (${this.meta.docClass}, ${pkgLabel}) — click to view or edit`;
 
-    const labelText = document.createElement('span');
-    labelText.textContent = 'Preamble';
+    const label = document.createElement('span');
+    label.textContent = 'Show document preamble';
 
-    const chevron = document.createElement('span');
-    chevron.className = 'cm-visual-preamble-chevron';
-    chevron.textContent = 'Show';
+    const icon = document.createElement('span');
+    icon.className = 'cm-visual-preamble-chevron';
+    icon.textContent = '⌄';
 
-    bar.append(labelText, chevron);
+    bar.append(label, icon);
     bar.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
       view.dispatch({ effects: togglePreambleEffect.of(true) });
     });
-
     wrapper.appendChild(bar);
-
-    if (this.meta.title || this.meta.author || this.meta.date) {
-      const header = document.createElement('div');
-      header.className = 'cm-visual-doc-header';
-
-      if (this.meta.title) {
-        const h1 = document.createElement('div');
-        h1.className = 'cm-visual-doc-title';
-        h1.textContent = this.meta.title;
-        header.appendChild(h1);
-      }
-
-      if (this.meta.author || this.meta.date) {
-        const metaRow = document.createElement('div');
-        metaRow.className = 'cm-visual-doc-meta';
-        const parts: string[] = [];
-        if (this.meta.author) parts.push(this.meta.author);
-        if (this.meta.date) parts.push(this.meta.date);
-        metaRow.textContent = parts.join(' · ');
-        header.appendChild(metaRow);
-      }
-
-      wrapper.appendChild(header);
-    }
-
     return wrapper;
   }
 
@@ -156,28 +124,78 @@ class PreambleHeaderWidget extends WidgetType {
   }
 }
 
-class CollapsePreambleWidget extends WidgetType {
+class DocumentTitleWidget extends WidgetType {
+  constructor(readonly meta: PreambleMetadata) {
+    super();
+  }
+
   override eq(other: WidgetType): boolean {
-    return other instanceof CollapsePreambleWidget;
+    return (
+      other instanceof DocumentTitleWidget &&
+      other.meta.title === this.meta.title &&
+      other.meta.author === this.meta.author &&
+      other.meta.date === this.meta.date
+    );
+  }
+
+  toDOM(): HTMLElement {
+    const header = document.createElement('div');
+    header.className = 'cm-visual-doc-header';
+
+    if (this.meta.title) {
+      const h1 = document.createElement('div');
+      h1.className = 'cm-visual-doc-title';
+      h1.textContent = this.meta.title;
+      header.appendChild(h1);
+    }
+
+    if (this.meta.author) {
+      const authorBlock = document.createElement('div');
+      authorBlock.className = 'cm-visual-doc-author';
+      authorBlock.textContent = this.meta.author;
+      header.appendChild(authorBlock);
+    }
+
+    if (this.meta.date) {
+      const dateRow = document.createElement('div');
+      dateRow.className = 'cm-visual-doc-meta';
+      dateRow.textContent = this.meta.date;
+      header.appendChild(dateRow);
+    }
+
+    return header;
+  }
+
+  override ignoreEvent(): boolean {
+    return true;
+  }
+}
+
+class CollapsePreambleBarWidget extends WidgetType {
+  override eq(other: WidgetType): boolean {
+    return other instanceof CollapsePreambleBarWidget;
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const row = document.createElement('div');
-    row.className = 'cm-visual-preamble-collapse-row';
+    const bar = document.createElement('button');
+    bar.type = 'button';
+    bar.className = 'cm-visual-preamble-bar cm-visual-preamble-bar-expanded';
+    bar.setAttribute('aria-expanded', 'true');
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cm-visual-preamble-pill';
-    btn.setAttribute('aria-expanded', 'true');
-    btn.textContent = 'Hide Preamble';
-    btn.addEventListener('mousedown', (e) => {
+    const label = document.createElement('span');
+    label.textContent = 'Hide document preamble';
+
+    const icon = document.createElement('span');
+    icon.className = 'cm-visual-preamble-chevron';
+    icon.textContent = '⌃';
+
+    bar.append(label, icon);
+    bar.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
       view.dispatch({ effects: togglePreambleEffect.of(false) });
     });
-
-    row.appendChild(btn);
-    return row;
+    return bar;
   }
 
   override ignoreEvent(): boolean {
@@ -187,7 +205,8 @@ class CollapsePreambleWidget extends WidgetType {
 
 const DECO_HIDDEN_LINE = Decoration.line({ class: 'cm-visual-hidden-line' });
 const DECO_HIDDEN_INLINE = Decoration.replace({});
-const STRUCTURAL_SINGLE_LINE_RE = /^\s*(?:\\maketitle|\\end\{document\})\s*(?:%.*)?$/;
+const STRUCTURAL_SINGLE_LINE_RE =
+  /^\s*(?:\\maketitle|\\tableofcontents|\\listoffigures|\\listoftables|\\newpage|\\clearpage|\\cleardoublepage|\\pagebreak|\\thispagestyle\{[^}]*\}|\\pagestyle\{[^}]*\}|\\end\{document\})\s*(?:%.*)?$/;
 const BEGIN_DOCUMENT_RE = /^[^%]*\\begin\{document\}/;
 
 export function findBeginDocumentLine(doc: Text): Line | null {
@@ -201,57 +220,10 @@ export function findBeginDocumentLine(doc: Text): Line | null {
   return null;
 }
 
-export const preambleExpandedField = StateField.define<boolean>({
-  create: () => false,
-  update(value, tr) {
-    for (const effect of tr.effects) {
-      if (effect.is(togglePreambleEffect)) {
-        return effect.value;
-      }
-    }
-    if (!value) {
-      const beginLine = findBeginDocumentLine(tr.state.doc);
-      if (beginLine) {
-        if (tr.docChanged) {
-          let isFullDocReplace = false;
-          let touchedPreamble = false;
-          tr.changes.iterChangedRanges((fromA, toA, fromB, toB) => {
-            if (
-              fromA === 0 &&
-              toA === tr.startState.doc.length &&
-              fromB === 0 &&
-              toB === tr.state.doc.length
-            ) {
-              isFullDocReplace = true;
-              return;
-            }
-            if (fromB <= beginLine.to) {
-              touchedPreamble = true;
-            }
-          });
-          if (!isFullDocReplace && touchedPreamble) {
-            return true;
-          }
-        }
-        if (
-          tr.selection &&
-          tr.selection.main.from > 0 &&
-          tr.selection.main.from <= beginLine.to
-        ) {
-          return true;
-        }
-      }
-    }
-    return value;
-  },
-});
-
 function computeDocumentShellDecorations(state: EditorState): DecorationSet {
   const doc = state.doc;
   if (doc.length === 0) return Decoration.none;
 
-  const selection = state.selection.main;
-  const expanded = state.field(preambleExpandedField, false) ?? false;
   const beginLine = findBeginDocumentLine(doc);
 
   interface PendingDeco {
@@ -261,16 +233,18 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
   }
   const pending: PendingDeco[] = [];
 
+  const expanded = state.field(preambleExpandedField, false) ?? false;
   let bodyStartLine = 1;
+  let meta: PreambleMetadata = {};
   if (beginLine !== null) {
+    const preambleText = doc.sliceString(0, beginLine.to);
+    meta = parsePreambleMetadata(preambleText);
     if (!expanded) {
-      const preambleText = doc.sliceString(0, beginLine.to);
-      const meta = parsePreambleMetadata(preambleText);
       pending.push({
         from: 0,
         to: beginLine.to,
         deco: Decoration.replace({
-          widget: new PreambleHeaderWidget(meta),
+          widget: new CollapsedPreambleBarWidget(),
           block: true,
         }),
       });
@@ -279,7 +253,7 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
         from: 0,
         to: 0,
         deco: Decoration.widget({
-          widget: new CollapsePreambleWidget(),
+          widget: new CollapsePreambleBarWidget(),
           block: true,
           side: -1,
         }),
@@ -288,17 +262,42 @@ function computeDocumentShellDecorations(state: EditorState): DecorationSet {
     bodyStartLine = beginLine.number + 1;
   }
 
+  const hasTitleMeta = Boolean(meta.title || meta.author || meta.date);
+  let renderedTitleAtMaketitle = false;
+
   for (let l = bodyStartLine; l <= doc.lines; l++) {
     const line = doc.line(l);
     if (!STRUCTURAL_SINGLE_LINE_RE.test(line.text)) continue;
 
-    const isCursorOnLine = selection.from <= line.to && selection.to >= line.from;
-    if (isCursorOnLine) continue;
+    if (/^\s*\\maketitle\b/.test(line.text) && hasTitleMeta && !renderedTitleAtMaketitle) {
+      renderedTitleAtMaketitle = true;
+      pending.push({
+        from: line.from,
+        to: line.to,
+        deco: Decoration.replace({
+          widget: new DocumentTitleWidget(meta),
+          block: true,
+        }),
+      });
+      continue;
+    }
 
     pending.push({ from: line.from, to: line.from, deco: DECO_HIDDEN_LINE });
     if (line.to > line.from) {
       pending.push({ from: line.from, to: line.to, deco: DECO_HIDDEN_INLINE });
     }
+  }
+
+  if (beginLine !== null && hasTitleMeta && !renderedTitleAtMaketitle) {
+    pending.push({
+      from: beginLine.to,
+      to: beginLine.to,
+      deco: Decoration.widget({
+        widget: new DocumentTitleWidget(meta),
+        block: true,
+        side: 1,
+      }),
+    });
   }
 
   pending.sort((a, b) => {
@@ -321,7 +320,6 @@ export const documentShellField = StateField.define<DecorationSet>({
   update(decorations, tr) {
     if (
       tr.docChanged ||
-      tr.selection ||
       tr.effects.some((e) => e.is(togglePreambleEffect))
     ) {
       return computeDocumentShellDecorations(tr.state);
@@ -333,57 +331,54 @@ export const documentShellField = StateField.define<DecorationSet>({
 
 const visualDocumentShellTheme = EditorView.baseTheme({
   '.cm-visual-preamble-shell': {
-    marginBottom: '18px',
+    paddingTop: '8px',
+    marginBottom: '20px',
     userSelect: 'none',
   },
-  '.cm-visual-preamble-collapse-row': {
-    marginBottom: '8px',
-    userSelect: 'none',
-  },
-  '.cm-visual-preamble-pill': {
-    display: 'inline-flex',
+  '.cm-visual-preamble-bar': {
+    display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    padding: '3px 8px',
-    fontSize: '12px',
+    justifyContent: 'space-between',
+    width: '100%',
+    padding: '7px 14px',
+    marginBottom: '20px',
+    fontSize: '12.5px',
     fontWeight: '500',
     fontFamily: 'var(--font-sans)',
     color: 'var(--muted-foreground)',
-    backgroundColor: 'var(--canvas)',
-    border: '1px solid var(--border)',
+    backgroundColor: 'var(--muted)',
+    border: '1px solid var(--border-subtle)',
     borderRadius: '6px',
     cursor: 'pointer',
-    opacity: '0.8',
-    transition: 'background-color 120ms ease, color 120ms ease, opacity 120ms ease',
+    textAlign: 'left',
   },
-  '.cm-visual-preamble-pill:hover': {
+  '.cm-visual-preamble-bar:hover': {
     color: 'var(--foreground)',
-    backgroundColor: 'var(--accent)',
-    opacity: '1',
-  },
-  '.cm-visual-preamble-pill:focus-visible': {
-    outline: '1.5px solid var(--primary)',
-    outlineOffset: '1px',
-    opacity: '1',
+    borderColor: 'var(--border)',
   },
   '.cm-visual-preamble-chevron': {
-    fontSize: '10.5px',
-    opacity: '0.8',
-    paddingLeft: '4px',
-    borderLeft: '1px solid var(--border)',
+    fontSize: '14px',
+    lineHeight: '1',
+    color: 'var(--muted-foreground)',
   },
   '.cm-visual-doc-header': {
-    marginTop: '14px',
-    paddingBottom: '14px',
-    borderBottom: '1px solid var(--border-subtle)',
-    fontFamily: 'var(--font-sans)',
+    marginTop: '8px',
+    paddingBottom: '18px',
+    textAlign: 'center',
+    fontFamily: 'var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif',
   },
   '.cm-visual-doc-title': {
-    fontSize: '1.75rem',
-    fontWeight: '600',
-    lineHeight: '1.22',
-    letterSpacing: '-0.02em',
+    fontSize: '1.85rem',
+    fontWeight: '400',
+    lineHeight: '1.3',
     color: 'var(--foreground)',
+  },
+  '.cm-visual-doc-author': {
+    marginTop: '14px',
+    fontSize: '0.98rem',
+    lineHeight: '1.6',
+    color: 'var(--foreground)',
+    whiteSpace: 'pre-line',
   },
   '.cm-visual-doc-meta': {
     marginTop: '6px',
@@ -395,5 +390,6 @@ const visualDocumentShellTheme = EditorView.baseTheme({
 export const latexVisualDocumentShell = (): Extension => [
   preambleExpandedField,
   documentShellField,
+  EditorView.atomicRanges.of((view) => view.state.field(documentShellField, false) ?? Decoration.none),
   visualDocumentShellTheme,
 ];

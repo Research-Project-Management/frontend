@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { Plus, X, FileText, Loader2, Upload, Link2, FolderSync } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/core.types';
@@ -620,7 +621,15 @@ function LibraryInspectorContent({
               )}
               <div className="flex flex-1 flex-col items-center justify-center p-6 text-center text-foreground gap-2">
                 {isLoading ? (
-                  <p className="text-13 text-foreground">Loading item details...</p>
+                  <div className="w-full space-y-3 text-left">
+                    <Skeleton className="h-5 w-3/4 rounded-sm" />
+                    <Skeleton className="h-3.5 w-1/2 rounded-sm opacity-70" />
+                    <div className="space-y-2 pt-2">
+                      <Skeleton className="h-3.5 w-full rounded-sm" />
+                      <Skeleton className="h-3.5 w-5/6 rounded-sm" />
+                      <Skeleton className="h-3.5 w-2/3 rounded-sm" />
+                    </div>
+                  </div>
                 ) : (
                   <>
                     <p className="text-13 font-semibold text-foreground">No item selected</p>

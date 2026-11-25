@@ -15,6 +15,7 @@
  *   a background Web Worker on every keystroke.
  */
 
+import { logger } from '@/shared/lib/logger';
 import {
   LatexSymbolsIndexCore,
   type BibEntry,
@@ -124,7 +125,7 @@ export class LatexSymbolsIndex {
         const dto = await fetchSymbols(projectId);
         return this.hydrateFromDto(dto, projectId);
       } catch (err) {
-        console.warn('[LatexSymbolsIndex] Failed to hydrate symbols from server, keeping local snapshot:', err);
+        logger.warn('[LatexSymbolsIndex] Failed to hydrate symbols from server, keeping local snapshot', { error: err });
         return null;
       } finally {
         this.inFlightServerFetch = null;
@@ -661,7 +662,7 @@ export class LatexSymbolsIndex {
       try {
         listener(this.snapshot);
       } catch (err) {
-        console.error('[LatexSymbolsIndex] Listener error:', err);
+        logger.error('[LatexSymbolsIndex] Listener error', err);
       }
     }
   }

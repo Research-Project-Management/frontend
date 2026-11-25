@@ -47,14 +47,8 @@ class ListMarkerWidget extends WidgetType {
   }
 }
 
-const CALLOUT_ENV_NAMES =
-  'theorem|lemma|corollary|proposition|definition|remark|example|proof|abstract';
-const BEGIN_ENV_RE = new RegExp(
-  `^\\s*\\\\begin\\{(quote|itemize|enumerate|description|${CALLOUT_ENV_NAMES})\\}(?:\\[[^\\]]*\\])?\\s*(?:%.*)?$`,
-);
-const END_ENV_RE = new RegExp(
-  `^\\s*\\\\end\\{(quote|itemize|enumerate|description|${CALLOUT_ENV_NAMES})\\}\\s*(?:%.*)?$`,
-);
+const BEGIN_ENV_RE = /^\s*\\begin\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
+const END_ENV_RE = /^\s*\\end\{(quote|itemize|enumerate|description)\}\s*(?:%.*)?$/;
 const ITEM_LINE_RE = /^(\s*\\item(?:\[([^\]]*)\])?(?:\s+|$))/;
 const FULL_COMMENT_LINE_RE = /^\s*%.*$/;
 
@@ -76,7 +70,7 @@ function findInlineCommentStart(text: string): number {
 }
 
 const DECO_HIDDEN_LINE = Decoration.line({ class: 'cm-visual-hidden-line' });
-const DECO_HIDDEN_COMMENT_LINE = Decoration.line({ class: 'cm-visual-comment-hidden' });
+const DECO_COMMENT_TEXT = Decoration.mark({ class: 'cm-visual-comment-text' });
 const DECO_QUOTE_LINE = Decoration.line({ class: 'cm-visual-quote-line' });
 const DECO_SYNTAX_HIDE = Decoration.replace({});
 
@@ -166,7 +160,7 @@ class VisualEnvironmentsPlugin {
       const beginMatch = BEGIN_ENV_RE.exec(text);
       if (beginMatch) {
         stack.push({ kind: beginMatch[1] as EnvKind, counter: 0 });
-        if (isVisible && !isCursorOnLine) {
+        if (isVisible) {
           pending.push({ from: line.from, to: line.from, deco: DECO_HIDDEN_LINE });
           if (line.to > line.from) {
             pending.push({ from: line.from, to: line.to, deco: DECO_HIDDEN_INLINE_SAFE });
@@ -184,7 +178,7 @@ class VisualEnvironmentsPlugin {
             break;
           }
         }
-        if (isVisible && !isCursorOnLine) {
+        if (isVisible) {
           pending.push({ from: line.from, to: line.from, deco: DECO_HIDDEN_LINE });
           if (line.to > line.from) {
             pending.push({ from: line.from, to: line.to, deco: DECO_HIDDEN_INLINE_SAFE });
@@ -193,13 +187,10 @@ class VisualEnvironmentsPlugin {
         continue;
       }
 
-      // Check standalone comments in document body
+      // Style standalone comments in muted green/teal (Overleaf parity: keep visible at exact line number)
       if (FULL_COMMENT_LINE_RE.test(text)) {
-        if (isVisible && !isCursorOnLine) {
-          pending.push({ from: line.from, to: line.from, deco: DECO_HIDDEN_COMMENT_LINE });
-          if (line.to > line.from) {
-            pending.push({ from: line.from, to: line.to, deco: DECO_SYNTAX_HIDE });
-          }
+        if (isVisible && line.to > line.from) {
+          pending.push({ from: line.from, to: line.to, deco: DECO_COMMENT_TEXT });
         }
         continue;
       }
@@ -294,7 +285,7 @@ class VisualEnvironmentsPlugin {
           pending.push({
             from: line.from + inlineCommentIdx,
             to: line.to,
-            deco: DECO_SYNTAX_HIDE,
+            deco: DECO_COMMENT_TEXT,
           });
         }
       }
@@ -317,6 +308,9 @@ class VisualEnvironmentsPlugin {
 const DECO_HIDDEN_INLINE_SAFE = DECO_SYNTAX_HIDE;
 
 const visualEnvironmentsTheme = EditorView.baseTheme({
+  '.cm-visual-comment-text': {
+    color: 'color-mix(in srgb, var(--success) 55%, var(--muted-foreground))',
+  },
   '.cm-visual-quote-line': {
     borderLeft: '1px solid var(--border)',
     paddingLeft: '16px !important',
@@ -353,9 +347,12 @@ const visualEnvironmentsTheme = EditorView.baseTheme({
   },
 });
 
+const visualEnvironmentsPlugin = ViewPlugin.fromClass(VisualEnvironmentsPlugin, {
+  decorations: (v) => v.decorations,
+});
+
 export const latexVisualEnvironments = (): Extension => [
-  ViewPlugin.fromClass(VisualEnvironmentsPlugin, {
-    decorations: (v) => v.decorations,
-  }),
+  visualEnvironmentsPlugin,
+  EditorView.atomicRanges.of((view) => view.plugin(visualEnvironmentsPlugin)?.decorations ?? Decoration.none),
   visualEnvironmentsTheme,
 ];

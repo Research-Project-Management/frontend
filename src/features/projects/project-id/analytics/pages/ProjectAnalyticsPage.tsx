@@ -306,7 +306,7 @@ export function ProjectAnalyticsPage() {
                           </AreaChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="h-full w-full rounded-md bg-muted/30 animate-pulse" />
+                        <Skeleton className="h-full w-full rounded-md" />
                       )}
                     </div>
 

@@ -602,20 +602,22 @@ export default function LabelsPage() {
           </Dialog>
 
           {/* ── Safe Cascade Delete Modal ── */}
-          <DeleteModal
-            isOpen={Boolean(deletingLabel)}
-            onClose={() => setDeletingLabel(null)}
-            onConfirm={confirmDelete}
-            loading={deleteMutation.isPending}
-            title="Delete label"
-            description={
-              deletingLabel && childMap[deletingLabel.id]?.length > 0
-                ? `Warning: "${deletingLabel.name}" contains ${childMap[deletingLabel.id].length} sub-labels. Deleting this parent group will delete all sub-labels.`
-                : `Are you sure you want to delete "${deletingLabel?.name || ''}"?`
-            }
-            confirmText="Delete permanently"
-            cancelText="Cancel"
-          />
+          {Boolean(deletingLabel) && (
+            <DeleteModal
+              isOpen={Boolean(deletingLabel)}
+              onClose={() => setDeletingLabel(null)}
+              onConfirm={confirmDelete}
+              loading={deleteMutation.isPending}
+              title="Delete label"
+              description={
+                deletingLabel && childMap[deletingLabel.id]?.length > 0
+                  ? `Warning: "${deletingLabel.name}" contains ${childMap[deletingLabel.id].length} sub-labels. Deleting this parent group will delete all sub-labels.`
+                  : `Are you sure you want to delete "${deletingLabel?.name || ''}"?`
+              }
+              confirmText="Delete permanently"
+              cancelText="Cancel"
+            />
+          )}
         </div>
       </PageContent>
     </PageLayout>

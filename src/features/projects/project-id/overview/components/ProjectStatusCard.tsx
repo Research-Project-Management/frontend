@@ -272,13 +272,15 @@ export function ProjectStatusCard({
       </div>
 
       {/* Add Modal */}
-      <AddStatusUpdateModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSubmit={async (data) => {
-          await createUpdateMutation.mutateAsync(data);
-        }}
-      />
+      {isModalOpen && (
+        <AddStatusUpdateModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSubmit={async (data) => {
+            await createUpdateMutation.mutateAsync(data);
+          }}
+        />
+      )}
     </>
   );
 }

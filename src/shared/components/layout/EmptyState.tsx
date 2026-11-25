@@ -64,7 +64,7 @@ export function EmptyState({
         'flex flex-col items-center justify-center text-center',
         inline
           ? 'p-8'
-          : 'rounded-md border border-dashed border-border bg-card p-12',
+          : 'rounded-md p-12',
         className,
       )}
     >

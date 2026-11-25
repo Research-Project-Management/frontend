@@ -13,7 +13,7 @@ import {
 } from '@/features/editor/core/store/workspace.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { documentFacade } from '@/features/editor/core/coordinator/document.facade';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 

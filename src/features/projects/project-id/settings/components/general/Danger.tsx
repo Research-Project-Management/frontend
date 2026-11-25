@@ -67,37 +67,41 @@ export function GeneralDanger({
       </div>
 
       {/* Archive Modal */}
-      <DeleteModal
-        isOpen={archiveOpen}
-        onClose={() => setArchiveOpen(false)}
-        onConfirm={() => {
-          onToggleArchive();
-          setArchiveOpen(false);
-        }}
-        title={isArchived ? 'Restore project' : 'Archive project'}
-        description={
-          isArchived
-            ? `Are you sure you want to restore "${projectName}" back to the active sidebar?`
-            : `Are you sure you want to archive "${projectName}"? It will be unlisted from your active side navigation.`
-        }
-        confirmText={isArchived ? 'Restore' : 'Archive'}
-        cancelText="Cancel"
-      />
+      {archiveOpen && (
+        <DeleteModal
+          isOpen={archiveOpen}
+          onClose={() => setArchiveOpen(false)}
+          onConfirm={() => {
+            onToggleArchive();
+            setArchiveOpen(false);
+          }}
+          title={isArchived ? 'Restore project' : 'Archive project'}
+          description={
+            isArchived
+              ? `Are you sure you want to restore "${projectName}" back to the active sidebar?`
+              : `Are you sure you want to archive "${projectName}"? It will be unlisted from your active side navigation.`
+          }
+          confirmText={isArchived ? 'Restore' : 'Archive'}
+          cancelText="Cancel"
+        />
+      )}
 
       {/* Delete Modal */}
-      <DeleteModal
-        isOpen={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={() => {
-          onDeleteProject();
-          setDeleteOpen(false);
-        }}
-        title="Delete project"
-        description={`Are you absolutely sure you want to delete "${projectName}"? This action cannot be undone and will permanently remove all work items and resources.`}
-        confirmText="Delete permanently"
-        cancelText="Cancel"
-        loading={isDeleting}
-      />
+      {deleteOpen && (
+        <DeleteModal
+          isOpen={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => {
+            onDeleteProject();
+            setDeleteOpen(false);
+          }}
+          title="Delete project"
+          description={`Are you absolutely sure you want to delete "${projectName}"? This action cannot be undone and will permanently remove all work items and resources.`}
+          confirmText="Delete permanently"
+          cancelText="Cancel"
+          loading={isDeleting}
+        />
+      )}
     </div>
   );
 }

@@ -8,8 +8,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import {
   useUserProjectLabels,
@@ -52,6 +64,7 @@ export function ManageProjectTagsModal({
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(PRESET_COLORS[0].hex);
   const [isCreating, setIsCreating] = useState(false);
+  const [pendingDeleteTagId, setPendingDeleteTagId] = useState<string | null>(null);
 
   // Sync selected tags when project changes
   useEffect(() => {
@@ -89,12 +102,9 @@ export function ManageProjectTagsModal({
     }
   };
 
-  const handleDeleteTag = async (tagId: string, e: React.MouseEvent) => {
+  const handleDeleteTag = (tagId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('Delete this tag? It will be removed from all projects.')) {
-      await deleteLabelMutation.mutateAsync(tagId);
-      setSelectedTagIds((prev) => prev.filter((id) => id !== tagId));
-    }
+    setPendingDeleteTagId(tagId);
   };
 
   const handleSave = async () => {
@@ -108,6 +118,7 @@ export function ManageProjectTagsModal({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md p-6 bg-card border-border shadow-raised-200">
         <DialogTitle className="flex items-center gap-2 text-16 font-semibold text-foreground">
@@ -124,18 +135,25 @@ export function ManageProjectTagsModal({
           {/* Tag Checkbox List */}
           <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
             {isLoadingLabels ? (
-              <div className="flex items-center justify-center py-6 text-12 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin mr-2" />
-                <span>Loading tags...</span>
+              <div className="space-y-2 py-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 px-2 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="size-4 rounded-sm shrink-0" />
+                      <Skeleton className="size-2.5 rounded-full shrink-0" />
+                      <Skeleton className="h-3.5 w-28 rounded-sm" />
+                    </div>
+                    <Skeleton className="size-4 rounded-sm shrink-0" />
+                  </div>
+                ))}
               </div>
             ) : labels.length === 0 ? (
-              <div className="text-center py-6 text-12 text-muted-foreground border border-dashed border-border rounded-lg p-4">
-                <Tag className="size-6 mx-auto mb-1.5 opacity-40" />
-                <p className="font-medium text-foreground">No tags created yet</p>
-                <p className="mt-0.5 text-muted-foreground">
-                  Create your first tag below to start categorizing projects.
-                </p>
-              </div>
+              <PlaneEmptyState
+                isCompact
+                variant="document"
+                title="No tags created yet"
+                description="Create your first tag below to start categorizing projects."
+              />
             ) : (
               labels.map((label) => {
                 const isChecked = selectedTagIds.includes(label.id);
@@ -290,5 +308,40 @@ export function ManageProjectTagsModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {pendingDeleteTagId && (
+      <AlertDialog
+        open={Boolean(pendingDeleteTagId)}
+        onOpenChange={(open) => !open && setPendingDeleteTagId(null)}
+      >
+        <AlertDialogContent className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete tag?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Delete this tag? It will be removed from all projects.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="sm" className="h-8 text-xs cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={async () => {
+                const tagId = pendingDeleteTagId;
+                setPendingDeleteTagId(null);
+                await deleteLabelMutation.mutateAsync(tagId);
+                setSelectedTagIds((prev) => prev.filter((id) => id !== tagId));
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+    </>
   );
 }

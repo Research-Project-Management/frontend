@@ -19,6 +19,7 @@ import {
   EditorView,
   ViewPlugin,
   type ViewUpdate,
+  WidgetType,
 } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 
@@ -32,18 +33,6 @@ interface HeadingMatch {
   readonly commandTo: number;
   readonly textFrom: number;
   readonly textTo: number;
-}
-
-interface InlineFormatMatch {
-  readonly type: 'bold' | 'italic' | 'underline' | 'code';
-  readonly from: number;
-  readonly to: number;
-  readonly openFrom: number;
-  readonly openTo: number;
-  readonly textFrom: number;
-  readonly textTo: number;
-  readonly closeFrom: number;
-  readonly closeTo: number;
 }
 
 /**
@@ -105,7 +94,42 @@ export function cleanInlineLatexText(raw: string): string {
 }
 
 const HEADING_PREFIX_REGEX = /\\(title|chapter|section|subsection|subsubsection|paragraph)\*?\{/g;
-const INLINE_CMD_PREFIX_REGEX = /\\(textbf|textit|emph|underline|texttt)\{/g;
+const INLINE_CMD_PREFIX_REGEX = /\\(textbf|textit|emph|underline|texttt|textsc)\{/g;
+const INLINE_LABEL_REGEX = /\\label\{([^{}]*)\}/g;
+const INLINE_INPUT_REGEX = /\\(?:input|include)\{([^{}]*)\}/g;
+const INLINE_TEXTCOLOR_PREFIX_REGEX = /\\textcolor(?:\[[^\]]*\])?\{[^{}]*\}\{/g;
+
+class LabelTagWidget extends WidgetType {
+  constructor(readonly label: string) {
+    super();
+  }
+  override eq(other: WidgetType): boolean {
+    return other instanceof LabelTagWidget && other.label === this.label;
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement('span');
+    span.className = 'cm-visual-label-tag';
+    span.title = `\\label{${this.label}}`;
+    span.textContent = this.label;
+    return span;
+  }
+}
+
+class InputFileWidget extends WidgetType {
+  constructor(readonly filePath: string) {
+    super();
+  }
+  override eq(other: WidgetType): boolean {
+    return other instanceof InputFileWidget && other.filePath === this.filePath;
+  }
+  toDOM(): HTMLElement {
+    const span = document.createElement('span');
+    span.className = 'cm-visual-input-chip';
+    span.title = `\\input{${this.filePath}}`;
+    span.textContent = this.filePath;
+    return span;
+  }
+}
 
 const LEVEL_CLASS_MAP = {
   chapter: 'cm-visual-line-chapter',
@@ -140,11 +164,11 @@ const DECO_HEADING_TEXT_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
 };
 
 const DECO_SYNTAX_HIDE = Decoration.replace({});
-const DECO_SYNTAX_ACTIVE = Decoration.mark({ class: 'cm-visual-syntax-active' });
 const DECO_BOLD_TEXT = Decoration.mark({ class: 'cm-visual-bold-text' });
 const DECO_ITALIC_TEXT = Decoration.mark({ class: 'cm-visual-italic-text' });
 const DECO_UNDERLINE_TEXT = Decoration.mark({ class: 'cm-visual-underline-text' });
 const DECO_CODE_TEXT = Decoration.mark({ class: 'cm-visual-code-text' });
+const DECO_SMALLCAPS_TEXT = Decoration.mark({ class: 'cm-visual-smallcaps-text' });
 
 const INLINE_DECO_BY_CMD: Record<string, Decoration> = {
   textbf: DECO_BOLD_TEXT,
@@ -152,6 +176,7 @@ const INLINE_DECO_BY_CMD: Record<string, Decoration> = {
   emph: DECO_ITALIC_TEXT,
   underline: DECO_UNDERLINE_TEXT,
   texttt: DECO_CODE_TEXT,
+  textsc: DECO_SMALLCAPS_TEXT,
 };
 
 // ── Visual Decorations Theme ──────────────────────────────────────────────────
@@ -213,16 +238,6 @@ const visualHeadingsTheme = EditorView.baseTheme({
     fontStyle: 'italic',
   },
 
-  // Syntax markers: Monospace, shown only when cursor is active on the element
-  '.cm-visual-syntax-active': {
-    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-    fontSize: '0.88em',
-    fontWeight: '400',
-    color: 'var(--muted-foreground)',
-    opacity: '0.8',
-    transition: 'opacity 150ms ease',
-  },
-
   '.cm-visual-bold-text': {
     fontWeight: '600',
   },
@@ -241,6 +256,36 @@ const visualHeadingsTheme = EditorView.baseTheme({
     padding: '0 4px',
     borderRadius: '4px',
   },
+  '.cm-visual-smallcaps-text': {
+    fontVariant: 'small-caps',
+  },
+  '.cm-visual-label-tag': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    marginLeft: '6px',
+    padding: '0 6px',
+    fontSize: '12px',
+    fontWeight: '400',
+    lineHeight: '1.4',
+    fontFamily:
+      'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    color: 'var(--muted-foreground)',
+    backgroundColor: 'var(--canvas)',
+    border: '1px solid var(--border)',
+    borderRadius: '4px',
+    verticalAlign: 'middle',
+  },
+  '.cm-visual-input-chip': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '1px 6px',
+    fontSize: '13px',
+    fontFamily:
+      'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    color: 'var(--primary)',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 6%, transparent)',
+    borderRadius: '4px',
+  },
 });
 
 // ── ViewPlugin ───────────────────────────────────────────────────────────────
@@ -253,20 +298,14 @@ class VisualHeadingsPlugin {
   }
 
   update(update: ViewUpdate): void {
-    if (
-      update.docChanged ||
-      update.viewportChanged ||
-      update.selectionSet
-    ) {
+    if (update.docChanged || update.viewportChanged) {
       this.decorations = this.computeDecorations(update.view);
     }
   }
 
   private computeDecorations(view: EditorView): DecorationSet {
     const builder = new RangeSetBuilder<Decoration>();
-    const state = view.state;
-    const doc = state.doc;
-    const selection = state.selection.main;
+    const doc = view.state.doc;
 
     // Fast return if document is empty
     if (doc.length === 0) {
@@ -293,8 +332,6 @@ class VisualHeadingsPlugin {
         const lineText = line.text;
         // Fast-path guard: skip regex engines on lines with no LaTeX commands
         if (lineText.indexOf('\\') === -1) continue;
-
-        const isCursorOnLine = selection.from <= line.to && selection.to >= line.from;
 
         // 1. Scan for Headings with balanced braces
         HEADING_PREFIX_REGEX.lastIndex = 0;
@@ -333,17 +370,16 @@ class VisualHeadingsPlugin {
           const closeBraceStart = textEnd;
           const closeBraceEnd = matchEnd;
 
-          // Collapse \section{ and } when unfocused; reveal syntax when cursor is on the line
-          const syntaxDeco = isCursorOnLine ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_HIDE;
+          // Keep \section{ and } hidden in Visual Mode so typing inside headings never jumps layout
           pending.push({
             from: openCmdStart,
             to: openCmdEnd,
-            deco: syntaxDeco,
+            deco: DECO_SYNTAX_HIDE,
           });
           pending.push({
             from: closeBraceStart,
             to: closeBraceEnd,
-            deco: syntaxDeco,
+            deco: DECO_SYNTAX_HIDE,
           });
 
           // Style only the inner heading title text
@@ -369,7 +405,6 @@ class VisualHeadingsPlugin {
 
           const matchStart = line.from + inlineMatch.index;
           const matchEnd = line.from + closeBraceIndex + 1;
-          const isCursorInMatch = selection.from <= matchEnd && selection.to >= matchStart;
 
           const textStart = line.from + openBraceIndex + 1;
           const textEnd = line.from + closeBraceIndex;
@@ -382,16 +417,63 @@ class VisualHeadingsPlugin {
             });
           }
 
-          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_HIDE;
+          // Keep \textbf{, \textit{, etc. hidden in Visual Mode so editing styled text never shifts the line
           pending.push({
             from: matchStart,
             to: textStart,
-            deco: syntaxDeco,
+            deco: DECO_SYNTAX_HIDE,
           });
           pending.push({
             from: textEnd,
             to: matchEnd,
-            deco: syntaxDeco,
+            deco: DECO_SYNTAX_HIDE,
+          });
+        }
+
+        // 3. Render inline \label{...} as Overleaf-style label tag badge (except inside equation blocks)
+        if (!/\\begin\{(?:equation|align|gather|multline)/.test(lineText)) {
+          INLINE_LABEL_REGEX.lastIndex = 0;
+          let labelMatch: RegExpExecArray | null;
+          while ((labelMatch = INLINE_LABEL_REGEX.exec(lineText)) !== null) {
+            const labelVal = (labelMatch[1] ?? '').trim();
+            if (!labelVal) continue;
+            pending.push({
+              from: line.from + labelMatch.index,
+              to: line.from + labelMatch.index + labelMatch[0].length,
+              deco: Decoration.replace({ widget: new LabelTagWidget(labelVal) }),
+            });
+          }
+        }
+
+        // 3b. Render \input{...} / \include{...} as Overleaf-style file chip
+        INLINE_INPUT_REGEX.lastIndex = 0;
+        let inputMatch: RegExpExecArray | null;
+        while ((inputMatch = INLINE_INPUT_REGEX.exec(lineText)) !== null) {
+          const targetPath = (inputMatch[1] ?? '').trim();
+          if (!targetPath) continue;
+          pending.push({
+            from: line.from + inputMatch.index,
+            to: line.from + inputMatch.index + inputMatch[0].length,
+            deco: Decoration.replace({ widget: new InputFileWidget(targetPath) }),
+          });
+        }
+
+        // 4. Unwrap \textcolor{color}{text}
+        INLINE_TEXTCOLOR_PREFIX_REGEX.lastIndex = 0;
+        let colorMatch: RegExpExecArray | null;
+        while ((colorMatch = INLINE_TEXTCOLOR_PREFIX_REGEX.exec(lineText)) !== null) {
+          const openBraceIndex = colorMatch.index + colorMatch[0].length - 1;
+          const closeBraceIndex = findMatchingBrace(lineText, openBraceIndex);
+          if (closeBraceIndex === null) continue;
+          pending.push({
+            from: line.from + colorMatch.index,
+            to: line.from + openBraceIndex + 1,
+            deco: DECO_SYNTAX_HIDE,
+          });
+          pending.push({
+            from: line.from + closeBraceIndex,
+            to: line.from + closeBraceIndex + 1,
+            deco: DECO_SYNTAX_HIDE,
           });
         }
       }
@@ -415,9 +497,12 @@ class VisualHeadingsPlugin {
   }
 }
 
+const visualHeadingsPlugin = ViewPlugin.fromClass(VisualHeadingsPlugin, {
+  decorations: (v) => v.decorations,
+});
+
 export const latexVisualHeadings = (): Extension => [
-  ViewPlugin.fromClass(VisualHeadingsPlugin, {
-    decorations: (v) => v.decorations,
-  }),
+  visualHeadingsPlugin,
+  EditorView.atomicRanges.of((view) => view.plugin(visualHeadingsPlugin)?.decorations ?? Decoration.none),
   visualHeadingsTheme,
 ];

@@ -11,6 +11,7 @@ import {
   Cell,
   Tooltip as RechartsTooltip,
 } from 'recharts';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { BreakdownCard, BreakdownTooltip } from './BreakdownCard';
 
 export interface PriorityBreakdownProps {
@@ -108,7 +109,7 @@ export const PriorityBreakdown = React.memo<PriorityBreakdownProps>(function Pri
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full w-full rounded-md bg-muted/30 animate-pulse" />
+              <Skeleton className="h-full w-full rounded-md" />
             )}
           </div>
 

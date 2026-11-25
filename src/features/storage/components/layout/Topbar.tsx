@@ -33,7 +33,7 @@ import { CreateFolderModal, RenameModal } from '../modal/SingleInputModal';
 import DuplicateModal from '../modal/DuplicateModal';
 import MoveModal from '../modal/MoveModal';
 import { StorageFilterPopover } from '../filters/StorageFilterPopover';
-import { useViewStore } from '../../store/storage-ui.store';
+import { useViewStore, useStorageUIStore } from '../../store/storage-ui.store';
 import NavigationBar from './NavigationBar';
 
 export interface BreadcrumbItem {
@@ -83,6 +83,9 @@ export default function Topbar({
 
   const view = useViewStore((s) => s.view);
   const setView = useViewStore((s) => s.setView);
+  const isCreateFolderOpen = useStorageUIStore((s) => s.isCreateFolderOpen);
+  const isRenameOpen = useStorageUIStore((s) => Boolean(s.renamingItem));
+  const isMoveOpen = useStorageUIStore((s) => s.movingItems.length > 0);
 
   const isSubfolder = Boolean(breadcrumbs && breadcrumbs.length > 1);
 
@@ -361,15 +364,17 @@ export default function Topbar({
           onChange={handleFolderSelect}
         />
 
-        <CreateFolderModal spaceId={spaceId} parentId={parentId} />
-        <RenameModal />
-        <MoveModal spaceId={spaceId} />
-        <DuplicateModal
-          isOpen={duplicatePrompt !== null}
-          filename={duplicatePrompt?.file.name ?? ''}
-          onConfirm={(mode) => duplicatePrompt?.resolve(mode)}
-          onClose={() => duplicatePrompt?.resolve('cancel')}
-        />
+        {isCreateFolderOpen && <CreateFolderModal spaceId={spaceId} parentId={parentId} />}
+        {isRenameOpen && <RenameModal />}
+        {isMoveOpen && <MoveModal spaceId={spaceId} />}
+        {duplicatePrompt !== null && (
+          <DuplicateModal
+            isOpen={duplicatePrompt !== null}
+            filename={duplicatePrompt?.file.name ?? ''}
+            onConfirm={(mode) => duplicatePrompt?.resolve(mode)}
+            onClose={() => duplicatePrompt?.resolve('cancel')}
+          />
+        )}
       </header>
 
       {/* Horizontal Sub-Navigation Tabs Bar (matching Your Work NavigationBar) */}

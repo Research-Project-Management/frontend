@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   getFileType,
   getFileIcon,
@@ -220,9 +221,8 @@ export default function Preview() {
                 className="w-full h-full object-contain"
               />
             ) : !imageError && resolvedUrl ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-                Loading image…
+              <div className="w-[calc(100%-32px)] mx-4 my-4 flex flex-col items-center justify-center gap-2">
+                <Skeleton className="w-full h-36 rounded-md" />
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-8">
@@ -239,12 +239,7 @@ export default function Preview() {
             )
           ) : isPdf ? (
             pdfLoading ? (
-              <div className="relative w-[calc(100%-32px)] mx-4 my-6 rounded-md overflow-hidden bg-muted h-32 flex items-center justify-center">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                  Loading preview…
-                </div>
-              </div>
+              <Skeleton className="w-[calc(100%-32px)] mx-4 my-6 rounded-md h-32" />
             ) : previewDataUrl ? (
               <img
                 src={previewDataUrl}

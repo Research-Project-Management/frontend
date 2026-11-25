@@ -247,80 +247,82 @@ function ProjectTitleDropdown() {
       </DropdownMenu>
 
       {/* ── Rename Project Modal ── */}
-      <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="w-[95vw] sm:w-full sm:max-w-md p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col select-none"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-2 bg-background shrink-0">
-            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-              Rename Project
-            </DialogTitle>
-            <button
-              type="button"
-              onClick={() => setIsRenameOpen(false)}
-              aria-label="Close"
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer"
-            >
-              <X className="size-4" strokeWidth={1.5} />
-            </button>
-          </div>
-          <DialogDescription className="sr-only">
-            Change the name of this project
-          </DialogDescription>
-
-          <form onSubmit={onRenameSubmit}>
-            <div className="px-5 pt-3 pb-2 space-y-1.5">
-              <label htmlFor="project-rename-input" className="text-12 font-medium text-foreground">
-                Project name
-              </label>
-              {(() => {
-                const { ref, ...rest } = renameForm.register('name');
-                return (
-                  <Input
-                    id="project-rename-input"
-                    ref={(el) => {
-                      ref(el);
-                      (renameInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
-                    }}
-                    {...rest}
-                    disabled={isSubmittingAction}
-                    className="w-full text-12 h-8 bg-muted/40 rounded-md border-border/60 focus:bg-background"
-                    placeholder="Enter project name"
-                    autoFocus
-                  />
-                );
-              })()}
-              {renameForm.formState.errors.name && (
-                <p className="text-11 text-destructive">{renameForm.formState.errors.name.message}</p>
-              )}
-            </div>
-
-            <div className="px-5 pb-5 pt-3 bg-background flex items-center justify-end gap-2 shrink-0 border-0">
-              <Button
+      {isRenameOpen && (
+        <Dialog open={isRenameOpen} onOpenChange={setIsRenameOpen}>
+          <DialogContent
+            showCloseButton={false}
+            className="w-[95vw] sm:w-full sm:max-w-md p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-md text-foreground flex flex-col select-none"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-2 bg-background shrink-0">
+              <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+                Rename Project
+              </DialogTitle>
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => setIsRenameOpen(false)}
-                disabled={isSubmittingAction}
-                className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
+                aria-label="Close"
+                className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer"
               >
-                Close
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={isSubmittingAction}
-                className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
-              >
-                {isSubmittingAction && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />}
-                <span>Rename</span>
-              </Button>
+                <X className="size-4" strokeWidth={1.5} />
+              </button>
             </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+            <DialogDescription className="sr-only">
+              Change the name of this project
+            </DialogDescription>
+
+            <form onSubmit={onRenameSubmit}>
+              <div className="px-5 pt-3 pb-2 space-y-1.5">
+                <label htmlFor="project-rename-input" className="text-12 font-medium text-foreground">
+                  Project name
+                </label>
+                {(() => {
+                  const { ref, ...rest } = renameForm.register('name');
+                  return (
+                    <Input
+                      id="project-rename-input"
+                      ref={(el) => {
+                        ref(el);
+                        (renameInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                      }}
+                      {...rest}
+                      disabled={isSubmittingAction}
+                      className="w-full text-12 h-8 bg-muted/40 rounded-md border-border/60 focus:bg-background"
+                      placeholder="Enter project name"
+                      autoFocus
+                    />
+                  );
+                })()}
+                {renameForm.formState.errors.name && (
+                  <p className="text-11 text-destructive">{renameForm.formState.errors.name.message}</p>
+                )}
+              </div>
+
+              <div className="px-5 pb-5 pt-3 bg-background flex items-center justify-end gap-2 shrink-0 border-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsRenameOpen(false)}
+                  disabled={isSubmittingAction}
+                  className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground shadow-none"
+                >
+                  Close
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isSubmittingAction}
+                  className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md bg-primary hover:bg-primary-hover text-primary-foreground shadow-none gap-1.5"
+                >
+                  {isSubmittingAction && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />}
+                  <span>Rename</span>
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }

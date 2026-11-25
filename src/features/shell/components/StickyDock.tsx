@@ -11,6 +11,7 @@ import { getStickyColorConfig, type Sticky, type StickyColor } from '@/features/
 import Content from '@/features/projects/stickies/components/card/Content';
 import Toolbar from '@/features/projects/stickies/components/card/Toolbar';
 import { StickiesIcon } from '@/shared/components/icons/StickiesIcon';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -555,9 +556,20 @@ export default function StickyDock({
           {/* Modal Body */}
           <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
             {query.isLoading ? (
-              <div className="flex flex-col items-center justify-center flex-1 py-20 text-muted-foreground gap-2">
-                <Loader2 className="size-5 animate-spin text-primary" />
-                <span className="text-12">Loading stickies...</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 h-full content-start">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className="h-[220px] rounded-md border border-border bg-card p-4 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2.5">
+                      <Skeleton className="h-4 w-3/4 rounded-sm" />
+                      <Skeleton className="h-3 w-full rounded-sm opacity-60" />
+                      <Skeleton className="h-3 w-5/6 rounded-sm opacity-60" />
+                    </div>
+                    <Skeleton className="h-3 w-1/3 rounded-sm opacity-40" />
+                  </div>
+                ))}
               </div>
             ) : filteredStickies.length === 0 ? (
               /* Empty State matching Plane.so screenshot */

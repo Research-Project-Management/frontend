@@ -9,6 +9,8 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
   History,
   UploadCloud,
@@ -311,18 +313,24 @@ export default function VersionHistoryModal({
             </div>
 
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-                <Loader2 className="size-6 animate-spin text-primary" />
-                <span className="text-xs">Loading version history...</span>
+              <div className="space-y-3 py-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-lg border border-border/60 bg-card p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Skeleton className="h-4 w-28 rounded-sm" />
+                      <Skeleton className="h-4 w-14 rounded-sm" />
+                    </div>
+                    <Skeleton className="h-3 w-44 rounded-sm opacity-70" />
+                  </div>
+                ))}
               </div>
             ) : versions.length === 0 ? (
-              <div className="text-center py-10 border border-dashed border-border rounded-xl text-muted-foreground bg-muted/10">
-                <Clock className="size-8 mx-auto opacity-30 mb-2 text-primary" />
-                <p className="text-xs font-medium text-foreground">No revision history</p>
-                <span className="text-11 text-muted-foreground">
-                  This is the initial version of the file.
-                </span>
-              </div>
+              <PlaneEmptyState
+                isCompact
+                variant="document"
+                title="No revision history"
+                description="This is the initial version of the file."
+              />
             ) : (
               <div className="relative pl-7 space-y-4 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-0.5 before:bg-border/70">
                 {versions.map((ver) => {

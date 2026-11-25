@@ -379,7 +379,7 @@ export function FigureModal({
                         }
                       }}
                       className={cn(
-                        'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border',
+                        'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring',
                         isSelected
                           ? 'bg-primary/10 border-primary'
                           : 'bg-background border-border hover:bg-muted/40',
@@ -442,7 +442,7 @@ export function FigureModal({
                     title={p.id}
                     onClick={() => setValue('width', p.id, { shouldValidate: true })}
                     className={cn(
-                      'h-7 px-2.5 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
+                      'h-7 px-2.5 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
                       values.width === p.id
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-border text-foreground hover:bg-muted',

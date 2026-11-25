@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
@@ -263,7 +266,7 @@ export default function TemplateGalleryModal() {
       toast.success(`Scaffolded "${selectedTemplate.name}"`, { id: 'scaffold-template' });
       setIsTemplateModalOpen(false);
     } catch (err) {
-      console.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update:', err);
+      logger.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update', { error: err });
       applyTemplate();
     } finally {
       setIsScaffolding(false);
@@ -326,14 +329,30 @@ export default function TemplateGalleryModal() {
             {/* Template List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {isLoadingServer && combinedTemplates.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-muted-foreground text-xs gap-2">
-                  <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-                  Loading templates...
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-md border border-border/60 bg-card space-y-2"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Skeleton className="size-7 rounded-md shrink-0" />
+                        <div className="flex-1 space-y-1.5">
+                          <Skeleton className="h-3.5 w-40 rounded-sm" />
+                          <Skeleton className="h-3 w-24 rounded-sm opacity-70" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-3 w-5/6 rounded-sm" />
+                    </div>
+                  ))}
                 </div>
               ) : combinedTemplates.length === 0 ? (
-                <div className="text-center py-8 text-xs text-muted-foreground">
-                  No templates found matching &quot;{searchQuery}&quot;
-                </div>
+                <PlaneEmptyState
+                  isCompact
+                  variant="search"
+                  title="No templates found"
+                  description={`No templates found matching "${searchQuery}".`}
+                />
               ) : (
                 combinedTemplates.map((tpl) => {
                   const isSelected = selectedTemplate?.id === tpl.id;

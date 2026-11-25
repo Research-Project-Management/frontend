@@ -26,6 +26,7 @@ import {
   ResizableHandle,
 } from '@/shared/components/ui/resizable';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 
 import { EditorPane } from './EditorPane';
 import dynamic from 'next/dynamic';
@@ -253,7 +254,7 @@ export function EditorArea() {
           return;
         }
       } catch (err) {
-        console.warn('[EditorArea] Unsynced edit recovery check failed:', err);
+        logger.warn('[EditorArea] Unsynced edit recovery check failed', { error: err });
       }
       if (!isCancelled) {
         setRecoverableEdit(null);

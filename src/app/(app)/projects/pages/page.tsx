@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import WorkspacePagesPage from '@/features/projects/shell/pages/WorkspacePagesPage';
 
 export const metadata: Metadata = {
-  title: 'Pages — Flux',
+  title: 'Pages',
   description: 'Workspace documents, research wiki, and knowledge library.',
 };
 

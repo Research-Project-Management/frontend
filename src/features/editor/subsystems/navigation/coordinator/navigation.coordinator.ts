@@ -11,6 +11,7 @@
  * - CodeMirror focus and selection restoration.
  */
 
+import { logger } from '@/shared/lib/logger';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   getActiveEditorEngine,
@@ -52,7 +53,7 @@ const defaultNavigationNotifier: NavigationNotificationPort = {
       try {
         toast.info(message, options);
       } catch (err) {
-        console.warn('[NavigationCoordinator] Notification toast failed:', err);
+        logger.warn('[NavigationCoordinator] Notification toast failed', { error: err });
       }
     }
   },

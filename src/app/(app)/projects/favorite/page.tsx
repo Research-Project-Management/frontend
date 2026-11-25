@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import FavoritesPage from '@/features/projects/favorite/pages/FavoritesPage';
 
 export const metadata: Metadata = {
-  title: 'Favorite Projects · Flux',
+  title: 'Favorite Projects',
   description: 'Quick access to your starred research projects.',
 };
 

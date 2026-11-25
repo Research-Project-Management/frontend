@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { FileImage, AlertCircle } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import { useAuthorizedImageSrc } from '@/features/editor/core/hooks/useAuthorizedImageSrc';
 
@@ -47,9 +48,9 @@ export function ImagePanel({ asset }: ImagePanelProps) {
             className="max-w-full max-h-full object-contain rounded-md border border-border"
           />
         ) : asset.url ? (
-          <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <FileImage className="size-6 text-muted-foreground/60 shrink-0" />
-            <span className="text-sm">Loading image preview...</span>
+          <div className="w-full max-w-md aspect-[4/3] rounded-md border border-border bg-card p-6 flex flex-col items-center justify-center gap-3">
+            <Skeleton className="size-10 rounded-md" />
+            <Skeleton className="h-3.5 w-36 rounded-sm" />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">

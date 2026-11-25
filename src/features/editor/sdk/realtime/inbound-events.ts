@@ -8,6 +8,7 @@ import * as Y from 'yjs';
 import { io, type Socket } from 'socket.io-client';
 import { NAMESPACES, TRANSPORT_DEFAULTS } from '@/shared/realtime/config';
 import { getRealtimeBaseUrl, getAuthToken } from '@/shared/lib/api';
+import { logger } from '@/shared/lib/logger';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import type { CollaborationPresence } from '../pages/types';
 import {
@@ -141,7 +142,7 @@ export function dispatchInboundServerEventHelper(
       try {
         listener(msg);
       } catch (err) {
-        console.warn('[YjsSocketIOProvider] chat listener error:', err);
+        logger.warn('[YjsSocketIOProvider] Chat listener error', { error: err });
       }
     }
     return;

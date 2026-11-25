@@ -1822,6 +1822,11 @@
   border: 0 !important;
 }
 
+.cm-editor .cm-gutterElement[style*="height: 0px"] {
+  visibility: hidden !important;
+  overflow: hidden !important;
+}
+
 
 
 

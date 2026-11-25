@@ -22,6 +22,8 @@ import {
 import { Input } from "@/shared/components/ui/input";
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import { cn } from "@/shared/lib/utils";
 import {
   useViewItems,
@@ -377,27 +379,28 @@ export default function ImportFromPersonalModal({
             {/* References Table / List */}
             <div className="flex-1 overflow-y-auto divide-y divide-border-subtle thin-scrollbar">
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-foreground">
-                  <Loader2 className="size-5 animate-spin mb-2" />
-                  <span className="text-12 font-medium">
-                    Loading personal library...
-                  </span>
+                <div className="p-3 space-y-2">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="flex items-center gap-3 px-2 py-2.5">
+                      <Skeleton className="size-4 rounded-sm shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                        <Skeleton className="h-3 w-1/2 rounded-sm opacity-70" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : filteredItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center text-foreground px-4">
-                  <Library
-                    className="size-6 mb-2 opacity-60"
-                    strokeWidth={1.5}
-                  />
-                  <p className="text-13 font-medium text-foreground">
-                    No references found
-                  </p>
-                  <p className="text-12 text-foreground mt-0.5 max-w-xs">
-                    {search.trim()
+                <PlaneEmptyState
+                  isCompact
+                  variant="citations"
+                  title="No references found"
+                  description={
+                    search.trim()
                       ? "No items match your search filter."
-                      : "There are no references in this collection."}
-                  </p>
-                </div>
+                      : "There are no references in this collection."
+                  }
+                />
               ) : (
                 filteredItems.map((item) => {
                   const isSelected = selectedIdsSet.has(item.id);

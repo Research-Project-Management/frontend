@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import {
   Folder,
   FolderOpen,
@@ -19,6 +20,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { getAllFiles as getWorkspaceFiles } from '@/features/storage/services/drive.service';
@@ -146,7 +148,7 @@ export default function MoveModal({ spaceId: propSpaceId }: MoveModalProps) {
       await refetch();
     } catch (error) {
       toast.error('Failed to create folder');
-      console.error(error);
+      logger.error('[MoveModal] Move operation failed', error);
     }
   };
 
@@ -182,7 +184,7 @@ export default function MoveModal({ spaceId: propSpaceId }: MoveModalProps) {
       closeMoveModal();
     } catch (error) {
       toast.error('Failed to move items');
-      console.error(error);
+      logger.error('[MoveModal] Move operation failed', error);
     }
   };
 
@@ -343,9 +345,13 @@ export default function MoveModal({ spaceId: propSpaceId }: MoveModalProps) {
           </div>
 
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
-              <Loader2 className="size-5 animate-spin text-primary shrink-0" />
-              <span className="text-xs">Loading folders…</span>
+            <div className="space-y-1.5 pt-1 border-t border-border/30">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-2.5 px-2.5 py-2">
+                  <Skeleton className="size-4 rounded-sm shrink-0" />
+                  <Skeleton className="h-3.5 w-40 rounded-sm" />
+                </div>
+              ))}
             </div>
           ) : availableFolders.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground/70">

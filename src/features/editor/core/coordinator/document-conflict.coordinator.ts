@@ -5,6 +5,8 @@
  * Decoupled from direct storage access so conflict surfacing stays isolated from persistence.
  */
 
+import { logger } from '@/shared/lib/logger';
+
 export interface DocumentConflict {
   fileId: string;
   localContent: string;
@@ -63,7 +65,7 @@ export class DocumentConflictCoordinator {
     };
     this.conflicts.set(fileId, conflict);
     if (this.listeners.size === 0) {
-      console.warn(
+      logger.warn(
         `[DocumentConflictCoordinator] Unresolved remote conflict on ${fileId}; local edits kept.`,
       );
     }
@@ -71,7 +73,7 @@ export class DocumentConflictCoordinator {
       try {
         listener(conflict);
       } catch (err) {
-        console.error('[DocumentConflictCoordinator] conflict listener error:', err);
+        logger.error('[DocumentConflictCoordinator] Conflict listener error', err);
       }
     }
     return conflict;

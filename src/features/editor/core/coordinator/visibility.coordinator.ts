@@ -12,6 +12,7 @@
  * - Coordinates gentle re-awakening upon tab return (re-sync checks, selective linting).
  */
 
+import { logger } from '@/shared/lib/logger';
 import { editorCommandBus } from '../bus/command-bus';
 
 type VisibilityLifecycleState = 'active' | 'hibernated';
@@ -128,7 +129,7 @@ class VisibilityCoordinator {
       try {
         listener(this.currentState);
       } catch (err) {
-        console.error('[VisibilityCoordinator] Listener error:', err);
+        logger.error('[VisibilityCoordinator] Listener error', err);
       }
     }
   }

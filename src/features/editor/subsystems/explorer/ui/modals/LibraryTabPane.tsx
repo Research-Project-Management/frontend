@@ -8,6 +8,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Badge } from '@/shared/components/ui/badge';
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/features/editor/domain/types/core.types';
 import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
@@ -197,14 +199,24 @@ export function LibraryTabPane({
 
           <div className="max-h-48 overflow-y-auto divide-y divide-border/60 px-1 thin-scrollbar">
             {isLoadingLibrary ? (
-              <div className="flex items-center justify-center py-6 text-12 text-muted-foreground gap-2">
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" strokeWidth={1.5} />
-                <span>Loading library items...</span>
+              <div className="divide-y divide-border/60">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="flex items-center gap-2.5 py-2.5 px-2">
+                    <Skeleton className="size-4 rounded-sm shrink-0" />
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <Skeleton className="h-3.5 w-3/4 rounded-sm" />
+                      <Skeleton className="h-3 w-1/2 rounded-sm opacity-70" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : libraryItems.length === 0 ? (
-              <div className="text-center py-6 text-12 text-muted-foreground">
-                No references found in your library.
-              </div>
+              <PlaneEmptyState
+                isCompact
+                variant="citations"
+                title="No references found"
+                description="No references found in your library."
+              />
             ) : (
               libraryItems.map((item) => {
                 const isSelected = selectedItemIds.has(item.id);

@@ -5,10 +5,9 @@
  * aux artifacts, clean aux, and forward/reverse SyncTeX mapping.
  */
 
-import { apiGet, apiPost, rawFetch } from '@/shared/lib/api';
+import { apiDelete, apiGet, apiPost, rawFetch } from '@/shared/lib/api';
 import { isApiError } from '@/shared/types/api.types';
 import { PAGES_API_BASE, getPagesBaseUrl } from './base';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
   DEFAULT_COMPILER_ENGINE,
   type CompilerEngine,
@@ -26,26 +25,10 @@ import type {
   ReverseSyncResult,
 } from './types';
 
-function resolveCompilerArtifactSegment(
-  pageOrProjectId: string,
-  options?: { isPageScoped?: boolean },
-): 'pages' | 'spaces' {
-  if (options?.isPageScoped === true) return 'pages';
-  if (options?.isPageScoped === false) return 'spaces';
-  const state =
-    typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
-  if (
-    state?.projectId &&
-    state.projectId === pageOrProjectId &&
-    state.rootPageId !== pageOrProjectId &&
-    state.parentPageId !== pageOrProjectId
-  ) {
-    return 'spaces';
-  }
-  if (/^proj[-_]/i.test(pageOrProjectId)) {
-    return 'spaces';
-  }
-  return 'pages';
+const CLSI_API_BASE = `${PAGES_API_BASE}/clsi`;
+
+function getClsiBaseUrl(): string {
+  return `${getPagesBaseUrl().replace(/\/+$/, '')}/clsi`;
 }
 
 function resolveArtifactRequestUrl(artifactUrlOrPath: string): string {
@@ -73,7 +56,7 @@ export const compiler = {
     }
 
     try {
-      return await apiPost<CompileLatexResponse>(`${PAGES_API_BASE}/compile`, body, {
+      return await apiPost<CompileLatexResponse>(`${CLSI_API_BASE}/compile`, body, {
         signal: effectiveSignal,
         timeout: effectiveTimeout,
       });
@@ -145,7 +128,7 @@ export const compiler = {
     },
   ): Promise<WordCountResponse> => {
     return await apiPost<WordCountResponse>(
-      `${PAGES_API_BASE}/word-count`,
+      `${CLSI_API_BASE}/word-count`,
       {
         ...(source !== undefined ? { source } : {}),
         ...(projectId ? { spaceId: projectId } : {}),
@@ -172,7 +155,7 @@ export const compiler = {
 
     try {
       const res = await apiPost<{ pdf?: string; logs?: string; synctex?: string; error?: string }>(
-        `${PAGES_API_BASE}/compile`,
+        `${CLSI_API_BASE}/compile`,
         {
           spaceId: opts.sessionId || 'preview',
           mainFile: 'preview.tex',
@@ -202,14 +185,13 @@ export const compiler = {
   },
 
   listAuxFiles: async (
-    pageOrProjectId: string,
-    options?: { isPageScoped?: boolean },
+    pageId: string,
+    _options?: { isPageScoped?: boolean },
   ): Promise<AuxFileItem[]> => {
-    if (!pageOrProjectId) return [];
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
+    if (!pageId) return [];
     try {
       const res = await rawFetch(
-        `${getPagesBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts`,
+        `${getClsiBaseUrl()}/pages/${encodeURIComponent(pageId)}/artifacts`,
         'GET',
         undefined,
         { silent: true },
@@ -223,12 +205,11 @@ export const compiler = {
   },
 
   downloadAuxFileUrl: (
-    pageOrProjectId: string,
+    pageId: string,
     filename: string,
-    options?: { isPageScoped?: boolean },
+    _options?: { isPageScoped?: boolean },
   ): string => {
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
-    return `${PAGES_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`;
+    return `${CLSI_API_BASE}/pages/${encodeURIComponent(pageId)}/artifacts/${encodeURIComponent(filename)}`;
   },
 
   fetchArtifactBlob: async (
@@ -284,15 +265,14 @@ export const compiler = {
   },
 
   fetchArtifactBlobUrl: async (
-    pageOrProjectId: string,
+    pageId: string,
     filename = 'output.pdf',
-    options?: { isPageScoped?: boolean },
+    _options?: { isPageScoped?: boolean },
   ): Promise<string | null> => {
-    if (!pageOrProjectId) return null;
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
+    if (!pageId) return null;
     try {
       const res = await rawFetch(
-        `${getPagesBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`,
+        `${getClsiBaseUrl()}/pages/${encodeURIComponent(pageId)}/artifacts/${encodeURIComponent(filename)}`,
         'GET',
         undefined,
         { silent: true },
@@ -311,22 +291,19 @@ export const compiler = {
   },
 
   downloadAllArtifactsZipUrl: (
-    pageOrProjectId: string,
-    options?: { isPageScoped?: boolean },
+    pageId: string,
+    _options?: { isPageScoped?: boolean },
   ): string => {
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
-    return `${PAGES_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts-zip`;
+    return `${CLSI_API_BASE}/pages/${encodeURIComponent(pageId)}/artifacts/archive`;
   },
 
   cancelCompile: async (
-    pageOrProjectId: string,
-    options?: { isPageScoped?: boolean },
+    pageId: string,
+    _options?: { isPageScoped?: boolean },
   ): Promise<{ success: boolean; cancelled: boolean }> => {
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     try {
-      return await apiPost<{ success: boolean; cancelled: boolean }>(
-        `${PAGES_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/compile/cancel`,
-        {},
+      return await apiDelete<{ success: boolean; cancelled: boolean }>(
+        `${CLSI_API_BASE}/pages/${encodeURIComponent(pageId)}/compile`,
       );
     } catch {
       return { success: false, cancelled: false };
@@ -334,15 +311,13 @@ export const compiler = {
   },
 
   cleanAuxFiles: async (
-    pageOrProjectId: string,
-    options?: { isPageScoped?: boolean },
+    pageId: string,
+    _options?: { isPageScoped?: boolean },
   ): Promise<{ success: boolean }> => {
-    if (!pageOrProjectId) return { success: false };
-    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
+    if (!pageId) return { success: false };
     try {
-      return await apiPost<{ success: boolean }>(
-        `${PAGES_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/clean-aux`,
-        {},
+      return await apiDelete<{ success: boolean }>(
+        `${CLSI_API_BASE}/pages/${encodeURIComponent(pageId)}/artifacts`,
       );
     } catch {
       return { success: false };
@@ -351,7 +326,7 @@ export const compiler = {
 
   getStatus: async (): Promise<{ status: string; engines: string[]; offline?: boolean }> => {
     try {
-      return await apiGet<{ status: string; engines: string[]; offline?: boolean }>(`${PAGES_API_BASE}/clsi/status`);
+      return await apiGet<{ status: string; engines: string[]; offline?: boolean }>(`${CLSI_API_BASE}/status`);
     } catch {
       return { status: 'degraded', engines: ['pdflatex', 'xelatex', 'lualatex', 'latex'], offline: true };
     }
@@ -359,7 +334,7 @@ export const compiler = {
 
   getMetricsSummary: async (): Promise<Record<string, unknown>> => {
     try {
-      return await apiGet<Record<string, unknown>>(`${PAGES_API_BASE}/clsi/metrics/summary`);
+      return await apiGet<Record<string, unknown>>(`${CLSI_API_BASE}/metrics/summary`);
     } catch {
       return {};
     }
@@ -379,7 +354,7 @@ export const synctex = {
         width?: number;
         height?: number;
       };
-    }>(`${PAGES_API_BASE}/synctex/forward`, payload);
+    }>(`${CLSI_API_BASE}/synctex/forward`, payload);
     if (res?.success && res?.result) {
       return {
         page: res.result.page ?? 1,
@@ -400,7 +375,7 @@ export const synctex = {
         line?: number;
         column?: number;
       };
-    }>(`${PAGES_API_BASE}/synctex/reverse`, payload);
+    }>(`${CLSI_API_BASE}/synctex/reverse`, payload);
     if (res?.success && res?.result) {
       return {
         file: res.result.file ?? '',

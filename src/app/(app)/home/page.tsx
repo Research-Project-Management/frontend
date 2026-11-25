@@ -2,7 +2,7 @@
 import HomePage from '@/features/projects/home/pages/home-page';
 
 export const metadata: Metadata = {
-  title: 'Home · Flux',
+  title: 'Home',
   description: 'Your personal research dashboard and workspace.',
 };
 

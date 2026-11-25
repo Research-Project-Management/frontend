@@ -405,39 +405,45 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         </Button>
       </div>
 
-      <BulkConfirmDialog
-        open={restoreDialogOpen}
-        onOpenChange={setRestoreDialogOpen}
-        title={`Restore ${count} Work Items?`}
-        description={`These ${count} work items will be restored to your active board and list views.`}
-        confirmLabel={`Restore ${count} Items`}
-        loadingLabel="Restoring..."
-        onConfirm={() => onRestoreSelected?.()}
-        isUpdating={isUpdating}
-      />
+      {restoreDialogOpen && (
+        <BulkConfirmDialog
+          open={restoreDialogOpen}
+          onOpenChange={setRestoreDialogOpen}
+          title={`Restore ${count} Work Items?`}
+          description={`These ${count} work items will be restored to your active board and list views.`}
+          confirmLabel={`Restore ${count} Items`}
+          loadingLabel="Restoring..."
+          onConfirm={() => onRestoreSelected?.()}
+          isUpdating={isUpdating}
+        />
+      )}
 
-      <BulkConfirmDialog
-        open={archiveDialogOpen}
-        onOpenChange={setArchiveDialogOpen}
-        title={`Archive ${count} Work Items?`}
-        description={`These ${count} work items will be safely archived and hidden from active views. You can view or restore them at any time.`}
-        confirmLabel={`Archive ${count} Items`}
-        loadingLabel="Archiving..."
-        onConfirm={() => onArchiveSelected?.()}
-        isUpdating={isUpdating}
-      />
+      {archiveDialogOpen && (
+        <BulkConfirmDialog
+          open={archiveDialogOpen}
+          onOpenChange={setArchiveDialogOpen}
+          title={`Archive ${count} Work Items?`}
+          description={`These ${count} work items will be safely archived and hidden from active views. You can view or restore them at any time.`}
+          confirmLabel={`Archive ${count} Items`}
+          loadingLabel="Archiving..."
+          onConfirm={() => onArchiveSelected?.()}
+          isUpdating={isUpdating}
+        />
+      )}
 
-      <BulkConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title={`Delete ${count} Work Items?`}
-        description={`Are you sure you want to delete these ${count} work items? This action will move them to trash.`}
-        confirmLabel={`Delete ${count} Items`}
-        loadingLabel="Deleting..."
-        onConfirm={onDeleteSelected}
-        isUpdating={isUpdating}
-        destructive
-      />
+      {deleteDialogOpen && (
+        <BulkConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          title={`Delete ${count} Work Items?`}
+          description={`Are you sure you want to delete these ${count} work items? This action will move them to trash.`}
+          confirmLabel={`Delete ${count} Items`}
+          loadingLabel="Deleting..."
+          onConfirm={onDeleteSelected}
+          isUpdating={isUpdating}
+          destructive
+        />
+      )}
     </>,
     document.body
   );

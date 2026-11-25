@@ -46,7 +46,7 @@ import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.con
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
 const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings/ui/SettingsModal'), { ssr: false });
-const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
+const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/WordCountModal'), { ssr: false });
 const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/CitationModal'), { ssr: false });
 const TableModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/table/TableModal'), { ssr: false });
 const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/EquationModal'), { ssr: false });
@@ -143,11 +143,15 @@ export function WorkbenchLayout() {
     layout,
     isHistoryOpen,
     setIsHistoryOpen,
+    settingsPanelOpen,
+    isTemplateModalOpen,
   } = useSettingsStore(
     useShallow((s) => ({
       layout: s.layout,
       isHistoryOpen: s.isHistoryOpen,
       setIsHistoryOpen: s.setIsHistoryOpen,
+      settingsPanelOpen: s.settingsPanelOpen,
+      isTemplateModalOpen: s.isTemplateModalOpen,
     }))
   );
 
@@ -175,6 +179,12 @@ export function WorkbenchLayout() {
   }, [libraryData?.items]);
 
   const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? '');
+
+  useEffect(() => {
+    const t = currentPageTitle.trim();
+    document.title = t ? `${t} · Flux` : 'Editor · Flux';
+  }, [currentPageTitle]);
 
   useEffect(() => {
     const disposeKeybindings = keybindingCoordinator.init();
@@ -312,7 +322,7 @@ export function WorkbenchLayout() {
       />
 
       {/* Global Modals */}
-      <SettingsModal />
+      {settingsPanelOpen && <SettingsModal />}
 
       {wordCountOpen && (
         <ConnectedWordCountModal
@@ -388,7 +398,7 @@ export function WorkbenchLayout() {
         />
       )}
 
-      <TemplateGalleryModal />
+      {isTemplateModalOpen && <TemplateGalleryModal />}
 
       {keyboardShortcutsOpen && (
         <KeyboardShortcutsModal

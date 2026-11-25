@@ -16,14 +16,29 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { Loader2 } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { FilesTab } from '@/features/editor/subsystems/explorer';
 
+const SIDEBAR_PANEL_SKELETON_WIDTHS = ['w-28', 'w-36', 'w-24', 'w-32', 'w-20'];
+
 const PanelLoadingFallback = () => (
-  <div className="flex h-full w-full items-center justify-center p-6 text-muted-foreground">
-    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-    <span className="text-xs">Loading...</span>
+  <div className="flex h-full w-full flex-col bg-surface">
+    <div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
+      <Skeleton className="h-3.5 w-20 rounded-sm" />
+      <Skeleton className="size-4 rounded-sm" />
+    </div>
+    <div className="p-3 space-y-3">
+      <Skeleton className="h-8 w-full rounded-md" />
+      <div className="space-y-2 pt-1">
+        {SIDEBAR_PANEL_SKELETON_WIDTHS.map((widthClass, idx) => (
+          <div key={idx} className="flex items-center gap-2 px-1 py-1">
+            <Skeleton className="size-3.5 rounded-sm shrink-0" />
+            <Skeleton className={`h-3.5 rounded-sm ${widthClass}`} />
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 );
 

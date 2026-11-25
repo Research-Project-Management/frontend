@@ -57,7 +57,7 @@ class CitationBadgeWidget extends WidgetType {
 
     const text = document.createElement('span');
     text.className = 'cm-visual-citation-label';
-    text.textContent = this.keys.map((k) => `@${k}`).join(', ');
+    text.textContent = `[${this.keys.join(', ')}]`;
 
     chip.appendChild(text);
 
@@ -201,9 +201,9 @@ class FootnoteBadgeWidget extends WidgetType {
 // ── Matchers ──────────────────────────────────────────────────────────────────
 
 const CITE_REGEX =
-  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])*(?:\[[^\]]*\])*\{([^}]+)\}/gi;
+  /~?\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])*(?:\[[^\]]*\])*\{([^}]+)\}/gi;
 
-const REF_REGEX = /\\(?:eq|auto|c|page|name)?ref\*?\{([^}]+)\}/gi;
+const REF_REGEX = /~?\\(?:eq|auto|c|page|name)?ref\*?\{([^}]+)\}/gi;
 const HREF_PREFIX_REGEX = /\\href\*?(?:\[[^\]]*\])?\{/g;
 const URL_PREFIX_REGEX = /\\url\*?\{/g;
 const FOOTNOTE_PREFIX_REGEX = /\\footnote(?:\[[^\]]*\])?\{/g;
@@ -224,7 +224,6 @@ const visualCitationsTheme = EditorView.baseTheme({
     backgroundColor: 'var(--muted)',
     color: 'var(--foreground)',
     border: '1px solid var(--border)',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
     verticalAlign: 'baseline',
     '&:hover': {
       backgroundColor: 'var(--accent)',
@@ -234,10 +233,6 @@ const visualCitationsTheme = EditorView.baseTheme({
       outline: '1.5px solid var(--primary)',
       outlineOffset: '1px',
     },
-  },
-  '.cm-visual-citation-icon': {
-    fontSize: '0.85em',
-    color: 'var(--muted-foreground)',
   },
   '.cm-visual-citation-label': {
     fontWeight: '500',
@@ -256,7 +251,6 @@ const visualCitationsTheme = EditorView.baseTheme({
     backgroundColor: 'var(--muted)',
     color: 'var(--foreground)',
     border: '1px solid var(--border)',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
     verticalAlign: 'baseline',
     '&:hover': {
       backgroundColor: 'var(--accent)',
@@ -279,7 +273,6 @@ const visualCitationsTheme = EditorView.baseTheme({
     cursor: 'pointer',
     borderRadius: '4px',
     padding: '0 2px',
-    transition: 'background-color 150ms ease',
     '&:hover': {
       backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
     },
@@ -298,7 +291,6 @@ const visualCitationsTheme = EditorView.baseTheme({
     backgroundColor: 'color-mix(in srgb, var(--warning) 14%, transparent)',
     color: 'var(--warning)',
     border: '1px solid color-mix(in srgb, var(--warning) 30%, transparent)',
-    transition: 'background-color 150ms ease, border-color 150ms ease',
     '&:hover': {
       backgroundColor: 'color-mix(in srgb, var(--warning) 24%, transparent)',
     },
@@ -382,7 +374,7 @@ class VisualCitationsPlugin {
           continue;
         }
 
-        const isEq = refMatch[0].startsWith('\\eqref');
+        const isEq = refMatch[0].replace(/^~/, '').startsWith('\\eqref');
         const label = refMatch[1].trim();
 
         badges.push({
@@ -506,9 +498,12 @@ class VisualCitationsPlugin {
   }
 }
 
+const visualCitationsPlugin = ViewPlugin.fromClass(VisualCitationsPlugin, {
+  decorations: (v) => v.decorations,
+});
+
 export const latexVisualCitations = (): Extension => [
-  ViewPlugin.fromClass(VisualCitationsPlugin, {
-    decorations: (v) => v.decorations,
-  }),
+  visualCitationsPlugin,
+  EditorView.atomicRanges.of((view) => view.plugin(visualCitationsPlugin)?.decorations ?? Decoration.none),
   visualCitationsTheme,
 ];

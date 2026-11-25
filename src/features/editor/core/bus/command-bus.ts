@@ -6,6 +6,7 @@
  * Supports both fire-and-forget `dispatch()` and async result-returning `execute()`.
  */
 
+import { logger } from '@/shared/lib/logger';
 import type {
   EditorCommand,
   CommandHandler,
@@ -45,7 +46,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
   private bufferedCommands = new Map<string, Array<{ command: EditorCommand; expiresAt: number }>>();
   private maxBufferedPerType = 10;
   private errorReporter: (error: unknown, command: EditorCommand) => void = (err, cmd) => {
-    console.error(`[CommandBus] Error handling command "${cmd.type}":`, err);
+    logger.error(`[CommandBus] Error handling command "${cmd.type}"`, err);
   };
 
   public use(middleware: CommandBusMiddleware): () => void {

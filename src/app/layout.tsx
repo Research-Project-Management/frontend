@@ -41,13 +41,16 @@ const ibmPlexMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Flux - Keep Research Moving Forward',
+  title: {
+    default: 'Flux',
+    template: '%s · Flux',
+  },
   description:
     'The all-in-one workspace for research teams. Collaborate seamlessly, manage projects efficiently, and accelerate your research workflow with AI-powered tools.',
   keywords:
     'research management, project management, team collaboration, AI assistant, documentation, work item tracking, file storage',
   openGraph: {
-    title: 'Flux - Keep Research Moving Forward',
+    title: 'Flux',
     description:
       'The all-in-one workspace for research teams to collaborate and deliver results faster.',
     type: 'website',

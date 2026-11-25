@@ -210,18 +210,20 @@ function createSelectionGutterActionsPlugin() {
 
           const pillHeight = this.pill.offsetHeight || 28;
           const pillWidth = this.pill.offsetWidth || (this.isAiUnavailable() ? 28 : 59);
-          const gap = 6;
+          const gap = 10;
 
+          const belowTop =
+            coords !== null && editorRect.height > 0
+              ? coords.bottom - editorRect.top + gap
+              : this.computeFallbackLineTop(view, pos) + 26;
           const aboveTop =
             coords !== null && editorRect.height > 0
               ? coords.top - editorRect.top - pillHeight - gap
               : this.computeFallbackLineTop(view, pos) - pillHeight - gap;
-          const belowTop =
-            coords !== null && editorRect.height > 0
-              ? coords.bottom - editorRect.top + gap
-              : this.computeFallbackLineTop(view, pos) + 22;
 
-          const rawTop = aboveTop >= 4 ? aboveTop : belowTop;
+          const fitsBelow =
+            editorRect.height <= 0 || belowTop + pillHeight <= editorRect.height - 4;
+          const rawTop = fitsBelow ? belowTop : aboveTop;
           const top =
             editorRect.height > 0
               ? Math.max(4, Math.min(rawTop, Math.max(4, editorRect.height - pillHeight - 4)))

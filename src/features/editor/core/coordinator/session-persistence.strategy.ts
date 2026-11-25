@@ -5,6 +5,7 @@
  * post-save bookkeeping strategies for SessionCoordinator.
  */
 
+import { logger } from '@/shared/lib/logger';
 import { lruDocumentCache, type DocumentModelState } from '@/features/editor/domain/document/lru-document-cache';
 import {
   unsyncedEditsStore,
@@ -459,7 +460,7 @@ export async function flushViaRestCasStrategy(
       useConnectivityStore.getState().setLastSavedAt(new Date());
       return true;
     }
-    console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
+    logger.error(`[SessionCoordinator] Failed to flush file ${fileId}`, err);
     return false;
   }
 }
@@ -488,7 +489,7 @@ export function executeResolveConflictHelper(params: {
       conflict.remoteContent === '' &&
       conflict.localContent.length > 0
     ) {
-      console.warn(
+      logger.warn(
         `[SessionCoordinator] Refusing 'take-remote' empty overwrite for ${fileId}: authoritative remote content unavailable.`,
       );
       return;

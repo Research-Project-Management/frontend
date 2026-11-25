@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import type { ChatSession } from '../../types/session';
 
 export interface SessionHistoryListProps {
@@ -83,10 +84,7 @@ export function SessionHistoryList({
         className="space-y-1 py-1"
       >
         {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="h-8 w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none"
-          />
+          <Skeleton key={i} className="h-8 w-full rounded-md" />
         ))}
       </div>
     );

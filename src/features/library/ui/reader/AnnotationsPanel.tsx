@@ -4,7 +4,6 @@ import React, { useState, useMemo, useCallback, useDeferredValue, useRef } from 
 import {
   X,
   Loader2,
-  AlertTriangle,
   Highlighter,
   Search,
   RotateCcw,
@@ -18,6 +17,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
   Tooltip,
   TooltipContent,
@@ -650,25 +650,23 @@ export function AnnotationsPanel({
             <Loader2 className="size-4 animate-spin text-foreground" strokeWidth={1.5} />
           </div>
         ) : isError ? (
-          <div className="flex h-full flex-col items-center justify-center text-center p-6 gap-2">
-            <div className="size-10 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mb-1">
-              <AlertTriangle className="size-5 shrink-0" strokeWidth={1.5} />
-            </div>
-            <p className="text-13 font-semibold text-foreground">Unable to load annotations</p>
-            <p className="text-12 text-muted-foreground max-w-[200px] leading-relaxed">
-              Failed to load annotations for this document.
-            </p>
-            {refetch && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                className="h-7 text-11 gap-1 rounded-md border-border bg-background text-foreground hover:bg-muted cursor-pointer mt-1"
-              >
-                Retry
-              </Button>
-            )}
-          </div>
+          <PlaneErrorState
+            isCompact
+            title="Unable to load annotations"
+            description="Failed to load annotations for this document."
+            action={
+              refetch ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetch()}
+                  className="h-7 text-11 gap-1 rounded-md border-border bg-background text-foreground hover:bg-muted cursor-pointer"
+                >
+                  Retry
+                </Button>
+              ) : undefined
+            }
+          />
         ) : !annotations || annotations.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center p-6">
             <div className="size-10 rounded-md bg-muted border border-border flex items-center justify-center text-muted-foreground mb-3">

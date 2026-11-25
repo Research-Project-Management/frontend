@@ -252,14 +252,16 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
       </div>
 
       {/* Status Update Modal */}
-      <AddStatusUpdateModal
-        open={isStatusModalOpen}
-        onOpenChange={setIsStatusModalOpen}
-        onSubmit={async (updateData) => {
-          await createUpdateMutation.mutateAsync(updateData);
-          setIsStatusModalOpen(false);
-        }}
-      />
+      {isStatusModalOpen && (
+        <AddStatusUpdateModal
+          open={isStatusModalOpen}
+          onOpenChange={setIsStatusModalOpen}
+          onSubmit={async (updateData) => {
+            await createUpdateMutation.mutateAsync(updateData);
+            setIsStatusModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

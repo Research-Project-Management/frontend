@@ -284,7 +284,7 @@ export function CodeMirrorView({
         filePath: docFilePath,
         initialText,
         readOnly,
-        lineNumbers: editorMode === 'visual' ? false : lineNumbers,
+        lineNumbers,
         wordWrap,
         keybinding,
         errorLensEnabled,
@@ -571,6 +571,11 @@ export function CodeMirrorView({
     }
     if (prev.reviewMode !== Boolean(reviewMode)) {
       additionalEffects.push(setReviewModeEffect.of(Boolean(reviewMode)));
+    }
+    if (prev.runtime.visualMode !== currentRuntimeConfig.visualMode) {
+      additionalEffects.push(
+        EditorView.scrollIntoView(view.state.selection.main.head, { y: 'center' }),
+      );
     }
 
     const errorLensActivated =

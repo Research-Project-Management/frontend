@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { InviteAcceptPage } from '@/features/projects/invitation/pages/InviteAcceptPage';
 
 export const metadata: Metadata = {
-  title: 'Project Invitation · Flux',
+  title: 'Project Invitation',
   description: 'You have been invited to collaborate on a research project in Flux',
 };
 

@@ -19,6 +19,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
 import { usePageActions } from '../../hooks/use-page';
 import type { Page } from '../../types/page.types';
 import { formatDate } from "@/shared/lib/utils";
@@ -61,6 +71,7 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const router = useRouter();
   const params = useParams<{ projectId?: string }>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { deletePage, duplicatePage, updateStatus } = usePageActions();
 
   const projId =
@@ -116,12 +127,11 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (window.confirm(`Are you sure you want to delete "${page.title}"?`)) {
-      deletePage.mutate(page.id);
-    }
+    setConfirmDeleteOpen(true);
   };
 
   return (
+    <>
     <div
       onClick={() => router.push(linkHref)}
       className="group/card relative flex flex-col rounded-md border border-border bg-card text-card-foreground hover:border-foreground/30 transition-colors duration-150 cursor-pointer overflow-hidden select-none"
@@ -315,6 +325,37 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
         </div>
       </div>
     </div>
+
+    {confirmDeleteOpen && (
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete page?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">&ldquo;{page.title}&rdquo;</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="sm" className="h-8 text-xs cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={() => {
+                deletePage.mutate(page.id);
+                setConfirmDeleteOpen(false);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+    </>
   );
 });
 

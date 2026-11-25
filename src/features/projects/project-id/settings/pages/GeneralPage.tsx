@@ -6,6 +6,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
@@ -77,9 +78,10 @@ export default function GeneralPage() {
       <PageLayout>
         <PageHeader title="General" icon={SlidersHorizontal} />
         <PageContent maxWidth="lg">
-          <div className="text-12 text-muted-foreground">
-            Error loading project details.
-          </div>
+          <PlaneErrorState
+            title="Unable to load project details"
+            description="Could not fetch project settings."
+          />
         </PageContent>
       </PageLayout>
     );

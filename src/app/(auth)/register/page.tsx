@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Register · Flux',
+  title: 'Sign Up',
   description: 'Create a new Flux account',
 };
 

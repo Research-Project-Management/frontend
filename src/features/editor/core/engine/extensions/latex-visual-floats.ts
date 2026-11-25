@@ -19,6 +19,7 @@ import {
 } from '@codemirror/view';
 import {
   RangeSetBuilder,
+  StateEffect,
   StateField,
   type EditorState,
   type Extension,
@@ -328,9 +329,39 @@ function findFloatBlocks(doc: Text): FloatBlockMatch[] {
   return blocks;
 }
 
+const revealFloatEffect = StateEffect.define<number | null>();
+
+const revealedFloatPosField = StateField.define<number | null>({
+  create() {
+    return null;
+  },
+  update(value, tr) {
+    let next = value;
+    for (const effect of tr.effects) {
+      if (effect.is(revealFloatEffect)) {
+        next = effect.value;
+      }
+    }
+    if (next !== null && tr.docChanged) {
+      next = tr.changes.mapPos(next);
+    }
+    if (next !== null && tr.selection && !tr.effects.some((e) => e.is(revealFloatEffect))) {
+      // Collapse back once cursor leaves the revealed float block
+      const blocks = findFloatBlocks(tr.state.doc);
+      const revealedBlock = blocks.find((b) => next! >= b.from && next! <= b.to);
+      const sel = tr.state.selection.main;
+      if (!revealedBlock || sel.from > revealedBlock.to || sel.to < revealedBlock.from) {
+        return null;
+      }
+    }
+    return next;
+  },
+});
+
 function focusRawLatex(view: EditorView, pos: number): void {
   const safePos = Math.max(0, Math.min(pos, view.state.doc.length));
   view.dispatch({
+    effects: revealFloatEffect.of(safePos),
     selection: { anchor: safePos },
     scrollIntoView: true,
   });
@@ -372,7 +403,6 @@ interface FloatCardShellOptions {
   readonly view: EditorView;
   readonly blockFrom: number;
   readonly kindClass: string;
-  readonly badgeText: string;
   readonly metaText?: string;
   readonly label?: string;
   readonly wizardButtonLabel?: string;
@@ -407,32 +437,14 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
 } {
   const card = document.createElement('div');
   card.className = `cm-visual-float-card ${opts.kindClass}`;
+  if (opts.label || opts.metaText) {
+    card.title = [opts.label, opts.metaText].filter(Boolean).join(' · ');
+  }
   card.addEventListener('dblclick', (e) => {
     e.preventDefault();
     e.stopPropagation();
     focusRawLatex(opts.view, opts.blockFrom);
   });
-
-  const header = document.createElement('div');
-  header.className = 'cm-visual-float-header';
-
-  const left = document.createElement('div');
-  left.className = 'cm-visual-float-header-left';
-
-  const badge = document.createElement('span');
-  badge.className = 'cm-visual-float-badge';
-  badge.textContent = opts.badgeText;
-  if (opts.metaText) {
-    badge.title = opts.metaText;
-  }
-  left.appendChild(badge);
-
-  if (opts.label) {
-    const labelEl = document.createElement('code');
-    labelEl.className = 'cm-visual-float-label';
-    labelEl.textContent = opts.label;
-    left.appendChild(labelEl);
-  }
 
   const actions = document.createElement('div');
   actions.className = 'cm-visual-float-actions';
@@ -442,7 +454,7 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
     wizardBtn.type = 'button';
     wizardBtn.className = 'cm-visual-float-wizard-btn';
     wizardBtn.textContent = opts.wizardButtonLabel ?? 'Edit Table';
-    wizardBtn.title = opts.wizardButtonTitle ?? 'Open interactive Wizard for this block';
+    wizardBtn.title = opts.wizardButtonTitle ?? 'Edit table';
     wizardBtn.addEventListener('mousedown', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -455,7 +467,7 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
   editBtn.type = 'button';
   editBtn.className = 'cm-visual-float-edit-btn';
   editBtn.textContent = 'Edit LaTeX';
-  editBtn.title = 'Click or place cursor inside to edit raw LaTeX';
+  editBtn.title = 'Edit raw LaTeX';
   editBtn.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -463,12 +475,10 @@ function createFloatCardShell(opts: FloatCardShellOptions): {
   });
   actions.appendChild(editBtn);
 
-  header.append(left, actions);
-
   const body = document.createElement('div');
   body.className = 'cm-visual-float-body';
 
-  card.append(header, body);
+  card.append(actions, body);
   return { card, body };
 }
 
@@ -498,7 +508,6 @@ class FigureCardWidget extends WidgetType {
       view,
       blockFrom: this.blockFrom,
       kindClass: 'cm-visual-figure-card',
-      badgeText: 'Figure',
       metaText:
         this.meta.images.length > 1
           ? `${this.meta.images.length} images`
@@ -588,6 +597,48 @@ class FigureCardWidget extends WidgetType {
       const captionEl = document.createElement('div');
       captionEl.className = 'cm-visual-float-caption';
       captionEl.textContent = this.meta.caption;
+      if (!view.state.readOnly) {
+        captionEl.contentEditable = 'true';
+        captionEl.spellcheck = false;
+        captionEl.title = 'Click to edit caption inline';
+        const stopEvt = (e: Event) => e.stopPropagation();
+        captionEl.addEventListener('mousedown', stopEvt);
+        captionEl.addEventListener('click', stopEvt);
+        captionEl.addEventListener('dblclick', stopEvt);
+        captionEl.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            captionEl.blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            captionEl.textContent = this.meta.caption ?? '';
+            captionEl.blur();
+          }
+        });
+        captionEl.addEventListener('blur', () => {
+          const nextCap = (captionEl.textContent ?? '').trim();
+          if (nextCap && nextCap !== this.meta.caption) {
+            const docLen = view.state.doc.length;
+            if (this.blockFrom >= 0 && this.blockTo <= docLen) {
+              const rawSlice = view.state.doc.sliceString(this.blockFrom, this.blockTo);
+              const updatedSlice = rawSlice.replace(
+                /(\\caption(?:\[[^\]]*\])?\{)[^{}]*(\})/,
+                `$1${nextCap}$2`,
+              );
+              if (updatedSlice !== rawSlice) {
+                view.dispatch({
+                  changes: {
+                    from: this.blockFrom,
+                    to: this.blockTo,
+                    insert: updatedSlice,
+                  },
+                });
+              }
+            }
+          }
+        });
+      }
       body.appendChild(captionEl);
     }
 
@@ -656,7 +707,8 @@ class TableCardWidget extends WidgetType {
     const isEditable = !view.state.readOnly;
     cell.contentEditable = isEditable ? 'true' : 'false';
     cell.spellcheck = false;
-    cell.textContent = initialValue;
+    const displayValue = cleanInlineLatexText(initialValue);
+    cell.textContent = displayValue;
 
     if (!isEditable) return;
 
@@ -668,6 +720,11 @@ class TableCardWidget extends WidgetType {
     cell.addEventListener('mousedown', stopOnly);
     cell.addEventListener('click', stopOnly);
     cell.addEventListener('dblclick', stopOnly);
+    cell.addEventListener('focus', () => {
+      if (cell.textContent === displayValue && displayValue !== initialValue) {
+        cell.textContent = initialValue;
+      }
+    });
     cell.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter') {
@@ -676,18 +733,21 @@ class TableCardWidget extends WidgetType {
       } else if (e.key === 'Escape') {
         e.preventDefault();
         cancelled = true;
-        cell.textContent = initialValue;
+        cell.textContent = displayValue;
         cell.blur();
       }
     });
     cell.addEventListener('blur', () => {
       if (cancelled) {
         cancelled = false;
+        cell.textContent = displayValue;
         return;
       }
       const nextValue = (cell.textContent ?? '').trim();
-      if (nextValue !== initialValue.trim()) {
+      if (nextValue !== initialValue.trim() && nextValue !== displayValue.trim()) {
         onCommit(nextValue);
+      } else {
+        cell.textContent = displayValue;
       }
     });
   }
@@ -702,7 +762,6 @@ class TableCardWidget extends WidgetType {
       view,
       blockFrom: this.blockFrom,
       kindClass: 'cm-visual-table-card',
-      badgeText: 'Table',
       metaText: `${totalRows} × ${this.grid.cols}`,
       label: this.grid.label || undefined,
       wizardButtonLabel: 'Edit Table',
@@ -719,7 +778,73 @@ class TableCardWidget extends WidgetType {
       const captionEl = document.createElement('div');
       captionEl.className = 'cm-visual-float-caption';
       captionEl.textContent = captionText;
+      if (!view.state.readOnly) {
+        captionEl.contentEditable = 'true';
+        captionEl.spellcheck = false;
+        captionEl.title = 'Click to edit caption inline';
+        const stopEvt = (e: Event) => e.stopPropagation();
+        captionEl.addEventListener('mousedown', stopEvt);
+        captionEl.addEventListener('click', stopEvt);
+        captionEl.addEventListener('dblclick', stopEvt);
+        captionEl.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            captionEl.blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            captionEl.textContent = captionText;
+            captionEl.blur();
+          }
+        });
+        captionEl.addEventListener('blur', () => {
+          const nextCap = (captionEl.textContent ?? '').trim();
+          if (nextCap && nextCap !== captionText) {
+            this.commitGrid(view, { ...this.grid, caption: nextCap });
+          }
+        });
+      }
       body.appendChild(captionEl);
+    }
+
+    if (!view.state.readOnly) {
+      const actionsBar = card.querySelector('.cm-visual-float-actions');
+      if (actionsBar) {
+        const addRowBtn = document.createElement('button');
+        addRowBtn.type = 'button';
+        addRowBtn.className = 'cm-visual-float-edit-btn';
+        addRowBtn.textContent = '+ Row';
+        addRowBtn.title = 'Append a row to this table';
+        addRowBtn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const emptyRow = Array.from({ length: this.grid.cols }, () => '');
+          this.commitGrid(view, {
+            ...this.grid,
+            rows: this.grid.rows + 1,
+            data: [...this.grid.data, emptyRow],
+          });
+        });
+
+        const addColBtn = document.createElement('button');
+        addColBtn.type = 'button';
+        addColBtn.className = 'cm-visual-float-edit-btn';
+        addColBtn.textContent = '+ Col';
+        addColBtn.title = 'Append a column to this table';
+        addColBtn.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.commitGrid(view, {
+            ...this.grid,
+            cols: this.grid.cols + 1,
+            alignments: [...this.grid.alignments, 'c'],
+            headers: this.grid.hasHeaderRow ? [...this.grid.headers, 'Header'] : this.grid.headers,
+            data: this.grid.data.map((r) => [...r, '']),
+          });
+        });
+
+        actionsBar.prepend(addRowBtn, addColBtn);
+      }
     }
 
     const scrollWrap = document.createElement('div');
@@ -788,15 +913,16 @@ function computeFloatDecorations(state: EditorState): DecorationSet {
   const doc = state.doc;
   if (doc.length === 0) return Decoration.none;
 
-  const selection = state.selection.main;
+  const revealedPos = state.field(revealedFloatPosField, false) ?? null;
   const blocks = findFloatBlocks(doc);
   if (blocks.length === 0) return Decoration.none;
 
   const builder = new RangeSetBuilder<Decoration>();
   for (const block of blocks) {
-    // Expand cleanly back to raw LaTeX when cursor enters this float block
-    const isCursorInside = selection.from <= block.to && selection.to >= block.from;
-    if (isCursorInside) continue;
+    // Only expand back to raw LaTeX when explicitly requested via "Edit LaTeX" / double-click
+    const isExplicitlyRevealed =
+      revealedPos !== null && revealedPos >= block.from && revealedPos <= block.to;
+    if (isExplicitlyRevealed) continue;
 
     if (block.baseKind === 'figure') {
       const cleaned = stripLatexLineComments(block.raw);
@@ -844,7 +970,13 @@ export const visualFloatsField = StateField.define<DecorationSet>({
     return computeFloatDecorations(state);
   },
   update(decorations, tr) {
-    if (tr.docChanged || tr.selection) {
+    const prevRevealed = tr.startState.field(revealedFloatPosField, false) ?? null;
+    const nextRevealed = tr.state.field(revealedFloatPosField, false) ?? null;
+    if (
+      tr.docChanged ||
+      prevRevealed !== nextRevealed ||
+      tr.effects.some((e) => e.is(revealFloatEffect))
+    ) {
       return computeFloatDecorations(tr.state);
     }
     return decorations;
@@ -854,57 +986,27 @@ export const visualFloatsField = StateField.define<DecorationSet>({
 
 const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-float-card': {
-    margin: '12px 0',
-    border: '1px solid var(--border)',
-    borderRadius: '8px',
-    backgroundColor: 'var(--card)',
+    position: 'relative',
+    margin: '16px 0',
+    border: '1px solid var(--border-subtle)',
+    borderRadius: '6px',
+    backgroundColor: 'var(--canvas)',
     overflow: 'hidden',
     fontFamily: 'var(--font-sans)',
     userSelect: 'none',
   },
-  '.cm-visual-float-header': {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '8px',
-    padding: '6px 12px',
-    backgroundColor: 'transparent',
-    borderBottom: '1px solid var(--border-subtle)',
-  },
-  '.cm-visual-float-header-left': {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    minWidth: '0',
-    flexWrap: 'wrap',
-  },
-  '.cm-visual-float-badge': {
-    display: 'inline-flex',
-    alignItems: 'center',
-    fontSize: '11.5px',
-    fontWeight: '600',
-    color: 'var(--muted-foreground)',
-  },
-  '.cm-visual-float-meta': {
-    fontSize: '11.5px',
-    color: 'var(--muted-foreground)',
-  },
-  '.cm-visual-float-label': {
-    fontSize: '11px',
-    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, monospace',
-    padding: '1px 6px',
-    borderRadius: '4px',
-    backgroundColor: 'var(--muted)',
-    border: '1px solid var(--border)',
-    color: 'var(--muted-foreground)',
+  '.cm-visual-float-card:hover, .cm-visual-float-card:focus-within': {
+    borderColor: 'var(--border)',
   },
   '.cm-visual-float-actions': {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    zIndex: '2',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
-    flexShrink: '0',
+    gap: '4px',
     opacity: '0',
-    transition: 'opacity 150ms ease',
   },
   '.cm-visual-float-card:hover .cm-visual-float-actions, .cm-visual-float-card:focus-within .cm-visual-float-actions': {
     opacity: '1',
@@ -919,7 +1021,6 @@ const visualFloatsTheme = EditorView.baseTheme({
     color: 'var(--muted-foreground)',
     cursor: 'pointer',
     flexShrink: '0',
-    transition: 'color 120ms ease, border-color 120ms ease',
   },
   '.cm-visual-float-edit-btn:hover, .cm-visual-float-wizard-btn:hover': {
     color: 'var(--foreground)',
@@ -938,10 +1039,10 @@ const visualFloatsTheme = EditorView.baseTheme({
   '.cm-visual-figure-preview': {
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
     gap: '8px',
-    padding: '12px',
-    borderRadius: '8px',
-    backgroundColor: 'var(--muted)',
+    padding: '4px 0',
+    backgroundColor: 'transparent',
   },
   '.cm-visual-figure-item': {
     display: 'flex',
@@ -972,20 +1073,11 @@ const visualFloatsTheme = EditorView.baseTheme({
     color: 'var(--foreground)',
     wordBreak: 'break-all',
   },
-  '.cm-visual-figure-options': {
-    fontSize: '11.5px',
-    fontFamily: 'var(--font-mono)',
-    color: 'var(--muted-foreground)',
-  },
   '.cm-visual-figure-thumb-wrap': {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '6px',
-    padding: '8px',
-    borderRadius: '6px',
-    backgroundColor: 'var(--background)',
-    border: '1px solid var(--border-subtle)',
+    width: '100%',
   },
   '.cm-visual-figure-thumb': {
     maxHeight: '220px',
@@ -1015,7 +1107,6 @@ const visualFloatsTheme = EditorView.baseTheme({
     userSelect: 'text',
     cursor: 'text',
     outline: 'none',
-    transition: 'background-color 0.12s ease',
   },
   '.cm-visual-table th[contenteditable="true"]:focus, .cm-visual-table td[contenteditable="true"]:focus': {
     outline: '1.5px solid var(--primary)',
@@ -1044,6 +1135,7 @@ const visualFloatsTheme = EditorView.baseTheme({
 });
 
 export const latexVisualFloats = (): Extension => [
+  revealedFloatPosField,
   visualFloatsField,
   visualFloatsTheme,
 ];

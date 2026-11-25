@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
-import { Check, Loader2, Sparkles, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Check, Loader2, Upload, X } from 'lucide-react';
 import katex from 'katex';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
@@ -143,7 +143,7 @@ export function EquationModal({
             aria-label="Describe equation"
             placeholder="Describe an equation... (Ctrl+Enter)"
             rows={3}
-            className="w-full p-2.5 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ring"
+            className="w-full p-2.5 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
           />
 
           <input
@@ -202,7 +202,6 @@ export function EquationModal({
               )}
             >
               <Upload className="size-3.5" />
-              <ImageIcon className="size-3.5" />
               <span>Drop formula image or click to upload</span>
             </button>
           )}
@@ -229,15 +228,12 @@ export function EquationModal({
           <Button
             type="button"
             size="sm"
-            variant="secondary"
             onClick={() => void handleGenerate()}
             disabled={isGenerating || (!prompt.trim() && !image)}
-            className="h-8 px-3 text-xs cursor-pointer gap-1.5"
+            className="h-8 px-3 text-xs bg-ai text-ai-foreground hover:bg-ai-hover font-medium cursor-pointer gap-1.5 shadow-none"
           >
-            {isGenerating ? (
-              <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-            ) : (
-              <Sparkles className="size-3.5 text-muted-foreground" />
+            {isGenerating && (
+              <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
             )}
             <span>{isGenerating ? 'Generating...' : latex ? 'Regenerate' : 'Generate'}</span>
           </Button>

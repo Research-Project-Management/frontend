@@ -18,6 +18,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avatar";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/settings/hooks/use-user-cover';
 import { useUpload } from "@/shared/hooks/use-upload";
@@ -75,7 +76,7 @@ export default function AccountDropdown({ align = 'end' }: AccountDropdownProps 
   if (!mounted || isLoading) {
     return (
       <div className="size-8 flex items-center justify-center">
-        <div className="size-7 rounded-full bg-muted border border-border/50 animate-pulse" />
+        <Skeleton className="size-7 rounded-full border border-border/50" />
       </div>
     );
   }

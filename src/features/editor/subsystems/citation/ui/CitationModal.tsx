@@ -230,11 +230,13 @@ export function CitationModal({
         </div>
       </DialogContent>
 
-      <CitationRetractionAlertDialog
-        pendingRetracted={state.pendingRetracted}
-        onDismiss={() => state.setPendingRetracted(null)}
-        onConfirmCiteAnyway={(entry) => state.insertCitation(entry)}
-      />
+      {state.pendingRetracted && (
+        <CitationRetractionAlertDialog
+          pendingRetracted={state.pendingRetracted}
+          onDismiss={() => state.setPendingRetracted(null)}
+          onConfirmCiteAnyway={(entry) => state.insertCitation(entry)}
+        />
+      )}
     </Dialog>
   );
 }

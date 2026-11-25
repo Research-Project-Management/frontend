@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { LibraryPage } from '@/features/library/ui/pages/LibraryPage';
 
-export const metadata: Metadata = { title: 'Feed · Library · Flux' };
+export const metadata: Metadata = { title: 'Feed · Library' };
 
 export default async function LibraryFeedDetailPage({
   params,

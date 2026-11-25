@@ -262,10 +262,22 @@ export function useActiveDocument() {
     const cached = lruDocumentCache.getModel(resolvedFileId);
     if (cached && typeof cached.content === 'string') {
       const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
+      const nextTitle = meta?.title || cached.filePath || 'untitled.tex';
+      const nextPath = cached.filePath || meta?.path || 'untitled.tex';
+      if (
+        isStoreScopedToCurrentPage &&
+        storeActiveFilePage &&
+        storeActiveFilePage.id === resolvedFileId &&
+        storeActiveFilePage.title === nextTitle &&
+        storeActiveFilePage.path === nextPath &&
+        storeActiveFilePage.content === cached.content
+      ) {
+        return storeActiveFilePage;
+      }
       return {
         id: resolvedFileId,
-        title: meta?.title || cached.filePath || 'untitled.tex',
-        path: cached.filePath || meta?.path || 'untitled.tex',
+        title: nextTitle,
+        path: nextPath,
         content: cached.content,
       } as unknown as Page;
     }

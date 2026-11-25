@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Forgot Password · Flux',
+  title: 'Forgot Password',
   description: 'Reset your Flux account password',
 };
 

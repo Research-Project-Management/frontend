@@ -7,6 +7,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import { pagesService } from '@/features/editor/core';
 import { projectPagesQueryOptions, usePageActions, pageKeys } from './hooks/use-page';
 import { useProjectsQuery, useProjectQuery } from '@/features/projects/shell/hooks/use-project';
@@ -327,7 +328,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         : `/pages/${data.page.id}${queryStr}`;
       router.push(targetUrl);
     } catch (err) {
-      console.error(err);
+      logger.error('[ProjectPagesView] Action failed', err);
     }
   };
 

@@ -5,6 +5,7 @@
  * Location: `features/editor/core/coordinator/workspace.coordinator.ts`
  */
 
+import { logger } from '@/shared/lib/logger';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   normalizeVirtualPath,
@@ -261,7 +262,7 @@ export class WorkspaceCoordinator {
       this.notificationPort.notifySuccess(`Created "${name}"`, `create-file-${name}`);
       return newFile;
     } catch (err: unknown) {
-      console.error('[WorkspaceCoordinator] Create file error:', err);
+      logger.error('[WorkspaceCoordinator] Create file error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || `Failed to create "${name}"`,
         `create-file-${name}`,
@@ -334,7 +335,7 @@ export class WorkspaceCoordinator {
       );
       return true;
     } catch (err: unknown) {
-      console.error('[WorkspaceCoordinator] Rename error:', err);
+      logger.error('[WorkspaceCoordinator] Rename error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || `Failed to rename "${oldName}"`,
         `rename-file-${itemId}`,
@@ -392,7 +393,7 @@ export class WorkspaceCoordinator {
       for (const cid of pausedTimerIds) {
         sessionCoordinator.resumeAutoSaveIfDirty(cid);
       }
-      console.error('[WorkspaceCoordinator] Delete error:', err);
+      logger.error('[WorkspaceCoordinator] Delete error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || 'Failed to delete file',
         `delete-file-${fileId}`,
@@ -472,7 +473,7 @@ export class WorkspaceCoordinator {
       this.notificationPort.notifySuccess('Moved successfully', `move-file-${itemId}`);
       return true;
     } catch (err: unknown) {
-      console.error('[WorkspaceCoordinator] Move error:', err);
+      logger.error('[WorkspaceCoordinator] Move error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || 'Failed to move item',
         `move-file-${itemId}`,
@@ -515,7 +516,7 @@ export class WorkspaceCoordinator {
       this.notificationPort.notifySuccess('File restored', `restore-file-${fileId}`);
       return res;
     } catch (err: unknown) {
-      console.error('[WorkspaceCoordinator] Restore error:', err);
+      logger.error('[WorkspaceCoordinator] Restore error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || 'Failed to restore file',
         `restore-file-${fileId}`,
@@ -578,7 +579,7 @@ export class WorkspaceCoordinator {
       this.notificationPort.notifySuccess('Set as main document', 'set-main-file');
       return true;
     } catch (err: unknown) {
-      console.error('[WorkspaceCoordinator] Set main document error:', err);
+      logger.error('[WorkspaceCoordinator] Set main document error', err);
       this.notificationPort.notifyError(
         (err as Error)?.message || 'Failed to set main document',
         'set-main-file',

@@ -16,6 +16,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import {
   pagesService,
   mapStructureNodesToStorageItems,
@@ -115,7 +116,7 @@ function useEditorStorageFiles(
         workspaceCoordinator.syncStructureItems(result || [], targetPageId);
         return result || [];
       } catch (err) {
-        console.warn('[useEditorStorage] Could not fetch remote files:', err);
+        logger.warn('[useEditorStorage] Could not fetch remote files', { error: err });
         return [];
       }
     },

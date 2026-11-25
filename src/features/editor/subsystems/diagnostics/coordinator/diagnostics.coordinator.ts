@@ -11,6 +11,7 @@
  * - Provides summary metrics per file and whole-project (errors, warnings, badboxes).
  */
 
+import { logger } from '@/shared/lib/logger';
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-graph';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
@@ -605,7 +606,7 @@ export class DiagnosticsCoordinator {
       try {
         listener(fileKey, source);
       } catch (err) {
-        console.error('[DiagnosticsCoordinator] Listener error:', err);
+        logger.error('[DiagnosticsCoordinator] Listener error', err);
       }
     }
   }

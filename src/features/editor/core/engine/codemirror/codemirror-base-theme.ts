@@ -56,9 +56,14 @@ export const editorBaseTheme = EditorView.theme({
   '.cm-gutterElement': {
     display: 'flex !important',
     alignItems: 'flex-start',
+    overflow: 'hidden',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+  },
+  '.cm-gutterElement[style*="height: 0px"]': {
+    visibility: 'hidden !important',
+    overflow: 'hidden !important',
   },
   '.cm-gutter.cm-foldGutter': {
     width: '14px',
@@ -198,16 +203,16 @@ export const editorBaseTheme = EditorView.theme({
     cursor: 'pointer',
   },
   '.cm-searchMatch': {
-    backgroundColor: 'rgba(255, 213, 0, 0.35)',
+    backgroundColor: 'color-mix(in srgb, var(--warning) 28%, transparent)',
     borderRadius: '2px',
   },
   '.cm-searchMatch.cm-searchMatch-selected': {
-    backgroundColor: 'rgba(255, 170, 0, 0.65)',
-    outline: '1px solid #d97706',
+    backgroundColor: 'color-mix(in srgb, var(--warning) 48%, transparent)',
+    outline: '1px solid var(--warning)',
   },
   '.cm-selectionMatch': {
-    backgroundColor: 'rgba(99, 102, 241, 0.08)',
-    outline: '1px solid rgba(99, 102, 241, 0.35)',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+    outline: '1px solid color-mix(in srgb, var(--primary) 35%, transparent)',
     borderRadius: '2px',
   },
 });
@@ -320,27 +325,34 @@ export const visualModeTheme = EditorView.theme({
     backgroundColor: 'var(--canvas)',
   },
   '.cm-gutters': {
-    display: 'none !important',
+    backgroundColor: 'var(--panel) !important',
+    color: 'var(--muted-foreground) !important',
+    borderRight: '1px solid var(--border) !important',
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: 'transparent !important',
+    color: 'var(--foreground) !important',
+  },
+  '.cm-fold-marker': {
+    marginTop: 'calc((1.68em - 14px) / 2)',
   },
   '.cm-activeLine': {
     backgroundColor: 'transparent !important',
   },
   '.cm-content': {
-    fontFamily: 'var(--font-sans) !important',
-    fontWeight: 'var(--font-weight-regular, 450)',
-    lineHeight: '1.65',
+    fontFamily: 'var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif !important',
+    fontSize: '15px',
+    fontWeight: '400',
+    lineHeight: '1.68',
     color: 'var(--foreground)',
     backgroundColor: 'var(--canvas)',
-    maxWidth: '720px',
+    maxWidth: '740px',
     minHeight: '100%',
     margin: '0 auto',
-    paddingTop: '28px',
-    paddingBottom: '64px',
-    paddingLeft: '36px',
-    paddingRight: '36px',
+    padding: '0 36px 64px 36px !important',
   },
   '.cm-line': {
-    fontFamily: 'var(--font-sans) !important',
+    fontFamily: 'var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif !important',
   },
 });
 

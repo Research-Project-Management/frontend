@@ -72,14 +72,16 @@ const Toolbar = React.memo(function Toolbar({
         <Trash2 className="shrink-0" size={14} />
       </ToolbarBtn>
 
-      <DeleteModal
-        open={isDeleteOpen}
-        onCancel={() => onActiveModalChange(null)}
-        onConfirm={() => {
-          onActiveModalChange(null);
-          onDelete(sticky.id || '');
-        }}
-      />
+      {isDeleteOpen && (
+        <DeleteModal
+          open={isDeleteOpen}
+          onCancel={() => onActiveModalChange(null)}
+          onConfirm={() => {
+            onActiveModalChange(null);
+            onDelete(sticky.id || '');
+          }}
+        />
+      )}
     </div>
   );
 });

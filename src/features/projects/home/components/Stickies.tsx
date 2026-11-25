@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Loader2, Search, X } from 'lucide-react';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useSticky } from '@/features/projects/stickies/hooks/use-sticky';
 import Card from '@/features/projects/stickies/components/card/Card';
 import type { Sticky } from '@/features/projects/stickies/types/sticky.types';
@@ -118,14 +119,14 @@ export default function Stickies() {
           {[1, 2, 3, 4].map((n) => (
             <div
               key={n}
-              className="h-[250px] rounded-md border border-border bg-card p-4 flex flex-col justify-between animate-pulse motion-reduce:animate-none"
+              className="h-[250px] rounded-md border border-border bg-card p-4 flex flex-col justify-between"
             >
               <div className="space-y-2.5">
-                <div className="h-4 w-3/4 bg-muted rounded" />
-                <div className="h-3 w-full bg-muted/60 rounded" />
-                <div className="h-3 w-5/6 bg-muted/60 rounded" />
+                <Skeleton className="h-4 w-3/4 rounded-sm" />
+                <Skeleton className="h-3 w-full rounded-sm opacity-60" />
+                <Skeleton className="h-3 w-5/6 rounded-sm opacity-60" />
               </div>
-              <div className="h-3 w-1/3 bg-muted/40 rounded" />
+              <Skeleton className="h-3 w-1/3 rounded-sm opacity-40" />
             </div>
           ))}
         </div>

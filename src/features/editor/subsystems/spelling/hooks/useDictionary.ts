@@ -37,7 +37,7 @@ export function useDictionary(projectId?: string, enabled = true) {
       return normalized;
     },
     onSuccess: (word) => {
-      invalidateSpellingCache();
+      invalidateSpellingCache(undefined, projectId);
       queryClient.invalidateQueries({ queryKey: dictionaryKeys.project(projectId) });
       toast.success(`Added "${word}" to dictionary`, { id: `spelling-${word}` });
     },
@@ -55,7 +55,7 @@ export function useDictionary(projectId?: string, enabled = true) {
       return word;
     },
     onSuccess: (word) => {
-      invalidateSpellingCache(word);
+      invalidateSpellingCache(word, projectId);
       queryClient.invalidateQueries({ queryKey: dictionaryKeys.project(projectId) });
       toast.success(`Removed "${word}" from dictionary`, { id: `spelling-${word}` });
     },

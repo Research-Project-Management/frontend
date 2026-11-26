@@ -25,10 +25,11 @@ export function DictionaryTab({ projectId: propProjectId }: DictionaryTabProps =
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    const normalized = draftWord.trim().toLowerCase();
-    if (!normalized) return;
-    addWord(normalized);
-    setDraftWord('');
+    const trimmed = draftWord.trim();
+    if (!trimmed) return;
+    addWord(trimmed, {
+      onSuccess: () => setDraftWord(''),
+    });
   };
 
   return (

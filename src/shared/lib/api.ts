@@ -20,7 +20,7 @@ import { ApiError, isApiError, type RequestOptions } from '@/shared/types/api.ty
 import { tryCatch, type Result } from '@/shared/utils/error.util';
 import { logger } from '@/shared/lib/logger';
 import { isTokenValid } from '@/shared/utils/auth-token.util';
-import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
+import { multiTabBus, withWebLock, uuidv7 } from '@/shared/lib/multi-tab';
 import {
   tokenStorage,
   getAuthToken,
@@ -317,14 +317,17 @@ export async function rawFetch(
     delete headers['Content-Type'];
     delete headers['content-type'];
   }
-  if (token) {
-    const isRelative = !url.startsWith('http://') && !url.startsWith('https://');
-    const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);
-    const effectiveBaseUrl = getEffectiveBaseUrl();
-    const isApiOrigin = Boolean(effectiveBaseUrl) && url.startsWith(effectiveBaseUrl);
-    if (isRelative || isSameOrigin || isApiOrigin) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+  const isRelative = !url.startsWith('http://') && !url.startsWith('https://');
+  const isSameOrigin = typeof window !== 'undefined' && url.startsWith(window.location.origin);
+  const effectiveBaseUrl = getEffectiveBaseUrl();
+  const isApiOrigin = Boolean(effectiveBaseUrl) && url.startsWith(effectiveBaseUrl);
+  const isTrustedApiTarget = isRelative || isSameOrigin || isApiOrigin;
+
+  if (isTrustedApiTarget && !headers['x-request-id'] && !headers['X-Request-Id']) {
+    headers['x-request-id'] = uuidv7();
+  }
+  if (token && isTrustedApiTarget) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   if (idempotencyKey) {
     headers['Idempotency-Key'] = idempotencyKey;
@@ -516,6 +519,10 @@ export async function apiFetch<T>(
         'Request failed';
       const errorCode = payload?.error?.code || payload?.code;
       const errorDetails = payload?.error?.details || payload?.errors || payload?.details;
+      const responseRequestId =
+        response.headers.get('x-request-id') ||
+        (payload as { requestId?: string })?.requestId ||
+        undefined;
 
       const error = new ApiError({
         message: errorMessage,
@@ -523,32 +530,38 @@ export async function apiFetch<T>(
         errors: errorDetails,
         details: errorDetails,
         code: errorCode,
+        requestId: responseRequestId,
       });
 
       if (options?.silent) {
         logger.debug(`API Request rejected (silent): [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
           message: errorMessage,
+          requestId: responseRequestId,
         });
       } else if (response.status === 404) {
         logger.warn(`Resource not found (404): [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
           message: errorMessage,
+          requestId: responseRequestId,
         });
       } else if (response.status === 401) {
         logger.warn(`Authentication required: [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
           message: errorMessage,
+          requestId: responseRequestId,
         });
       } else if (response.status === 403) {
         logger.warn(`Permission denied (403): [${normalizedMethod}] ${path}`, {
           statusCode: response.status,
           message: errorMessage,
+          requestId: responseRequestId,
         });
       } else {
         logger.error(`API Error: [${normalizedMethod}] ${path}`, error, {
           statusCode: response.status,
           errors: errorDetails,
+          requestId: responseRequestId,
         });
       }
 

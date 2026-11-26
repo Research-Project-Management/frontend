@@ -29,10 +29,13 @@ export function WebVitalsReporter() {
           : Math.round(metric.value),
       rating: metric.rating,
       navigationType: metric.navigationType,
+      pathname: typeof window !== 'undefined' ? window.location.pathname : undefined,
     };
 
     if (metric.rating === 'poor') {
       logger.warn('[WebVitals] Poor metric', payload);
+    } else if (metric.rating === 'needs-improvement') {
+      logger.info('[WebVitals] Needs improvement', payload);
     } else {
       logger.debug('[WebVitals]', payload);
     }

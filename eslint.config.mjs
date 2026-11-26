@@ -193,6 +193,44 @@ const eslintConfig = [
     },
   },
   {
+    name: 'shared-and-config-no-upward-imports',
+    files: ['src/shared/**/*.{ts,tsx}', 'src/config/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS],
+          patterns: [
+            {
+              group: ['@/features/**', '@/app/**', '../features/**', '../app/**', '../../features/**', '../../app/**'],
+              message:
+                'Architectural boundary violation: shared/ and config/ are foundational layers and must never import from features/ or app/.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'features-no-upward-app-imports',
+    files: ['src/features/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS],
+          patterns: [
+            {
+              group: ['@/app/**'],
+              message:
+                'Architectural boundary violation: features/ must never import from the app/ routing layer.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     name: 'editor-layer-domain-is-pure',
     files: ['src/features/editor/domain/**/*.{ts,tsx}'],
     rules: {

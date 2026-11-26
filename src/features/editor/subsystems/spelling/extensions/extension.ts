@@ -42,10 +42,23 @@ export function resolveSpellingProjectId(explicitProjectId?: string): string {
   return explicitProjectId || state.projectId || state.spaceId || '';
 }
 
-export function invalidateSpellingCache(removedWord?: string): void {
+export function invalidateSpellingCache(
+  removedWord?: string,
+  projectId?: string,
+): void {
   cacheEpoch++;
-  resultCache.clear();
-  inFlightChecks.clear();
+  if (projectId) {
+    const prefix = `${projectId}|`;
+    for (const key of resultCache.keys()) {
+      if (key.startsWith(prefix)) resultCache.delete(key);
+    }
+    for (const key of inFlightChecks.keys()) {
+      if (key.startsWith(prefix)) inFlightChecks.delete(key);
+    }
+  } else {
+    resultCache.clear();
+    inFlightChecks.clear();
+  }
   for (const listener of invalidationListeners) {
     listener(removedWord);
   }
@@ -109,8 +122,6 @@ function createSpellingPlugin(options: SpellingExtensionOptions = {}) {
           view.dispatch({ effects: clearErrorsEffect.of() });
           return;
         }
-
-        if (process.env.NODE_ENV === 'test') return;
 
         const targetProjectId = resolveSpellingProjectId(projectId);
         if (!targetProjectId) return;
@@ -231,7 +242,8 @@ export function createSpellingExtension(options: SpellingExtensionOptions = {}):
     spellingTheme,
     createSpellingContextMenu(
       () => resolveSpellingProjectId(options.projectId),
-      invalidateSpellingCache,
+      (removedWord) =>
+        invalidateSpellingCache(removedWord, resolveSpellingProjectId(options.projectId)),
     ),
     createSpellingPlugin(options),
   ];

@@ -36,11 +36,12 @@ export type ApiErrorPayload = {
   errors?: Record<string, string[]> | unknown;
   details?: unknown;
   code?: string;
+  requestId?: string;
 };
 
 /**
  * Typed HTTP error produced by the API Client Seam.
- * Preserves HTTP status codes, structured validation errors, and stack traces.
+ * Preserves HTTP status codes, structured validation errors, request correlation ID, and stack traces.
  */
 export class ApiError extends Error {
   public readonly statusCode: number;
@@ -48,6 +49,7 @@ export class ApiError extends Error {
   public readonly errors?: Record<string, string[]> | unknown;
   public readonly details?: unknown;
   public readonly code?: string;
+  public readonly requestId?: string;
 
   constructor(payload: ApiErrorPayload) {
     super(payload.message);
@@ -57,6 +59,7 @@ export class ApiError extends Error {
     this.errors = payload.errors || payload.details;
     this.details = payload.details || payload.errors;
     this.code = payload.code;
+    this.requestId = payload.requestId;
 
     // Maintain proper prototype chain
     Object.setPrototypeOf(this, ApiError.prototype);

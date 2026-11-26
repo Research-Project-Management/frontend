@@ -43,20 +43,44 @@ const defaultConsoleSink: LogSink = (entry) => {
 
 class StructuredLogger {
   private sink: LogSink = defaultConsoleSink;
+  private readonly extraSinks = new Set<LogSink>();
   private isProduction = process.env.NODE_ENV === 'production';
 
   /**
-   * Replace the active log sink (useful for unit tests, Sentry, Datadog).
+   * Replace the primary active log sink (useful for unit tests, Sentry, Datadog).
    */
   public setSink(sink: LogSink): void {
     this.sink = sink;
   }
 
   /**
-   * Reset sink to default console sink.
+   * Subscribe an additional telemetry sink (e.g. remote RUM / OpenTelemetry beacon).
+   * Returns an unsubscribe function.
+   */
+  public addSink(sink: LogSink): () => void {
+    this.extraSinks.add(sink);
+    return () => {
+      this.extraSinks.delete(sink);
+    };
+  }
+
+  /**
+   * Reset primary sink to default console sink and clear extra sinks.
    */
   public resetSink(): void {
     this.sink = defaultConsoleSink;
+    this.extraSinks.clear();
+  }
+
+  private emit(entry: LogEntry): void {
+    this.sink(entry);
+    for (const extra of this.extraSinks) {
+      try {
+        extra(entry);
+      } catch {
+        // Isolate telemetry sink errors
+      }
+    }
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -86,7 +110,7 @@ class StructuredLogger {
    */
   public debug(message: string, context?: Record<string, unknown>): void {
     if (!this.shouldLog('debug')) return;
-    this.sink(this.createEntry('debug', message, undefined, context));
+    this.emit(this.createEntry('debug', message, undefined, context));
   }
 
   /**
@@ -94,7 +118,7 @@ class StructuredLogger {
    */
   public info(message: string, context?: Record<string, unknown>): void {
     if (!this.shouldLog('info')) return;
-    this.sink(this.createEntry('info', message, undefined, context));
+    this.emit(this.createEntry('info', message, undefined, context));
   }
 
   /**
@@ -102,7 +126,7 @@ class StructuredLogger {
    */
   public warn(message: string, context?: Record<string, unknown>): void {
     if (!this.shouldLog('warn')) return;
-    this.sink(this.createEntry('warn', message, undefined, context));
+    this.emit(this.createEntry('warn', message, undefined, context));
   }
 
   /**
@@ -110,7 +134,7 @@ class StructuredLogger {
    */
   public error(message: string, error?: unknown, context?: Record<string, unknown>): void {
     if (!this.shouldLog('error')) return;
-    this.sink(this.createEntry('error', message, error, context));
+    this.emit(this.createEntry('error', message, error, context));
   }
 }
 

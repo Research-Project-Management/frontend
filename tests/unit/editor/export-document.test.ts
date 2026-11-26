@@ -7,7 +7,7 @@ import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
-} from '@/features/editor/sdk/archive/document-download';
+} from '@/features/editor/sdk/archive/doc-export';
 
 describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
   beforeEach(() => {
@@ -15,8 +15,10 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
   });
 
   describe('1. Export Schema Validation', () => {
-    it('validates docx and md format options', () => {
+    it('validates tex, docx, html, and md format options', () => {
+      expect(documentExportFormatSchema.safeParse('tex').success).toBe(true);
       expect(documentExportFormatSchema.safeParse('docx').success).toBe(true);
+      expect(documentExportFormatSchema.safeParse('html').success).toBe(true);
       expect(documentExportFormatSchema.safeParse('md').success).toBe(true);
       expect(documentExportFormatSchema.safeParse('markdown').success).toBe(true);
       expect(documentExportFormatSchema.safeParse('pdf').success).toBe(true);
@@ -32,7 +34,6 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
 
   describe('2. exportDocumentAsWord', () => {
     it('calls export service with docx format and triggers client download', async () => {
-      // Sample base64 representing mock docx file
       const mockBase64 = btoa('PK\x03\x04mock-docx-bytes');
 
       vi.spyOn(pagesService.export, 'exportDocument').mockResolvedValue({
@@ -45,11 +46,11 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
       });
 
       let downloadedFilename = '';
-      let downloadedBlob: any = null;
+      let downloadedBlob: Blob | null = null;
 
       const origCreateObjectURL = globalThis.URL.createObjectURL;
       const origRevokeObjectURL = globalThis.URL.revokeObjectURL;
-      globalThis.URL.createObjectURL = vi.fn((blob: any) => {
+      globalThis.URL.createObjectURL = vi.fn((blob: Blob) => {
         downloadedBlob = blob;
         return 'blob:mock-docx-url';
       });
@@ -57,25 +58,26 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
 
       const origAppend = document.body.appendChild;
       const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
+      document.body.appendChild = vi.fn((el: Node) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.download) downloadedFilename = anchor.download;
         return el;
-      });
-      document.body.removeChild = vi.fn();
+      }) as typeof document.body.appendChild;
+      document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
       await exportDocumentAsWord({
-        pageId: 'page-123',
+        docId: 'doc-123',
         projectTitle: 'Quantum Paper',
       });
 
       expect(pagesService.export.exportDocument).toHaveBeenCalledWith(
-        'page-123',
+        'doc-123',
         'docx',
         true,
       );
       expect(downloadedFilename).toBe('quantum_paper.docx');
       expect(downloadedBlob).not.toBeNull();
-      expect(downloadedBlob?.type).toBe(
+      expect((downloadedBlob as Blob | null)?.type).toBe(
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       );
 
@@ -99,11 +101,11 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
       });
 
       let downloadedFilename = '';
-      let downloadedBlob: any = null;
+      let downloadedBlob: Blob | null = null;
 
       const origCreateObjectURL = globalThis.URL.createObjectURL;
       const origRevokeObjectURL = globalThis.URL.revokeObjectURL;
-      globalThis.URL.createObjectURL = vi.fn((blob: any) => {
+      globalThis.URL.createObjectURL = vi.fn((blob: Blob) => {
         downloadedBlob = blob;
         return 'blob:mock-md-url';
       });
@@ -111,19 +113,20 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
 
       const origAppend = document.body.appendChild;
       const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
+      document.body.appendChild = vi.fn((el: Node) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.download) downloadedFilename = anchor.download;
         return el;
-      });
-      document.body.removeChild = vi.fn();
+      }) as typeof document.body.appendChild;
+      document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
       await exportDocumentAsMarkdown({
-        pageId: 'page-123',
+        docId: 'doc-123',
         projectTitle: 'Quantum Paper',
       });
 
       expect(pagesService.export.exportDocument).toHaveBeenCalledWith(
-        'page-123',
+        'doc-123',
         'md',
         true,
       );

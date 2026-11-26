@@ -1,43 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import JSZip from 'jszip';
 import {
   exportProjectAsZip,
   exportArxivSubmissionZip,
-} from '@/features/editor/sdk/archive/archive-export';
+} from '@/features/editor/sdk/archive/zip-export';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
-} from '@/features/editor/sdk/archive/document-download';
+} from '@/features/editor/sdk/archive/doc-export';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
-describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
+describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('1. Project Source ZIP Export (Overleaf 1:1 Package)', () => {
-    it('should bundle main.tex and subfiles into a downloadable zip', async () => {
-      vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
-        id: 'doc-1',
-        title: 'Project Manuscript',
-        content: '\\documentclass{article}\n\\begin{document}\nHello World\n\\end{document}',
-      } as any);
-
-      vi.spyOn(pagesService.docs, 'getFiles').mockResolvedValue([
-        { id: 'f-1', title: 'intro.tex', content: '\\section{Introduction}' },
-        { id: 'f-2', title: 'references.bib', content: '@article{test, title={Test}}' },
-      ] as any);
-
-      vi.spyOn(pagesService.structure, 'getPageFiles').mockResolvedValue([]);
+  describe('1. Project Source & arXiv ZIP Export', () => {
+    it('requests standard project ZIP from backend and triggers download', async () => {
+      const mockZip = new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' });
+      const exportZipSpy = vi
+        .spyOn(pagesService.export, 'exportProjectZip')
+        .mockResolvedValue(mockZip);
 
       let createdBlob: Blob | null = null;
       let downloadedFilename = '';
 
-      // Mock URL.createObjectURL and link.click
       const origCreateObjectURL = globalThis.URL.createObjectURL;
       const origRevokeObjectURL = globalThis.URL.revokeObjectURL;
-      globalThis.URL.createObjectURL = vi.fn((blob: any) => {
+      globalThis.URL.createObjectURL = vi.fn((blob: Blob) => {
         createdBlob = blob;
         return 'blob:mock-zip-url';
       });
@@ -45,28 +35,29 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
 
       const origAppend = document.body.appendChild;
       const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
+      document.body.appendChild = vi.fn((el: Node) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.download) downloadedFilename = anchor.download;
         return el;
-      });
-      document.body.removeChild = vi.fn();
+      }) as typeof document.body.appendChild;
+      document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
-      await exportProjectAsZip({
+      const filename = await exportProjectAsZip({
+        spaceId: 'space-1',
         parentPageId: 'doc-1',
         projectTitle: 'Paper Draft',
       });
 
-      expect(createdBlob).not.toBeNull();
+      expect(exportZipSpy).toHaveBeenCalledWith('space-1', {
+        cleanArxiv: false,
+        includePdf: true,
+        mode: 'standard',
+        projectName: 'Paper_Draft',
+        pageId: 'doc-1',
+      });
+      expect(filename).toBe('Paper_Draft.zip');
+      expect(createdBlob).toBe(mockZip);
       expect(downloadedFilename).toBe('Paper_Draft.zip');
-
-      // Unpack and verify files in the ZIP archive
-      const zip = await JSZip.loadAsync(createdBlob!);
-      expect(zip.file('main.tex')).not.toBeNull();
-      expect(zip.file('intro.tex')).not.toBeNull();
-      expect(zip.file('references.bib')).not.toBeNull();
-
-      const mainContent = await zip.file('main.tex')!.async('string');
-      expect(mainContent).toContain('Hello World');
 
       globalThis.URL.createObjectURL = origCreateObjectURL;
       globalThis.URL.revokeObjectURL = origRevokeObjectURL;
@@ -74,50 +65,35 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
       document.body.removeChild = origRemove;
     });
 
-    it('should filter out auxiliary files in arXiv submission package', async () => {
-      vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
-        id: 'doc-arxiv',
-        title: 'Main',
-        content: '\\documentclass{article}\n\\begin{document}\nPaper\n\\end{document}',
-      } as any);
+    it('requests cleanArxiv ZIP bundle from backend without PDF', async () => {
+      const mockZip = new Blob(['PK\x03\x04arxiv-zip'], { type: 'application/zip' });
+      const exportZipSpy = vi
+        .spyOn(pagesService.export, 'exportProjectZip')
+        .mockResolvedValue(mockZip);
 
-      vi.spyOn(pagesService.docs, 'getFiles').mockResolvedValue([
-        { id: 'f-1', title: 'paper.tex', content: '\\section{Paper}' },
-        { id: 'f-2', title: 'paper.aux', content: '\\relax' },
-        { id: 'f-3', title: 'paper.log', content: 'Compile log' },
-        { id: 'f-4', title: 'paper.synctex.gz', content: 'SyncTeX data' },
-        { id: 'f-5', title: 'refs.bib', content: '@article{a}' },
-      ] as any);
+      const origCreateObjectURL = globalThis.URL.createObjectURL;
+      globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-arxiv-url');
 
-      vi.spyOn(pagesService.structure, 'getPageFiles').mockResolvedValue([]);
-
-      let createdBlob: Blob | null = null;
-      globalThis.URL.createObjectURL = vi.fn((blob: any) => {
-        createdBlob = blob;
-        return 'blob:mock-arxiv-url';
-      });
-
-      await exportArxivSubmissionZip({
+      const filename = await exportArxivSubmissionZip({
         parentPageId: 'doc-arxiv',
         projectTitle: 'arXiv_Manuscript',
       });
 
-      expect(createdBlob).not.toBeNull();
-      const zip = await JSZip.loadAsync(createdBlob!);
+      expect(exportZipSpy).toHaveBeenCalledWith('doc-arxiv', {
+        cleanArxiv: true,
+        includePdf: false,
+        mode: 'arxiv',
+        projectName: 'arXiv_Manuscript',
+        pageId: 'doc-arxiv',
+      });
+      expect(filename).toBe('arxiv-arXiv_Manuscript.zip');
 
-      // Allowed files
-      expect(zip.file('paper.tex')).not.toBeNull();
-      expect(zip.file('refs.bib')).not.toBeNull();
-
-      // Disallowed aux/log/synctex files MUST NOT be in arXiv zip
-      expect(zip.file('paper.aux')).toBeNull();
-      expect(zip.file('paper.log')).toBeNull();
-      expect(zip.file('paper.synctex.gz')).toBeNull();
+      globalThis.URL.createObjectURL = origCreateObjectURL;
     });
   });
 
   describe('2. Multi-Format Document Export (Word, Markdown, HTML)', () => {
-    it('should export document as Word .docx with base64 decoding', async () => {
+    it('exports document as Word .docx with base64 decoding', async () => {
       const mockBase64 = Buffer.from('mock-docx-zip-content').toString('base64');
       vi.spyOn(pagesService.export, 'exportDocument').mockResolvedValue({
         filename: 'report.docx',
@@ -130,14 +106,15 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
       let downloadedFilename = '';
       const origAppend = document.body.appendChild;
       const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
+      document.body.appendChild = vi.fn((el: Node) => {
+        const anchor = el as HTMLAnchorElement;
+        if (anchor.download) downloadedFilename = anchor.download;
         return el;
-      });
-      document.body.removeChild = vi.fn();
+      }) as typeof document.body.appendChild;
+      document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
       const result = await exportDocumentAsWord({
-        pageId: 'doc-report-1',
+        docId: 'doc-report-1',
         projectTitle: 'Research Report',
       });
 
@@ -148,8 +125,8 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
       document.body.removeChild = origRemove;
     });
 
-    it('should export document as Markdown .md and handle offline fallback', async () => {
-      vi.spyOn(pagesService.export, 'exportDocument').mockResolvedValue({
+    it('exports document as Markdown .md via backend and propagates errors cleanly', async () => {
+      vi.spyOn(pagesService.export, 'exportDocument').mockResolvedValueOnce({
         filename: 'draft.md',
         mimeType: 'text/markdown',
         content: '# Draft Title\nParagraph text.',
@@ -157,59 +134,39 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
         sizeBytes: 30,
       });
 
-      let downloadedFilename = '';
-      const origAppend = document.body.appendChild;
-      const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
-        return el;
-      });
-      document.body.removeChild = vi.fn();
-
       const result = await exportDocumentAsMarkdown({
-        pageId: 'doc-draft-1',
+        docId: 'doc-draft-1',
         projectTitle: 'Draft Manuscript',
       });
-
       expect(result).toBe('draft.md');
-      expect(downloadedFilename).toBe('draft.md');
 
-      // Test fallback when remote endpoint errors
-      vi.spyOn(pagesService.export, 'exportDocument').mockRejectedValue(new Error('Backend offline'));
-
-      const fallbackResult = await exportDocumentAsMarkdown({
-        pageId: 'doc-draft-offline',
-        projectTitle: 'Offline Paper',
-        fallbackContent: '# Offline Content',
-      });
-
-      expect(fallbackResult).toBe('offline_paper.md');
-      expect(downloadedFilename).toBe('offline_paper.md');
-
-      document.body.appendChild = origAppend;
-      document.body.removeChild = origRemove;
+      vi.spyOn(pagesService.export, 'exportDocument').mockRejectedValueOnce(
+        new Error('Backend unavailable'),
+      );
+      await expect(
+        exportDocumentAsMarkdown({
+          docId: 'doc-draft-offline',
+          projectTitle: 'Offline Paper',
+        }),
+      ).rejects.toThrow('Backend unavailable');
     });
 
-    it('should export document as standalone HTML with KaTeX styles', () => {
-      let downloadedFilename = '';
-      const origAppend = document.body.appendChild;
-      const origRemove = document.body.removeChild;
-      document.body.appendChild = vi.fn((el: any) => {
-        if (el.download) downloadedFilename = el.download;
-        return el;
+    it('exports document as standalone HTML via backend', async () => {
+      vi.spyOn(pagesService.export, 'exportDocument').mockResolvedValueOnce({
+        filename: 'thesis_final.html',
+        mimeType: 'text/html',
+        content: '<!DOCTYPE html><html><body><h1>Introduction</h1></body></html>',
+        isBase64: false,
+        sizeBytes: 64,
       });
-      document.body.removeChild = vi.fn();
 
-      const result = exportDocumentAsHtml({
-        content: '\\section{Introduction}\n\\textbf{Bold text} and regular text.',
+      const result = await exportDocumentAsHtml({
+        docId: 'doc-html-1',
         projectTitle: 'Thesis Final',
       });
 
+      expect(pagesService.export.exportDocument).toHaveBeenCalledWith('doc-html-1', 'html', true);
       expect(result).toBe('thesis_final.html');
-      expect(downloadedFilename).toBe('thesis_final.html');
-
-      document.body.appendChild = origAppend;
-      document.body.removeChild = origRemove;
     });
   });
 });

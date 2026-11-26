@@ -15,6 +15,7 @@ import {
 import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects, useProject } from '@/features/projects/shell/hooks/use-project';
 import { cn } from '@/shared/lib/utils';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 
 export interface SwitcherProps {
   project?: {
@@ -54,7 +55,7 @@ export function Switcher({
     if (params?.projectId) return params.projectId;
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('flux_active_project_id');
+        const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
         if (stored && projects.some((p) => p.id === stored)) return stored;
       } catch {}
     }
@@ -112,7 +113,7 @@ export function Switcher({
   useEffect(() => {
     if (currentProject.id && currentProject.name && typeof window !== 'undefined') {
       try {
-        localStorage.setItem('flux_active_project_id', currentProject.id);
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, currentProject.id);
       } catch {}
     }
   }, [currentProject.id, currentProject.name]);
@@ -155,7 +156,7 @@ export function Switcher({
 
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('flux_active_project_id', newProjectId);
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, newProjectId);
       } catch {}
     }
 

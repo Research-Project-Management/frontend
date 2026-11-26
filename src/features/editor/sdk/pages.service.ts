@@ -19,7 +19,7 @@
  * - citations: BibTeX entry resolution, validation, and search
  * - templates: Project and gallery template scaffolding
  * - updater: Batch document update buffering and buffer flushing
- * - spelling: Personal & project spellcheck dictionaries
+ * - spelling: Project spellcheck & custom dictionary
  */
 
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
@@ -54,8 +54,10 @@ export * from './pages/spelling.client';
 export * from './pages/git.client';
 export * from './pages/ai.client';
 export * from './realtime/provider';
-export * from './archive/archive-export';
-export * from './archive/archive-import';
+export * from './archive/download';
+export * from './archive/zip-export';
+export * from './archive/zip-import';
+export * from './archive/doc-export';
 
 export const pagesService = {
   bootstrap,
@@ -79,10 +81,6 @@ export const pagesService = {
   git: gitApi,
   linkedFiles,
   restoreProjectVersionFile: history.restoreProjectVersionFile,
-  exportVersionZip: exportDocs.exportVersionZip,
-  exportDocument: exportDocs.exportDocument,
-  exportProjectZip: exportDocs.exportProjectZip,
-  importProjectZip: exportDocs.importProjectZip,
 };
 
 latexSymbolsIndex.setSymbolsFetcher((id) => pagesService.structure.getSymbols(id));

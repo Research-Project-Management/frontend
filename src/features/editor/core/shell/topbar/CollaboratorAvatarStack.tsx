@@ -166,7 +166,7 @@ export function CollaboratorAvatarStack({
                 {c.tabCount > 1 && (
                   <span
                     title={`${c.tabCount} active browser tabs`}
-                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-sm bg-primary px-0.5 text-[9px] font-semibold text-primary-foreground shadow-xs ring-1 ring-background"
+                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-sm bg-primary px-0.5 text-9 font-semibold text-primary-foreground shadow-xs ring-1 ring-background"
                   >
                     {c.tabCount}
                   </span>
@@ -187,7 +187,7 @@ export function CollaboratorAvatarStack({
                 </span>
                 <div className="flex items-center gap-1 shrink-0">
                   {c.tabCount > 1 && (
-                    <span className="text-[10px] px-1 py-0.5 rounded-sm font-medium bg-muted text-muted-foreground">
+                    <span className="text-10 px-1 py-0.5 rounded-sm font-medium bg-muted text-muted-foreground">
                       {c.tabCount} tabs
                     </span>
                   )}
@@ -206,13 +206,13 @@ export function CollaboratorAvatarStack({
 
               {/* Email (if present) */}
               {c.email && (
-                <div className="text-[11px] text-muted-foreground truncate">
+                <div className="text-11 text-muted-foreground truncate">
                   {c.email}
                 </div>
               )}
 
               {/* Active Document & Cursor */}
-              <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] pt-0.5 border-t border-border/40">
+              <div className="flex items-center gap-1.5 text-muted-foreground text-11 pt-0.5 border-t border-border/40">
                 <FileCode className="size-3 shrink-0 text-foreground" />
                 <span className="truncate">{c.activeFile || 'Current Document'}</span>
                 {c.cursor && (
@@ -279,7 +279,7 @@ export function CollaboratorAvatarStack({
                         ) : (
                           <span
                             style={{ backgroundColor: color }}
-                            className="size-full rounded-full flex items-center justify-center font-semibold text-[9px] text-white"
+                            className="size-full rounded-full flex items-center justify-center font-semibold text-9 text-white"
                           >
                             {initials}
                           </span>

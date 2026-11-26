@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildRetractedCitationMap } from '@/features/editor/subsystems/citation/model/retracted-citations';
+import { buildRetractedCitationMap } from '@/features/editor/subsystems/citation/model/retraction';
 import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/model/latex-linter-core';
 import {
   isItemRetracted,

@@ -251,7 +251,9 @@ export default function TemplateGalleryModal() {
     }
     setIsScaffolding(true);
     try {
-      await pagesService.templates.scaffold(projectId, selectedTemplate.id);
+      await pagesService.export.scaffoldTemplate(projectId, selectedTemplate.id, {
+        pageId: currentPageId || undefined,
+      });
       sessionCoordinator.resetSession();
       clearYjsProviderPool();
       lruDocumentCache.clearAll();

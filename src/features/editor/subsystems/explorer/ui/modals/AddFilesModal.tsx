@@ -5,6 +5,7 @@ import {
   X,
   FileText,
   Upload,
+  Link2,
   BookOpen,
 } from 'lucide-react';
 import {
@@ -23,6 +24,7 @@ import type {
 import { AddFilesSidebar } from './AddFilesSidebar';
 import { NewFileTabPane } from './NewFileTabPane';
 import { UploadTabPane } from './UploadTabPane';
+import { UrlTabPane } from './UrlTabPane';
 import { LibraryTabPane } from './LibraryTabPane';
 
 export type { AddFilesTab, AddFilesModalProps };
@@ -30,6 +32,7 @@ export type { AddFilesTab, AddFilesModalProps };
 const TABS: AddFilesTabItem[] = [
   { id: 'new-file', label: 'New file', icon: FileText },
   { id: 'upload', label: 'Upload', icon: Upload },
+  { id: 'url', label: 'From external URL', icon: Link2 },
   { id: 'library', label: 'From library', icon: BookOpen },
 ];
 
@@ -38,6 +41,7 @@ export default function AddFilesModal({
   onOpenChange,
   defaultTab = 'new-file',
   parentPageId: propParentPageId,
+  projectId,
   onPickItems,
 }: AddFilesModalProps) {
   const storeParentPageId = usePageStore((s) => s.parentPageId);
@@ -85,14 +89,12 @@ export default function AddFilesModal({
 
         {/* Modal Body: Left Tab Sidebar + Right Form Panel */}
         <div className="flex-1 min-h-0 flex flex-col sm:flex-row overflow-y-auto sm:overflow-hidden">
-          {/* Navigation Tabs Sidebar */}
           <AddFilesSidebar
             tabs={TABS}
             activeTab={activeTab}
             onSelectTab={setActiveTab}
           />
 
-          {/* Right Form & Content Pane */}
           <div
             id={`add-files-panel-${activeTab}`}
             role="tabpanel"
@@ -112,6 +114,14 @@ export default function AddFilesModal({
             {activeTab === 'upload' && (
               <UploadTabPane
                 onPickItems={onPickItems}
+                onClose={handleClose}
+              />
+            )}
+
+            {activeTab === 'url' && (
+              <UrlTabPane
+                parentPageId={parentPageId}
+                projectId={projectId}
                 onClose={handleClose}
               />
             )}

@@ -8,6 +8,7 @@ import { isApiError } from '@/shared/types/api.types';
 import { hasAuthToken, getAuthToken } from '@/shared/lib/api';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import { isTokenValid } from '@/shared/utils/auth-token.util';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 import { getUser, logoutUser, setCachedUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthState, AuthUser } from '../types/auth.types';
@@ -44,7 +45,7 @@ function getCachedUserFallback(): AuthUser | undefined {
   if (typeof window === 'undefined') return undefined;
   if (!hasAuthToken() || !isTokenValid(getAuthToken())) return undefined;
   try {
-    const raw = localStorage.getItem('flux_cached_user');
+    const raw = localStorage.getItem(STORAGE_KEYS.CACHED_USER);
     return raw ? (JSON.parse(raw) as AuthUser) : undefined;
   } catch {
     return undefined;
@@ -151,7 +152,7 @@ export const useAuth = (): UseAuthReturn => {
     let fallbackUser: AuthUser | null = null;
     if (typeof window !== 'undefined') {
       try {
-        const raw = localStorage.getItem('flux_cached_user');
+        const raw = localStorage.getItem(STORAGE_KEYS.CACHED_USER);
         fallbackUser = raw ? (JSON.parse(raw) as AuthUser) : null;
       } catch {
         fallbackUser = null;

@@ -1,0 +1,418 @@
+/* --------------------------------------------------------------------------
+   CODEMIRROR 6 MERGE VIEW OVERFLOW
+   Ensures merge view editors do not clip positioned overlays, markers, and tooltips.
+   -------------------------------------------------------------------------- */
+.cm-history-wrapper .cm-mergeViewEditor,
+.cm-mergeViewEditor {
+  overflow: visible !important;
+}
+
+/* --------------------------------------------------------------------------
+   CODEMIRROR 6 FOCUS OUTLINE SUPPRESSION
+   Suppresses CodeMirror's built-in 1px dotted outline when editor receives focus.
+   -------------------------------------------------------------------------- */
+.cm-editor,
+.cm-editor.cm-focused,
+.cm-editor:focus,
+.cm-editor:focus-visible,
+.cm-scroller,
+.cm-scroller:focus,
+.cm-scroller:focus-visible,
+.cm-content,
+.cm-content:focus,
+.cm-content:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   MANUSCRIPT LATEX EDITOR VIEW SPECIFIC STYLES
+   Scoped strictly to .manuscript-editor-view to prevent style leakage
+   into Stickies, AI Companion, inline diffs, or modal code editors.
+   -------------------------------------------------------------------------- */
+.manuscript-editor-view .cm-editor {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding-top: 0 !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: auto !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background-color: transparent !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease;
+}
+
+.manuscript-editor-view .cm-editor:hover .cm-scroller::-webkit-scrollbar-thumb,
+.manuscript-editor-view .cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border) !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground) !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .manuscript-editor-view .cm-editor .cm-scroller {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .manuscript-editor-view .cm-editor:hover .cm-scroller {
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+.manuscript-editor-view .cm-editor .cm-content {
+  flex-grow: 1 !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 32px !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-content.cm-lineWrapping {
+  flex-shrink: 1 !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-gutters {
+  padding-top: 0 !important;
+  align-self: stretch !important;
+  height: auto !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-line {
+  box-sizing: border-box !important;
+  padding: 0 8px !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-activeLine {
+  background-color: var(--editor-active-line, #e2f2ff) !important;
+  box-sizing: border-box !important;
+  padding: 0 8px !important;
+}
+
+.manuscript-editor-view .cm-editor .cm-activeLineGutter {
+  background-color: var(--editor-active-line-gutter, #D6EAFF) !important;
+  color: var(--editor-active-line-gutter-text, #005cc5) !important;
+  font-weight: 600 !important;
+}
+
+/* Visual mode hidden lines & zero-height gutters */
+.cm-editor .cm-line.cm-visual-hidden-line,
+.cm-editor .cm-line.cm-visual-comment-hidden {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+}
+
+.cm-editor .cm-gutterElement[style*="height: 0px"] {
+  visibility: hidden !important;
+  overflow: hidden !important;
+}
+
+/* --------------------------------------------------------------------------
+   CODEMIRROR 6 ACCESSIBILITY ANNOUNCER OVERFLOW CLIPPING FIX
+   Standard sr-only positioning preserves 100% screen reader accessibility
+   while keeping the element within normal layout coordinates (0, 0).
+   -------------------------------------------------------------------------- */
+.cm-announced {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border-width: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   VISUAL MODE BIDIRECTIONAL SYNCTEX ANIMATIONS
+   -------------------------------------------------------------------------- */
+@keyframes synctex-flash {
+  0% {
+    background-color: color-mix(in srgb, var(--primary, #2563eb) 28%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--primary, #2563eb) 65%, transparent);
+    outline-offset: 3px;
+  }
+  40% {
+    background-color: color-mix(in srgb, var(--primary, #2563eb) 18%, transparent);
+    outline: 2px solid color-mix(in srgb, var(--primary, #2563eb) 45%, transparent);
+    outline-offset: 2px;
+  }
+  100% {
+    background-color: transparent;
+    outline: 2px solid transparent;
+    outline-offset: 0px;
+  }
+}
+
+.synctex-highlight-pulse {
+  animation: synctex-flash 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 6px;
+}
+
+@keyframes synctex-error-flash {
+  0% {
+    background-color: rgba(239, 68, 68, 0.35);
+    outline: 2px solid rgba(239, 68, 68, 0.7);
+    outline-offset: 3px;
+  }
+  100% {
+    background-color: transparent;
+    outline: 2px solid transparent;
+    outline-offset: 0px;
+  }
+}
+
+.synctex-highlight-error {
+  animation: synctex-error-flash 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   PDF CANVAS SYNCTEX VISUAL HIGHLIGHT BOX
+   -------------------------------------------------------------------------- */
+@keyframes synctex-pdf-box-fade {
+  0% {
+    opacity: 0;
+    transform: translate(0, -50%) scale(0.985);
+  }
+  8% {
+    opacity: 1;
+    transform: translate(0, -50%) scale(1);
+  }
+  65% {
+    opacity: 1;
+    transform: translate(0, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, -50%) scale(1);
+  }
+}
+
+.synctex-pdf-highlight-box {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  transform: translate(0, -50%);
+  border-radius: 4px;
+  border: 2px solid #eab308;
+  background: rgba(234, 179, 8, 0.22);
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.42), inset 0 0 6px rgba(234, 179, 8, 0.18);
+  animation: synctex-pdf-box-fade 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.dark .synctex-pdf-highlight-box {
+  border-color: #facc15;
+  background: rgba(250, 204, 21, 0.28);
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.5), inset 0 0 8px rgba(250, 204, 21, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .synctex-pdf-highlight-box {
+    animation: none;
+    opacity: 1;
+    transition: opacity 0.5s ease-out;
+  }
+}
+
+/* In-document PDF Search Text Layer Highlights */
+.flux-pdf-highlight {
+  background-color: rgba(254, 240, 138, 0.75) !important;
+  color: inherit !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.45);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dark .flux-pdf-highlight {
+  background-color: rgba(234, 179, 8, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.5);
+}
+
+.flux-pdf-highlight-current {
+  background-color: rgba(245, 158, 11, 0.95) !important;
+  color: #000000 !important;
+  font-weight: 600;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px #d97706, 0 0 10px rgba(245, 158, 11, 0.75) !important;
+  z-index: 5;
+  position: relative;
+}
+
+.dark .flux-pdf-highlight-current {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 2px #fbbf24, 0 0 12px rgba(251, 191, 36, 0.85) !important;
+}
+
+/* ── Realtime CodeMirror Remote Collaboration Cursors & Awareness ── */
+@keyframes cm-ycaret-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.96);
+  }
+  to {
+    opacity: 0.95;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes cm-ycaret-inactivity-fade {
+  0%, 75% {
+    opacity: 0.95;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(2px);
+    pointer-events: none;
+  }
+}
+
+.cm-ySelection {
+  opacity: 0.25;
+  border-radius: 2px;
+  transition: background-color 0.15s ease-out;
+}
+
+.cm-ySelectionCaret {
+  position: relative;
+  border-left: 2px solid;
+  margin-left: -1px;
+  margin-right: -1px;
+  transition: border-color 0.15s ease-out, transform 0.1s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.cm-ySelectionCaretDot {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+}
+
+.cm-ySelectionCaretInfo {
+  position: absolute;
+  top: -18px;
+  left: -2px;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: #ffffff;
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.95;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation: cm-ycaret-in 0.2s cubic-bezier(0.16, 1, 0.3, 1), cm-ycaret-inactivity-fade 3.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.2s ease-in-out, transform 0.15s ease-in-out;
+  z-index: 10;
+}
+
+.cm-ySelectionCaret:hover .cm-ySelectionCaretInfo {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
+  animation: none !important;
+}
+
+/* ── SyncTeX Reverse Jump & Diagnostic Error Line Pulse ── */
+@keyframes cm-synctex-pulse {
+  0% {
+    background-color: hsl(var(--warning) / 0.40);
+    border-left: 1px solid hsl(var(--warning));
+    box-shadow: inset 0 0 0 1px hsl(var(--warning) / 0.25), 0 0 10px hsl(var(--warning) / 0.2);
+  }
+  25% {
+    background-color: hsl(var(--warning) / 0.30);
+    border-left: 1px solid hsl(var(--warning));
+    box-shadow: inset 0 0 0 1px hsl(var(--warning) / 0.15);
+  }
+  65% {
+    background-color: hsl(var(--warning) / 0.15);
+    border-left: 1px solid hsl(var(--warning) / 0.8);
+    box-shadow: none;
+  }
+  100% {
+    background-color: transparent;
+    border-left: 1px solid transparent;
+    box-shadow: none;
+  }
+}
+
+@keyframes cm-error-pulse {
+  0% {
+    background-color: hsl(var(--destructive) / 0.30);
+    border-left: 1px solid hsl(var(--destructive));
+    box-shadow: inset 0 0 0 1px hsl(var(--destructive) / 0.2);
+  }
+  40% {
+    background-color: hsl(var(--destructive) / 0.20);
+    border-left: 1px solid hsl(var(--destructive));
+  }
+  100% {
+    background-color: hsl(var(--destructive) / 0.12);
+    border-left: 1px solid hsl(var(--destructive));
+  }
+}
+
+.cm-synctex-flash {
+  position: relative !important;
+  animation: cm-synctex-pulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  border-radius: 2px !important;
+  transition: background-color 0.3s ease-out !important;
+}
+
+.cm-error-line {
+  position: relative !important;
+  animation: cm-error-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  border-radius: 2px !important;
+}

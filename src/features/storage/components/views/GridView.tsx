@@ -91,11 +91,10 @@ export const GridView = React.memo(function GridView({
                   <motion.div
                     key={folder.id}
                     id={`storage-item-${folder.id}`}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } }}
+                    transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
                     {...createFolderDropHandlers(folder, isReadOnly || isTrash, onDropOnFolder, setDragOverFolderId)}
                     onClick={(e: React.MouseEvent) => {
                       if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
@@ -210,11 +209,10 @@ export const GridView = React.memo(function GridView({
                   <motion.div
                     key={file.id}
                     id={`storage-item-${file.id}`}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
+                    initial={{ opacity: 0, scale: 0.98 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
-                    transition={{ duration: 0.2 }}
+                    exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } }}
+                    transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
                     draggable={!isReadOnly && !isTrash && !!onDragStartFile}
                     onDragStart={(e: unknown) => {
                       if (!isReadOnly && !isTrash && onDragStartFile) {

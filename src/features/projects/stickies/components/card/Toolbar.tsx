@@ -6,7 +6,7 @@ import React from 'react';
 import type { StickiesEditorHandle } from './Content';
 import { ToolbarBtn } from '../ui/ToolbarBtn';
 import ColorModal from '../modals/ColorModal';
-import DeleteModal from '../modals/DeleteModal';
+import { ConfirmDeleteDialog } from '@/shared/components/ui/confirm-delete-dialog';
 
 interface ToolbarProps {
   sticky: Sticky;
@@ -73,9 +73,13 @@ const Toolbar = React.memo(function Toolbar({
       </ToolbarBtn>
 
       {isDeleteOpen && (
-        <DeleteModal
+        <ConfirmDeleteDialog
           open={isDeleteOpen}
-          onCancel={() => onActiveModalChange(null)}
+          onOpenChange={(open) => !open && onActiveModalChange(null)}
+          title="Delete sticky"
+          description="Are you sure you want to delete this sticky? This action cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
           onConfirm={() => {
             onActiveModalChange(null);
             onDelete(sticky.id || '');

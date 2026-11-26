@@ -1,0 +1,239 @@
+/* --------------------------------------------------------------------------
+   SONNER TOAST PRECISION STYLING
+   Plane.so (@plane/propel) Toast Design Tokens & Flat Elevation Model
+   -------------------------------------------------------------------------- */
+
+[data-sonner-toaster],
+[data-sonner-toaster] *,
+[data-height-wrapper] {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
+  transition-property: transform, opacity !important;
+}
+
+[data-sonner-toaster] {
+  position: fixed !important;
+  right: 16px !important;
+  bottom: 16px !important;
+  left: auto !important;
+  top: auto !important;
+  width: 350px !important;
+  max-width: calc(100vw - 32px) !important;
+  box-sizing: border-box !important;
+  z-index: var(--z-toast, 100) !important;
+  --normal-bg: var(--background);
+  --normal-border: var(--border);
+  --normal-text: var(--foreground);
+  --toast-icon-margin-start: 0px !important;
+  --toast-icon-margin-end: 0px !important;
+  --toast-svg-margin-start: 0px !important;
+  --toast-svg-margin-end: 0px !important;
+  --toast-close-button-start: unset !important;
+  --toast-close-button-end: 10px !important;
+  --toast-close-button-transform: none !important;
+}
+
+[data-sonner-toaster][data-x-position="right"] {
+  right: 16px !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: 16px !important;
+  top: auto !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  font-family: var(--font-sans) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--shadow-raised-200) !important;
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  padding: 12px 32px 12px 14px !important;
+  min-height: 42px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  position: relative !important;
+  box-sizing: border-box !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease, box-shadow 0.2s ease !important;
+  transition-property: transform, opacity, box-shadow !important;
+}
+
+/* Left status icon container: locked to line 1 of title */
+[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  margin: 0 !important;
+  margin-top: 1px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-icon] svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+
+/* Content typography */
+[data-sonner-toaster] [data-sonner-toast] [data-content] {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: var(--foreground) !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  line-height: 18px !important;
+  letter-spacing: -0.011em !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Close button - pinned to line 1 on the top right */
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 12px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  border: none !important;
+  border-radius: 4px !important;
+  width: 18px !important;
+  height: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease !important;
+  transition-property: opacity, background, color !important;
+  z-index: 10 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast]:hover [data-close-button] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] svg {
+  width: 12px !important;
+  height: 12px !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Action and Cancel Buttons inside Toast */
+[data-sonner-toaster] [data-sonner-toast] [data-button] {
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  height: 24px !important;
+  padding: 0 9px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, opacity 0.15s ease !important;
+  transition-property: background, opacity !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  margin-top: 6px !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: var(--primary-hover) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel] {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
+  background: var(--layer-transparent-hover) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-raised-200) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-title] {
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action] {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-action]:hover {
+  background: var(--primary-hover) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-cancel] {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark [data-sonner-toaster] [data-sonner-toast] [data-cancel]:hover {
+  background: var(--layer-transparent-hover) !important;
+  color: var(--foreground) !important;
+}

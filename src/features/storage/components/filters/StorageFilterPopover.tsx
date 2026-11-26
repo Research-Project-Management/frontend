@@ -18,7 +18,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
 import { Checkbox } from '@/shared/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import {
   useStorageFilterStore,
@@ -65,32 +65,30 @@ export function StorageFilterPopover() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                  'relative size-8 rounded-md bg-transparent border border-border hover:bg-muted cursor-pointer outline-none transition-colors shrink-0',
-                  isActive &&
-                    'bg-muted border-primary text-primary hover:bg-muted hover:text-primary'
-                )}
-                aria-label="Filter & sort"
-              >
-                <ListFilter className="size-4 shrink-0" strokeWidth={1.5} />
-                {isActive && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
-                )}
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={6} className="text-xs">
-            Filter & sort {activeCount > 0 ? `(${activeCount})` : ''}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                'relative size-8 rounded-md bg-transparent border border-border hover:bg-muted cursor-pointer outline-none transition-colors shrink-0',
+                isActive &&
+                  'bg-muted border-primary text-primary hover:bg-muted hover:text-primary'
+              )}
+              aria-label="Filter & sort"
+            >
+              <ListFilter className="size-4 shrink-0" strokeWidth={1.5} />
+              {isActive && (
+                <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
+              )}
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6} className="text-xs">
+          Filter & sort {activeCount > 0 ? `(${activeCount})` : ''}
+        </TooltipContent>
+      </Tooltip>
 
       <PopoverContent
         align="end"

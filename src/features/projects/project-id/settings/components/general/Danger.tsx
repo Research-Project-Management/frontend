@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/shared/components/ui/button';
-import { DeleteModal } from '@/features/settings/components/labels/DeleteModal';
+import { ConfirmDeleteDialog } from '@/shared/components/ui/confirm-delete-dialog';
 
 interface GeneralDangerProps {
   projectName: string;
@@ -68,9 +68,9 @@ export function GeneralDanger({
 
       {/* Archive Modal */}
       {archiveOpen && (
-        <DeleteModal
-          isOpen={archiveOpen}
-          onClose={() => setArchiveOpen(false)}
+        <ConfirmDeleteDialog
+          open={archiveOpen}
+          onOpenChange={(open) => !open && setArchiveOpen(false)}
           onConfirm={() => {
             onToggleArchive();
             setArchiveOpen(false);
@@ -81,25 +81,25 @@ export function GeneralDanger({
               ? `Are you sure you want to restore "${projectName}" back to the active sidebar?`
               : `Are you sure you want to archive "${projectName}"? It will be unlisted from your active side navigation.`
           }
-          confirmText={isArchived ? 'Restore' : 'Archive'}
-          cancelText="Cancel"
+          confirmLabel={isArchived ? 'Restore' : 'Archive'}
+          cancelLabel="Cancel"
         />
       )}
 
       {/* Delete Modal */}
       {deleteOpen && (
-        <DeleteModal
-          isOpen={deleteOpen}
-          onClose={() => setDeleteOpen(false)}
+        <ConfirmDeleteDialog
+          open={deleteOpen}
+          onOpenChange={(open) => !open && setDeleteOpen(false)}
           onConfirm={() => {
             onDeleteProject();
             setDeleteOpen(false);
           }}
           title="Delete project"
           description={`Are you absolutely sure you want to delete "${projectName}"? This action cannot be undone and will permanently remove all work items and resources.`}
-          confirmText="Delete permanently"
-          cancelText="Cancel"
-          loading={isDeleting}
+          confirmLabel="Delete permanently"
+          cancelLabel="Cancel"
+          isLoading={isDeleting}
         />
       )}
     </div>

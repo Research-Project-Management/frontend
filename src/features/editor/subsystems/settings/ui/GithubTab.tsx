@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * GithubTab.tsx
@@ -162,7 +162,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
             <GitHubIcon className="size-5 text-foreground" />
           </div>
           <div>
-            <h4 className="text-[13px] font-medium text-foreground">GitHub</h4>
+            <h4 className="text-13 font-medium text-foreground">GitHub</h4>
             <p className="text-xs text-muted-foreground mt-0.5">
               Connect a repository to push and pull changes.
             </p>
@@ -211,12 +211,12 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
                   href={`https://github.com/${linkedRepo.repoFullName}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[13px] font-medium text-foreground hover:underline flex items-center gap-1 truncate"
+                  className="text-13 font-medium text-foreground hover:underline flex items-center gap-1 truncate"
                 >
                   <span className="truncate">{linkedRepo.repoFullName}</span>
                   <ExternalLink className="size-3 shrink-0" />
                 </a>
-                <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                <span className="font-mono text-11 px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                   {linkedRepo.branch || 'main'}
                 </span>
               </div>
@@ -242,7 +242,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
               className="p-3.5 rounded-lg border border-border bg-card/40 flex flex-col justify-between space-y-3"
             >
               <div className="space-y-2">
-                <div className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                <div className="flex items-center gap-1.5 text-13 font-medium text-foreground">
                   <Upload className="size-3.5" />
                   <span>Push</span>
                 </div>
@@ -253,7 +253,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
                   className="h-8 text-xs bg-background"
                 />
                 {pushErrors.commitMessage && (
-                  <p className="text-[11px] text-destructive">{pushErrors.commitMessage.message}</p>
+                  <p className="text-11 text-destructive">{pushErrors.commitMessage.message}</p>
                 )}
               </div>
               <Button
@@ -273,7 +273,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
 
             <div className="p-3.5 rounded-lg border border-border bg-card/40 flex flex-col justify-between space-y-3">
               <div>
-                <div className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                <div className="flex items-center gap-1.5 text-13 font-medium text-foreground">
                   <Download className="size-3.5" />
                   <span>Pull</span>
                 </div>
@@ -304,7 +304,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
       {(!isLinked || showChangeRepo) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-[13px] font-medium text-foreground">
+            <h4 className="text-13 font-medium text-foreground">
               {isCreatingNew ? 'New repository' : 'Link repository'}
             </h4>
             <Button
@@ -347,7 +347,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
                   </SelectContent>
                 </Select>
                 {linkErrors.selectedRepo && (
-                  <p className="text-[11px] text-destructive">{linkErrors.selectedRepo.message}</p>
+                  <p className="text-11 text-destructive">{linkErrors.selectedRepo.message}</p>
                 )}
               </div>
 
@@ -360,7 +360,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
                   className="h-8 text-xs bg-background"
                 />
                 {linkErrors.targetBranch && (
-                  <p className="text-[11px] text-destructive">{linkErrors.targetBranch.message}</p>
+                  <p className="text-11 text-destructive">{linkErrors.targetBranch.message}</p>
                 )}
               </div>
 
@@ -401,7 +401,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
                   className="h-8 text-xs bg-background"
                 />
                 {createErrors.newRepoName && (
-                  <p className="text-[11px] text-destructive">
+                  <p className="text-11 text-destructive">
                     {createErrors.newRepoName.message}
                   </p>
                 )}

@@ -6,7 +6,7 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-import { libraryIllustrationStyles, StarredStackIllustration, TrashStackIllustration, RetractedStackIllustration, UnfiledStackIllustration, PublicationsStackIllustration, CollectionStackIllustration, AllReferencesStackIllustration, SearchStackIllustration, FeedStackIllustration, FeedAllReadIllustration, RecentlyReadVerticalStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
+import { StarredStackIllustration, TrashStackIllustration, RetractedStackIllustration, UnfiledStackIllustration, PublicationsStackIllustration, CollectionStackIllustration, AllReferencesStackIllustration, SearchStackIllustration, FeedStackIllustration, FeedAllReadIllustration, RecentlyReadVerticalStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
 
 export interface ItemTableHeaderProps {
   columns: Record<string, boolean>;
@@ -267,7 +267,6 @@ export function RecentlyReadEmptyState() {
       data-testid="recently-read-empty"
       className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none"
     >
-      <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
       <div className="plane-library-illustration mb-6 flex items-center justify-center">
         <RecentlyReadVerticalStackIllustration />
@@ -479,7 +478,6 @@ function DefaultLibraryEmptyState({
         className,
       )}
     >
-      <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
       <IllustrationComponent className="plane-illustration mb-6 shrink-0" />
 

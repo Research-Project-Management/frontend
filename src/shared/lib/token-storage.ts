@@ -1,5 +1,6 @@
 import { logger } from '@/shared/lib/logger';
 import { isTokenValid } from '@/shared/utils/auth-token.util';
+import { STORAGE_KEYS as APP_STORAGE_KEYS } from '@/config/storage-keys';
 
 /**
  * Centralized authentication token storage adapter and lifecycle manager.
@@ -111,7 +112,7 @@ export class LocalStorageTokenAdapter implements TokenStorageAdapter {
     if (!this.isBrowser()) return;
     try {
       window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-      window.localStorage.removeItem('flux_cached_user');
+      window.localStorage.removeItem(APP_STORAGE_KEYS.CACHED_USER);
     } catch {
       // Ignore private browsing errors
     }
@@ -141,7 +142,7 @@ export class InMemoryTokenAdapter implements TokenStorageAdapter {
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
-        window.localStorage.removeItem('flux_cached_user');
+        window.localStorage.removeItem(APP_STORAGE_KEYS.CACHED_USER);
       } catch (err) {
         logger.debug('[TokenStorage] Error removing storage keys', { err });
       }

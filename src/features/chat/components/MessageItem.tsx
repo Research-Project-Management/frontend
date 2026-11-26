@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { Reply, Smile, FileText, Download } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { cn, formatBytes } from '@/shared/lib/utils';
 import { ChatMessage, ChatAttachment } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import {
@@ -122,11 +122,7 @@ export const MessageItem = memo(function MessageItem({
                 att.mimeType?.startsWith('image/') ||
                 /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(att.url || att.name);
 
-              const formattedSize = att.size
-                ? att.size > 1024 * 1024
-                  ? `${(att.size / (1024 * 1024)).toFixed(1)} MB`
-                  : `${Math.round(att.size / 1024)} KB`
-                : null;
+              const formattedSize = att.size ? formatBytes(att.size) : null;
 
               if (isImg) {
                 return (

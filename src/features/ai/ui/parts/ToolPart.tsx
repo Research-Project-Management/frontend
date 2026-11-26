@@ -75,7 +75,7 @@ export function ToolPart({ part }: { part: ToolPartData }) {
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="text-[11px] text-muted-foreground hover:text-foreground px-1 py-0.5 rounded hover:bg-muted/60 transition-colors cursor-pointer"
+              className="text-11 text-muted-foreground hover:text-foreground px-1 py-0.5 rounded hover:bg-muted/60 transition-colors cursor-pointer"
             >
               {open ? 'Hide' : 'Details'}
             </button>

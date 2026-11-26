@@ -1,12 +1,8 @@
-'use client';
-
-import { useEffect } from 'react';
+import type { Metadata } from 'next';
 import { DetachedPdfViewer } from '@/features/editor/subsystems/compiler/ui/pdf/DetachedViewer';
 
-export default function DetachedPdfPreviewPage() {
-  useEffect(() => {
-    document.title = 'PDF Preview · Flux';
-  }, []);
+export const metadata: Metadata = { title: 'PDF Preview' };
 
+export default function DetachedPdfPreviewPage() {
   return <DetachedPdfViewer />;
 }

@@ -47,7 +47,7 @@ export function VersionLabels({
           {labels.map((lbl) => (
             <span
               key={lbl.id || lbl.label}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium bg-muted text-foreground border border-border rounded-sm"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 text-10 font-medium bg-muted text-foreground border border-border rounded-sm"
             >
               <Tag className="size-2.5" />
               <span>{lbl.label}</span>
@@ -77,7 +77,7 @@ export function VersionLabels({
             onChange={(e) => setLabelText(e.target.value)}
             aria-label="Label name"
             placeholder="Label name..."
-            className="h-6 text-[11px] px-2"
+            className="h-6 text-11 px-2"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -89,7 +89,7 @@ export function VersionLabels({
           />
           <Button
             size="sm"
-            className="h-6 px-2 text-[10px]"
+            className="h-6 px-2 text-10"
             disabled={!labelText.trim() || isSubmitting}
             onClick={handleSubmit}
           >
@@ -98,7 +98,7 @@ export function VersionLabels({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-1.5 text-[10px]"
+            className="h-6 px-1.5 text-10"
             onClick={handleCancel}
           >
             <X className="size-3" />

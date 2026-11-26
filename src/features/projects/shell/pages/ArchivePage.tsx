@@ -14,8 +14,8 @@ import {
   searchArchivedProjects,
 } from '../utils/archive-page.util';
 import { ArchiveCard } from '../components/archived/ArchiveCard';
-import { DeletePermanentModal } from '../components/archived/DeletePermanentModal';
-import { ArchivedEmptyState } from '../components/archived/ArchivedEmptyState';
+import { ConfirmDeleteDialog } from '@/shared/components/ui/confirm-delete-dialog';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import type { Project } from '../types/project.types';
 
 export function ArchivePage() {
@@ -130,16 +130,34 @@ export function ArchivePage() {
             ))}
           </div>
         ) : (
-          <ArchivedEmptyState />
+          <div className="h-full min-h-[340px] flex items-center justify-center">
+            <PlaneEmptyState
+              variant="archive"
+              title="No archived projects yet"
+              description="Archived projects move out of the active projects list but aren't deleted. You'll find them here."
+            />
+          </div>
         )}
       </main>
 
-      {Boolean(deleteConfirmProject) && (
-        <DeletePermanentModal
-          project={deleteConfirmProject}
-          onClose={() => setDeleteConfirmProject(null)}
+      {deleteConfirmProject && (
+        <ConfirmDeleteDialog
+          open={Boolean(deleteConfirmProject)}
+          onOpenChange={(open) => !open && setDeleteConfirmProject(null)}
+          title="Permanently delete project"
+          description={
+            <>
+              Are you sure you want to permanently delete{' '}
+              <strong className="text-foreground font-semibold">{deleteConfirmProject.name}</strong>? All
+              associated work items, notes, and storage files will be lost forever.
+              This action cannot be undone.
+            </>
+          }
           onConfirm={handleDeletePermanent}
-          isDeleting={deleteProjectMutation.isPending}
+          isLoading={deleteProjectMutation.isPending}
+          confirmLabel="Delete Permanently"
+          loadingLabel="Deleting..."
+          cancelLabel="Cancel"
         />
       )}
     </div>

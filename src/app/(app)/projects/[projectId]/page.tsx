@@ -1,8 +1,11 @@
-import type { Metadata } from 'next';
-import { WorkItemPage } from '@/features/projects/project-id/work-items/pages/WorkItemPage';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Work Items' };
-
-export default function ProjectRootPage() {
-  return <WorkItemPage />;
+interface ProjectRootPageProps {
+  params: Promise<{ projectId: string }>;
 }
+
+export default async function ProjectRootPage({ params }: ProjectRootPageProps) {
+  const { projectId } = await params;
+  redirect(`/projects/${encodeURIComponent(projectId)}/work-items`);
+}
+

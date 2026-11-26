@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * UnsyncedEditRecoveryDialog
@@ -93,7 +93,7 @@ export function UnsyncedEditRecoveryDialog({
             </Button>
             {showDiff && (
               <pre
-                className="max-h-64 overflow-auto rounded-md border border-border bg-muted/30 p-2 font-mono text-[11px] leading-relaxed"
+                className="max-h-64 overflow-auto rounded-md border border-border bg-muted/30 p-2 font-mono text-11 leading-relaxed"
                 data-testid="unsynced-edit-diff-preview"
               >
                 {summary.preview.map((line, idx) => (

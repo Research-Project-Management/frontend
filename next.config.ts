@@ -192,7 +192,7 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     const excludedPrefixes =
-      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|chat|friends|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages';
+      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|chat|friends|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages|experiments|drafts|home';
     return [
       {
         source: `/:workspaceId((?!${excludedPrefixes}).+)/projects/:projectId/:path*`,
@@ -317,32 +317,12 @@ const nextConfig: NextConfig = {
         destination: `${backendUrl}/api/:path*`,
       },
       {
-        source: '/auth/:path*',
+        source: '/auth/:path((?!callback$).*)*',
         destination: `${backendUrl}/auth/:path*`,
       },
       {
         source: '/socket.io/:path*',
         destination: `${realtimeUrl}/socket.io/:path*`,
-      },
-      {
-        source: '/notifications',
-        destination: `${backendUrl}/notifications`,
-      },
-      {
-        source: '/notifications/:path*',
-        destination: `${backendUrl}/notifications/:path*`,
-      },
-      {
-        source: '/chat/:path+',
-        destination: `${backendUrl}/api/chat/:path+`,
-      },
-      {
-        source: '/friends',
-        destination: `${backendUrl}/api/friends`,
-      },
-      {
-        source: '/friends/:path*',
-        destination: `${backendUrl}/api/friends/:path*`,
       },
       {
         source: '/:path*/pdf.worker.mjs',

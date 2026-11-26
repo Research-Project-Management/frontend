@@ -124,7 +124,7 @@ export function RangeDatePicker({
         side="bottom"
         sideOffset={6}
         collisionPadding={16}
-        className="w-[520px] p-0 rounded-md border border-border overflow-hidden flex flex-col z-100 bg-popover shadow-overlay"
+        className="w-[520px] max-w-[calc(100vw-2rem)] p-0 rounded-md border border-border overflow-x-auto overflow-y-hidden flex flex-col z-100 bg-popover shadow-overlay"
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0 bg-popover">
           <div className="flex items-center gap-2">

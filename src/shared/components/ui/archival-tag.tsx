@@ -49,7 +49,7 @@ export function ArchivalTag({
   };
 
   const tagClasses = cn(
-    'inline-flex items-center font-mono text-[11px] leading-tight select-all',
+    'inline-flex items-center font-mono text-11 leading-tight select-all',
     'text-foreground tracking-normal',
     borderless
       ? 'bg-transparent border-0 p-0'

@@ -355,6 +355,7 @@ export function useFileUpload({
             const importRes = await pagesService.export.importProjectZip(
               targetZipId,
               zipItem.file,
+              { pageId: parentPageId },
             );
             const totalImported =
               (importRes?.totalDocs ?? 0) + (importRes?.totalFiles ?? 0) ||

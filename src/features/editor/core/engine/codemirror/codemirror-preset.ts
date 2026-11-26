@@ -39,7 +39,7 @@ import { latexMathHoverTooltip } from '@/features/editor/core/engine/extensions/
 import { latexCitationHoverTooltip } from '@/features/editor/subsystems/citation';
 import { createInlineDiffExtension } from '@/features/editor/core/engine/extensions/inline-diff';
 import { createLatexFoldExtension } from '@/features/editor/core/engine/extensions/latex-folding';
-import { createLatexSpellingExtension } from '@/features/editor/core/engine/extensions/latex-spelling';
+import { createSpellingExtension } from '@/features/editor/subsystems/spelling/extensions/extension';
 import { createSelectionGutterActionsExtension } from '@/features/editor/core/engine/extensions/selection-gutter-actions';
 import { getThemeExtension } from './editor-themes';
 import {
@@ -260,7 +260,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     ),
     compartments.spellCheck.of(
       enableSpellCheck
-        ? createLatexSpellingExtension({ projectId, language: spellCheckLanguage, enabled: true })
+        ? createSpellingExtension({ projectId, language: spellCheckLanguage, enabled: true })
         : [],
     ),
     compartments.smartPaste.of(
@@ -391,7 +391,7 @@ export function computeCompartmentReconfigEffects(
     effects.push(
       compartments.spellCheck.reconfigure(
         next.spellCheck
-          ? createLatexSpellingExtension({
+          ? createSpellingExtension({
               projectId: next.projectId,
               language: next.spellCheckLanguage,
               enabled: true,

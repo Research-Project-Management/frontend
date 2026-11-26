@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 
 export type Theme = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
+export type UiScale = 'compact' | 'default' | 'comfortable';
 
 export const BRAND_COLOR_PRESETS = {
   blue: { label: 'Precision Blue', hue: 265, colorHex: '#2563eb' },
@@ -12,6 +13,12 @@ export const BRAND_COLOR_PRESETS = {
   orange: { label: 'Tangerine Orange', hue: 45, colorHex: '#ea580c' },
   rose: { label: 'Coral Rose', hue: 15, colorHex: '#e11d48' },
   amber: { label: 'Warm Amber', hue: 75, colorHex: '#d97706' },
+} as const;
+
+export const UI_SCALE_PRESETS = {
+  compact: { label: 'Compact (92%)', fontSize: '92%' },
+  default: { label: 'Default (100%)', fontSize: '100%' },
+  comfortable: { label: 'Comfortable (108%)', fontSize: '108%' },
 } as const;
 
 export type BrandPresetKey = keyof typeof BRAND_COLOR_PRESETS;
@@ -26,10 +33,13 @@ interface ThemeContextValue {
   setBrandHue: (hue: number) => void;
   brandPreset: BrandPresetKey | 'custom';
   setBrandPreset: (preset: BrandPresetKey) => void;
+  uiScale: UiScale;
+  setUiScale: (scale: UiScale) => void;
 }
 
 const STORAGE_KEY = 'flux-theme';
 const BRAND_HUE_KEY = 'flux-brand-hue';
+const UI_SCALE_KEY = 'flux-ui-scale';
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
@@ -47,14 +57,20 @@ function resolvePresetFromHue(hue: number): BrandPresetKey | 'custom' {
   return 'custom';
 }
 
+function isUiScale(val: string | null): val is UiScale {
+  return val === 'compact' || val === 'default' || val === 'comfortable';
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
   defaultBrandHue = DEFAULT_BRAND_HUE,
+  defaultUiScale = 'default',
 }: {
   children: React.ReactNode;
   defaultTheme?: Theme;
   defaultBrandHue?: number;
+  defaultUiScale?: UiScale;
 }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return defaultTheme;
@@ -83,6 +99,19 @@ export function ThemeProvider({
       // localStorage may be unavailable
     }
     return defaultBrandHue;
+  });
+
+  const [uiScale, setUiScaleState] = useState<UiScale>(() => {
+    if (typeof window === 'undefined') return defaultUiScale;
+    try {
+      const stored = localStorage.getItem(UI_SCALE_KEY);
+      if (isUiScale(stored)) {
+        return stored;
+      }
+    } catch {
+      // localStorage may be unavailable
+    }
+    return defaultUiScale;
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
@@ -122,7 +151,18 @@ export function ThemeProvider({
     root.style.setProperty('--brand-hue', `${brandHue}`);
   }, [brandHue]);
 
-  // Cross-tab synchronization for theme and brandHue via StorageEvent
+  // Apply root font-size percentage for proportional rem scaling
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    if (uiScale === 'default') {
+      root.style.removeProperty('font-size');
+    } else {
+      root.style.fontSize = UI_SCALE_PRESETS[uiScale].fontSize;
+    }
+  }, [uiScale]);
+
+  // Cross-tab synchronization for theme, brandHue, and uiScale via StorageEvent
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleStorage = (e: StorageEvent) => {
@@ -137,6 +177,9 @@ export function ThemeProvider({
           const validHue = Math.round(parsed);
           setBrandHueState((prev) => (prev === validHue ? prev : validHue));
         }
+      } else if (e.key === UI_SCALE_KEY && isUiScale(e.newValue)) {
+        const nextScale = e.newValue;
+        setUiScaleState((prev) => (prev === nextScale ? prev : nextScale));
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -172,6 +215,15 @@ export function ThemeProvider({
     }
   }, [setBrandHue]);
 
+  const setUiScale = useCallback((nextScale: UiScale) => {
+    setUiScaleState((prev) => (prev === nextScale ? prev : nextScale));
+    try {
+      localStorage.setItem(UI_SCALE_KEY, nextScale);
+    } catch {
+      // Storage access error handling
+    }
+  }, []);
+
   const brandPreset = resolvePresetFromHue(brandHue);
 
   const contextValue = useMemo(
@@ -183,8 +235,10 @@ export function ThemeProvider({
       setBrandHue,
       brandPreset,
       setBrandPreset,
+      uiScale,
+      setUiScale,
     }),
-    [theme, resolvedTheme, setTheme, brandHue, setBrandHue, brandPreset, setBrandPreset],
+    [theme, resolvedTheme, setTheme, brandHue, setBrandHue, brandPreset, setBrandPreset, uiScale, setUiScale],
   );
 
   return (

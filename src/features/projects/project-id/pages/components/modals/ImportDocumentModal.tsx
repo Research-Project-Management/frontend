@@ -19,7 +19,8 @@ import {
   DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { cn } from '@/shared/lib/utils';
+import { cn, formatBytes } from '@/shared/lib/utils';
+import { UPLOAD_LIMITS } from '@/config/limits';
 import { pagesService } from '@/features/editor/core';
 import { pageKeys } from '../../hooks/use-page';
 
@@ -28,15 +29,6 @@ interface ImportDocumentModalProps {
   setIsOpen: (open: boolean) => void;
   projectId: string;
   initialFormat?: 'docx' | 'md';
-}
-
-function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
 export function ImportDocumentModal({
@@ -79,7 +71,7 @@ export function ImportDocumentModal({
       return;
     }
 
-    if (file.size > 25 * 1024 * 1024) {
+    if (file.size > UPLOAD_LIMITS.DOCUMENT_IMPORT_BYTES) {
       toast.error('File size exceeds the 25 MB limit.');
       return;
     }
@@ -117,7 +109,7 @@ export function ImportDocumentModal({
       const result = await pagesService.export.convertDocument(
         projectId,
         selectedFile,
-        format,
+        { format },
       );
 
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });

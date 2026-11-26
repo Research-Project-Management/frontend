@@ -246,7 +246,7 @@ export function ProjectArchivesPage() {
           filteredWorkItems.length === 0 ? (
             <div className="h-full min-h-[340px] flex items-center justify-center">
               <PlaneEmptyState
-                variant="review"
+                variant={searchQuery ? 'search' : 'archive'}
                 title="No archived work items"
                 description={
                   searchQuery
@@ -348,7 +348,7 @@ export function ProjectArchivesPage() {
         ) : filteredPages.length === 0 ? (
           <div className="h-full min-h-[340px] flex items-center justify-center">
             <PlaneEmptyState
-              variant="document"
+              variant={searchQuery ? 'search' : 'archive'}
               title="No archived pages"
               description={
                 searchQuery

@@ -113,7 +113,7 @@ export function CompilerLogsFilterTabs({
             onClick={onToggleFilterSuppressed}
             data-testid="toggle-suppressed-warnings-btn"
             className={cn(
-              'px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer border flex items-center gap-1.5 relative after:absolute after:-inset-1.5 after:content-[\'\']',
+              'px-2 py-0.5 rounded text-11 font-medium transition-colors cursor-pointer border flex items-center gap-1.5 relative after:absolute after:-inset-1.5 after:content-[\'\']',
               filterSuppressed
                 ? 'bg-muted/70 text-muted-foreground border-border hover:bg-muted'
                 : 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/20'

@@ -41,7 +41,7 @@ export const DiffHunkHeader = React.memo(function DiffHunkHeader({
   return (
     <div
       className={cn(
-        'bg-muted/70 px-3 py-1 text-muted-foreground font-medium text-[11px] flex items-center justify-between select-none border-y first:border-t-0',
+        'bg-muted/70 px-3 py-1 text-muted-foreground font-medium text-11 flex items-center justify-between select-none border-y first:border-t-0',
         className,
       )}
     >
@@ -95,7 +95,7 @@ export const UnifiedDiffView = React.memo(function UnifiedDiffView({
                   )}
                 >
                   {/* Line Numbers */}
-                  <div className="flex select-none text-[10px] text-muted-foreground/60 w-16 shrink-0 justify-between pr-3 font-mono">
+                  <div className="flex select-none text-10 text-muted-foreground/60 w-16 shrink-0 justify-between pr-3 font-mono">
                     <span className="w-7 text-right">{line.oldLineNumber || ''}</span>
                     <span className="w-7 text-right">{line.newLineNumber || ''}</span>
                   </div>

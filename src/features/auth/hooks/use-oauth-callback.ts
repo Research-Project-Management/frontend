@@ -9,6 +9,7 @@ import type { AuthUser } from '../types/auth.types';
 import { apiPost, setAuthToken } from "@/shared/lib/api";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { getSafeRedirectUrl } from "@/shared/utils/auth-token.util";
+import { STORAGE_KEYS } from "@/config/storage-keys";
 
 interface OAuthExchangeResponse {
   accessToken: string;
@@ -73,9 +74,9 @@ export const useOAuthCallback = () => {
         // 4. Retrieve preserved redirect or fallback to /home
         let targetUrl = '/home';
         if (typeof window !== 'undefined') {
-          const preservedRedirect = sessionStorage.getItem('flux_oauth_redirect');
+          const preservedRedirect = sessionStorage.getItem(STORAGE_KEYS.OAUTH_REDIRECT);
           if (preservedRedirect) {
-            sessionStorage.removeItem('flux_oauth_redirect');
+            sessionStorage.removeItem(STORAGE_KEYS.OAUTH_REDIRECT);
             targetUrl = getSafeRedirectUrl(preservedRedirect, '/home');
           }
         }

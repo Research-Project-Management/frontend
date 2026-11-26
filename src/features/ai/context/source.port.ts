@@ -41,14 +41,14 @@ export interface SourceAdapter<TItem = unknown> {
   toSourceEntry(item: TItem): SourceEntry | null;
 }
 
+import { formatBytes as formatBytesGlobal } from '@/shared/utils/format';
+
 export const ACCEPTED_FILE_TYPES =
   '.pdf,.doc,.docx,.txt,.md,.csv,.xls,.xlsx,.png,.jpg,.jpeg,.json,.ts,.tsx,.js,.py';
 
 export function formatBytes(bytes?: number): string {
   if (!bytes || Number.isNaN(bytes)) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return formatBytesGlobal(bytes);
 }
 
 const IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);

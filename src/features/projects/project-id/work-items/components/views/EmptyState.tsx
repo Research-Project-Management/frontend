@@ -5,7 +5,6 @@ import { Button } from '@/shared/components/ui/button';
 import {
   BaseSlabs,
   ILLUSTRATION_COLOR_TOKEN_MAP,
-  planeIllustrationStyles,
   type TIllustrationAssetProps,
 } from '@/shared/components/ui/PlaneEmptyState';
 
@@ -261,8 +260,6 @@ export function EmptyState({
   const handleCreate = onCreateItem;
   return (
     <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200">
-      <style dangerouslySetInnerHTML={{ __html: planeIllustrationStyles }} />
-
       <div className="plane-illustration mb-6 flex items-center justify-center">
         <WorkItemVerticalStackIllustration />
       </div>

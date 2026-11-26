@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 
 const ILLUSTRATION_COLOR_TOKEN_MAP = {
   fill: {
@@ -292,55 +293,18 @@ export interface EmptyStateProps {
   className?: string;
 }
 
-const illustrationStyles = `
-  .plane-draft-illustration {
-    --illustration-fill-primary: #ffffff;
-    --illustration-fill-secondary: #f4f5f5;
-    --illustration-fill-tertiary: #eaebeb;
-    --illustration-fill-quaternary: #cfd2d3;
-    --illustration-stroke-primary: #cfd2d3;
-    --illustration-stroke-secondary: #8a9093;
-    --illustration-stroke-tertiary: #1d1f20;
-  }
-  .dark .plane-draft-illustration,
-  [data-theme='dark'] .plane-draft-illustration {
-    --illustration-fill-primary: #18181b;
-    --illustration-fill-secondary: #27272a;
-    --illustration-fill-tertiary: #3f3f46;
-    --illustration-fill-quaternary: #52525b;
-    --illustration-stroke-primary: #3f3f46;
-    --illustration-stroke-secondary: #71717a;
-    --illustration-stroke-tertiary: #e4e4e7;
-  }
-`;
-
 export const EmptyState: React.FC<EmptyStateProps> = ({ className }) => {
   return (
-    <div
-      role="region"
-      aria-label="Empty drafts state"
-      className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
-        className,
-      )}
-    >
-      <style dangerouslySetInnerHTML={{ __html: illustrationStyles }} />
-
-      {/* Official Plane.so Isometric Draft Vertical Stack Illustration */}
-      <div className="plane-draft-illustration mb-6 flex items-center justify-center">
-        <DraftVerticalStackIllustration />
-      </div>
-
-      {/* Heading matching Plane official empty state & Design System standards */}
-      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
-        Half-written work items
-      </h3>
-
-      {/* Subtitle matching Plane official copy */}
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
-        To try this out, start adding a work item and leave it mid-way or create your first draft. 😉
-      </p>
-    </div>
+    <PlaneEmptyState
+      title="Half-written work items"
+      description="To try this out, start adding a work item and leave it mid-way or create your first draft. 😉"
+      illustration={
+        <div className="plane-draft-illustration flex items-center justify-center">
+          <DraftVerticalStackIllustration />
+        </div>
+      }
+      className={cn('bg-background', className)}
+    />
   );
 };
 

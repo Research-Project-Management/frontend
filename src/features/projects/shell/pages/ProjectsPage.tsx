@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/compo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 const CreateProjectModal = dynamic(
   () => import('../components/project/CreateProjectModal').then((m) => m.CreateProjectModal),
   { ssr: false }
@@ -128,7 +129,7 @@ export function ProjectsPage() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('flux:projects-view-mode') as ViewMode | null;
+      const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS_VIEW_MODE) as ViewMode | null;
       if (saved === 'grid' || saved === 'list') {
         setViewMode(saved);
       }
@@ -145,7 +146,7 @@ export function ProjectsPage() {
   const handleSetViewMode = (mode: ViewMode) => {
     setViewMode(mode);
     try {
-      localStorage.setItem('flux:projects-view-mode', mode);
+      localStorage.setItem(STORAGE_KEYS.PROJECTS_VIEW_MODE, mode);
     } catch {
       // Fallback
     }
@@ -604,7 +605,7 @@ export function ProjectsPage() {
         {!isLoading && !isError && activeProjects.length === 0 && (
           <div className="h-full min-h-[380px] flex items-center justify-center">
             <PlaneEmptyState
-              variant="files"
+              variant="projects"
               title="No projects yet"
               description="Projects organize research work items and collaborative notes in your workspace."
               action={{

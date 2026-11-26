@@ -78,7 +78,7 @@ export default function RootLayout({
         <script
           id="flux-theme-init"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('flux-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')};}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('flux-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')};var s=localStorage.getItem('flux-ui-scale');if(s==='compact'){document.documentElement.style.fontSize='92%'}else if(s==='comfortable'){document.documentElement.style.fontSize='108%'}}catch(e){}})();`,
           }}
         />
         <Toaster />

@@ -1,9 +1,11 @@
 ﻿/**
  * unsynced-edit-diff.ts
  *
- * Lightweight O(N) line-set / prefix-suffix diff summary used by unsynced-edit recovery
+ * Line-level diff summary powered by `diff` (`diffArrays`) used by unsynced-edit recovery
  * and conflict dialogs to preview how local uncommitted text differs from the server baseline.
  */
+
+import { diffArrays } from 'diff';
 
 interface UnsyncedEditDiffLine {
   type: 'added' | 'removed';
@@ -43,47 +45,36 @@ export function computeUnsyncedEditDiffSummary(
     };
   }
 
-  const a = serverContent.split('\n');
-  const b = localContent.split('\n');
-  let start = 0;
-  while (start < a.length && start < b.length && a[start] === b[start]) start++;
-  let endA = a.length - 1;
-  let endB = b.length - 1;
-  while (endA >= start && endB >= start && a[endA] === b[endB]) {
-    endA--;
-    endB--;
-  }
-
-  const midA = a.slice(start, endA + 1);
-  const midB = b.slice(start, endB + 1);
-  const counts = new Map<string, number>();
-  for (const line of midA) counts.set(line, (counts.get(line) ?? 0) + 1);
+  const serverLines = serverContent.split('\n');
+  const localLines = localContent.split('\n');
+  const changes = diffArrays(serverLines, localLines);
 
   const preview: UnsyncedEditDiffLine[] = [];
   let addedLines = 0;
   let removedLines = 0;
+  let serverLineNum = 1;
+  let localLineNum = 1;
 
-  for (let idx = 0; idx < midB.length; idx++) {
-    const line = midB[idx];
-    const c = counts.get(line) ?? 0;
-    if (c > 0) counts.set(line, c - 1);
-    else {
-      addedLines++;
-      if (preview.length < maxPreviewLines) {
-        preview.push({ type: 'added', lineNumber: start + idx + 1, text: line });
+  for (const part of changes) {
+    if (part.added) {
+      for (const text of part.value) {
+        addedLines++;
+        if (preview.length < maxPreviewLines) {
+          preview.push({ type: 'added', lineNumber: localLineNum, text });
+        }
+        localLineNum++;
       }
-    }
-  }
-
-  for (let idx = 0; idx < midA.length; idx++) {
-    const line = midA[idx];
-    const c = counts.get(line) ?? 0;
-    if (c > 0) {
-      counts.set(line, c - 1);
-      removedLines++;
-      if (preview.length < maxPreviewLines) {
-        preview.push({ type: 'removed', lineNumber: start + idx + 1, text: line });
+    } else if (part.removed) {
+      for (const text of part.value) {
+        removedLines++;
+        if (preview.length < maxPreviewLines) {
+          preview.push({ type: 'removed', lineNumber: serverLineNum, text });
+        }
+        serverLineNum++;
       }
+    } else {
+      serverLineNum += part.value.length;
+      localLineNum += part.value.length;
     }
   }
 
@@ -92,8 +83,8 @@ export function computeUnsyncedEditDiffSummary(
     hasChanges: true,
     addedLines,
     removedLines,
-    localLineCount: b.length,
-    serverLineCount: a.length,
+    localLineCount: localLines.length,
+    serverLineCount: serverLines.length,
     charDelta: localContent.length - serverContent.length,
     preview,
     previewLines: preview,

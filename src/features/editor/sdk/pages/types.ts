@@ -245,6 +245,7 @@ export interface CompileLatexPayload {
   engine: string;
   texLiveVersion?: string;
   draft: boolean;
+  syntaxOnly?: boolean;
   useCache: boolean;
   forceClean?: boolean;
   stopOnFirstError?: boolean;
@@ -567,6 +568,27 @@ export interface ImportProjectZipResult {
   totalFolders: number;
   rootDocId?: string | null;
   rootDocPath?: string | null;
+}
+
+export interface ExportZipQuery {
+  includePdf?: boolean;
+  cleanArxiv?: boolean;
+  mode?: 'standard' | 'arxiv';
+  version?: number;
+  projectName?: string;
+  pageId?: string;
+}
+
+export interface ImportFromUrlInput {
+  url: string;
+  filename?: string;
+  pageId?: string;
+}
+
+export interface ImportFromUrlResult {
+  filename: string;
+  sizeBytes: number;
+  imported: boolean;
 }
 
 export interface RestoreProjectVersionFileResult {

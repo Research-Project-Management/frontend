@@ -3,8 +3,8 @@
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
-  yourWorkIllustrationStyles,
   YourWorkSummaryIllustration,
   YourWorkAssignedIllustration,
   YourWorkCreatedIllustration,
@@ -109,58 +109,38 @@ export function EmptyState({
   );
   const IllustrationComponent = config.illustration;
 
+  const actionNode =
+    isSearch && onClearSearch ? (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onClearSearch}
+        className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        Clear filter
+      </Button>
+    ) : !isSearch && actionText && onAction ? (
+      <Button
+        size="sm"
+        onClick={onAction}
+        className="h-7 px-3 text-12 font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
+      >
+        {actionText}
+      </Button>
+    ) : undefined;
+
   return (
-    <div
-      role="region"
-      aria-label="Empty state"
-      className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background',
-        className,
-      )}
-    >
-      <style dangerouslySetInnerHTML={{ __html: yourWorkIllustrationStyles }} />
-
-      {/* 3D Isometric Illustration */}
-      <div className="plane-your-work-illustration mb-6 flex items-center justify-center">
-        <IllustrationComponent />
-      </div>
-
-      {/* Heading */}
-      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
-        {displayTitle}
-      </h3>
-
-      {/* Subtitle description */}
-      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed mb-4 font-normal">
-        {displayDescription}
-      </p>
-
-      {/* Optional Clear Search or Action CTA */}
-      {isSearch && onClearSearch && (
-        <div className="mt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClearSearch}
-            className="h-7 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            Clear filter
-          </Button>
+    <PlaneEmptyState
+      title={displayTitle}
+      description={displayDescription}
+      illustration={
+        <div className="plane-your-work-illustration flex items-center justify-center">
+          <IllustrationComponent />
         </div>
-      )}
-
-      {!isSearch && actionText && onAction && (
-        <div className="mt-2">
-          <Button
-            size="sm"
-            onClick={onAction}
-            className="h-7 px-3 text-12 font-medium bg-primary text-primary-foreground hover:bg-primary-hover transition-colors shadow-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            {actionText}
-          </Button>
-        </div>
-      )}
-    </div>
+      }
+      action={actionNode}
+      className={cn('bg-background', className)}
+    />
   );
 }
 

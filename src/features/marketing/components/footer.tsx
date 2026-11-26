@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 const GithubIcon = ({ className, 'aria-hidden': ariaHidden }: { className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }) => (
@@ -31,8 +32,10 @@ export default function Footer() {
               className='inline-flex items-center gap-2 shrink-0'
               aria-label='Flux home'
             >
-              <img
+              <Image
                 src='/Flux.svg'
+                width={24}
+                height={24}
                 className='size-6 shrink-0 object-contain'
                 alt='Flux'
               />

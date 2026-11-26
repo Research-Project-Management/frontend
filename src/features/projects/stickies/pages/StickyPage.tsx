@@ -23,7 +23,7 @@ import {
   WorkspaceViewTransition,
 } from '@/shared/components/layout/WorkspaceSkeleton';
 import TopBar from '../components/layout/TopBar';
-import EmptyState from '../components/layout/EmptyState';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 
 const copy = {
   title: "Stickies",
@@ -60,7 +60,16 @@ export default function StickyPage() {
         {state.status.isLoading ? (
           <WorkspaceCardGridSkeleton variant="stickies" count={10} />
         ) : state.items.length === 0 ? (
-          <EmptyState searchQuery={searchQuery} />
+          <PlaneEmptyState
+            variant={searchQuery ? 'search' : 'stickies'}
+            title={searchQuery ? 'No stickies match your search' : 'No stickies yet'}
+            description={
+              searchQuery
+                ? 'Try adjusting your search query to find matching stickies.'
+                : 'Click "Add Sticky" to get started.'
+            }
+            className="h-full"
+          />
         ) : (
           <WorkspaceViewTransition>
             <DndContext

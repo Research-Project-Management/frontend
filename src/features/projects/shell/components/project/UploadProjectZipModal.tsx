@@ -6,20 +6,16 @@ import { logger } from '@/shared/lib/logger';
 import {
   Upload,
   FolderArchive,
-  FileCode2,
-  Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
   Loader2,
   X,
-  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
@@ -28,9 +24,8 @@ import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import {
   isZipFile,
-  parseZipArchive,
-  extractAndImportZipToProject,
-  type ExtractedZipProject,
+  inferArchiveProjectName,
+  importZipToProject,
   type ImportZipProgress,
 } from '@/features/editor/subsystems/explorer';
 
@@ -58,114 +53,85 @@ export function UploadProjectZipModal({
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [extractedProject, setExtractedProject] = useState<ExtractedZipProject | null>(null);
-  const [isParsing, setIsParsing] = useState(false);
   const [projectName, setProjectName] = useState('');
-  const [parseError, setParseError] = useState<string | null>(null);
-
-  // Upload & Extraction Progress
+  const [fileError, setFileError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState<ImportZipProgress | null>(null);
 
   const resetState = useCallback(() => {
     setSelectedFile(null);
-    setExtractedProject(null);
-    setIsParsing(false);
     setProjectName('');
-    setParseError(null);
+    setFileError(null);
     setIsImporting(false);
     setProgress(null);
     setIsDraggingOver(false);
   }, []);
 
   const handleClose = useCallback(() => {
-    if (isImporting) return; // Prevent closing mid-import
+    if (isImporting) return;
     onOpenChange(false);
     setTimeout(resetState, 200);
   }, [isImporting, onOpenChange, resetState]);
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback((file: File) => {
     if (!isZipFile(file)) {
-      setParseError('Please select a valid .zip archive file.');
+      setFileError('Please select a valid .zip archive file.');
+      return;
+    }
+    if (file.size === 0) {
+      setFileError('The selected archive is empty.');
       return;
     }
 
-    setParseError(null);
+    setFileError(null);
     setSelectedFile(file);
-    setIsParsing(true);
-
-    try {
-      const parsed = await parseZipArchive(file);
-      if (parsed.totalFiles === 0) {
-        setParseError('The selected archive is empty or contains no recognized project files.');
-        setExtractedProject(null);
-        return;
-      }
-
-      setExtractedProject(parsed);
-      setProjectName(parsed.name);
-    } catch (err: unknown) {
-      logger.error('[UploadProjectZipModal] Parse error', err);
-      setParseError(err instanceof Error ? err.message : 'Failed to read ZIP archive. The file might be corrupted.');
-      setExtractedProject(null);
-    } finally {
-      setIsParsing(false);
-    }
+    setProjectName(inferArchiveProjectName(file));
   }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       setIsDraggingOver(false);
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.length > 0) {
-        handleFile(droppedFiles[0]);
-      }
+      const dropped = e.dataTransfer.files?.[0];
+      if (dropped) handleFile(dropped);
     },
     [handleFile],
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingOver(false);
-  }, []);
-
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []);
-      if (files.length > 0) {
-        handleFile(files[0]);
-      }
+      const picked = e.target.files?.[0];
+      if (picked) handleFile(picked);
       e.target.value = '';
     },
     [handleFile],
   );
 
   const handleStartImport = async () => {
-    if (!extractedProject || isImporting) return;
+    if (!selectedFile || isImporting) return;
 
-    const trimmedName = projectName.trim() || extractedProject.name || 'Imported Project';
+    const trimmedName = projectName.trim() || inferArchiveProjectName(selectedFile);
     setIsImporting(true);
 
     try {
-      const result = await extractAndImportZipToProject({
-        extracted: extractedProject,
+      const result = await importZipToProject({
+        zipFile: selectedFile,
         projectName: trimmedName,
-        zipFile: selectedFile ?? undefined,
-        onProgress: (p) => setProgress(p),
+        onProgress: setProgress,
       });
 
       toast.success(`Project "${trimmedName}" created and imported successfully!`);
       handleClose();
       onSuccess?.(result);
 
-      // Navigate to the editor for this project's root document
-      router.push(`/editor/${result.rootPageId}`);
+      if (result.rootPageId) {
+        const isPersonal = !result.projectId || result.projectId === 'personal';
+        router.push(
+          isPersonal
+            ? `/pages/${result.rootPageId}`
+            : `/projects/${result.projectId}/pages/${result.rootPageId}`,
+        );
+      }
     } catch (err: unknown) {
       logger.error('[UploadProjectZipModal] Import failed', err);
       toast.error(err instanceof Error ? err.message : 'Failed to import project files.');
@@ -182,7 +148,6 @@ export function UploadProjectZipModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg w-full p-0 gap-0 overflow-hidden bg-background border border-border shadow-raised-200 rounded-lg select-none">
-        {/* Hidden File Input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -191,7 +156,6 @@ export function UploadProjectZipModal({
           className="hidden"
         />
 
-        {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/80 bg-muted/20">
           <div className="flex items-center gap-2.5">
             <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -217,9 +181,7 @@ export function UploadProjectZipModal({
           )}
         </div>
 
-        {/* Modal Body */}
         <div className="p-6 space-y-4">
-          {/* Ongoing Import Progress View */}
           {isImporting ? (
             <div className="py-6 flex flex-col items-center justify-center text-center space-y-4">
               <div className="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary animate-pulse">
@@ -230,28 +192,29 @@ export function UploadProjectZipModal({
                   {progress?.message || 'Importing project...'}
                 </h4>
                 <p className="text-xs text-muted-foreground">
-                  Unpacking files, creating project tree, and configuring LaTeX root document.
+                  Validating archive entries, unpacking project tree, and detecting root LaTeX document.
                 </p>
               </div>
 
-              {/* Progress Bar */}
               <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/50 mt-2">
                 <div
                   className="bg-primary h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.max(5, percentProgress)}%` }}
+                  style={{ width: `${Math.max(15, percentProgress)}%` }}
                 />
               </div>
-              <span className="text-11 font-mono text-muted-foreground">
-                {progress?.current ?? 0} / {progress?.total ?? 0} items ({percentProgress}%)
-              </span>
             </div>
-          ) : !extractedProject ? (
-            /* Upload Drop Area */
+          ) : !selectedFile ? (
             <div className="space-y-3">
               <div
                 onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDraggingOver(false);
+                }}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
                   'border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer select-none',
@@ -260,46 +223,35 @@ export function UploadProjectZipModal({
                     : 'border-border hover:border-primary/50 hover:bg-muted/30 bg-muted/10',
                 )}
               >
-                {isParsing ? (
-                  <div className="flex flex-col items-center gap-2 py-4">
-                    <Loader2 className="size-8 text-primary animate-spin" />
-                    <p className="text-xs font-medium text-foreground">Reading archive contents...</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="size-12 rounded-full bg-muted flex items-center justify-center text-foreground/70 mb-3 shadow-inner">
-                      <Upload className="size-5" />
-                    </div>
-                    <p className="text-13 font-medium text-foreground">
-                      Drag & drop a <span className="font-semibold text-primary">.zip</span> archive here
-                    </p>
-                    <p className="text-12 text-muted-foreground mt-1 max-w-xs">
-                      Supports archives from Overleaf, arXiv, GitHub, or local LaTeX bundles
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-4 text-12 gap-1.5 h-8 pointer-events-none"
-                    >
-                      <span>Select a .zip file</span>
-                    </Button>
-                  </>
-                )}
+                <div className="size-12 rounded-full bg-muted flex items-center justify-center text-foreground/70 mb-3 shadow-inner">
+                  <Upload className="size-5" />
+                </div>
+                <p className="text-13 font-medium text-foreground">
+                  Drag & drop a <span className="font-semibold text-primary">.zip</span> archive here
+                </p>
+                <p className="text-12 text-muted-foreground mt-1 max-w-xs">
+                  Supports archives from Overleaf, arXiv, GitHub, or local LaTeX bundles
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 text-12 gap-1.5 h-8 pointer-events-none"
+                >
+                  <span>Select a .zip file</span>
+                </Button>
               </div>
 
-              {parseError && (
+              {fileError && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-12">
                   <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                  <span>{parseError}</span>
+                  <span>{fileError}</span>
                 </div>
               )}
             </div>
           ) : (
-            /* Selected & Analyzed Project View */
             <div className="space-y-4">
-              {/* Archive Info Card */}
-              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <div className="rounded-lg border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="size-8 rounded-md bg-success/10 text-success flex items-center justify-center shrink-0">
@@ -307,10 +259,10 @@ export function UploadProjectZipModal({
                     </div>
                     <div className="min-w-0">
                       <p className="text-12 font-medium text-foreground truncate max-w-[260px]">
-                        {selectedFile?.name}
+                        {selectedFile.name}
                       </p>
                       <p className="text-11 text-muted-foreground">
-                        {formatBytes(extractedProject.totalSize)} · {extractedProject.totalFiles} usable files
+                        {formatBytes(selectedFile.size)} · Ready to unpack on server
                       </p>
                     </div>
                   </div>
@@ -324,29 +276,8 @@ export function UploadProjectZipModal({
                     Change file
                   </Button>
                 </div>
-
-                {/* File breakdown badges */}
-                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/60">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-muted text-foreground font-medium">
-                    <FileCode2 className="size-3 text-primary" />
-                    <span>{extractedProject.textFiles.length} source file(s)</span>
-                  </span>
-                  {extractedProject.assetFiles.length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-muted text-foreground font-medium">
-                      <ImageIcon className="size-3 text-warning" />
-                      <span>{extractedProject.assetFiles.length} asset(s)</span>
-                    </span>
-                  )}
-                  {extractedProject.mainFilePath && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-11 bg-primary/10 text-primary font-medium">
-                      <FileText className="size-3" />
-                      <span>Main: {extractedProject.mainFilePath}</span>
-                    </span>
-                  )}
-                </div>
               </div>
 
-              {/* Project Name Field */}
               <div className="space-y-1.5">
                 <label className="text-12 font-medium text-foreground block">
                   Project Name
@@ -359,14 +290,13 @@ export function UploadProjectZipModal({
                   autoFocus
                 />
                 <p className="text-11 text-muted-foreground">
-                  This project will be initialized in your user workspace.
+                  Root LaTeX document and directory hierarchy will be configured automatically.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Modal Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-border bg-muted/20">
           <Button
             type="button"
@@ -382,7 +312,7 @@ export function UploadProjectZipModal({
             type="button"
             size="sm"
             onClick={handleStartImport}
-            disabled={!extractedProject || isImporting || !projectName.trim()}
+            disabled={!selectedFile || isImporting || !projectName.trim()}
             className="h-8 px-3.5 text-12 font-medium gap-1.5 shadow-none cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             {isImporting ? (

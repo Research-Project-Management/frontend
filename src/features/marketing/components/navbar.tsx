@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
@@ -48,8 +49,11 @@ export default function Navbar() {
               onClick={() => setIsMenuOpen(false)}
               aria-label='Flux home'
             >
-              <img
+              <Image
                 src='/Flux.svg'
+                width={24}
+                height={24}
+                priority
                 className='size-6 shrink-0 object-contain'
                 alt='Flux'
               />

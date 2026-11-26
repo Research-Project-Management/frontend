@@ -19,10 +19,10 @@ import {
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
 
-const DeleteModal = dynamic(
+const ConfirmDeleteDialog = dynamic(
   () =>
-    import('@/features/settings/components/labels/DeleteModal').then(
-      (m) => m.DeleteModal
+    import('@/shared/components/ui/confirm-delete-dialog').then(
+      (m) => m.ConfirmDeleteDialog
     ),
   { ssr: false }
 );
@@ -721,15 +721,15 @@ export default function LabelPage() {
 
       {/* ── Delete Confirmation Modal ── */}
       {Boolean(deletingLabel) && (
-        <DeleteModal
-          isOpen={Boolean(deletingLabel)}
-          onClose={() => setDeletingLabel(null)}
+        <ConfirmDeleteDialog
+          open={Boolean(deletingLabel)}
+          onOpenChange={(open) => !open && setDeletingLabel(null)}
           onConfirm={confirmDelete}
-          loading={deleteMutation.isPending}
+          isLoading={deleteMutation.isPending}
           title="Delete label"
           description={`Are you sure you want to delete "${deletingLabel?.name || ''}" from ${currentTabConfig.label}? This label will be unassigned from any associated items.`}
-          confirmText="Delete label"
-          cancelText="Cancel"
+          confirmLabel="Delete label"
+          cancelLabel="Cancel"
         />
       )}
     </PageLayout>

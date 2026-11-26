@@ -12,7 +12,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { Calendar } from '@/shared/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -172,22 +172,20 @@ export function GeneralDetails({
               {errors?.identifier && (
                 <p className="text-11 text-destructive font-medium px-0.5 mt-1">{errors.identifier.message}</p>
               )}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors before:absolute before:-inset-2 md:before:hidden"
-                      aria-label="Project ID info"
-                    >
-                      <Info className="size-3.5 shrink-0" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="text-12 max-w-xs shadow-overlay">
-                    Used as the prefix for all work items in this project (e.g. {identifier || 'PRJ'}-1).
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Project ID info"
+                  >
+                    <Info className="size-3.5 shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="text-12 max-w-xs shadow-overlay">
+                  Used as the prefix for all work items in this project (e.g. {identifier || 'PRJ'}-1).
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>

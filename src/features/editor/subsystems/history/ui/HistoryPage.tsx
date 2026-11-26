@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * HistoryPage.tsx
@@ -133,7 +133,7 @@ export function HistoryPage({
     <div
       role="region"
       aria-label="Version History"
-      className="flex flex-col w-full h-screen bg-background overflow-hidden select-none font-sans"
+      className="flex flex-col w-full h-dvh bg-background overflow-hidden select-none font-sans"
     >
       {/* Top Header Bar */}
       <header className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-background shrink-0 select-none gap-3">
@@ -151,7 +151,7 @@ export function HistoryPage({
           {versionBadge && (
             <>
               <div className="h-4 w-px bg-border/60" />
-              <Badge variant="outline" className="text-[11px] font-mono py-0 h-5">
+              <Badge variant="outline" className="text-11 font-mono py-0 h-5">
                 {versionBadge}
               </Badge>
             </>

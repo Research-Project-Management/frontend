@@ -34,8 +34,8 @@ const MoveToProjectModal = dynamic(
   () => import('../components/modals/MoveToProjectModal').then((m) => m.MoveToProjectModal),
   { ssr: false }
 );
-const DeleteModal = dynamic(
-  () => import('../components/modals/DeleteModal').then((m) => m.DeleteModal),
+const ConfirmDeleteDialog = dynamic(
+  () => import('@/shared/components/ui/confirm-delete-dialog').then((m) => m.ConfirmDeleteDialog),
   { ssr: false }
 );
 
@@ -223,12 +223,19 @@ export default function DraftsPage() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-        <DeleteModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-          draft={deletingDraft}
-          onConfirm={handleConfirmDelete}
-          isDeleting={deleteDraft.isPending}
+        <ConfirmDeleteDialog
+          open={isDeleteModalOpen}
+          onOpenChange={(open) => !open && setIsDeleteModalOpen(false)}
+          title="Delete draft"
+          description="Are you sure you want to delete this draft? This action cannot be undone and your draft work item will be permanently removed."
+          itemName={deletingDraft ? deletingDraft.title || 'Untitled Draft' : undefined}
+          onConfirm={async () => {
+            if (deletingDraft) await handleConfirmDelete(deletingDraft.id);
+          }}
+          isLoading={deleteDraft.isPending}
+          confirmLabel="Delete draft"
+          loadingLabel="Deleting..."
+          cancelLabel="Cancel"
         />
       )}
     </PageLayout>

@@ -23,8 +23,7 @@ import {
   Check,
   ExternalLink,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { cn } from '@/shared/lib/utils';
+import { cn, formatDate as formatGlobalDate } from '@/shared/lib/utils';
 import { useProjectStatesSettings } from '../../settings/hooks/use-project-states-settings';
 
 interface ProjectPropertiesSidebarProps {
@@ -45,11 +44,8 @@ const PRIORITY_CONFIG: Record<
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Not set';
-  try {
-    return format(parseISO(dateStr), 'MMM d, yyyy');
-  } catch {
-    return dateStr;
-  }
+  const formatted = formatGlobalDate(dateStr);
+  return formatted === '-' ? dateStr : formatted;
 }
 
 export function ProjectPropertiesSidebar({

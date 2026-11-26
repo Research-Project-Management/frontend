@@ -168,19 +168,19 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   const typeBadge = document.createElement('span');
   typeBadge.className =
-    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold tracking-normal bg-primary/15 text-primary border border-primary/20';
+    'px-1.5 py-0.5 rounded-sm text-10 font-semibold tracking-normal bg-primary/15 text-primary border border-primary/20';
   typeBadge.textContent = typeStr;
   leftPills.appendChild(typeBadge);
 
   const keyPill = document.createElement('span');
-  keyPill.className = 'font-mono text-[11px] font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded-sm';
+  keyPill.className = 'font-mono text-11 font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded-sm';
   keyPill.textContent = `@${entry.key || citeKey}`;
   leftPills.appendChild(keyPill);
 
   if (entry.isRetracted) {
     const retractedBadge = document.createElement('span');
     retractedBadge.className =
-      'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 tracking-normal flex items-center gap-1';
+      'px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-destructive/15 text-destructive border border-destructive/30 tracking-normal flex items-center gap-1';
     retractedBadge.innerHTML = '<span>RETRACTED</span>';
     leftPills.appendChild(retractedBadge);
   }
@@ -188,13 +188,13 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   header.appendChild(leftPills);
 
   const sourceBadge = document.createElement('span');
-  sourceBadge.className = 'text-[11px] text-muted-foreground flex items-center gap-1';
+  sourceBadge.className = 'text-11 text-muted-foreground flex items-center gap-1';
   if (entry.sourceFile === 'workspace-library') {
     sourceBadge.innerHTML = '<span class="hidden sm:inline">Digital Library</span>';
   } else if (entry.sourceFile) {
     const bibBtn = document.createElement('button');
     bibBtn.type = 'button';
-    bibBtn.className = 'font-mono text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0';
+    bibBtn.className = 'font-mono text-10 text-primary hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0';
     bibBtn.innerHTML = `<span>${escapeHtml(entry.sourceFile)}</span>`;
     bibBtn.title = `Open ${entry.sourceFile} (jump to definition)`;
     bibBtn.addEventListener('click', (e) => {
@@ -218,7 +218,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       'rounded-md bg-destructive/10 border border-destructive/30 p-2.5 my-2 text-xs flex flex-col gap-1 text-destructive';
 
     const alertHeader = document.createElement('div');
-    alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] tracking-normal text-destructive';
+    alertHeader.className = 'flex items-center gap-1.5 font-semibold text-11 tracking-normal text-destructive';
     alertHeader.innerHTML = '<span>WARNING: RETRACTED PUBLICATION</span>';
     alertBox.appendChild(alertHeader);
 
@@ -226,7 +226,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       ? formatRetractionReason(entry.retractionReason, entry.retractionNature)
       : 'This publication has been formally retracted by the publisher or academic integrity committee.';
     const alertBody = document.createElement('div');
-    alertBody.className = 'text-[11px] text-destructive/90 leading-relaxed font-medium';
+    alertBody.className = 'text-11 text-destructive/90 leading-relaxed font-medium';
     alertBody.textContent = reasonDesc;
     alertBox.appendChild(alertBody);
 
@@ -236,7 +236,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       noticeLink.target = '_blank';
       noticeLink.rel = 'noopener noreferrer';
       noticeLink.className =
-        'inline-flex items-center gap-1 text-[11px] text-destructive underline font-semibold hover:opacity-80 mt-0.5';
+        'inline-flex items-center gap-1 text-11 text-destructive underline font-semibold hover:opacity-80 mt-0.5';
       noticeLink.innerHTML = '<span>View official publisher retraction notice</span> <span>↗</span>';
       alertBox.appendChild(noticeLink);
     }
@@ -262,7 +262,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   // 4. Metadata Badges (Year, Journal/Venue, DOI)
   const metaRow = document.createElement('div');
-  metaRow.className = 'flex flex-wrap items-center gap-2 mb-2.5 text-[11px] text-muted-foreground';
+  metaRow.className = 'flex flex-wrap items-center gap-2 mb-2.5 text-11 text-muted-foreground';
 
   if (entry.year) {
     const yearSpan = document.createElement('span');
@@ -302,15 +302,15 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     'rounded-md bg-muted/30 border border-border/50 p-2 text-xs flex flex-col gap-1';
 
   const previewLabel = document.createElement('div');
-  previewLabel.className = 'text-[10px] font-semibold text-muted-foreground tracking-normal flex items-center justify-between';
+  previewLabel.className = 'text-10 font-semibold text-muted-foreground tracking-normal flex items-center justify-between';
   previewLabel.innerHTML = `
     <span>Citation preview</span>
-    <span class="text-[9px] font-normal normal-case text-muted-foreground/80">${isVn ? 'Vietnamese name order' : 'Academic standard'}</span>
+    <span class="text-9 font-normal normal-case text-muted-foreground/80">${isVn ? 'Vietnamese name order' : 'Academic standard'}</span>
   `;
   previewBox.appendChild(previewLabel);
 
   const previewText = document.createElement('div');
-  previewText.className = 'font-serif italic text-foreground text-[12px] bg-background/50 px-2 py-1 rounded-sm border border-border/30';
+  previewText.className = 'font-serif italic text-foreground text-12 bg-background/50 px-2 py-1 rounded-sm border border-border/30';
   previewText.textContent = inTextPreview;
   previewBox.appendChild(previewText);
 
@@ -318,7 +318,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   // 6. Action Bar: Rename Citekey & Definition jump
   const footerRow = document.createElement('div');
-  footerRow.className = 'flex items-center justify-between gap-2 pt-2.5 mt-2.5 border-t border-border/60 text-[11px]';
+  footerRow.className = 'flex items-center justify-between gap-2 pt-2.5 mt-2.5 border-t border-border/60 text-11';
 
   const renameBtn = document.createElement('button');
   renameBtn.type = 'button';
@@ -342,7 +342,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     const jumpBtn = document.createElement('button');
     jumpBtn.type = 'button';
     jumpBtn.className =
-      'inline-flex items-center gap-1 text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px]';
+      'inline-flex items-center gap-1 text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 text-11';
     jumpBtn.innerHTML = '<span>Open .bib</span> ↗';
     jumpBtn.title = `Open ${entry.sourceFile}`;
     jumpBtn.addEventListener('click', (e) => {
@@ -370,12 +370,12 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const warningBadge = document.createElement('span');
   warningBadge.className =
-    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30';
+    'px-1.5 py-0.5 rounded-sm text-10 font-semibold bg-warning/15 text-warning border border-warning/30';
   warningBadge.textContent = 'Not found';
   header.appendChild(warningBadge);
 
   const keySpan = document.createElement('span');
-  keySpan.className = 'font-mono text-[11px] font-semibold text-foreground';
+  keySpan.className = 'font-mono text-11 font-semibold text-foreground';
   keySpan.textContent = `@${citeKey}`;
   header.appendChild(keySpan);
 
@@ -394,8 +394,8 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
   actionRow.className = 'flex items-center justify-between gap-2 pt-2 border-t border-border/60';
 
   const shortcutHint = document.createElement('span');
-  shortcutHint.className = 'text-[11px] text-muted-foreground';
-  shortcutHint.innerHTML = 'Shortcut: <kbd class="px-1.5 py-0.5 rounded-sm bg-muted font-mono text-[10px] border border-border">Ctrl+Shift+K</kbd>';
+  shortcutHint.className = 'text-11 text-muted-foreground';
+  shortcutHint.innerHTML = 'Shortcut: <kbd class="px-1.5 py-0.5 rounded-sm bg-muted font-mono text-10 border border-border">Ctrl+Shift+K</kbd>';
   actionRow.appendChild(shortcutHint);
 
   const openBtn = document.createElement('button');

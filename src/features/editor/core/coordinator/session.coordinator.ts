@@ -26,6 +26,7 @@ import { useSettingsStore } from '../store/settings.store';
 import { useConnectivityStore } from '../store/connectivity.store';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { multiTabBus } from '@/shared/lib/multi-tab';
+import { subscribeNetworkStatus } from '@/shared/lib/network';
 import { editorCommandBus } from '../bus/command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
 import { UnsyncedEditsCoordinator } from './unsynced-edits.coordinator';
@@ -111,8 +112,7 @@ export class SessionCoordinator {
   private readonly unsyncedEdits: UnsyncedEditsCoordinator;
   private readonly conflicts = new DocumentConflictCoordinator();
   private multiTabUnsubscriber: (() => void) | null = null;
-  private onlineHandler: (() => void) | null = null;
-  private offlineHandler: (() => void) | null = null;
+  private networkUnsubscriber: (() => void) | null = null;
 
   constructor(options: DocumentSessionOptions = {}) {
     this.options = options;
@@ -299,18 +299,18 @@ export class SessionCoordinator {
   private initOnlineListener(): void {
     if (typeof window === 'undefined') return;
     this.disposeOnlineListener();
-    this.onlineHandler = () => void this.handleOnline();
-    this.offlineHandler = () => this.handleOffline();
-    window.addEventListener('online', this.onlineHandler);
-    window.addEventListener('offline', this.offlineHandler);
+    this.networkUnsubscriber = subscribeNetworkStatus((online) => {
+      if (online) {
+        void this.handleOnline();
+      } else {
+        this.handleOffline();
+      }
+    });
   }
 
   public disposeOnlineListener(): void {
-    if (typeof window === 'undefined') return;
-    if (this.onlineHandler) window.removeEventListener('online', this.onlineHandler);
-    if (this.offlineHandler) window.removeEventListener('offline', this.offlineHandler);
-    this.onlineHandler = null;
-    this.offlineHandler = null;
+    this.networkUnsubscriber?.();
+    this.networkUnsubscriber = null;
   }
 
   private initCommandSubscriptions(): void {

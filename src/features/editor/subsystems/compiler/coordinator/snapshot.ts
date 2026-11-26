@@ -125,6 +125,15 @@ export class SnapshotProvider {
         if (typeof liveContent === 'string') {
           const model = lruDocumentCache.getModel(fId);
           const wsFile = baseFiles.find((f) => f.id === fId);
+          // Avoid clobbering non-empty persisted content with a transient empty buffer
+          // during zero-remount tab swaps when the file is not locally dirty.
+          const hasNonEmptyFallback = Boolean(
+            (model?.content && model.content.length > 0) ||
+              (wsFile?.content && extractDocumentContentString(wsFile.content).length > 0),
+          );
+          if (liveContent.length === 0 && !lruDocumentCache.isDirty(fId) && hasNonEmptyFallback) {
+            continue;
+          }
           const fPath =
             model?.filePath ||
             wsFile?.path ||

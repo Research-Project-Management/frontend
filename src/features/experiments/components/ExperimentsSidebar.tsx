@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { usePanelResize } from '@/shared/hooks/use-panel-resize';
+import { useIsMobile } from '@/shared/hooks/use-media-query';
 import { SidebarResizer } from '@/features/library/ui/sidebar/SidebarSystemNav';
 import {
   useExperimentsUIStore,
@@ -61,17 +62,10 @@ export function ExperimentsSidebar() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      const mql = window.matchMedia('(max-width: 767px)');
-      setIsMobile(mql.matches);
-      const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-      mql.addEventListener('change', handler);
-      return () => mql.removeEventListener('change', handler);
-    }
   }, []);
 
   const { isDragging, handleMouseDown } = usePanelResize({

@@ -10,7 +10,7 @@
  * @example formatDate('2026-01-07') → "Jan 7, 2026"
  */
 export const formatDate = (
-  date: string | Date,
+  date: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
@@ -18,6 +18,7 @@ export const formatDate = (
   },
   locale = 'en-US',
 ): string => {
+  if (!date) return '-';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return '-';
   return new Intl.DateTimeFormat(locale, options).format(d);
@@ -27,7 +28,11 @@ export const formatDate = (
  * Format a date relative to now.
  * @example formatRelativeTime(new Date(Date.now() - 3600000)) → "1 hour ago"
  */
-export const formatRelativeTime = (date: string | Date, locale = 'en-US'): string => {
+export const formatRelativeTime = (
+  date: string | Date | null | undefined,
+  locale = 'en-US',
+): string => {
+  if (!date) return '-';
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return '-';
 

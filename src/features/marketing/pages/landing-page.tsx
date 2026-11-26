@@ -21,7 +21,7 @@ import {
 
 export default function LandingPage() {
   return (
-    <div className='min-h-screen flex flex-col bg-background text-foreground transition-colors duration-150'>
+    <div className='min-h-dvh flex flex-col bg-background text-foreground transition-colors duration-150'>
       <Navbar />
 
       {/* ── Hero Section ── */}

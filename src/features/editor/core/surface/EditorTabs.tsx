@@ -165,7 +165,7 @@ const TabItem = React.memo(function TabItem({
         <div
           ref={setNodeRef}
           style={sortableStyle}
-          {...sortableAttrs}
+          {...(isRoot ? {} : sortableAttrs)}
           {...(isRoot ? {} : listeners)}
           role="tab"
           id={`editor-tab-${tab.id}`}
@@ -308,7 +308,14 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     const result: EditorTab[] = [];
     for (const t of rawTabs) {
       const isRoot = isRootDoc(t);
-      if (availableIds && !isRoot && !t.id.startsWith('asset:') && !availableIds.has(t.id)) {
+      if (
+        availableIds &&
+        availableIds.size > 0 &&
+        !isRoot &&
+        t.id !== activeFileId &&
+        !t.id.startsWith('asset:') &&
+        !availableIds.has(t.id)
+      ) {
         continue;
       }
       const key = isRoot ? '__root__' : t.id;

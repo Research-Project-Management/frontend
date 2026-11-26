@@ -141,7 +141,7 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
           className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="size-9 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+            <div className="size-9 rounded-md bg-success/10 border border-success/20 flex items-center justify-center text-success shrink-0 group-hover:scale-105 transition-transform">
               <FileText className="size-4" />
             </div>
             <div className="flex flex-col min-w-0">
@@ -183,7 +183,7 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
           className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="size-9 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+            <div className="size-9 rounded-md bg-warning/10 border border-warning/20 flex items-center justify-center text-warning shrink-0 group-hover:scale-105 transition-transform">
               <BookOpen className="size-4" />
             </div>
             <div className="flex flex-col min-w-0">

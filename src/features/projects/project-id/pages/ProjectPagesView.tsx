@@ -31,6 +31,9 @@ import {
   WorkspaceViewTransition,
 } from '@/shared/components/layout/WorkspaceSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { MEDIA_QUERY_TABLET, subscribeMediaQuery } from '@/shared/hooks/use-media-query';
+import { STORAGE_KEYS } from '@/config/storage-keys';
+import { APP_EVENTS, onAppEvent } from '@/config/events';
 
 const CreateModal = dynamic(
   () => import('./components/modals/CreateModal').then((m) => m.CreateModal),
@@ -83,7 +86,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     setMounted(true);
     const isMobile = window.innerWidth < 1024;
     try {
-      const saved = localStorage.getItem('flux:pages-sidebar-visible');
+      const saved = localStorage.getItem(STORAGE_KEYS.PAGES_SIDEBAR_VISIBLE);
       if (saved !== null) {
         setIsSidebarVisible(isMobile ? false : saved === 'true');
         return;
@@ -94,13 +97,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
     setIsSidebarVisible(!isMobile);
 
-    const media = window.matchMedia('(max-width: 1023px)');
-    const syncSidebar = () => {
-      setIsSidebarVisible(!media.matches);
-    };
-
-    media.addEventListener('change', syncSidebar);
-    return () => media.removeEventListener('change', syncSidebar);
+    return subscribeMediaQuery(MEDIA_QUERY_TABLET, (matches) => {
+      setIsSidebarVisible(!matches);
+    });
   }, []);
 
   useEffect(() => {
@@ -113,15 +112,14 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     const handleToggleEvent = () => {
       setIsSidebarVisible((prev) => !prev);
     };
-    window.addEventListener('toggle-pages-sidebar', handleToggleEvent);
-    return () => window.removeEventListener('toggle-pages-sidebar', handleToggleEvent);
+    return onAppEvent(APP_EVENTS.TOGGLE_PAGES_SIDEBAR, handleToggleEvent);
   }, []);
 
   const handleToggleSidebar = (visible: boolean) => {
     setIsSidebarVisible(visible);
     try {
       if (window.innerWidth >= 1024) {
-        localStorage.setItem('flux:pages-sidebar-visible', String(visible));
+        localStorage.setItem(STORAGE_KEYS.PAGES_SIDEBAR_VISIBLE, String(visible));
       }
     } catch {
       // ignore

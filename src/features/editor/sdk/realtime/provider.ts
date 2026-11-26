@@ -7,9 +7,11 @@
  */
 
 import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { type Socket } from 'socket.io-client';
 import { logger } from '@/shared/lib/logger';
+import { subscribeNetworkStatus } from '@/shared/lib/network';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 import type { CollaborationPresence } from '../pages/types';
@@ -101,11 +103,12 @@ export class YjsSocketIOProvider {
   private pendingUpdates: Uint8Array[] = [];
   private updateBatchTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly cursorThrottler = new CursorBroadcastThrottler();
-  private handleOnline: (() => void) | null = null;
+  private networkUnsubscriber: (() => void) | null = null;
   private cachedText: string | null = null;
   private cachedLineStarts: number[] | null = null;
   private isEvicted = false;
   private crossTabBridge: YjsCrossTabBridge | null = null;
+  private indexeddbPersistence: IndexeddbPersistence | null = null;
   private _role: CrossTabProviderRole = 'standalone';
 
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
@@ -136,6 +139,27 @@ export class YjsSocketIOProvider {
     return this.pageId.startsWith('chat:');
   }
 
+  private attachIndexeddbPersistence(): void {
+    if (
+      typeof window === 'undefined' ||
+      typeof indexedDB === 'undefined' ||
+      this.isChatOnlyRoom() ||
+      !this.spaceId ||
+      !this.pageId
+    ) {
+      return;
+    }
+    try {
+      const dbName = `flux-yjs:${this.spaceId}:${this.pageId}`;
+      this.indexeddbPersistence = new IndexeddbPersistence(dbName, this.doc);
+    } catch (err) {
+      logger.debug('[YjsSocketIOProvider] IndexedDB CRDT persistence unavailable', {
+        error: err,
+      });
+      this.indexeddbPersistence = null;
+    }
+  }
+
   constructor(
     spaceId: string,
     pageId: string,
@@ -153,6 +177,7 @@ export class YjsSocketIOProvider {
     if (options.user) this.setLocalUser(options.user);
     this.setupLocalAwarenessListener();
     this.setupLocalDocListener();
+    this.attachIndexeddbPersistence();
 
     const { canBroadcast, resolvedLocks, useMultiplexing } = resolveCrossTabTransportConfig(
       options,
@@ -301,15 +326,14 @@ export class YjsSocketIOProvider {
       this.socket = createRealtimeSocketInstance(this.options);
       this.registerSocketEvents();
 
-      if (typeof window !== 'undefined' && !this.handleOnline) {
-        this.handleOnline = () => {
-          if (!this.destroyed && this.socket && !this.socket.connected) {
+      if (typeof window !== 'undefined' && !this.networkUnsubscriber) {
+        this.networkUnsubscriber = subscribeNetworkStatus((online) => {
+          if (online && !this.destroyed && this.socket && !this.socket.connected) {
             this.status = 'connecting';
             this.emitStatus('connecting');
             this.socket.connect();
           }
-        };
-        window.addEventListener('online', this.handleOnline);
+        });
       }
     } catch (err) {
       logger.warn('[YjsSocketIOProvider] Failed to initialize Socket.IO client', { error: err });
@@ -682,9 +706,9 @@ export class YjsSocketIOProvider {
       this.updateBatchTimer = null;
     }
 
-    if (typeof window !== 'undefined' && this.handleOnline) {
-      window.removeEventListener('online', this.handleOnline);
-      this.handleOnline = null;
+    if (this.networkUnsubscriber) {
+      this.networkUnsubscriber();
+      this.networkUnsubscriber = null;
     }
 
     if (this.socket) {
@@ -701,6 +725,11 @@ export class YjsSocketIOProvider {
     if (this.crossTabBridge) {
       this.crossTabBridge.dispose();
       this.crossTabBridge = null;
+    }
+
+    if (this.indexeddbPersistence) {
+      void this.indexeddbPersistence.destroy().catch(() => {});
+      this.indexeddbPersistence = null;
     }
 
     if (this.localDocUpdateHandler) {

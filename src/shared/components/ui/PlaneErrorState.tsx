@@ -227,28 +227,6 @@ export function ErrorVerticalStackIllustration({ className }: TIllustrationAsset
   );
 }
 
-const illustrationStyles = `
-  :root, .plane-error-illustration, [data-theme='light'] {
-    --illustration-fill-primary: #ffffff;
-    --illustration-fill-secondary: #f4f5f5;
-    --illustration-fill-tertiary: #eaebeb;
-    --illustration-fill-quaternary: #cfd2d3;
-    --illustration-stroke-primary: #cfd2d3;
-    --illustration-stroke-secondary: #8a9093;
-    --illustration-stroke-tertiary: #1d1f20;
-  }
-  .dark .plane-error-illustration,
-  [data-theme='dark'] .plane-error-illustration {
-    --illustration-fill-primary: #18181b;
-    --illustration-fill-secondary: #27272a;
-    --illustration-fill-tertiary: #3f3f46;
-    --illustration-fill-quaternary: #52525b;
-    --illustration-stroke-primary: #3f3f46;
-    --illustration-stroke-secondary: #71717a;
-    --illustration-stroke-tertiary: #e4e4e7;
-  }
-`;
-
 export interface PlaneErrorStateProps {
   title?: string;
   description?: string;
@@ -327,12 +305,10 @@ export function PlaneErrorState({
       className={cn(
         'flex-1 w-full h-full flex flex-col items-center justify-center text-center select-none animate-in fade-in-50 duration-200 bg-transparent',
         isCompact ? 'min-h-[180px] p-4' : 'min-h-[440px] p-8',
-        isFullPage && 'min-h-screen',
+        isFullPage && 'min-h-dvh',
         className
       )}
     >
-      <style dangerouslySetInnerHTML={{ __html: illustrationStyles }} />
-
       {/* 3D Isometric Multi-Layer Error Illustration */}
       <div
         className={cn(

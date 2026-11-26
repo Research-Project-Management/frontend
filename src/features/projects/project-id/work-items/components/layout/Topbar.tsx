@@ -14,7 +14,7 @@ import {
   TimelineIcon,
 } from "@/shared/components/icons";
 import { Button } from '@/shared/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import type { AssigneeFilterOption, ViewMode, TopbarProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { countActiveFilters } from '@/features/projects/project-id/work-items/utils/work-item.utils';
@@ -150,9 +150,8 @@ export function Topbar({
       {/* Right: View Switcher, Filter, Display, Analytics & Primary CTA */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
         {/* 1. View Toggle Segmented Control */}
-        <TooltipProvider delayDuration={150}>
-          <div
-            role="tablist"
+        <div
+          role="tablist"
             aria-label="View modes"
             className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border shadow-none"
           >
@@ -235,7 +234,6 @@ export function Topbar({
           >
             <span>Analytics</span>
           </Button>
-        </TooltipProvider>
 
         {/* Primary Action (+ Add Work Item) */}
         {!isReadOnly && (

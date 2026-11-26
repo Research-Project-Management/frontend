@@ -1,37 +1,79 @@
 'use client';
 
 /**
- * use-export.ts
+ * useExport.ts
  *
- * Centralized Document & Project Export Hook.
- * Manages all export lifecycles, progress toasts, success/error feedback,
- * and absorbs errors safely so event triggers don't throw unhandled exceptions.
+ * GoF Command + Template Method Hook (`runExportCommand`):
+ * Centralizes validation guards, concurrency lock, progress toast, and error feedback
+ * across all document and archive export operations.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import {
   exportProjectAsZip,
   exportArxivSubmissionZip,
   exportVersionAsZip,
-  type ArchiveExportOptions,
   type ExportZipOptions,
   type ExportVersionZipOptions,
-} from '@/features/editor/sdk/archive/archive-export';
+} from '@/features/editor/sdk/archive/zip-export';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
-  triggerFileDownload,
   type ExportSingleDocOptions,
-} from '@/features/editor/sdk/archive/document-download';
+} from '@/features/editor/sdk/archive/doc-export';
+import {
+  sanitizeDocExportSlug,
+  triggerFileDownload,
+} from '@/features/editor/sdk/archive/download';
 import { getExportFilename } from '@/features/editor/domain/document/document-naming';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
 
-export type { ArchiveExportOptions, ExportZipOptions, ExportVersionZipOptions };
+export type { ExportZipOptions, ExportVersionZipOptions, ExportSingleDocOptions };
+
+/**
+ * GoF Command Descriptor encapsulating an executable export operation and its UI feedback contract.
+ */
+interface ExportCommandDescriptor {
+  id: string;
+  guardError?: string | null;
+  loadingMessage: string;
+  fallbackErrorMessage: string;
+  execute: () => Promise<string>;
+}
 
 export function useProjectExport() {
   const [isExporting, setIsExporting] = useState(false);
+  const activeLockRef = useRef(false);
+
+  const runExportCommand = useCallback(
+    async (cmd: ExportCommandDescriptor): Promise<string | null> => {
+      if (cmd.guardError) {
+        toast.error(cmd.guardError, { id: cmd.id });
+        return null;
+      }
+      if (activeLockRef.current) return null;
+
+      activeLockRef.current = true;
+      setIsExporting(true);
+      const toastId = toast.loading(cmd.loadingMessage);
+      try {
+        const filename = await cmd.execute();
+        toast.success(`Exported ${filename}`, { id: toastId });
+        return filename;
+      } catch (err: unknown) {
+        toast.error(
+          err instanceof Error && err.message ? err.message : cmd.fallbackErrorMessage,
+          { id: toastId },
+        );
+        return null;
+      } finally {
+        activeLockRef.current = false;
+        setIsExporting(false);
+      }
+    },
+    [],
+  );
 
   const downloadPdf = useCallback(async (pdfUrl: string | null | undefined, projectTitle?: string) => {
     if (!pdfUrl) {
@@ -41,159 +83,102 @@ export function useProjectExport() {
     const filename = getExportFilename(projectTitle || 'document', 'pdf');
     try {
       if (pdfUrl.startsWith('blob:') || pdfUrl.startsWith('data:')) {
-        const a = document.createElement('a');
-        a.href = pdfUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const anchor = document.createElement('a');
+        anchor.href = pdfUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
       } else {
         const resp = await fetch(pdfUrl);
         const blob = await resp.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        triggerFileDownload(blob, filename);
       }
     } catch {
-      const a = document.createElement('a');
-      a.href = pdfUrl;
-      a.download = filename;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const anchor = document.createElement('a');
+      anchor.href = pdfUrl;
+      anchor.download = filename;
+      anchor.target = '_blank';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
     }
   }, []);
 
   const downloadCopy = useCallback((content?: string, projectTitle?: string) => {
-    const src = content || '';
-    const title = (projectTitle || 'document').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-    const filename = `${title}_copy.tex`;
-    const blob = new Blob([src], { type: 'text/plain;charset=utf-8' });
+    const filename = `${sanitizeDocExportSlug(projectTitle)}_copy.tex`;
+    const blob = new Blob([content || ''], { type: 'text/plain;charset=utf-8' });
     triggerFileDownload(blob, filename);
   }, []);
 
-  const exportZip = useCallback(async (options: ExportZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Exporting ZIP...');
-    setIsExporting(true);
-    try {
-      const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
-      const filename = await exportProjectAsZip({ ...options, mainFile });
-      toast.success(`Exported ${filename}`, { id: toastId });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to create project ZIP archive.', { id: toastId });
-      return null;
-    } finally {
-      setIsExporting(false);
-    }
-  }, []);
-
-  const exportArxiv = useCallback(async (options: ExportZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Exporting arXiv bundle...');
-    setIsExporting(true);
-    try {
-      const mainFile = options.mainFile || usePageStore.getState().mainFilePath || 'main.tex';
-      const filename = await exportArxivSubmissionZip({ ...options, mainFile });
-      toast.success(`Exported ${filename}`, { id: toastId });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to create arXiv submission ZIP.', { id: toastId });
-      return null;
-    } finally {
-      setIsExporting(false);
-    }
-  }, []);
-
-  const exportWord = useCallback(async (options: ExportSingleDocOptions): Promise<string | null> => {
-    if (!options.pageId) {
-      toast.error('Unable to find project or document ID', { id: 'export-word' });
-      return null;
-    }
-    const toastId = toast.loading('Exporting Word (.docx)...');
-    setIsExporting(true);
-    try {
-      const filename = await exportDocumentAsWord(options);
-      toast.success(`Exported ${filename}`, { id: toastId });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to export document to Microsoft Word (.docx).', { id: toastId });
-      return null;
-    } finally {
-      setIsExporting(false);
-    }
-  }, []);
-
-  const exportMarkdown = useCallback(async (options: ExportSingleDocOptions): Promise<string | null> => {
-    if (!options.pageId && !options.fallbackContent) {
-      toast.error('Unable to find document content', { id: 'export-markdown' });
-      return null;
-    }
-    const toastId = toast.loading('Exporting Markdown (.md)...');
-    setIsExporting(true);
-    try {
-      const filename = await exportDocumentAsMarkdown(options);
-      toast.success(`Exported ${filename}`, { id: toastId });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to export document to Markdown (.md).', { id: toastId });
-      return null;
-    } finally {
-      setIsExporting(false);
-    }
-  }, []);
-
-  const exportHtml = useCallback(
-    async (
-      options: {
-        pageId?: string;
-        content?: string;
-        projectTitle?: string;
-        includeChildren?: boolean;
-      },
-    ): Promise<string | null> => {
-      if (!options.pageId) {
-        toast.error('Unable to find project or document ID', { id: 'export-html' });
-        return null;
-      }
-      const toastId = toast.loading('Exporting HTML (.html)...');
-      setIsExporting(true);
-      try {
-        const filename = await exportDocumentAsHtml(options);
-        toast.success(`Exported ${filename}`, { id: toastId });
-        return filename;
-      } catch (err: unknown) {
-        toast.error(
-          (err as Error)?.message || 'Failed to export HTML document.',
-          { id: toastId },
-        );
-        return null;
-      } finally {
-        setIsExporting(false);
-      }
-    },
-    [],
+  const exportZip = useCallback(
+    (options: ExportZipOptions) =>
+      runExportCommand({
+        id: 'export-zip',
+        loadingMessage: 'Exporting ZIP...',
+        fallbackErrorMessage: 'Failed to create project ZIP archive.',
+        execute: () => exportProjectAsZip(options),
+      }),
+    [runExportCommand],
   );
 
-  const exportVersionZip = useCallback(async (options: ExportVersionZipOptions): Promise<string | null> => {
-    const toastId = toast.loading('Exporting version ZIP...');
-    setIsExporting(true);
-    try {
-      const filename = await exportVersionAsZip(options);
-      toast.success(`Exported ${filename}`, { id: toastId });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to create version ZIP archive.', { id: toastId });
-      return null;
-    } finally {
-      setIsExporting(false);
-    }
-  }, []);
+  const exportArxiv = useCallback(
+    (options: ExportZipOptions) =>
+      runExportCommand({
+        id: 'export-arxiv',
+        loadingMessage: 'Exporting arXiv bundle...',
+        fallbackErrorMessage: 'Failed to create arXiv submission ZIP.',
+        execute: () => exportArxivSubmissionZip(options),
+      }),
+    [runExportCommand],
+  );
+
+  const exportWord = useCallback(
+    (options: ExportSingleDocOptions) =>
+      runExportCommand({
+        id: 'export-word',
+        guardError: options.docId ? null : 'Unable to find document ID',
+        loadingMessage: 'Exporting Word (.docx)...',
+        fallbackErrorMessage: 'Failed to export document to Microsoft Word (.docx).',
+        execute: () => exportDocumentAsWord(options),
+      }),
+    [runExportCommand],
+  );
+
+  const exportMarkdown = useCallback(
+    (options: ExportSingleDocOptions) =>
+      runExportCommand({
+        id: 'export-markdown',
+        guardError: options.docId ? null : 'Unable to find document ID',
+        loadingMessage: 'Exporting Markdown (.md)...',
+        fallbackErrorMessage: 'Failed to export document to Markdown (.md).',
+        execute: () => exportDocumentAsMarkdown(options),
+      }),
+    [runExportCommand],
+  );
+
+  const exportHtml = useCallback(
+    (options: ExportSingleDocOptions) =>
+      runExportCommand({
+        id: 'export-html',
+        guardError: options.docId ? null : 'Unable to find document ID',
+        loadingMessage: 'Exporting HTML (.html)...',
+        fallbackErrorMessage: 'Failed to export HTML document.',
+        execute: () => exportDocumentAsHtml(options),
+      }),
+    [runExportCommand],
+  );
+
+  const exportVersionZip = useCallback(
+    (options: ExportVersionZipOptions) =>
+      runExportCommand({
+        id: 'export-version-zip',
+        loadingMessage: 'Exporting version ZIP...',
+        fallbackErrorMessage: 'Failed to create version ZIP archive.',
+        execute: () => exportVersionAsZip(options),
+      }),
+    [runExportCommand],
+  );
 
   return {
     isExporting,

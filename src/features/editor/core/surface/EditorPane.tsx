@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * EditorPane.tsx
@@ -200,7 +200,7 @@ export function EditorPane({
             {isDirty && (
               <span className="size-1.5 rounded-full bg-primary shrink-0" title="Unsaved changes" />
             )}
-            <span className="text-[10px] text-muted-foreground font-mono font-medium tracking-normal px-1.5 py-0.5 bg-muted/60 rounded">
+            <span className="text-10 text-muted-foreground font-mono font-medium tracking-normal px-1.5 py-0.5 bg-muted/60 rounded">
               {paneId}
             </span>
           </div>

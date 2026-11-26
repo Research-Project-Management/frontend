@@ -6,6 +6,8 @@
  * and Shallow URL Synchronization.
  */
 
+import { logger } from '@/shared/lib/logger';
+
 export const EDITOR_STORAGE_KEYS = {
   SETTINGS: 'flux-editor-settings',
   WORKBENCH_LAYOUT: 'flux_editor_workbench_layout',
@@ -28,12 +30,9 @@ export function getSyncTexChannelName(targetId?: string | null): string {
 export const DEFAULT_MAIN_FILE = 'main.tex';
 export const DEFAULT_BIB_FILE = 'references.bib';
 
-export const EDITOR_DOCS_URLS = {
-  DOCUMENTATION_HOME:
-    process.env.NEXT_PUBLIC_LATEX_DOCS_URL || 'https://latexref.xyz/dev/latex2e.html',
-  LATEX_INTRO_GUIDE:
-    process.env.NEXT_PUBLIC_LATEX_GUIDE_URL || 'https://en.wikibooks.org/wiki/LaTeX',
-} as const;
+import { LATEX_DOCS_URLS } from '@/config/env';
+
+export const EDITOR_DOCS_URLS = LATEX_DOCS_URLS;
 
 export const EDITOR_LIMITS = {
   MAX_FSM_CONTEXTS: 200,
@@ -152,7 +151,7 @@ export function syncShallowUrlParams(params: Record<string, string | null | unde
     }
     window.history.replaceState(window.history.state, '', url.pathname + url.search);
   } catch (err) {
-    console.debug('[EditorConstants] Shallow URL replaceState skipped:', err);
+    logger.debug('[EditorConstants] Shallow URL replaceState skipped', { err });
   }
 }
 

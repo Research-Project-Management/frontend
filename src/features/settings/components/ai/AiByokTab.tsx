@@ -145,7 +145,7 @@ export function AiByokTab() {
             </p>
           </div>
           {savedByok?.hasApiKey && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-11 font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-11 font-medium text-success border border-success/20 shrink-0">
               <ShieldCheck className="size-3.5" />
               Key Saved ({savedByok.apiKeyHint})
             </span>

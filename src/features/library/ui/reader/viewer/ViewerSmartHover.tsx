@@ -668,9 +668,9 @@ export function ViewerSmartHoverPopover({
                   card.entries.length > 1 && idx < card.entries.length - 1 && 'pb-2',
                 )}
               >
-                <p className="text-[12px] leading-[1.55] text-foreground">
+                <p className="text-12 leading-[1.55] text-foreground">
                   {card.entries.length > 1 && (
-                    <span className="font-mono text-[11px] text-muted-foreground mr-1.5">
+                    <span className="font-mono text-11 text-muted-foreground mr-1.5">
                       {entry.badge}
                     </span>
                   )}

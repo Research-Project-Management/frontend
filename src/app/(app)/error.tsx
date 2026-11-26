@@ -20,6 +20,7 @@ export default function AppRouteError({
       title="This view encountered an issue"
       description="Unable to load data for the current view. Navigation and other workspaces remain safe."
       error={error}
+      reset={reset}
     />
   );
 }

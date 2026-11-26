@@ -121,47 +121,9 @@ describe('Deleted Files Recovery & Download Version as ZIP (Overleaf Parity)', (
 
   describe('3. Download Version as ZIP (exportVersionAsZip)', () => {
     it('bundles all files at historical revision into a ZIP and triggers download', async () => {
-      // Mock pagesService.docs
-      vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
-        id: 'root-1',
-        title: 'Quantum_Paper',
-        content: '\\documentclass{article}\n\\begin{document}\nMain text\n\\end{document}',
-      } as any);
-
-      vi.spyOn(pagesService.docs, 'getFiles').mockResolvedValue([
-        { id: 'f-2', title: 'chapter1.tex', content: 'Chapter 1 live content' } as any,
-      ]);
-
-      vi.spyOn(pagesService.docs, 'getDeletedFiles').mockResolvedValue([
-        { id: 'f-3', title: 'removed_note.tex', content: 'Historical note content' } as any,
-      ]);
-
-      vi.spyOn(pagesService.structure, 'getPageFiles').mockResolvedValue([]);
-
-      // Mock pagesService.history snapshots
-      vi.spyOn(pagesService.history, 'getByPageId').mockImplementation(async (pageId: string) => {
-        if (pageId === 'root-1') {
-          return [
-            { id: 'ver-root-1', createdAt: '2026-09-15T12:00:00Z', label: 'v1.0' } as any,
-          ];
-        }
-        if (pageId === 'f-2') {
-          return [
-            { id: 'ver-c1-1', createdAt: '2026-09-15T12:00:00Z', label: 'v1.0' } as any,
-          ];
-        }
-        return [];
-      });
-
-      vi.spyOn(pagesService.history, 'getById').mockImplementation(async (pageId: string, versionId: string) => {
-        if (pageId === 'root-1' && versionId === 'ver-root-1') {
-          return { id: versionId, content: '\\documentclass{article}\n% Snapshot v1.0\n' } as any;
-        }
-        if (pageId === 'f-2' && versionId === 'ver-c1-1') {
-          return { id: versionId, content: 'Chapter 1 snapshot content' } as any;
-        }
-        return null as any;
-      });
+      const exportZipSpy = vi
+        .spyOn(pagesService.history, 'exportVersionZip')
+        .mockResolvedValue(new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' }));
 
       // Trigger export
       await exportVersionAsZip({
@@ -172,22 +134,16 @@ describe('Deleted Files Recovery & Download Version as ZIP (Overleaf Parity)', (
         projectTitle: 'Quantum Paper',
       });
 
-      // Verify browser download was triggered with expected filename
+      // Verify backend history version ZIP endpoint was called and browser download was triggered
+      expect(exportZipSpy).toHaveBeenCalledWith('root-1', 'ver-root-1', 'Quantum_Paper', undefined);
       expect(mockClick).toHaveBeenCalledTimes(1);
       expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
-      expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1);
     });
 
     it('formats snapshot filename properly with sanitized project title and label', async () => {
-      vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
-        id: 'root-1',
-        title: 'Deep Learning / AI Project: Final!!',
-        content: 'Content',
-      } as any);
-      vi.spyOn(pagesService.docs, 'getFiles').mockResolvedValue([]);
-      vi.spyOn(pagesService.docs, 'getDeletedFiles').mockResolvedValue([]);
-      vi.spyOn(pagesService.structure, 'getPageFiles').mockResolvedValue([]);
-      vi.spyOn(pagesService.history, 'getByPageId').mockResolvedValue([]);
+      vi.spyOn(pagesService.history, 'exportVersionZip').mockResolvedValue(
+        new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' }),
+      );
 
       let capturedFilename = '';
       vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {

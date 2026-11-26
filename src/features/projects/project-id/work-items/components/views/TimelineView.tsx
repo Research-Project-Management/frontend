@@ -20,6 +20,7 @@ import {
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
+import { STORAGE_KEYS } from "@/config/storage-keys";
 import { useAddRelationMutation, useProjectCpmQuery } from '@/features/projects/project-id/work-items/hooks/use-relation';
 import { ItemHelpers, resolveColumnId, resolveColumnColor, buildItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { HorizontalScrollbar, renderPriorityIcon } from './TableView';
@@ -377,12 +378,12 @@ const TimelineBar = memo(function TimelineBar({
             {item.title}
           </span>
         ) : (
-          <span className="text-[10px] font-mono font-medium truncate text-white leading-none">
+          <span className="text-10 font-mono font-medium truncate text-white leading-none">
             {compactLabel}
           </span>
         )}
         {isCritical && showText && (
-          <span className="ml-auto px-1 py-0.5 rounded text-[9px] font-semibold bg-destructive text-destructive-foreground shrink-0 tracking-wider">
+          <span className="ml-auto px-1 py-0.5 rounded text-9 font-semibold bg-destructive text-destructive-foreground shrink-0 tracking-wider">
             CP
           </span>
         )}
@@ -667,11 +668,11 @@ export const TimelineView = memo(function TimelineView({
   // Sync saved preferences on client mount without breaking hydration
   useEffect(() => {
     try {
-      const savedZoom = localStorage.getItem('flux:timeline_view:zoom') as TimelineZoom;
+      const savedZoom = localStorage.getItem(STORAGE_KEYS.TIMELINE_ZOOM) as TimelineZoom;
       if (savedZoom === 'week' || savedZoom === 'month' || savedZoom === 'quarter') {
         setZoom(savedZoom);
       }
-      const savedWidth = localStorage.getItem('flux:timeline_view:sidebar_width');
+      const savedWidth = localStorage.getItem(STORAGE_KEYS.TIMELINE_SIDEBAR_WIDTH);
       if (savedWidth) {
         const val = parseInt(savedWidth, 10);
         if (!isNaN(val) && val >= 180 && val <= 650) {
@@ -692,7 +693,7 @@ export const TimelineView = memo(function TimelineView({
   const handleZoomChange = (newZoom: TimelineZoom) => {
     setZoom(newZoom);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('flux:timeline_view:zoom', newZoom);
+      localStorage.setItem(STORAGE_KEYS.TIMELINE_ZOOM, newZoom);
     }
   };
 
@@ -713,7 +714,7 @@ export const TimelineView = memo(function TimelineView({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       try {
-        localStorage.setItem('flux:timeline_view:sidebar_width', String(latestWidth));
+        localStorage.setItem(STORAGE_KEYS.TIMELINE_SIDEBAR_WIDTH, String(latestWidth));
       } catch {}
     };
 

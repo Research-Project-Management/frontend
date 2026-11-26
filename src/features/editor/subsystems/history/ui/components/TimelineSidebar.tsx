@@ -201,7 +201,7 @@ export function TimelineSidebar({
                     <span className="text-xs font-medium text-foreground truncate">
                       {formatVersionTime(v.createdAt)}
                     </span>
-                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">
+                    <span className="text-11 font-mono text-muted-foreground shrink-0">
                       v{v.version}
                     </span>
                   </div>
@@ -265,7 +265,7 @@ export function TimelineSidebar({
 
                 {/* Author */}
                 {authorLabel && (
-                  <div className="flex items-center gap-1 mt-1 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1 mt-1 text-11 text-muted-foreground">
                     <User className="size-3 shrink-0 opacity-70" />
                     <span className="truncate">{authorLabel}</span>
                   </div>
@@ -285,7 +285,7 @@ export function TimelineSidebar({
                 {!isAddingLabel &&
                   historyMode === 'compare' &&
                   onSelectBaseVersion && (
-                    <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-border/40 text-[11px] text-muted-foreground">
+                    <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-border/40 text-11 text-muted-foreground">
                       <button
                         type="button"
                         onClick={(e) => {

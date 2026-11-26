@@ -439,7 +439,7 @@ export function SidebarSystemNav({
           const badgeCount = item.getBadge?.(effectiveStats);
           const badgeNode =
             badgeCount !== null && badgeCount !== undefined ? (
-              <span className="relative z-10 ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1.5 font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
+              <span className="relative z-10 ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1.5 font-mono text-10 font-medium tabular-nums text-muted-foreground">
                 {badgeCount}
               </span>
             ) : undefined;

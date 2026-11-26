@@ -204,15 +204,15 @@ export const PdfFindBar = React.memo(function PdfFindBar({
       <div className="h-4 w-px bg-border shrink-0" />
 
       {/* Match Status */}
-      <div className="flex items-center min-w-[55px] justify-center text-center text-[11px] text-muted-foreground px-1 select-none">
+      <div className="flex items-center min-w-[55px] justify-center text-center text-11 text-muted-foreground px-1 select-none">
         {isSearching ? (
           <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-muted-foreground" />
         ) : isRegexError ? (
-          <span className="text-destructive font-medium text-[11px]">Invalid regex</span>
+          <span className="text-destructive font-medium text-11">Invalid regex</span>
         ) : hasQuery && matchesCount === 0 ? (
-          <span className="text-destructive font-medium text-[11px]">No matches</span>
+          <span className="text-destructive font-medium text-11">No matches</span>
         ) : hasQuery && matchesCount > 0 ? (
-          <span className="tabular-nums font-mono text-[11px]">
+          <span className="tabular-nums font-mono text-11">
             {currentMatchIndex + 1}/{matchesCount}
           </span>
         ) : null}

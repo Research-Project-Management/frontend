@@ -181,7 +181,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
             <div className="min-w-0 space-y-0.5">
               <div className="font-semibold leading-tight">{title}</div>
               {description && (
-                <p className="text-[11px] opacity-85 leading-relaxed break-words">
+                <p className="text-11 opacity-85 leading-relaxed break-words">
                   {description}
                 </p>
               )}
@@ -193,7 +193,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
               <button
                 type="button"
                 onClick={onJumpToFirstError}
-                className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-[11px] font-medium hover:bg-background/50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-11 font-medium hover:bg-background/50 transition-colors cursor-pointer"
               >
                 <span>Jump to error</span>
                 <ArrowRight className="size-3" />
@@ -209,7 +209,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
                 <button
                   type="button"
                   onClick={onCompile}
-                  className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-[11px] font-medium hover:bg-background/50 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-11 font-medium hover:bg-background/50 transition-colors cursor-pointer"
                 >
                   <RefreshCw className="size-3" />
                   <span>
@@ -221,7 +221,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
               <button
                 type="button"
                 onClick={onClearCacheAndCompile}
-                className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-[11px] font-medium hover:bg-background/50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 rounded border border-current/25 px-2 py-1 text-11 font-medium hover:bg-background/50 transition-colors cursor-pointer"
               >
                 <Trash2 className="size-3" />
                 <span>Clear cache &amp; retry</span>
@@ -232,7 +232,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
       )}
 
       {validationIssues && validationIssues.length > 0 && (
-        <ul className="space-y-1 border-t border-current/15 pt-1.5 text-[11px] font-mono">
+        <ul className="space-y-1 border-t border-current/15 pt-1.5 text-11 font-mono">
           {validationIssues.map((issue, idx) => {
             const detail =
               issue.code === 'mainFile'
@@ -254,7 +254,7 @@ export const CompileOutcomeCard = React.memo(function CompileOutcomeCard({
       )}
 
       {hasSummaryNotice && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] opacity-85 border-t border-current/15 pt-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-11 opacity-85 border-t border-current/15 pt-1.5">
           {(summary?.suppressedCascadeCount ?? 0) > 0 && (
             <span>
               {summary?.suppressedCascadeCount} cascading follow-up diagnostic

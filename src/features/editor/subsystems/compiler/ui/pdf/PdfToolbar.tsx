@@ -145,14 +145,14 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                   {errorCount > 0 ? (
                     <span
                       data-testid="compiler-error-badge"
-                      className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-destructive text-destructive-foreground leading-none animate-in zoom-in-50 duration-100"
+                      className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-10 font-mono font-semibold bg-destructive text-destructive-foreground leading-none animate-in zoom-in-50 duration-100"
                     >
                       {errorCount > 99 ? '99+' : errorCount}
                     </span>
                   ) : warningCount > 0 ? (
                     <span
                       data-testid="compiler-warning-badge"
-                      className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-[10px] font-mono font-semibold bg-warning text-warning-foreground leading-none animate-in zoom-in-50 duration-100"
+                      className="absolute -top-0.5 -right-0.5 flex min-w-3.5 h-3.5 px-1 items-center justify-center rounded-full text-10 font-mono font-semibold bg-warning text-warning-foreground leading-none animate-in zoom-in-50 duration-100"
                     >
                       {warningCount > 99 ? '99+' : warningCount}
                     </span>

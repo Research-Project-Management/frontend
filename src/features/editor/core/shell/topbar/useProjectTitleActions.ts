@@ -5,14 +5,9 @@
  *
  * Dedicated custom hook encapsulating topbar project actions and notifications:
  * - PDF download
- * - Source ZIP export
- * - Word document export
- * - Project renaming (with cache invalidation and toast feedback)
- * - Project duplication / Make a copy (with navigation and toast feedback)
- *
- * Adheres strictly to the architectural constraint:
- * All toasts are managed inside hooks, keeping components purely presentation-focused.
- * Location: `features/editor/core/shell/topbar/useProjectTitleActions.ts`
+ * - Source & arXiv ZIP export
+ * - Word / Markdown / HTML single-document export
+ * - Project renaming & duplication
  */
 
 import { useState, useCallback } from 'react';
@@ -20,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { useProjectExport } from '@/features/editor/core/hooks/useExport';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 export interface UseProjectTitleActionsOptions {
@@ -56,69 +52,87 @@ export function useProjectTitleActions({
   } = useProjectExport();
   const { updateTitle: updateTitleMutation, duplicatePage: duplicatePageMutation } = usePageActions();
 
+  const resolveTargetDocId = useCallback((): string => {
+    const store = usePageStore.getState();
+    return (
+      store.rootDocId ||
+      activeFilePage?.id ||
+      store.activeDocId ||
+      currentPage?.id ||
+      fallbackRootId ||
+      ''
+    );
+  }, [activeFilePage?.id, currentPage?.id, fallbackRootId]);
+
   const handleDownloadPdf = useCallback(() => {
-    downloadPdf(pdfUrl, displayTitle);
+    void downloadPdf(pdfUrl, displayTitle);
   }, [downloadPdf, pdfUrl, displayTitle]);
 
   const handleDownloadZip = useCallback(() => {
-    const rootId = fallbackRootId || effectiveProjectId || currentPage?.id;
-    if (!rootId) {
+    const pageId = currentPage?.id || fallbackRootId;
+    const spaceId = effectiveProjectId || pageId;
+    if (!spaceId && !pageId) {
       toast.error('Unable to find project or document ID');
       return;
     }
-    exportZip({
-      parentPageId: rootId,
+    void exportZip({
+      spaceId: spaceId || undefined,
+      parentPageId: pageId || spaceId || '',
+      pageId: pageId || undefined,
       projectTitle: displayTitle,
-      currentContent: getContent(),
-      activeFileId: activeFilePage?.id,
-      activeFileTitle: activeFilePage?.title,
     });
-  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, getContent, activeFilePage?.id, activeFilePage?.title, exportZip]);
+  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, exportZip]);
 
   const handleDownloadArxiv = useCallback(() => {
-    const rootId = fallbackRootId || effectiveProjectId || currentPage?.id;
-    if (!rootId) {
+    const pageId = currentPage?.id || fallbackRootId;
+    const spaceId = effectiveProjectId || pageId;
+    if (!spaceId && !pageId) {
       toast.error('Unable to find project or document ID');
       return;
     }
-    exportArxiv({
-      parentPageId: rootId,
+    void exportArxiv({
+      spaceId: spaceId || undefined,
+      parentPageId: pageId || spaceId || '',
+      pageId: pageId || undefined,
       projectTitle: displayTitle,
-      currentContent: getContent(),
-      activeFileId: activeFilePage?.id,
-      activeFileTitle: activeFilePage?.title,
     });
-  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, getContent, activeFilePage?.id, activeFilePage?.title, exportArxiv]);
+  }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, exportArxiv]);
 
   const handleExportWord = useCallback(() => {
-    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
+    const docId = resolveTargetDocId();
     if (!docId) {
       toast.error('Unable to find document content');
       return;
     }
-    exportWord({
-      pageId: docId,
+    void exportWord({
+      docId,
       projectTitle: displayTitle,
     });
-  }, [fallbackRootId, currentPage?.id, effectiveProjectId, displayTitle, exportWord]);
+  }, [resolveTargetDocId, displayTitle, exportWord]);
 
   const handleExportMarkdown = useCallback(() => {
-    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
-    exportMarkdown({
-      pageId: docId || '',
+    const docId = resolveTargetDocId();
+    if (!docId) {
+      toast.error('Unable to find document content');
+      return;
+    }
+    void exportMarkdown({
+      docId,
       projectTitle: displayTitle,
-      fallbackContent: getContent(),
     });
-  }, [fallbackRootId, currentPage?.id, effectiveProjectId, displayTitle, getContent, exportMarkdown]);
+  }, [resolveTargetDocId, displayTitle, exportMarkdown]);
 
   const handleExportHtml = useCallback(() => {
-    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
-    exportHtml({
-      pageId: docId || '',
-      content: getContent(),
+    const docId = resolveTargetDocId();
+    if (!docId) {
+      toast.error('Unable to find document content');
+      return;
+    }
+    void exportHtml({
+      docId,
       projectTitle: displayTitle,
     });
-  }, [fallbackRootId, effectiveProjectId, currentPage?.id, getContent, displayTitle, exportHtml]);
+  }, [resolveTargetDocId, displayTitle, exportHtml]);
 
   const handleApplyRename = useCallback(
     async (newName: string): Promise<boolean> => {
@@ -135,7 +149,6 @@ export function useProjectTitleActions({
           title: trimmed,
           oldTitle: displayTitle,
         });
-
         return true;
       } catch (err: unknown) {
         toast.error((err as Error)?.message || 'Failed to rename document', { id: 'rename-project' });

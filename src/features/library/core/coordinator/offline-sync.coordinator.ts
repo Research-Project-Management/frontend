@@ -11,6 +11,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
 import { apiFetch, ApiError, isApiError } from '@/shared/lib/api';
 import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
+import { getIsOnline, subscribeNetworkStatus } from '@/shared/lib/network';
+import { APP_EVENTS } from '@/config/events';
 import {
   getOutboxStorage,
   type OutboxMutationEntry,
@@ -70,7 +72,7 @@ function notifyOutboxMutated(
   if (typeof window !== 'undefined') {
     try {
       window.dispatchEvent(
-        new CustomEvent('flux:outbox:mutated', {
+        new CustomEvent(APP_EVENTS.OUTBOX_MUTATED, {
           detail: { action, count, mutationId },
         }),
       );
@@ -378,10 +380,16 @@ export function useOfflineSyncStatus(queryClient?: QueryClient) {
       }
     };
 
+    const unsubNetwork = subscribeNetworkStatus((online) => {
+      if (online) {
+        handleOnline();
+      } else {
+        handleOffline();
+      }
+    });
+
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-      window.addEventListener('flux:outbox:mutated', handleLocalOutbox);
+      window.addEventListener(APP_EVENTS.OUTBOX_MUTATED, handleLocalOutbox);
     }
 
     const unsubBus = multiTabBus.subscribe((msg) => {
@@ -394,10 +402,9 @@ export function useOfflineSyncStatus(queryClient?: QueryClient) {
     });
 
     return () => {
+      unsubNetwork();
       if (typeof window !== 'undefined') {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-        window.removeEventListener('flux:outbox:mutated', handleLocalOutbox);
+        window.removeEventListener(APP_EVENTS.OUTBOX_MUTATED, handleLocalOutbox);
       }
       unsubBus();
     };
@@ -418,22 +425,18 @@ export function useOfflineSyncStatus(queryClient?: QueryClient) {
  * whenever the browser comes back online, and syncs queue counts across tabs.
  */
 export function initOfflineSyncAutoListener(queryClient: QueryClient): () => void {
-  const handleOnline = () => {
-    void flushOfflineOutbox(queryClient).catch(() => {});
-  };
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('online', handleOnline);
-  }
+  const unsubNetwork = subscribeNetworkStatus((online) => {
+    if (online) {
+      void flushOfflineOutbox(queryClient).catch(() => {});
+    }
+  });
 
   // Initial check on startup if online
-  if (typeof navigator !== 'undefined' && navigator.onLine) {
+  if (getIsOnline()) {
     void flushOfflineOutbox(queryClient).catch(() => {});
   }
 
   return () => {
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('online', handleOnline);
-    }
+    unsubNetwork();
   };
 }

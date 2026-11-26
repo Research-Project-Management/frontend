@@ -6,6 +6,7 @@
  */
 
 import { API_BASE_URL } from '@/config/env';
+import { UPLOAD_LIMITS } from '@/config/limits';
 import {
   apiDelete,
   apiGet,
@@ -16,9 +17,9 @@ import {
 } from '@/shared/lib/api';
 import { sha256HexOfBlobStreaming } from '@/shared/lib/sha256-stream';
 
-export const DEFAULT_MULTIPART_THRESHOLD_BYTES = 15 * 1024 * 1024;
-export const MAX_CLIENT_HASH_BYTES = 512 * 1024 * 1024;
-const SMALL_HASH_FASTPATH_BYTES = 8 * 1024 * 1024;
+export const DEFAULT_MULTIPART_THRESHOLD_BYTES = UPLOAD_LIMITS.MULTIPART_THRESHOLD_BYTES;
+export const MAX_CLIENT_HASH_BYTES = UPLOAD_LIMITS.MAX_CLIENT_HASH_BYTES;
+const SMALL_HASH_FASTPATH_BYTES = UPLOAD_LIMITS.SMALL_HASH_FASTPATH_BYTES;
 export const DEFAULT_PART_CONCURRENCY = 3;
 export const DEFAULT_PART_MAX_RETRIES = 3;
 export const CHECKPOINT_TTL_MS = 20 * 60 * 60 * 1000;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { APP_EVENTS, emitAppEvent } from '@/config/events';
 import {
   ChevronDown,
   PanelLeft,
@@ -111,7 +112,7 @@ export function PagesSidebar({
                   if (onToggleCollapse) {
                     onToggleCollapse();
                   } else {
-                    window.dispatchEvent(new CustomEvent('toggle-pages-sidebar'));
+                    emitAppEvent(APP_EVENTS.TOGGLE_PAGES_SIDEBAR);
                   }
                 }}
                 aria-label="Collapse sidebar"

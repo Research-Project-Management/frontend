@@ -6,12 +6,9 @@
  */
 
 import { getEffectiveBaseUrl } from '@/shared/lib/api';
+import { PAGES_SERVICE_BASE_URL } from '@/config/env';
 
-export const PAGES_API_BASE =
-  process.env.NEXT_PUBLIC_PAGES_SERVICE_URL ||
-  process.env.NEXT_PUBLIC_MANUSCRIPTS_SERVICE_URL ||
-  process.env.NEXT_PUBLIC_MANUSCRIPT_SERVICE_URL ||
-  '/api/v1/pages';
+export const PAGES_API_BASE = PAGES_SERVICE_BASE_URL;
 
 export function getPagesBaseUrl(): string {
   if (PAGES_API_BASE.startsWith('http://') || PAGES_API_BASE.startsWith('https://')) {

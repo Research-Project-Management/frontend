@@ -93,7 +93,6 @@ export default function Sidebar() {
     const isPagesRoute =
       pathname === '/pages' ||
       pathname.startsWith('/pages/') ||
-      pathname === '/projects/pages' ||
       /^\/projects\/[^/]+\/pages(\/|$)/.test(pathname);
 
     const isProjectSettingsRoute = /^\/projects\/[^/]+\/settings(\/|$)/.test(pathname);

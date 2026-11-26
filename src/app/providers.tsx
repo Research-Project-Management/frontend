@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { MotionConfig } from 'framer-motion';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from "@/shared/lib/get-query-client";
@@ -8,6 +9,7 @@ import { getQueryClient } from "@/shared/lib/get-query-client";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { ThemeProvider } from "@/shared/providers/theme-provider";
+import { WebVitalsReporter } from "@/shared/components/telemetry/WebVitalsReporter";
 
 
 export default function Providers({ children }: { children: React.ReactNode }) {
@@ -15,16 +17,19 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider delayDuration={1000} skipDelayDuration={300} disableHoverableContent={true}>
-            {children}
-          </TooltipProvider>
-          {process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ENABLE_DEVTOOLS === 'true' && (
-            <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
-          )}
-        </QueryClientProvider>
-      </ThemeProvider>
+      <WebVitalsReporter />
+      <MotionConfig reducedMotion="user">
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider delayDuration={1000} skipDelayDuration={300} disableHoverableContent={true}>
+              {children}
+            </TooltipProvider>
+            {process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ENABLE_DEVTOOLS === 'true' && (
+              <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+            )}
+          </QueryClientProvider>
+        </ThemeProvider>
+      </MotionConfig>
     </ErrorBoundary>
   );
 }

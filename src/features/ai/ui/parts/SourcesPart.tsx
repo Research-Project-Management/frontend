@@ -77,7 +77,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
                   <FileText className="size-2.5 shrink-0" aria-hidden="true" />
                   <span className="truncate">{group.label}</span>
                   {pageSuffix && (
-                    <span className="shrink-0 tabular-nums text-[11px] opacity-75">
+                    <span className="shrink-0 tabular-nums text-11 opacity-75">
                       {pageSuffix}
                     </span>
                   )}
@@ -96,7 +96,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
                     </span>
                   </div>
                   {group.excerpts.length > 1 && (
-                    <span className="text-[11px] text-muted-foreground shrink-0 tabular-nums">
+                    <span className="text-11 text-muted-foreground shrink-0 tabular-nums">
                       {group.excerpts.length} excerpts
                     </span>
                   )}
@@ -105,7 +105,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
                   {group.excerpts.map((excerpt, exIdx) => (
                     <div key={exIdx} className="px-3 py-2.5 space-y-1">
                       {excerpt.page !== undefined && (
-                        <p className="text-[11px] font-medium text-ai/80 tabular-nums">
+                        <p className="text-11 font-medium text-ai/80 tabular-nums">
                           Page {excerpt.page}
                         </p>
                       )}
@@ -125,7 +125,7 @@ export function SourcesPart({ sources }: { sources: SourceItem[] }) {
               <FileText className="size-2.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{group.label}</span>
               {pageSuffix && (
-                <span className="shrink-0 tabular-nums text-[11px] opacity-75">
+                <span className="shrink-0 tabular-nums text-11 opacity-75">
                   {pageSuffix}
                 </span>
               )}

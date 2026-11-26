@@ -388,8 +388,13 @@ export class NavigationCoordinator {
             targetPathLower.endsWith(`/${fPath}`)),
       );
     });
+    const isRootAlias =
+      fileId === pageStore.currentPage?.id ||
+      fileId === pageStore.parentPageId ||
+      fileId === pageStore.rootPageId ||
+      fileId === pageStore.rootDocId;
     const hasPageStoreMatch =
-      pageStore.currentPage?.id === fileId && pageStore.currentPage?.content !== undefined;
+      isRootAlias && pageStore.currentPage?.content !== undefined;
     const hasAuthoritativeFallback =
       hasExplicitOptContent ||
       Boolean(authorityContent) ||

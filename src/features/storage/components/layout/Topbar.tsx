@@ -25,7 +25,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { useTopbar } from '../../hooks/use-topbar';
@@ -249,47 +248,45 @@ export default function Topbar({
 
           {/* View Toggle and Filter */}
           <div className="flex items-center gap-1.5">
-            <TooltipProvider delayDuration={300}>
-              <div className="flex items-center bg-muted p-0.5 rounded-md">
-                {(['grid', 'list'] as const).map((v) => (
-                  <Tooltip key={v}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => React.startTransition(() => setView(v))}
-                        className={cn(
-                          'relative p-1 rounded-sm transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                          view === v
-                            ? 'bg-background border border-border text-foreground font-medium'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+            <div className="flex items-center bg-muted p-0.5 rounded-md">
+              {(['grid', 'list'] as const).map((v) => (
+                <Tooltip key={v}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => React.startTransition(() => setView(v))}
+                      className={cn(
+                        'relative p-1 rounded-sm transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        view === v
+                          ? 'bg-background border border-border text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                      )}
+                      aria-label={`${v} view`}
+                    >
+                      <span className="relative z-10 flex">
+                        {v === 'grid' && (
+                          <Columns3
+                            className="size-3.5 shrink-0"
+                            strokeWidth={1.75}
+                          />
                         )}
-                        aria-label={`${v} view`}
-                      >
-                        <span className="relative z-10 flex">
-                          {v === 'grid' && (
-                            <Columns3
-                              className="size-3.5 shrink-0"
-                              strokeWidth={1.75}
-                            />
-                          )}
-                          {v === 'list' && (
-                            <AlignJustify
-                              className="size-3.5 shrink-0"
-                              strokeWidth={1.75}
-                            />
-                          )}
-                        </span>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={6}>
-                      {v === 'grid' ? 'Grid view' : 'List view'}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
+                        {v === 'list' && (
+                          <AlignJustify
+                            className="size-3.5 shrink-0"
+                            strokeWidth={1.75}
+                          />
+                        )}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6}>
+                    {v === 'grid' ? 'Grid view' : 'List view'}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
 
-              <StorageFilterPopover />
-            </TooltipProvider>
+            <StorageFilterPopover />
           </div>
 
           {/* New Button / DropdownMenu */}

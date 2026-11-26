@@ -6,6 +6,7 @@ import { useAiCompanionStore } from '@/features/ai';
 import { usePathname } from 'next/navigation';
 import AccountDropdown from './AccountDropdown';
 import SpaceSwitcher from './SpaceSwitcher';
+import { APP_EVENTS, emitAppEvent } from '@/config/events';
 
 export default function Topbar() {
   const pathname = usePathname();
@@ -40,7 +41,7 @@ export default function Topbar() {
       <div className='flex-1 max-w-[200px] sm:max-w-[300px] md:max-w-[340px] lg:absolute lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:px-4 pointer-events-none'>
         <button
           type='button'
-          onClick={() => window.dispatchEvent(new CustomEvent('open-quick-search'))}
+          onClick={() => emitAppEvent(APP_EVENTS.OPEN_QUICK_SEARCH)}
           className='pointer-events-auto group flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 text-foreground transition-colors hover:border-foreground/30 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary'
           aria-label='Search'
         >

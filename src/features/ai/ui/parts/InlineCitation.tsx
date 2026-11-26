@@ -35,7 +35,7 @@ export function InlineCitation({
     if (!isStreaming) return null;
     return (
       <span
-        className="inline-flex items-center align-baseline ml-1 mr-0 px-1.5 py-px rounded-full bg-muted/80 text-muted-foreground text-[11px] font-medium tabular-nums animate-pulse motion-reduce:animate-none"
+        className="inline-flex items-center align-baseline ml-1 mr-0 px-1.5 py-px rounded-full bg-muted/80 text-muted-foreground text-11 font-medium tabular-nums animate-pulse motion-reduce:animate-none"
         aria-label="Loading citation"
       >
         {index}
@@ -59,7 +59,7 @@ export function InlineCitation({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-0.5 align-baseline ml-1 mr-0 px-1.5 py-px rounded-full bg-muted/80 text-muted-foreground hover:bg-ai/12 hover:text-ai data-[state=open]:bg-ai/15 data-[state=open]:text-ai text-[11px] font-medium tabular-nums leading-snug cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
+          className="inline-flex items-center gap-0.5 align-baseline ml-1 mr-0 px-1.5 py-px rounded-full bg-muted/80 text-muted-foreground hover:bg-ai/12 hover:text-ai data-[state=open]:bg-ai/15 data-[state=open]:text-ai text-11 font-medium tabular-nums leading-snug cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai"
           aria-label={`View source: ${fullTitle}`}
         >
           {label}
@@ -86,7 +86,7 @@ export function InlineCitation({
               href={source.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[11px] font-medium text-ai hover:underline shrink-0"
+              className="text-11 font-medium text-ai hover:underline shrink-0"
             >
               Open
             </a>
@@ -97,12 +97,12 @@ export function InlineCitation({
                 type="button"
                 onClick={() => requestCitationNavigate(sourceId, page)}
                 aria-label={`Jump to page ${page}`}
-                className="text-[11px] font-medium text-ai hover:underline shrink-0 tabular-nums cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai rounded-xs"
+                className="text-11 font-medium text-ai hover:underline shrink-0 tabular-nums cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai rounded-xs"
               >
                 Page {page} →
               </button>
             ) : (
-              <span className="text-[11px] font-medium text-ai/85 shrink-0 tabular-nums">
+              <span className="text-11 font-medium text-ai/85 shrink-0 tabular-nums">
                 Page {page}
               </span>
             ))

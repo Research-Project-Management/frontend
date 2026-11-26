@@ -192,7 +192,7 @@ export const SplitDiffView = React.memo(function SplitDiffView({
                       >
                         {hasOld ? (
                           <>
-                            <span className="w-8 select-none text-[10px] text-muted-foreground/60 text-right pr-2 shrink-0">
+                            <span className="w-8 select-none text-10 text-muted-foreground/60 text-right pr-2 shrink-0">
                               {row.oldLine!.oldLineNumber || ''}
                             </span>
                             <span className="w-4 select-none shrink-0 font-semibold text-destructive">
@@ -219,7 +219,7 @@ export const SplitDiffView = React.memo(function SplitDiffView({
                             </div>
                           </>
                         ) : (
-                          <div className="flex-1 opacity-20 text-[10px] select-none">&nbsp;</div>
+                          <div className="flex-1 opacity-20 text-10 select-none">&nbsp;</div>
                         )}
                       </div>
 
@@ -233,7 +233,7 @@ export const SplitDiffView = React.memo(function SplitDiffView({
                       >
                         {hasNew ? (
                           <>
-                            <span className="w-8 select-none text-[10px] text-muted-foreground/60 text-right pr-2 shrink-0">
+                            <span className="w-8 select-none text-10 text-muted-foreground/60 text-right pr-2 shrink-0">
                               {row.newLine!.newLineNumber || ''}
                             </span>
                             <span className="w-4 select-none shrink-0 font-semibold text-success">
@@ -260,7 +260,7 @@ export const SplitDiffView = React.memo(function SplitDiffView({
                             </div>
                           </>
                         ) : (
-                          <div className="flex-1 opacity-20 text-[10px] select-none">&nbsp;</div>
+                          <div className="flex-1 opacity-20 text-10 select-none">&nbsp;</div>
                         )}
                       </div>
                     </div>

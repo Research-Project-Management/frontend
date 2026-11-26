@@ -3,18 +3,10 @@
 import React from 'react';
 import { RecentActivity } from '../types/overview.types';
 import { Activity, User, ArrowRight } from 'lucide-react';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { formatRelativeTime } from '@/shared/lib/utils';
 
 interface RecentActivityListProps {
   activities: RecentActivity[];
-}
-
-function formatRelativeTime(dateStr: string): string {
-  try {
-    return formatDistanceToNow(parseISO(dateStr), { addSuffix: true });
-  } catch {
-    return '';
-  }
 }
 
 function formatVerb(activity: RecentActivity): string {

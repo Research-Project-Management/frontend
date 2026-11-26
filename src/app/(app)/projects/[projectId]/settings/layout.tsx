@@ -60,12 +60,7 @@ export default function ProjectSettingLayout({
 
   const getIsActive = (tabHref: string) => {
     if (tabHref === '') {
-      return (
-        pathname === basePath ||
-        pathname === `${basePath}/` ||
-        pathname === `${basePath}/general` ||
-        pathname === `${basePath}/general/`
-      );
+      return pathname === basePath || pathname === `${basePath}/`;
     }
     const fullPath = `${basePath}${tabHref}`;
     return pathname === fullPath || pathname.startsWith(fullPath + '/');

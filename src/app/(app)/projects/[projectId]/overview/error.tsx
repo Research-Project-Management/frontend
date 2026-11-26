@@ -22,6 +22,7 @@ export default function ProjectOverviewRouteError({
       title="Unable to load project overview"
       description="An issue occurred while loading this project's overview dashboard. Other project modules remain safe."
       error={error}
+      reset={reset}
     />
   );
 }

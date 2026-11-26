@@ -16,7 +16,7 @@ import {
   Clock,
   Layers,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { formatDate as formatGlobalDate } from '@/shared/lib/utils';
 
 interface ProjectHeaderCardProps {
   project: ProjectMetadata;
@@ -28,11 +28,8 @@ interface ProjectHeaderCardProps {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return 'Not set';
-  try {
-    return format(parseISO(dateStr), 'MMM d, yyyy');
-  } catch {
-    return dateStr;
-  }
+  const formatted = formatGlobalDate(dateStr);
+  return formatted === '-' ? dateStr : formatted;
 }
 
 export function ProjectHeaderCard({

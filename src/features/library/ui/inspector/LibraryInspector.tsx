@@ -15,6 +15,7 @@ import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/c
 import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import { usePanelResize } from '@/shared/hooks/use-panel-resize';
+import { useIsMobile } from '@/shared/hooks/use-media-query';
 import { InspectorHeader, InspectorTabs, INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps } from './InspectorHeader';
 
 export { INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps };
@@ -86,17 +87,10 @@ function LibraryInspectorContent({
   const resetWidth = useCallback(() => setInspectorWidth(320), [setInspectorWidth]);
 
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      const mql = window.matchMedia('(max-width: 767px)');
-      setIsMobile(mql.matches);
-      const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-      mql.addEventListener('change', handler);
-      return () => mql.removeEventListener('change', handler);
-    }
   }, []);
 
   // Collapsible section state: All 8 sections expanded by default

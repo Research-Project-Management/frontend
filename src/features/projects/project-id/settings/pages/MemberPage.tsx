@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { DeleteModal } from '@/features/settings/components/labels/DeleteModal';
+import { ConfirmDeleteDialog } from '@/shared/components/ui/confirm-delete-dialog';
 import { toast } from 'sonner';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
@@ -325,28 +325,28 @@ export default function MemberPage() {
 
       {/* Remove Member Confirmation Modal */}
       {Boolean(deletingMember) && (
-        <DeleteModal
-          isOpen={Boolean(deletingMember)}
-          onClose={() => setDeletingMember(null)}
+        <ConfirmDeleteDialog
+          open={Boolean(deletingMember)}
+          onOpenChange={(open) => !open && setDeletingMember(null)}
           onConfirm={confirmDelete}
           title="Remove member"
           description={`Are you sure you want to remove ${deletingMember?.user.name || 'this member'} from the project? They will lose access to all project resources.`}
-          confirmText="Remove member"
-          cancelText="Cancel"
+          confirmLabel="Remove member"
+          cancelLabel="Cancel"
         />
       )}
 
       {/* Transfer Ownership Confirmation Modal */}
       {Boolean(transferringMember) && (
-        <DeleteModal
-          isOpen={Boolean(transferringMember)}
-          onClose={() => setTransferringMember(null)}
+        <ConfirmDeleteDialog
+          open={Boolean(transferringMember)}
+          onOpenChange={(open) => !open && setTransferringMember(null)}
           onConfirm={confirmTransfer}
           title="Transfer project ownership"
           description={`Are you sure you want to transfer ownership of this project to ${transferringMember?.user.name || 'this member'}? You will no longer be the project owner and cannot undo this action.`}
-          confirmText="Transfer ownership"
-          cancelText="Cancel"
-          loading={isTransferringOwnership}
+          confirmLabel="Transfer ownership"
+          cancelLabel="Cancel"
+          isLoading={isTransferringOwnership}
         />
       )}
     </PageLayout>

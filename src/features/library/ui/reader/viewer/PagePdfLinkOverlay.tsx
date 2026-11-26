@@ -200,7 +200,7 @@ export const PagePdfLinkOverlay = React.memo(function PagePdfLinkOverlay({
               }}
               onMouseLeave={() => onLeaveLink?.()}
               onClick={(e) => e.stopPropagation()}
-              className="absolute pointer-events-auto rounded-[2px] transition-colors duration-100 hover:bg-blue-500/15 cursor-pointer"
+              className="absolute pointer-events-auto rounded-[2px] transition-colors duration-100 hover:bg-primary/15 cursor-pointer"
               aria-label={`Open link ${link.url}`}
             />
           );
@@ -213,7 +213,7 @@ export const PagePdfLinkOverlay = React.memo(function PagePdfLinkOverlay({
             style={style}
             onClick={(e) => void handleInternalLinkClick(e, link.dest)}
             onMouseLeave={() => onLeaveLink?.()}
-            className="absolute pointer-events-auto rounded-[2px] transition-colors duration-100 hover:bg-blue-500/15 cursor-pointer"
+            className="absolute pointer-events-auto rounded-[2px] transition-colors duration-100 hover:bg-primary/15 cursor-pointer"
             aria-label="Jump to internal document link"
           />
         );

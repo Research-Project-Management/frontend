@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * SettingsModal.tsx
@@ -16,7 +16,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { GithubTab } from './GithubTab';
-import { DictionaryTab } from './DictionaryTab';
+import { DictionaryTab } from '@/features/editor/subsystems/spelling/ui/DictionaryTab';
 import { CompilerEditorSection } from './CompilerEditorSection';
 import { GitCloneCard } from './GitCloneCard';
 import { useSettingsModal, type SettingsView } from './hooks/useSettingsModal';
@@ -44,7 +44,7 @@ export function SettingsModal() {
         className="sm:max-w-[740px] h-[560px] max-h-[85vh] !flex flex-col p-0 gap-0 overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-raised-200 font-sans select-none"
       >
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-border shrink-0">
-          <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-tight">
+          <DialogTitle className="text-[0.9375rem] font-semibold tracking-tight text-foreground leading-tight">
             Settings
           </DialogTitle>
           <DialogDescription className="sr-only">Editor settings</DialogDescription>

@@ -2,6 +2,7 @@ import { isServer, QueryClient, type DefaultOptions } from '@tanstack/react-quer
 import { toast } from 'sonner';
 import { ApiError } from '@/shared/types/api.types';
 import { getErrorMessage } from '@/shared/utils/error.util';
+import { QUERY_TIMINGS } from '@/config/query';
 
 /**
  * Default query & mutation options shared across server and client instances.
@@ -9,8 +10,8 @@ import { getErrorMessage } from '@/shared/utils/error.util';
  */
 export const defaultQueryOptions: DefaultOptions = {
   queries: {
-    staleTime: 60 * 1000, // 1 minute fresh cache
-    gcTime: 5 * 60 * 1000, // 5 minutes Garbage Collection time
+    staleTime: QUERY_TIMINGS.DEFAULT_STALE,
+    gcTime: QUERY_TIMINGS.LONG,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     retry: (failureCount, error) => {

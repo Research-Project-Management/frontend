@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
 import type { Project } from '../../types/project.types';
 import {
@@ -175,28 +175,26 @@ export function ProjectFilterPopover({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <TooltipProvider delayDuration={150}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className={cn(
-                  'size-8 rounded-md bg-transparent border-border cursor-pointer outline-none relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                  activeCount > 0 && 'bg-muted border-border text-foreground font-medium'
-                )}
-                aria-label="Filter"
-              >
-                <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" sideOffset={6}>
-            Filter
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                'size-8 rounded-md bg-transparent border-border cursor-pointer outline-none relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                activeCount > 0 && 'bg-muted border-border text-foreground font-medium'
+              )}
+              aria-label="Filter"
+            >
+              <ListFilter className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          Filter
+        </TooltipContent>
+      </Tooltip>
 
       <PopoverContent
         align="end"

@@ -9,7 +9,6 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { editorCommandBus } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import { useViewerStore, type PdfFitMode, type DocumentViewerState } from '@/features/editor/subsystems/compiler/store/viewer.store';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
@@ -155,21 +154,8 @@ export function usePdfZoom({
     return Math.max(0.25, Math.min(s, 3.5));
   }, [containerWidth, containerHeight, pdfSpreadView, fitMode, widthPt, heightPt]);
 
-  // Auto-fit when new compile finishes
-  useEffect(() => {
-    return useCompileStore.subscribe((state, prevState) => {
-      if (state.lastCompiledAt !== prevState.lastCompiledAt && state.compileStatus === 'done') {
-        setAutoFit(true);
-      }
-    });
-  }, [setAutoFit]);
-
-  useEffect(() => {
-    if (pdfUrl) {
-      setAutoFit(true);
-    }
-  }, [pdfUrl, setAutoFit]);
-
+  // Preserve user-selected zoom across recompiles; autoFit stays true on initial load
+  // until the user explicitly zooms in/out or picks a fixed percentage preset.
   useEffect(() => {
     if (autoFit) {
       setScale(fittedScale, false);

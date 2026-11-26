@@ -498,7 +498,7 @@ export function Composer({
                     })}
                   </div>
                   {atDocLimit && (
-                    <p className="px-2 pt-1 text-[10px] text-muted-foreground">
+                    <p className="px-2 pt-1 text-10 text-muted-foreground">
                       Limit: {MAX_READER_SCOPE_DOCS}
                     </p>
                   )}

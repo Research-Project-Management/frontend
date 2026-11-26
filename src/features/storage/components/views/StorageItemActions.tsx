@@ -29,8 +29,8 @@ import type { StorageItem } from '../../types/storage.types';
 import { useStorageUIStore, usePreviewStore } from '../../store/storage-ui.store';
 import { isScientificTextFile } from '../../utils/storage.util';
 
-const DeleteModal = dynamic(
-  () => import('../modal/DeleteModal').then((m) => m.DeleteModal),
+const ConfirmDeleteDialog = dynamic(
+  () => import('@/shared/components/ui/confirm-delete-dialog').then((m) => m.ConfirmDeleteDialog),
   { ssr: false },
 );
 
@@ -226,7 +226,7 @@ export const ItemActions = React.memo(function ItemActions({
             <DropdownMenuSeparator className="my-1" />
 
             <DropdownMenuItem
-              onMouseEnter={() => import('../modal/DeleteModal')}
+              onMouseEnter={() => import('@/shared/components/ui/confirm-delete-dialog')}
               onClick={() => setIsDeleteModalOpen(true)}
               className="gap-2 text-destructive focus:text-destructive cursor-pointer"
             >
@@ -238,9 +238,9 @@ export const ItemActions = React.memo(function ItemActions({
       )}
 
       {isDeleteModalOpen && (
-        <DeleteModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
+        <ConfirmDeleteDialog
+          open={isDeleteModalOpen}
+          onOpenChange={(open) => !open && setIsDeleteModalOpen(false)}
           onConfirm={handleConfirmDelete}
           title={isTrash ? 'Delete Permanently?' : 'Move to Trash?'}
           description={
@@ -248,9 +248,10 @@ export const ItemActions = React.memo(function ItemActions({
               ? `Are you sure you want to delete "${item.filename}" permanently? This action cannot be undone.`
               : `Are you sure you want to move "${item.filename}" to trash?`
           }
-          confirmText={isTrash ? 'Delete Permanently' : 'Delete'}
-          cancelText="Cancel"
-          loading={isDeleting}
+          confirmLabel={isTrash ? 'Delete Permanently' : 'Delete'}
+          cancelLabel="Cancel"
+          isLoading={isDeleting}
+          icon={<Trash2 className="size-4 shrink-0" strokeWidth={1.75} />}
         />
       )}
     </div>

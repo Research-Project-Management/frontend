@@ -91,7 +91,7 @@ export const config = {
      * - favicon.ico, images, files with extensions
      * - api routes & backend auth endpoints
      */
-    '/((?!_next/static|_next/image|favicon.ico|api/|auth/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|pdf)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|auth/(?!callback)|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|mjs|pdf)$).*)',
   ],
 };
 

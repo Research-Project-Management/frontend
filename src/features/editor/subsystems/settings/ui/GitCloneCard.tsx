@@ -140,23 +140,23 @@ export function GitCloneCard({
     <div className="p-3.5 rounded-lg border border-border bg-card/40 space-y-2.5">
       <div className="flex items-center gap-2">
         <GitBranch className="size-3.5 text-muted-foreground shrink-0" />
-        <span className="text-[13px] font-medium text-foreground">Git Clone URL</span>
+        <span className="text-13 font-medium text-foreground">Git Clone URL</span>
         {gitRepoInfo?.branch && (
-          <span className="text-[11px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+          <span className="text-11 font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {gitRepoInfo.branch}
           </span>
         )}
       </div>
 
       <div className="flex items-center gap-1.5 bg-background border border-border rounded-md px-2.5 py-1">
-        <code className="text-[11px] font-mono text-muted-foreground truncate flex-1 select-all">
+        <code className="text-11 font-mono text-muted-foreground truncate flex-1 select-all">
           git clone {gitCloneUrl}
         </code>
         <Button
           variant="ghost"
           size="sm"
           onClick={handleCopyGitUrl}
-          className="h-6 px-2 text-[11px] cursor-pointer"
+          className="h-6 px-2 text-11 cursor-pointer"
         >
           {copiedGitUrl ? <Check className="size-3" /> : <Copy className="size-3" />}
           <span className="ml-1">{copiedGitUrl ? 'Copied' : 'Copy'}</span>
@@ -179,14 +179,14 @@ export function GitCloneCard({
 
         {gitToken && (
           <div className="flex items-center gap-1.5 bg-muted/60 border border-border rounded-md px-2.5 py-1">
-            <code className="font-mono text-[11px] text-foreground truncate flex-1 select-all">
+            <code className="font-mono text-11 text-foreground truncate flex-1 select-all">
               {gitToken}
             </code>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleCopyGitToken}
-              className="h-6 px-2 text-[11px] cursor-pointer"
+              className="h-6 px-2 text-11 cursor-pointer"
             >
               {copiedGitToken ? <Check className="size-3" /> : <Copy className="size-3" />}
             </Button>
@@ -198,7 +198,7 @@ export function GitCloneCard({
             {gitTokensList.slice(0, 3).map((tok) => (
               <div
                 key={tok.id}
-                className="flex items-center justify-between text-[11px] bg-background border border-border/60 rounded px-2.5 py-1"
+                className="flex items-center justify-between text-11 bg-background border border-border/60 rounded px-2.5 py-1"
               >
                 <span className="truncate font-mono text-foreground">
                   {tok.label} ({tok.prefix}…)

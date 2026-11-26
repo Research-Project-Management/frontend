@@ -139,7 +139,7 @@ export class DetachedPreviewBridge {
         try {
           window.focus?.();
         } catch (err) {
-          console.debug('[DetachedPreviewBridge] Window focus ignored:', err);
+          logger.debug('[DetachedPreviewBridge] Window focus ignored', { err });
         }
       } else if (type === 'preview:ready') {
         const compileState = useCompileStore.getState();

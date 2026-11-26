@@ -155,7 +155,7 @@ export function CoverModal({
             </div>
 
             {/* 4-Col Grid of Photos */}
-            <div className="max-h-72 overflow-y-auto grid grid-cols-4 gap-2.5 p-0.5">
+            <div className="max-h-72 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-0.5">
               {filteredUnsplashPhotos.map((url, i) => (
                 <button
                   key={`unsplash-${i}`}
@@ -179,7 +179,7 @@ export function CoverModal({
 
         {/* ── Tab 2: Images ── */}
         {tab === 'images' && (
-          <div className="max-h-80 overflow-y-auto grid grid-cols-4 gap-2.5 p-0.5">
+          <div className="max-h-80 overflow-y-auto grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-0.5">
             {CURATED_COVER_IMAGES.map((url, i) => (
               <button
                 key={`curated-${i}`}

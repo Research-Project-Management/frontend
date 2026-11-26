@@ -1,10 +1,10 @@
-import '@/shared/lib/dom-polyfill';
-import type { Metadata } from 'next';
-import ClientEditor from '@/features/editor/core/shell/ClientEditor';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Editor' };
-
-export default function EditorPageWrapper() {
-  return <ClientEditor />;
+export default async function LegacyEditorRedirectPage({
+  params,
+}: {
+  params: Promise<{ pageId: string }>;
+}) {
+  const { pageId } = await params;
+  redirect(`/pages/${encodeURIComponent(pageId)}`);
 }

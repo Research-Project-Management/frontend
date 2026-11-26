@@ -18,8 +18,8 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import dynamic from 'next/dynamic';
 
-const DeleteModal = dynamic(
-  () => import('../modal/DeleteModal').then((m) => m.DeleteModal),
+const ConfirmDeleteDialog = dynamic(
+  () => import('@/shared/components/ui/confirm-delete-dialog').then((m) => m.ConfirmDeleteDialog),
   { ssr: false }
 );
 import { useShallow } from 'zustand/react/shallow';
@@ -150,10 +150,10 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
     <>
       <AnimatePresence>
         <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          initial={{ opacity: 0, y: 10, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 30, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          exit={{ opacity: 0, y: 10, scale: 0.98 }}
+          transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
           className="fixed bottom-16 sm:bottom-4 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-1rem)] sm:max-w-max flex items-center gap-1 sm:gap-1.5 p-1 sm:px-3 sm:py-1.5 rounded-xl bg-popover border border-border text-popover-foreground text-xs select-none overflow-x-auto shadow-xl"
         >
           {/* Select all checkbox toggle */}
@@ -247,7 +247,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
-                onMouseEnter={() => import('../modal/DeleteModal')}
+                onMouseEnter={() => import('@/shared/components/ui/confirm-delete-dialog')}
                 onClick={() => setIsDeleteModalOpen(true)}
                 disabled={isPermanentDeleting}
                 title="Delete selected items permanently"
@@ -262,7 +262,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               variant="ghost"
               size="sm"
               className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-destructive hover:bg-muted cursor-pointer shrink-0 rounded-md"
-              onMouseEnter={() => import('../modal/DeleteModal')}
+              onMouseEnter={() => import('@/shared/components/ui/confirm-delete-dialog')}
               onClick={() => setIsDeleteModalOpen(true)}
               disabled={isDeleting}
               title="Move selected items to trash"
@@ -287,9 +287,9 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
 
       {/* Bulk Delete Modal */}
       {isDeleteModalOpen && (
-        <DeleteModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
+        <ConfirmDeleteDialog
+          open={isDeleteModalOpen}
+          onOpenChange={(open) => !open && setIsDeleteModalOpen(false)}
           onConfirm={handleConfirmDelete}
           title={isTrash ? `Delete ${selectedCount} items permanently?` : `Move ${selectedCount} items to trash?`}
           description={
@@ -297,9 +297,10 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               ? `These ${selectedCount} items will be deleted permanently and cannot be recovered.`
               : `These ${selectedCount} items will be moved to trash and can be restored later.`
           }
-          confirmText={isTrash ? 'Delete permanently' : 'Move to trash'}
-          cancelText="Cancel"
-          loading={isDeleting || isPermanentDeleting}
+          confirmLabel={isTrash ? 'Delete permanently' : 'Move to trash'}
+          cancelLabel="Cancel"
+          isLoading={isDeleting || isPermanentDeleting}
+          icon={<Trash2 className="size-4 shrink-0" strokeWidth={1.75} />}
         />
       )}
     </>

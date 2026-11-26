@@ -15,8 +15,8 @@ const QuicklinkModal = dynamic(
   { ssr: false }
 );
 
-const DeleteModal = dynamic(
-  () => import('./modals/delete-modal').then((m) => m.DeleteModal),
+const ConfirmDeleteDialog = dynamic(
+  () => import('@/shared/components/ui/confirm-delete-dialog').then((m) => m.ConfirmDeleteDialog),
   { ssr: false }
 );
 import {
@@ -184,7 +184,7 @@ export default function Quicklinks() {
       )}
 
       {deleteLinkId && (
-        <DeleteModal
+        <ConfirmDeleteDialog
           open={!!deleteLinkId}
           onOpenChange={(open) => !open && setDeleteLinkId(null)}
           onConfirm={() => {
@@ -193,8 +193,12 @@ export default function Quicklinks() {
               setDeleteLinkId(null);
             }
           }}
-          title="Remove Quicklink"
+          title="Remove Quicklink?"
           description="Are you sure you want to remove this quicklink? This action cannot be undone."
+          confirmLabel="Delete"
+          loadingLabel="Deleting..."
+          cancelLabel="Cancel"
+          showCloseButton={false}
         />
       )}
     </>

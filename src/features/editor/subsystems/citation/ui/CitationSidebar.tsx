@@ -79,7 +79,7 @@ export function CitationSidebar({
             <span className="truncate">{node.name}</span>
           </span>
           {typeof count === 'number' && (
-            <span className="text-[10px] tabular-nums opacity-70 shrink-0">
+            <span className="text-10 tabular-nums opacity-70 shrink-0">
               {count}
             </span>
           )}
@@ -113,7 +113,7 @@ export function CitationSidebar({
               <Library className="size-3.5 shrink-0 opacity-75" strokeWidth={1.6} />
               <span className="truncate">All Library</span>
             </span>
-            <span className="text-[10px] tabular-nums opacity-70 shrink-0">
+            <span className="text-10 tabular-nums opacity-70 shrink-0">
               {libraryCount}
             </span>
           </button>

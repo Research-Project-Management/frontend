@@ -9,5 +9,7 @@ export default async function DraftEditorRedirectPage({
   params: Promise<{ projectId: string; draftId: string }>;
 }) {
   const { projectId, draftId } = await params;
-  redirect(`/projects/${projectId}/pages/${draftId}`);
+  redirect(
+    `/projects/${encodeURIComponent(projectId)}/pages/${encodeURIComponent(draftId)}`,
+  );
 }

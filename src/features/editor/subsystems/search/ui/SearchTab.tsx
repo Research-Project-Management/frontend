@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * SearchTab.tsx
@@ -576,7 +576,7 @@ export default function SearchTab() {
                 size="sm"
                 disabled={!effectiveQuery || isReplacingAll}
                 onClick={handleReplaceAllCurrentFile}
-                className="h-6 px-2 text-[11px] font-normal cursor-pointer"
+                className="h-6 px-2 text-11 font-normal cursor-pointer"
               >
                 In File
               </Button>
@@ -586,7 +586,7 @@ export default function SearchTab() {
                 size="sm"
                 disabled={!effectiveQuery || isReplacingAll}
                 onClick={handleReplaceAllEverywhere}
-                className="h-6 px-2 text-[11px] font-normal cursor-pointer"
+                className="h-6 px-2 text-11 font-normal cursor-pointer"
               >
                 {isReplacingAll ? (
                   <>

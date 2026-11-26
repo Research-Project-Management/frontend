@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 
 export type WorkspaceSpaceType = 'personal' | 'project';
 
@@ -38,7 +39,7 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
       setPersonalSpace: () => {
         if (typeof window !== 'undefined') {
           try {
-            localStorage.removeItem('flux_active_project_id');
+            localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
           } catch {}
         }
         set({
@@ -55,7 +56,7 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
         ) {
           if (typeof window !== 'undefined') {
             try {
-              localStorage.removeItem('flux_active_project_id');
+              localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
             } catch {}
           }
           set({
@@ -65,7 +66,7 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
         }
         if (typeof window !== 'undefined' && project.id) {
           try {
-            localStorage.setItem('flux_active_project_id', project.id);
+            localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, project.id);
           } catch {}
         }
         set({
@@ -88,7 +89,7 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
           if (!exists) {
             if (typeof window !== 'undefined') {
               try {
-                localStorage.removeItem('flux_active_project_id');
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
               } catch {}
             }
             return {

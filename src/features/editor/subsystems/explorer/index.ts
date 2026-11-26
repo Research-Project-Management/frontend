@@ -37,11 +37,12 @@ export {
 
 export {
   isZipFile,
-  parseZipArchive,
-  extractAndImportZipToProject,
-  type ExtractedZipProject,
+  isTextFile,
+  inferArchiveProjectName,
+  importZipToProject,
+  type ImportZipOptions,
   type ImportZipProgress,
-} from '@/features/editor/sdk/archive/archive-import';
+} from '@/features/editor/sdk/archive/zip-import';
 
 // 2. UI Presentation Layer
 export { default as FilesTab } from './ui/FilesTab';

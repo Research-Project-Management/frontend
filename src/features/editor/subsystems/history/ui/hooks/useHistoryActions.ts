@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { pagesService, historyKeys } from '@/features/editor/sdk/pages.service';
-import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
+import { exportVersionAsZip } from '@/features/editor/sdk/archive/zip-export';
 import {
   clearYjsProviderPool,
   evictYjsProviderByDocId,

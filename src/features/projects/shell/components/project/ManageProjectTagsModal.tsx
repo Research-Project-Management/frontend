@@ -150,7 +150,7 @@ export function ManageProjectTagsModal({
             ) : labels.length === 0 ? (
               <PlaneEmptyState
                 isCompact
-                variant="document"
+                variant="labels"
                 title="No tags created yet"
                 description="Create your first tag below to start categorizing projects."
               />

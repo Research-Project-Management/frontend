@@ -61,7 +61,7 @@ export function CitationDetailPane({ entry }: CitationDetailPaneProps) {
     <aside className="hidden lg:flex w-[420px] shrink-0 flex-col border-l border-border bg-background overflow-y-auto">
       <div className="p-5 space-y-4">
         <div className="space-y-1.5">
-          <h3 className="text-[15px] font-semibold text-foreground leading-snug">
+          <h3 className="text-[0.9375rem] font-semibold text-foreground leading-snug">
             {entry.title || entry.key}
           </h3>
           {authors && (

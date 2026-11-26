@@ -748,7 +748,7 @@ export function ExperimentsContent() {
                     x={axis.x}
                     y="10"
                     textAnchor="middle"
-                    className="fill-muted-foreground text-[9px] font-mono"
+                    className="fill-muted-foreground text-9 font-mono"
                   >
                     {axis.top}
                   </text>
@@ -756,7 +756,7 @@ export function ExperimentsContent() {
                     x={axis.x}
                     y="122"
                     textAnchor="middle"
-                    className="fill-muted-foreground text-[9px] font-mono"
+                    className="fill-muted-foreground text-9 font-mono"
                   >
                     {axis.bottom}
                   </text>
@@ -764,7 +764,7 @@ export function ExperimentsContent() {
                     x={axis.x}
                     y="133"
                     textAnchor="middle"
-                    className="fill-foreground text-[10px] font-mono font-medium"
+                    className="fill-foreground text-10 font-mono font-medium"
                   >
                     {axis.label}
                   </text>

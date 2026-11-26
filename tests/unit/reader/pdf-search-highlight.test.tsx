@@ -7,6 +7,7 @@ import {
   escapePdfSearchRegExp,
 } from '@/features/editor/subsystems/compiler';
 import { PdfFindBar } from '@/features/editor/subsystems/compiler';
+import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import {
   editorCommandBus,
   setActiveEditorEngine,
@@ -80,23 +81,25 @@ describe('Phase 11: In-Document PDF Text Search & Selection Layer Sync (Overleaf
       const onToggleRegex = vi.fn();
 
       render(
-        <PdfFindBar
-          isOpen={true}
-          query="Quantum"
-          onQueryChange={onQueryChange}
-          matchesCount={5}
-          currentMatchIndex={1}
-          isSearching={false}
-          caseSensitive={true}
-          onToggleCaseSensitive={onToggleCaseSensitive}
-          wholeWord={false}
-          onToggleWholeWord={onToggleWholeWord}
-          useRegex={false}
-          onToggleRegex={onToggleRegex}
-          onNext={onNext}
-          onPrev={onPrev}
-          onClose={onClose}
-        />,
+        <TooltipProvider>
+          <PdfFindBar
+            isOpen={true}
+            query="Quantum"
+            onQueryChange={onQueryChange}
+            matchesCount={5}
+            currentMatchIndex={1}
+            isSearching={false}
+            caseSensitive={true}
+            onToggleCaseSensitive={onToggleCaseSensitive}
+            wholeWord={false}
+            onToggleWholeWord={onToggleWholeWord}
+            useRegex={false}
+            onToggleRegex={onToggleRegex}
+            onNext={onNext}
+            onPrev={onPrev}
+            onClose={onClose}
+          />
+        </TooltipProvider>,
       );
 
       expect(screen.getByPlaceholderText('Find in document…')).toHaveValue('Quantum');
@@ -132,33 +135,37 @@ describe('Phase 11: In-Document PDF Text Search & Selection Layer Sync (Overleaf
 
     it('displays "No matches" when query yields 0 results and "Invalid regex" on regex error', () => {
       const { rerender } = render(
-        <PdfFindBar
-          isOpen={true}
-          query="NonExistentTerm"
-          onQueryChange={vi.fn()}
-          matchesCount={0}
-          currentMatchIndex={0}
-          isSearching={false}
-          onNext={vi.fn()}
-          onPrev={vi.fn()}
-          onClose={vi.fn()}
-        />,
+        <TooltipProvider>
+          <PdfFindBar
+            isOpen={true}
+            query="NonExistentTerm"
+            onQueryChange={vi.fn()}
+            matchesCount={0}
+            currentMatchIndex={0}
+            isSearching={false}
+            onNext={vi.fn()}
+            onPrev={vi.fn()}
+            onClose={vi.fn()}
+          />
+        </TooltipProvider>,
       );
       expect(screen.getByText('No matches')).toBeInTheDocument();
 
       rerender(
-        <PdfFindBar
-          isOpen={true}
-          query="[invalid"
-          onQueryChange={vi.fn()}
-          matchesCount={0}
-          currentMatchIndex={0}
-          isSearching={false}
-          isRegexError={true}
-          onNext={vi.fn()}
-          onPrev={vi.fn()}
-          onClose={vi.fn()}
-        />,
+        <TooltipProvider>
+          <PdfFindBar
+            isOpen={true}
+            query="[invalid"
+            onQueryChange={vi.fn()}
+            matchesCount={0}
+            currentMatchIndex={0}
+            isSearching={false}
+            isRegexError={true}
+            onNext={vi.fn()}
+            onPrev={vi.fn()}
+            onClose={vi.fn()}
+          />
+        </TooltipProvider>,
       );
       expect(screen.getByText('Invalid regex')).toBeInTheDocument();
     });
@@ -172,20 +179,22 @@ describe('Phase 11: In-Document PDF Text Search & Selection Layer Sync (Overleaf
       const onToggleRegex = vi.fn();
 
       render(
-        <PdfFindBar
-          isOpen={true}
-          query="test"
-          onQueryChange={vi.fn()}
-          matchesCount={3}
-          currentMatchIndex={0}
-          isSearching={false}
-          onToggleCaseSensitive={onToggleCaseSensitive}
-          onToggleWholeWord={onToggleWholeWord}
-          onToggleRegex={onToggleRegex}
-          onNext={onNext}
-          onPrev={onPrev}
-          onClose={onClose}
-        />,
+        <TooltipProvider>
+          <PdfFindBar
+            isOpen={true}
+            query="test"
+            onQueryChange={vi.fn()}
+            matchesCount={3}
+            currentMatchIndex={0}
+            isSearching={false}
+            onToggleCaseSensitive={onToggleCaseSensitive}
+            onToggleWholeWord={onToggleWholeWord}
+            onToggleRegex={onToggleRegex}
+            onNext={onNext}
+            onPrev={onPrev}
+            onClose={onClose}
+          />
+        </TooltipProvider>,
       );
 
       const input = screen.getByPlaceholderText('Find in document…');

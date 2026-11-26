@@ -4,7 +4,6 @@ import { ChatSidebar, useAiUIStore } from '@/features/ai';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { PanelLeft } from 'lucide-react';
@@ -14,11 +13,7 @@ export default function ChatAiLayout({
 }: {
   children?: React.ReactNode;
 }) {
-  return (
-    <TooltipProvider>
-      <ChatAiContent>{children}</ChatAiContent>
-    </TooltipProvider>
-  );
+  return <ChatAiContent>{children}</ChatAiContent>;
 }
 
 function ChatAiContent({ children }: { children?: React.ReactNode }) {

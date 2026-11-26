@@ -1,4 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from '@/shared/lib/api';
+import { UPLOAD_LIMITS } from '@/config/limits';
 import {
   ConversationsData,
   ConversationItem,
@@ -11,8 +12,8 @@ import {
 } from '../types/chat.types';
 
 export const CHAT_UPLOAD_LIMITS = {
-  MAX_IMAGE_BYTES: 20 * 1024 * 1024,
-  MAX_FILE_BYTES: 50 * 1024 * 1024,
+  MAX_IMAGE_BYTES: UPLOAD_LIMITS.CHAT_IMAGE_BYTES,
+  MAX_FILE_BYTES: UPLOAD_LIMITS.CHAT_FILE_BYTES,
 } as const;
 
 export const chatService = {

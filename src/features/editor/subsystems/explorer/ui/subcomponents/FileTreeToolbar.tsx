@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 /**
  * FileTreeToolbar.tsx
@@ -162,7 +162,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
               </Tooltip>
 
               <DropdownMenuContent align="end" className="w-36 select-none p-1">
-                <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                <DropdownMenuLabel className="text-11 font-semibold text-muted-foreground px-2 py-1">
                   Sort by
                 </DropdownMenuLabel>
 

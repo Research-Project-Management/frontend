@@ -6,28 +6,6 @@ import {
   ILLUSTRATION_COLOR_TOKEN_MAP,
 } from '@/shared/components/ui/PlaneEmptyState';
 
-export const yourWorkIllustrationStyles = `
-  :root, .plane-your-work-illustration, [data-theme='light'] {
-    --illustration-fill-primary: #ffffff;
-    --illustration-fill-secondary: #f4f5f5;
-    --illustration-fill-tertiary: #eaebeb;
-    --illustration-fill-quaternary: #cfd2d3;
-    --illustration-stroke-primary: #cfd2d3;
-    --illustration-stroke-secondary: #8a9093;
-    --illustration-stroke-tertiary: #1d1f20;
-  }
-  .dark .plane-your-work-illustration,
-  [data-theme='dark'] .plane-your-work-illustration {
-    --illustration-fill-primary: #18181b;
-    --illustration-fill-secondary: #27272a;
-    --illustration-fill-tertiary: #3f3f46;
-    --illustration-fill-quaternary: #52525b;
-    --illustration-stroke-primary: #3f3f46;
-    --illustration-stroke-secondary: #71717a;
-    --illustration-stroke-tertiary: #e4e4e7;
-  }
-`;
-
 export interface TIllustrationAssetProps {
   className?: string;
 }

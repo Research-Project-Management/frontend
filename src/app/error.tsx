@@ -16,6 +16,7 @@ export default function GlobalError({
       title="An unexpected error occurred"
       description="The application encountered an unexpected rendering error. Your saved data remains safe."
       error={error}
+      reset={reset}
     />
   );
 }

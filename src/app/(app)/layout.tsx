@@ -10,6 +10,8 @@ import AppLoading from './loading';
 
 import Topbar from '@/features/shell/components/Topbar';
 import Sidebar from '@/features/shell/components/Sidebar';
+import { GlobalOfflineBanner } from '@/features/shell/components/GlobalOfflineBanner';
+import { GlobalCommandPalette } from '@/features/shell/components/GlobalCommandPalette';
 import { useWebWorkspaceShell } from '@/features/shell/hooks/use-web-bff';
 import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
@@ -35,7 +37,6 @@ const PROJECT_WORKSPACE_PREFIXES = [
 
 function isProjectWorkspaceRoute(pathname: string): boolean {
   if (
-    pathname === '/projects/pages' ||
     /^\/projects\/[^/]+\/pages(\/|$)/.test(pathname) ||
     /^\/projects\/[^/]+\/settings(\/|$)/.test(pathname)
   ) {
@@ -66,9 +67,11 @@ export default function AppLayout({
 
   useEffect(() => {
     if (!isLoading && !user) {
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const fullPath = pathname ? `${pathname}${search}` : '';
       const redirectUrl =
-        pathname && pathname !== '/' && !pathname.startsWith('/login')
-          ? `/login?redirect=${encodeURIComponent(pathname)}`
+        fullPath && pathname !== '/' && !pathname.startsWith('/login')
+          ? `/login?redirect=${encodeURIComponent(fullPath)}`
           : '/login';
       router.replace(redirectUrl);
     }
@@ -82,7 +85,20 @@ export default function AppLayout({
   if (isPaperReader) {
     return (
       <div className='h-dvh w-full flex flex-row overflow-hidden bg-background relative' suppressHydrationWarning>
-        <div className='flex-1 min-w-0 h-full flex flex-col overflow-hidden relative'>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-xs focus:font-semibold focus:text-foreground focus:border focus:border-border focus:shadow-md"
+        >
+          Skip to main content
+        </a>
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className='flex-1 min-w-0 h-full flex flex-col overflow-hidden relative focus:outline-hidden'
+        >
+          <ErrorBoundary fallback={null} featureName="Network Status">
+            <GlobalOfflineBanner />
+          </ErrorBoundary>
           <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
             <Suspense fallback={<AppLoading />}>
               {children}
@@ -92,20 +108,36 @@ export default function AppLayout({
         <ErrorBoundary fallback={null} featureName="Quick Tools Hub">
           <StickyDock mode="floating" />
         </ErrorBoundary>
+        <ErrorBoundary fallback={null} featureName="Command Palette">
+          <GlobalCommandPalette />
+        </ErrorBoundary>
       </div>
     );
   }
 
   return (
     <div className='h-dvh max-h-dvh flex flex-col bg-muted relative overflow-hidden' suppressHydrationWarning>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-xs focus:font-semibold focus:text-foreground focus:border focus:border-border focus:shadow-md"
+      >
+        Skip to main content
+      </a>
       <ErrorBoundary fallback={null} featureName="Toolbar">
         <Topbar />
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null} featureName="Network Status">
+        <GlobalOfflineBanner />
       </ErrorBoundary>
       <div className='flex w-full flex-1 min-h-0 flex-col md:flex-row relative'>
         <ErrorBoundary fallback={null} featureName="Sidebar">
           <Sidebar />
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 md:mr-2 md:mb-2 flex flex-col relative min-h-0 overflow-hidden'>
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 md:mr-2 md:mb-2 flex flex-col relative min-h-0 overflow-hidden focus:outline-hidden'
+        >
           {isProjectWorkspace ? (
             <ProjectLayout>
               <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
@@ -130,6 +162,9 @@ export default function AppLayout({
           </ErrorBoundary>
         )}
       </div>
+      <ErrorBoundary fallback={null} featureName="Command Palette">
+        <GlobalCommandPalette />
+      </ErrorBoundary>
     </div>
   );
 }

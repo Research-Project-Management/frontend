@@ -8,7 +8,7 @@ import { Form } from '@/shared/components/ui/form';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
-import { DeleteModal } from '../components/labels/DeleteModal';
+import { ConfirmDeleteDialog } from '@/shared/components/ui/confirm-delete-dialog';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
@@ -603,19 +603,19 @@ export default function LabelsPage() {
 
           {/* ── Safe Cascade Delete Modal ── */}
           {Boolean(deletingLabel) && (
-            <DeleteModal
-              isOpen={Boolean(deletingLabel)}
-              onClose={() => setDeletingLabel(null)}
+            <ConfirmDeleteDialog
+              open={Boolean(deletingLabel)}
+              onOpenChange={(open) => !open && setDeletingLabel(null)}
               onConfirm={confirmDelete}
-              loading={deleteMutation.isPending}
+              isLoading={deleteMutation.isPending}
               title="Delete label"
               description={
                 deletingLabel && childMap[deletingLabel.id]?.length > 0
                   ? `Warning: "${deletingLabel.name}" contains ${childMap[deletingLabel.id].length} sub-labels. Deleting this parent group will delete all sub-labels.`
                   : `Are you sure you want to delete "${deletingLabel?.name || ''}"?`
               }
-              confirmText="Delete permanently"
-              cancelText="Cancel"
+              confirmLabel="Delete permanently"
+              cancelLabel="Cancel"
             />
           )}
         </div>

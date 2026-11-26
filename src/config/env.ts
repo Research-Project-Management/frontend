@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logger } from '@/shared/lib/logger';
 
 /**
  * Global Environment Schema & Validator
@@ -15,7 +16,7 @@ const envSchema = z.object({
         message: 'NEXT_PUBLIC_API_URL must be a valid URL, relative path, or empty',
       },
     )
-    .default('http://127.0.0.1:3000'),
+    .default('http://127.0.0.1:18300'),
   NEXT_PUBLIC_REALTIME_URL: z
     .string()
     .trim()
@@ -53,7 +54,7 @@ const resolveRawApiUrl = (): string => {
   // On the server (Node.js SSR / Route Handlers), prefer INTERNAL_API_URL, then NEXT_PUBLIC_API_URL
   if (typeof window === 'undefined') {
     const internal = (process.env.INTERNAL_API_URL ?? '').trim().replace(/\/$/, '');
-    return internal || configured || 'http://127.0.0.1:3000';
+    return internal || configured || 'http://127.0.0.1:18300';
   }
 
   // In the browser:
@@ -139,9 +140,9 @@ const parseEnv = () => {
   const parsed = envSchema.safeParse(rawEnv);
 
   if (!parsed.success) {
-    console.warn(
-      '⚠️ Warning: Environment validation reported issues, applying safe fallback defaults:\n',
-      parsed.error.flatten().fieldErrors,
+    logger.warn(
+      '⚠️ Warning: Environment validation reported issues, applying safe fallback defaults',
+      { fieldErrors: parsed.error.flatten().fieldErrors },
     );
     return {
       NEXT_PUBLIC_API_URL: resolvedApiUrl,
@@ -160,5 +161,44 @@ const parseEnv = () => {
 export const env = parseEnv();
 export const API_BASE_URL = env.NEXT_PUBLIC_API_URL;
 export const REALTIME_BASE_URL = env.NEXT_PUBLIC_REALTIME_URL;
+export const IS_DEV = env.NODE_ENV === 'development';
+export const IS_PROD = env.NODE_ENV === 'production';
+export const IS_TEST = env.NODE_ENV === 'test';
+
+/**
+ * Library microservice host overrides (getters preserve runtime test overrides
+ * while keeping literal `process.env.NEXT_PUBLIC_*` for Next.js static inlining).
+ */
+export const LIBRARY_SERVICE_ENV = {
+  get catalog() { return process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL; },
+  get extraction() { return process.env.NEXT_PUBLIC_LIBRARY_EXTRACTION_URL; },
+  get ingestion() { return process.env.NEXT_PUBLIC_LIBRARY_INGESTION_URL; },
+  get citation() { return process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL; },
+  get search() { return process.env.NEXT_PUBLIC_LIBRARY_SEARCH_URL; },
+  get sync() { return process.env.NEXT_PUBLIC_LIBRARY_SYNC_URL; },
+  get reader() { return process.env.NEXT_PUBLIC_LIBRARY_READER_URL; },
+  get defaultHost() { return process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL; },
+  get apiFallback() { return process.env.NEXT_PUBLIC_API_URL; },
+};
+
+/**
+ * Pages / Manuscript microservice base URL.
+ */
+export const PAGES_SERVICE_BASE_URL =
+  process.env.NEXT_PUBLIC_PAGES_SERVICE_URL ||
+  process.env.NEXT_PUBLIC_MANUSCRIPTS_SERVICE_URL ||
+  process.env.NEXT_PUBLIC_MANUSCRIPT_SERVICE_URL ||
+  '/api/v1/pages';
+
+/**
+ * External LaTeX documentation URLs.
+ */
+export const LATEX_DOCS_URLS = {
+  DOCUMENTATION_HOME:
+    process.env.NEXT_PUBLIC_LATEX_DOCS_URL || 'https://latexref.xyz/dev/latex2e.html',
+  LATEX_INTRO_GUIDE:
+    process.env.NEXT_PUBLIC_LATEX_GUIDE_URL || 'https://en.wikibooks.org/wiki/LaTeX',
+} as const;
+
 export type Env = z.infer<typeof envSchema>;
 

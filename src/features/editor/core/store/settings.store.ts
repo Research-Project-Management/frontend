@@ -179,7 +179,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       isShortcutsOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
-      spellCheckLanguage: 'en_US',
+      spellCheckLanguage: 'en-US',
       texLiveVersion: '2024',
       fontFamily: 'default',
       lineHeight: 1.6,

@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   useRealtimeItems,
   WORK_ITEMS_SOCKET_EVENTS,
-} from '@/features/projects/project-id/work-items/hooks/use-realtime';
+} from '@/features/projects/project-id/work-items/realtime/useWorkItemsRealtime';
+import { socketPool } from '@/shared/realtime/socket-pool';
 
 type Listener = (...args: unknown[]) => void;
 
@@ -13,7 +14,13 @@ class MockSocket {
   public connected = true;
   public emit = vi.fn();
   public disconnect = vi.fn();
+  public io = { on: vi.fn(), off: vi.fn() };
   private readonly listeners = new Map<string, Set<Listener>>();
+
+  public removeAllListeners = vi.fn(() => {
+    this.listeners.clear();
+    return this;
+  });
 
   on(event: string, fn: Listener) {
     let set = this.listeners.get(event);
@@ -68,6 +75,7 @@ describe('useRealtimeItems (Socket.IO /work-items)', () => {
   let queryClient: QueryClient;
 
   beforeEach(() => {
+    socketPool.disconnectAll();
     ioMock.mockClear();
     mockSockets.length = 0;
     queryClient = new QueryClient({
@@ -76,11 +84,13 @@ describe('useRealtimeItems (Socket.IO /work-items)', () => {
   });
 
   afterEach(() => {
+    socketPool.disconnectAll();
     queryClient.clear();
     vi.useRealTimers();
   });
 
   it('connects to /work-items with handshake auth (no ?token= query param), joins room on connect, and leaves on unmount', () => {
+    vi.useFakeTimers();
     const { unmount } = renderHook(
       () => useRealtimeItems({ projectId: 'proj-1', enabled: true }),
       { wrapper: createWrapper(queryClient) },
@@ -109,6 +119,11 @@ describe('useRealtimeItems (Socket.IO /work-items)', () => {
     expect(socket.emit).toHaveBeenCalledWith(WORK_ITEMS_SOCKET_EVENTS.LEAVE, {
       projectId: 'proj-1',
     });
+
+    act(() => {
+      vi.advanceTimersByTime(1_500);
+    });
+
     expect(socket.disconnect).toHaveBeenCalledTimes(1);
   });
 

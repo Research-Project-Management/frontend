@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import {
-  pagesIllustrationStyles,
   PagesStackIllustration,
   PagesSearchStackIllustration,
   PagesLabelStackIllustration,
@@ -113,8 +112,6 @@ export function PagesEmptyState({
         className,
       )}
     >
-      <style dangerouslySetInnerHTML={{ __html: pagesIllustrationStyles }} />
-
       {/* 3D Isometric Multi-Layer Pages Illustration */}
       <div className="plane-pages-illustration mb-6 flex items-center justify-center">
         <IllustrationComponent />

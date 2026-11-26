@@ -4,7 +4,7 @@ import React from 'react';
 import { ChevronDown, Crown, MoreHorizontal, Trash2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/shared/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/shared/components/ui/dropdown-menu';
-import { cn } from "@/shared/lib/utils";
+import { cn, formatDate as formatGlobalDate } from "@/shared/lib/utils";
 import type { ProjectMemberItem } from '../../types/member.types';
 
 interface ItemProps {
@@ -18,18 +18,8 @@ interface ItemProps {
 }
 
 function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'Aug 15, 2026';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 'Aug 15, 2026';
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return 'Aug 15, 2026';
-  }
+  const formatted = formatGlobalDate(dateStr);
+  return formatted === '-' ? 'Aug 15, 2026' : formatted;
 }
 
 function getDisplayName(user: { name: string; email?: string }): string {

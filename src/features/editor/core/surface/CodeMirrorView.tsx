@@ -552,9 +552,26 @@ export function CodeMirrorView({
     if (!viewRef.current || value === undefined) return;
     // Guard against applying external value meant for a previous document during swap
     if (currentFileIdRef.current !== fileId) return;
-    // Do not overwrite live Yjs-backed CodeMirror buffer when REST value prop refetches
+    // Do not overwrite live non-empty Yjs-backed CodeMirror buffer when REST value prop refetches
     if (yText && yText.length > 0) return;
-    if (yTextRef.current) return;
+    if (yTextRef.current) {
+      if (yTextRef.current.length > 0) return;
+      // When Yjs doc is still empty (e.g. freshly switched file before/without realtime server)
+      // and async REST fetch arrives with content, hydrate yText once so CodeMirror displays it.
+      if (value.length > 0) {
+        const targetYText = yTextRef.current;
+        if (targetYText.doc) {
+          targetYText.doc.transact(() => {
+            if (targetYText.length === 0) {
+              targetYText.insert(0, value);
+            }
+          }, 'local-init');
+        } else {
+          targetYText.insert(0, value);
+        }
+      }
+      return;
+    }
 
     applyExternalDiffToView(viewRef.current, value);
   }, [value, fileId, yText]);

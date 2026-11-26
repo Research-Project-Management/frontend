@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
+import { APP_EVENTS, emitAppEvent } from '@/config/events';
 import {
   DraftsIcon,
   WorkItemsIcon,
@@ -97,14 +98,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   // ── Navigation Helpers ─────────────────────────────────────────────────────
   const isItemActive = (item: NavItem) => {
-    if (item.moduleKey === 'work-items') {
-      return (
-        pathname === item.to ||
-        pathname.startsWith(item.to + '/') ||
-        pathname === `/projects/${resolvedProjectId}` ||
-        pathname === `/projects/${resolvedProjectId}/`
-      );
-    }
     if (item.exact) return pathname === item.to || pathname === item.to + '/';
     return pathname === item.to || pathname.startsWith(item.to + '/');
   };
@@ -127,7 +120,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   if (onToggle) {
                     onToggle();
                   } else {
-                    window.dispatchEvent(new CustomEvent('toggle-project-sidebar'));
+                    emitAppEvent(APP_EVENTS.TOGGLE_PROJECT_SIDEBAR);
                   }
                 }}
                 aria-label="Collapse sidebar"

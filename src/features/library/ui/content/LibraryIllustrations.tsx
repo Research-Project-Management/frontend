@@ -4,7 +4,6 @@ import React from "react";
 
 import {
   ILLUSTRATION_COLOR_TOKEN_MAP,
-  planeIllustrationStyles,
   BaseSlabs,
   type TIllustrationAssetProps,
 } from "@/shared/components/ui/PlaneEmptyState";
@@ -22,7 +21,6 @@ export function ContentSkeleton({ rowCount = 10 }: { rowCount?: number }) {
 
 export {
   ILLUSTRATION_COLOR_TOKEN_MAP,
-  planeIllustrationStyles as libraryIllustrationStyles,
   BaseSlabs,
 };
 export type { TIllustrationAssetProps };

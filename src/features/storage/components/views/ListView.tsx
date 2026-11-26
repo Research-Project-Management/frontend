@@ -139,11 +139,10 @@ export const ListView = React.memo(function ListView({
               <motion.div
                 key={item.id}
                 id={`storage-item-${item.id}`}
-                layout
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -10, transition: { duration: 0.15 } }}
-                transition={{ duration: 0.2 }}
+                exit={{ opacity: 0, x: -10, transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
                 draggable={!isReadOnly && !isTrash && !item.isFolder && !!onDragStartFile}
                 onDragStart={(e: unknown) => {
                   if (!isReadOnly && !isTrash && !item.isFolder && onDragStartFile) {
@@ -230,7 +229,7 @@ export const ListView = React.memo(function ListView({
                           />
                         ) : (
                           <div className="size-4 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <span className="text-[10px] font-medium text-muted-foreground">
+                            <span className="text-10 font-medium text-muted-foreground">
                               {item.author?.name?.charAt(0)?.toUpperCase() || '?'}
                             </span>
                           </div>

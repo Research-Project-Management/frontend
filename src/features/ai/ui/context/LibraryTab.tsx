@@ -42,7 +42,7 @@ const READINESS_META: Record<
     label: 'Full-text',
     title: 'Full text is indexed for fast Q&A',
     className:
-      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+      'bg-success/10 text-success border-success/20',
   },
   pdf: {
     label: 'PDF',

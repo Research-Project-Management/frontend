@@ -21,6 +21,7 @@ export default function EditorRouteError({
       title="Editor encountered an issue"
       description="An unexpected error occurred while rendering the document. Your previously saved edits remain secure in cache."
       error={error}
+      reset={reset}
     />
   );
 }

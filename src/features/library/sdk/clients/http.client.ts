@@ -1,5 +1,5 @@
 import * as api from '@/shared/lib/api';
-import { API_BASE_URL } from '@/config/env';
+import { API_BASE_URL, LIBRARY_SERVICE_ENV } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
 import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers';
@@ -45,13 +45,13 @@ const ALL_LIBRARY_SUBDOMAINS: readonly LibrarySubdomain[] = [
 ] as const;
 
 const SUBDOMAIN_ENV_HOSTS: Record<LibrarySubdomain, string | undefined> = {
-  get catalog() { return process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL; },
-  get extraction() { return process.env.NEXT_PUBLIC_LIBRARY_EXTRACTION_URL; },
-  get ingestion() { return process.env.NEXT_PUBLIC_LIBRARY_INGESTION_URL; },
-  get citation() { return process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL; },
-  get search() { return process.env.NEXT_PUBLIC_LIBRARY_SEARCH_URL; },
-  get sync() { return process.env.NEXT_PUBLIC_LIBRARY_SYNC_URL; },
-  get reader() { return process.env.NEXT_PUBLIC_LIBRARY_READER_URL; },
+  get catalog() { return LIBRARY_SERVICE_ENV.catalog; },
+  get extraction() { return LIBRARY_SERVICE_ENV.extraction; },
+  get ingestion() { return LIBRARY_SERVICE_ENV.ingestion; },
+  get citation() { return LIBRARY_SERVICE_ENV.citation; },
+  get search() { return LIBRARY_SERVICE_ENV.search; },
+  get sync() { return LIBRARY_SERVICE_ENV.sync; },
+  get reader() { return LIBRARY_SERVICE_ENV.reader; },
 };
 
 function normalizeServiceHost(raw: string): string {
@@ -66,8 +66,8 @@ export function getLibraryServiceHost(domain?: LibrarySubdomain): string {
   const domainSpecific = domain ? SUBDOMAIN_ENV_HOSTS[domain]?.trim() : undefined;
   if (domainSpecific) return normalizeServiceHost(domainSpecific);
   const rawConfigured =
-    process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
+    LIBRARY_SERVICE_ENV.defaultHost ||
+    LIBRARY_SERVICE_ENV.apiFallback ||
     (typeof API_BASE_URL === 'string' && API_BASE_URL !== 'undefined' && API_BASE_URL !== 'null'
       ? API_BASE_URL
       : '');

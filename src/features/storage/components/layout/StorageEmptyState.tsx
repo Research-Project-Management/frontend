@@ -3,7 +3,6 @@
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
 import {
-  storageIllustrationStyles,
   StorageFilesStackIllustration,
   StorageSharedStackIllustration,
   StorageStarredStackIllustration,
@@ -120,8 +119,6 @@ export function StorageEmptyState({
         className,
       )}
     >
-      <style dangerouslySetInnerHTML={{ __html: storageIllustrationStyles }} />
-
       {/* 3D Isometric Multi-Layer Storage Illustration */}
       <div className="plane-storage-illustration mb-6 flex items-center justify-center">
         <IllustrationComponent />

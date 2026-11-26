@@ -1,28 +1,22 @@
 /**
  * export.types.ts
  *
- * Types and validation schemas for document compilation export bundles and output formats.
- * Matches backend document/export module.
+ * Canonical types and Zod schemas for single-document formatted export (`POST /docs/:pageId/export`).
  */
 
 import { z } from 'zod';
 
 export const documentExportFormatSchema = z.enum([
+  'tex',
   'pdf',
   'docx',
   'html',
   'markdown',
   'md',
-  'latex-source',
-  'latex-bundle',
-  'zip',
-  'arxiv-zip',
-  'log',
-  'bbl',
 ]);
 
 export const exportDocumentSchema = z.object({
-  format: documentExportFormatSchema.default('pdf'),
+  format: documentExportFormatSchema.default('tex'),
   includeChildren: z.boolean().default(true).optional(),
 });
 

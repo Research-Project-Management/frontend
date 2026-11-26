@@ -1,5 +1,6 @@
 import type { EditorView } from '@codemirror/view';
 import { toast } from 'sonner';
+import { logger } from '@/shared/lib/logger';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
@@ -211,7 +212,7 @@ export function scheduleLocalCreate(
       })
       .catch((err) => {
         host.inFlightSuggestionCreates.delete(sug.id);
-        console.debug('[ReviewCoordinator] Failed to persist local suggestion:', err);
+        logger.debug('[ReviewCoordinator] Failed to persist local suggestion', { err });
       });
   }, 350);
 

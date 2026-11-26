@@ -20,7 +20,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import {
@@ -221,46 +220,44 @@ export function Topbar({
 
         {/* Label Filter Popover Icon Button */}
         <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className={cn(
-                      'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                      activeLabelIds.length > 0 && 'bg-muted border-border font-medium text-foreground'
-                    )}
-                    aria-label={
-                      activeLabelIds.length > 0
-                        ? `Filtered: ${activeLabelIds.length} label${activeLabelIds.length > 1 ? 's' : ''}`
-                        : 'Filter by label'
-                    }
-                  >
-                    <ListFilter className="size-4 shrink-0" strokeWidth={1.75} />
-                    {activeLabelIds.length === 1 && selectedLabel ? (
-                      <span
-                        className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
-                        style={{ backgroundColor: selectedLabel.color || '#0969DA' }}
-                      />
-                    ) : activeLabelIds.length > 1 ? (
-                      <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-11 font-mono font-medium text-background">
-                        {activeLabelIds.length}
-                      </span>
-                    ) : null}
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" sideOffset={6} className="text-11 px-2 py-0.5 rounded-md font-medium">
-                {activeLabelIds.length === 1 && selectedLabel
-                  ? `Filter: ${selectedLabel.name}`
-                  : activeLabelIds.length > 1
-                    ? `Filter: ${activeLabelIds.length} labels`
-                    : 'Filter by label'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                    activeLabelIds.length > 0 && 'bg-muted border-border font-medium text-foreground'
+                  )}
+                  aria-label={
+                    activeLabelIds.length > 0
+                      ? `Filtered: ${activeLabelIds.length} label${activeLabelIds.length > 1 ? 's' : ''}`
+                      : 'Filter by label'
+                  }
+                >
+                  <ListFilter className="size-4 shrink-0" strokeWidth={1.75} />
+                  {activeLabelIds.length === 1 && selectedLabel ? (
+                    <span
+                      className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
+                      style={{ backgroundColor: selectedLabel.color || '#0969DA' }}
+                    />
+                  ) : activeLabelIds.length > 1 ? (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-11 font-mono font-medium text-background">
+                      {activeLabelIds.length}
+                    </span>
+                  ) : null}
+                </Button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6} className="text-11 px-2 py-0.5 rounded-md font-medium">
+              {activeLabelIds.length === 1 && selectedLabel
+                ? `Filter: ${selectedLabel.name}`
+                : activeLabelIds.length > 1
+                  ? `Filter: ${activeLabelIds.length} labels`
+                  : 'Filter by label'}
+            </TooltipContent>
+          </Tooltip>
 
           <PopoverContent
             align="end"
@@ -364,48 +361,46 @@ export function Topbar({
         </Popover>
 
         {/* Segmented View Switcher matching Storage and Work-Items */}
-        <TooltipProvider delayDuration={150}>
-          <div
-            role="tablist"
-            aria-label="View mode"
-            className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40"
-          >
-            {VIEW_OPTIONS.map((opt) => {
-              const IconComp = opt.icon;
-              const isSelected = viewMode === opt.id;
-              return (
-                <Tooltip key={opt.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={isSelected}
-                      onClick={() => React.startTransition(() => setViewMode(opt.id))}
-                      className={cn(
-                        'relative size-7 flex items-center justify-center rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
-                        isSelected
-                          ? 'bg-background border border-border/50 text-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
-                      )}
-                      aria-label={opt.label}
-                    >
-                      <span className="relative z-10 flex items-center justify-center">
-                        <IconComp className="size-4 shrink-0" strokeWidth={1.75} />
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    sideOffset={6}
-                    className="text-11 px-2 py-0.5 rounded-md font-medium"
+        <div
+          role="tablist"
+          aria-label="View mode"
+          className="flex items-center bg-muted/70 p-0.5 rounded-md shrink-0 gap-0.5 h-8 border border-border/40"
+        >
+          {VIEW_OPTIONS.map((opt) => {
+            const IconComp = opt.icon;
+            const isSelected = viewMode === opt.id;
+            return (
+              <Tooltip key={opt.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={isSelected}
+                    onClick={() => React.startTransition(() => setViewMode(opt.id))}
+                    className={cn(
+                      'relative size-7 flex items-center justify-center rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
+                      isSelected
+                        ? 'bg-background border border-border/50 text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
+                    )}
+                    aria-label={opt.label}
                   >
-                    {opt.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div>
-        </TooltipProvider>
+                    <span className="relative z-10 flex items-center justify-center">
+                      <IconComp className="size-4 shrink-0" strokeWidth={1.75} />
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  sideOffset={6}
+                  className="text-11 px-2 py-0.5 rounded-md font-medium"
+                >
+                  {opt.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
 
         {/* Primary Action CTA: "New" menu mirroring Overleaf's New project menu */}
         <input

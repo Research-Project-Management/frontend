@@ -43,8 +43,4 @@ export const templates = {
   createCustom: async (dto: Record<string, unknown>): Promise<ProjectTemplateItem> => {
     return await apiPost<ProjectTemplateItem>(`${PAGES_API_BASE}/templates/custom`, dto);
   },
-
-  scaffold: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${PAGES_API_BASE}/spaces/${projectId}/templates/${templateId}/scaffold`, {});
-  },
 };

@@ -15,6 +15,7 @@
  */
 
 import { API_BASE_URL, REALTIME_BASE_URL } from '@/config/env';
+import { STORAGE_KEYS as APP_STORAGE_KEYS } from '@/config/storage-keys';
 import { ApiError, isApiError, type RequestOptions } from '@/shared/types/api.types';
 import { tryCatch, type Result } from '@/shared/utils/error.util';
 import { logger } from '@/shared/lib/logger';
@@ -44,7 +45,7 @@ export function getEffectiveBaseUrl(): string {
   // Allow local development override only in non-production environments
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     try {
-      const override = window.localStorage.getItem('FLUX_API_BASE_URL');
+      const override = window.localStorage.getItem(APP_STORAGE_KEYS.API_BASE_URL_OVERRIDE);
       if (override && override.trim()) return override.trim().replace(/\/$/, '');
     } catch {
       // Ignore security errors in restricted browser contexts
@@ -65,7 +66,7 @@ export function getEffectiveBaseUrl(): string {
 export function getRealtimeBaseUrl(): string {
   if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     try {
-      const override = window.localStorage.getItem('FLUX_REALTIME_BASE_URL');
+      const override = window.localStorage.getItem(APP_STORAGE_KEYS.REALTIME_BASE_URL_OVERRIDE);
       if (override && override.trim()) return override.trim().replace(/\/$/, '');
     } catch {
       // Ignore security errors in restricted browser contexts

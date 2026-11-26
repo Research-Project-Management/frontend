@@ -47,8 +47,19 @@ export const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
     const effectiveSignal = signal || payload.signal;
     const { signal: _unused, ...body } = payload;
-    const effectiveTimeout = body.timeoutMs ?? 240000;
-    body.timeoutMs = effectiveTimeout;
+    // Let the server enforce its authoritative tier cap; only give the client HTTP layer
+    // enough headroom (+10s) so server-side timeout diagnostics arrive cleanly instead of AbortError.
+    const defaultClientHttpTimeout = body.syntaxOnly
+      ? 30000
+      : body.priority === 'auto'
+        ? 40000
+        : body.draft
+          ? 55000
+          : 105000;
+    const clientHttpTimeout =
+      typeof body.timeoutMs === 'number'
+        ? body.timeoutMs + 10000
+        : defaultClientHttpTimeout;
     if (effectiveSignal?.aborted) {
       const abortErr = new Error('Compilation superseded');
       abortErr.name = 'AbortError';
@@ -58,7 +69,7 @@ export const compiler = {
     try {
       return await apiPost<CompileLatexResponse>(`${CLSI_API_BASE}/compile`, body, {
         signal: effectiveSignal,
-        timeout: effectiveTimeout,
+        timeout: clientHttpTimeout,
       });
     } catch (err: unknown) {
       const isClientAborted =

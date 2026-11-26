@@ -19,7 +19,7 @@ import {
   ChevronUp,
   Clock,
 } from 'lucide-react';
-import { formatDistanceToNow, parseISO } from 'date-fns';
+import { formatRelativeTime } from '@/shared/lib/utils';
 import { AddStatusUpdateModal } from './AddStatusUpdateModal';
 import {
   useProjectStatusUpdates,
@@ -71,14 +71,6 @@ const STATUS_CONFIG: Record<
     indicatorDot: 'bg-destructive',
   },
 };
-
-function formatRelativeTime(dateStr: string): string {
-  try {
-    return formatDistanceToNow(parseISO(dateStr), { addSuffix: true });
-  } catch {
-    return dateStr;
-  }
-}
 
 export function ProjectStatusCard({
   projectId,

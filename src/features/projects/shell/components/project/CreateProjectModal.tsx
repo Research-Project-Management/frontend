@@ -21,7 +21,7 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { Switch } from '@/shared/components/ui/switch';
 import { Calendar } from '@/shared/components/ui/calendar';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/shared/components/ui/tooltip';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import {
   NonePriorityBoxIcon,
   LowPriorityBoxIcon,
@@ -486,25 +486,23 @@ export function CreateProjectModal({
                         errors.identifier && 'border-destructive focus-visible:ring-destructive/30'
                       )}
                     />
-                    <TooltipProvider delayDuration={150}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help p-0.5 outline-none"
-                          >
-                            <Info className="size-4 shrink-0" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          align="end"
-                          className="bg-popover text-foreground border border-border rounded-md text-11 px-3 py-1.5 max-w-[280px] font-normal leading-relaxed"
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-help p-0.5 outline-none"
                         >
-                          Helps you identify work items in the project uniquely. Max 10 characters.
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                          <Info className="size-4 shrink-0" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        align="end"
+                        className="bg-popover text-foreground border border-border rounded-md text-11 px-3 py-1.5 max-w-[280px] font-normal leading-relaxed"
+                      >
+                        Helps you identify work items in the project uniquely. Max 10 characters.
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   {errors.identifier && (
                     <p className="text-11 text-destructive pl-0.5">{errors.identifier.message}</p>

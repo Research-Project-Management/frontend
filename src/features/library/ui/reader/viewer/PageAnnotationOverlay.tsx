@@ -490,7 +490,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               )}
               {isRect && (
                 <>
-                  <span className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none" style={{ backgroundColor: colorHex }}>
+                  <span className="absolute -top-3.5 left-0 px-1 py-0.5 text-9 font-mono rounded text-white font-semibold pointer-events-none" style={{ backgroundColor: colorHex }}>
                     Area
                   </span>
                   {!isEraser && onUpdateAnnotation && (
@@ -736,7 +736,7 @@ export function AnnotationQuickEditCard({
       <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <span
-            className="size-4 rounded-xs flex items-center justify-center text-[10px] font-bold border shrink-0 transition-colors"
+            className="size-4 rounded-xs flex items-center justify-center text-10 font-semibold border shrink-0 transition-colors"
             style={{
               color: tooltip.color,
               borderColor: `${tooltip.color}90`,

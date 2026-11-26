@@ -12,6 +12,7 @@ import { loginUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import { loginSchema, type LoginSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 import { getSafeRedirectUrl, isTokenValid } from '@/shared/utils/auth-token.util';
 import { getAuthToken, tokenStorage } from '@/shared/lib/api';
 
@@ -97,13 +98,13 @@ export const useLogin = () => {
 
         // Loop breaker: if we just came from targetUrl in this session, don't loop endlessly
         if (typeof window !== 'undefined') {
-          const lastRedirect = sessionStorage.getItem('flux_auth_redirect_attempt');
+          const lastRedirect = sessionStorage.getItem(STORAGE_KEYS.AUTH_REDIRECT_ATTEMPT);
           if (lastRedirect === targetUrl) {
-            sessionStorage.removeItem('flux_auth_redirect_attempt');
+            sessionStorage.removeItem(STORAGE_KEYS.AUTH_REDIRECT_ATTEMPT);
             tokenStorage.clearTokens();
             return;
           }
-          sessionStorage.setItem('flux_auth_redirect_attempt', targetUrl);
+          sessionStorage.setItem(STORAGE_KEYS.AUTH_REDIRECT_ATTEMPT, targetUrl);
         }
 
         router.replace(targetUrl);
@@ -119,7 +120,7 @@ export const useLogin = () => {
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
       if (redirect) {
-        sessionStorage.setItem('flux_oauth_redirect', redirect);
+        sessionStorage.setItem(STORAGE_KEYS.OAUTH_REDIRECT, redirect);
       }
     }
     window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;

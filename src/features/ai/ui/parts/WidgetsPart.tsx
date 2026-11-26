@@ -254,7 +254,7 @@ function PatchDiffPreview({
   if (shownRemoved.length === 0 && shownAdded.length === 0) return null;
 
   return (
-    <div className="mt-1.5 rounded-sm border border-border/80 bg-background font-mono text-[11px] leading-snug overflow-x-auto">
+    <div className="mt-1.5 rounded-sm border border-border/80 bg-background font-mono text-11 leading-snug overflow-x-auto">
       {shownRemoved.map((line, i) => (
         <div
           key={`del-${i}`}

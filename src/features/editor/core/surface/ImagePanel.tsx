@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ImagePanel.tsx
  *
  * Image Asset Viewer Panel inside Editor Area (Block 6: UI Features Layer).
@@ -10,6 +10,7 @@
 import React from 'react';
 import { FileImage, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { formatBytes } from '@/shared/lib/utils';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import { useAuthorizedImageSrc } from '@/features/editor/core/hooks/useAuthorizedImageSrc';
 
@@ -20,13 +21,7 @@ export interface ImagePanelProps {
 export function ImagePanel({ asset }: ImagePanelProps) {
   const authorizedSrc = useAuthorizedImageSrc(asset.url);
   const ext = asset.filename.split('.').pop()?.toUpperCase() ?? '';
-  const sizeLabel = asset.size
-    ? asset.size < 1024
-      ? `${asset.size} B`
-      : asset.size < 1024 * 1024
-        ? `${(asset.size / 1024).toFixed(1)} KB`
-        : `${(asset.size / (1024 * 1024)).toFixed(1)} MB`
-    : null;
+  const sizeLabel = asset.size ? formatBytes(asset.size) : null;
 
   return (
     <div className="flex flex-col h-full w-full bg-background select-none">
@@ -34,7 +29,7 @@ export function ImagePanel({ asset }: ImagePanelProps) {
         <FileImage className="size-3.5 text-muted-foreground shrink-0" />
         <span className="font-medium text-foreground truncate">{asset.filename}</span>
         {ext && (
-          <span className="px-1.5 py-0.5 rounded-sm bg-secondary font-mono text-[11px] text-muted-foreground">
+          <span className="px-1.5 py-0.5 rounded-sm bg-secondary font-mono text-11 text-muted-foreground">
             {ext}
           </span>
         )}

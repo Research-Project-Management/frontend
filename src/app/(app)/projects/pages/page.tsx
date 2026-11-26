@@ -1,11 +1,5 @@
-import type { Metadata } from 'next';
-import WorkspacePagesPage from '@/features/projects/shell/pages/WorkspacePagesPage';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'Pages',
-  description: 'Workspace documents, research wiki, and knowledge library.',
-};
-
-export default function ProjectsPagesRoute() {
-  return <WorkspacePagesPage />;
+export default function ProjectsPagesLegacyRedirect() {
+  redirect('/pages');
 }

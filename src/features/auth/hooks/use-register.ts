@@ -12,6 +12,7 @@ import { registerUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import { registerSchema, type RegisterSchema } from '../schemas/auth.schema';
 import { env } from '@/config/env';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 import type { RegisterPayload } from '../types/auth.types';
 import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
 
@@ -95,7 +96,7 @@ export const useRegister = () => {
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
       if (redirect) {
-        sessionStorage.setItem('flux_oauth_redirect', redirect);
+        sessionStorage.setItem(STORAGE_KEYS.OAUTH_REDIRECT, redirect);
       }
     }
     window.location.href = `${env.NEXT_PUBLIC_API_URL}/auth/${provider}`;

@@ -294,7 +294,7 @@ export function NoteEditorBox({
           className="flex flex-wrap items-center gap-1 pt-1 border-t border-border/30 select-none"
           aria-label="Linked PDF citations"
         >
-          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground mr-0.5">
+          <span className="inline-flex items-center gap-1 text-10 text-muted-foreground mr-0.5">
             <BookOpen className="size-2.5 shrink-0" />
             <span>Citations:</span>
           </span>
@@ -309,7 +309,7 @@ export function NoteEditorBox({
                     }
                   }}
                   aria-label={`${cite.label} (${cite.token})`}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-medium cursor-pointer transition-colors"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary text-10 font-medium cursor-pointer transition-colors"
                 >
                   <span className="font-mono opacity-75">{cite.token}</span>
                   <span>p. {cite.pageNumber}</span>

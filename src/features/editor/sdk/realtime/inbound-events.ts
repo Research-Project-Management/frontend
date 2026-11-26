@@ -193,7 +193,7 @@ export function registerProviderSocketListeners(
       { spaceId: cb.spaceId },
       (res?: { success?: boolean; projectPresence?: CollaborationPresence[]; error?: string }) => {
         if (res?.error) {
-          console.debug('[YjsSocketIOProvider] project:join info:', res.error);
+          logger.debug('[YjsSocketIOProvider] project:join info', { error: res.error });
         }
       },
     );

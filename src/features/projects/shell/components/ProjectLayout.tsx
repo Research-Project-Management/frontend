@@ -7,6 +7,9 @@ import { PanelLeft } from "lucide-react";
 
 import ProjectsSidebar from '@/features/projects/shell/components/Sidebar';
 import { useWebProjectBootstrap } from '@/features/shell/hooks/use-web-bff';
+import { MEDIA_QUERY_TABLET, subscribeMediaQuery } from '@/shared/hooks/use-media-query';
+import { STORAGE_KEYS } from '@/config/storage-keys';
+import { APP_EVENTS, onAppEvent } from '@/config/events';
 
 export default function ProjectsLayout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -21,7 +24,7 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
     setMounted(true);
     const isMobile = window.innerWidth < 1024;
     try {
-      const saved = localStorage.getItem('flux:project-sidebar-visible');
+      const saved = localStorage.getItem(STORAGE_KEYS.PROJECT_SIDEBAR_VISIBLE);
       if (saved !== null) {
         // On mobile screens, always default to closed unless user explicitly toggles
         setIsSidebarVisible(isMobile ? false : saved === 'true');
@@ -33,17 +36,9 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
 
     setIsSidebarVisible(!isMobile);
 
-    const media = window.matchMedia("(max-width: 1023px)");
-    const syncSidebar = () => {
-      if (media.matches) {
-        setIsSidebarVisible(false);
-      } else {
-        setIsSidebarVisible(true);
-      }
-    };
-
-    media.addEventListener("change", syncSidebar);
-    return () => media.removeEventListener("change", syncSidebar);
+    return subscribeMediaQuery(MEDIA_QUERY_TABLET, (matches) => {
+      setIsSidebarVisible(!matches);
+    });
   }, []);
 
   // Auto-close sidebar on route change on mobile
@@ -58,15 +53,14 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
     const handleToggleEvent = () => {
       setIsSidebarVisible((prev) => !prev);
     };
-    window.addEventListener('toggle-project-sidebar', handleToggleEvent);
-    return () => window.removeEventListener('toggle-project-sidebar', handleToggleEvent);
+    return onAppEvent(APP_EVENTS.TOGGLE_PROJECT_SIDEBAR, handleToggleEvent);
   }, []);
 
   const handleToggleSidebar = (visible: boolean) => {
     setIsSidebarVisible(visible);
     try {
       if (window.innerWidth >= 1024) {
-        localStorage.setItem('flux:project-sidebar-visible', String(visible));
+        localStorage.setItem(STORAGE_KEYS.PROJECT_SIDEBAR_VISIBLE, String(visible));
       }
     } catch {
       // ignore

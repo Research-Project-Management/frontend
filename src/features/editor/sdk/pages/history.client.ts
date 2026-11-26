@@ -3,9 +3,8 @@
  * Canonical History SDK client targeting `api/v1/pages/spaces/:spaceId/history`.
  */
 
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
-import { PAGES_API_BASE } from './base';
-import { exportDocs } from './export.client';
+import { apiGet, apiPost, apiDelete, rawFetch } from '@/shared/lib/api';
+import { PAGES_API_BASE, getPagesBaseUrl } from './base';
 import type {
   ProjectVersionListItem,
   ProjectSnapshotDetail,
@@ -155,7 +154,19 @@ export const history = {
     projectName?: string,
     options?: { pageId?: string },
   ): Promise<Blob> => {
-    return exportDocs.exportVersionZip(spaceId, version, projectName, options);
+    const params = new URLSearchParams();
+    if (projectName) params.set('projectName', projectName);
+    const cleanPageId = options?.pageId?.trim();
+    if (cleanPageId) params.set('pageId', cleanPageId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await rawFetch(
+      `${getPagesBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/history/versions/${encodeURIComponent(String(version))}/export-zip${qs}`,
+      'GET',
+    );
+    if (!res.ok) {
+      throw new Error(`Export Version ZIP failed: ${res.statusText}`);
+    }
+    return res.blob();
   },
 
   listLabels: async (

@@ -445,7 +445,7 @@ export default function TagsSection({
                     <span className="truncate">{sug.name}</span>
                   </span>
                   {typeof sug.itemCount === "number" && sug.itemCount > 0 && (
-                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                    <span className="text-10 text-muted-foreground font-mono shrink-0">
                       {sug.itemCount}
                     </span>
                   )}

@@ -136,7 +136,7 @@ export function FeedArticleRow({
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1 space-y-1">
-          <h3 className="text-14 sm:text-[15px] font-semibold text-foreground leading-snug tracking-tight block">
+          <h3 className="text-14 sm:text-[0.9375rem] font-semibold text-foreground leading-snug tracking-tight block">
             {entry.title}
           </h3>
 
@@ -298,7 +298,7 @@ export function FeedArticleRow({
         <div className="w-full">
           <p
             className={cn(
-              'text-[13px] leading-relaxed text-muted-foreground transition-all',
+              'text-13 leading-relaxed text-muted-foreground transition-all',
               !isExpanded && 'line-clamp-2',
             )}
           >

@@ -8,6 +8,7 @@ import type {
   SyncCollectionPayload,
 } from '../types/integration.types';
 import { getErrorMessage } from "@/shared/lib/utils";
+import { APP_EVENTS, emitAppEvent } from "@/config/events";
 
 export const INTEGRATIONS_QUERY_KEY = ['integrations', 'status'];
 
@@ -165,7 +166,7 @@ export function useSyncCollection() {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-citation-validation'] });
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
+        emitAppEvent(APP_EVENTS.FILETREE_UPDATED);
       }
     },
     onError: (err: unknown) => {

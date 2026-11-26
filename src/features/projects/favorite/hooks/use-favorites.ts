@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useToggleProjectFavorite } from '@/features/projects/shell/hooks/use-project';
+import { STORAGE_KEYS } from '@/config/storage-keys';
+import { APP_EVENTS, emitAppEvent, onAppEvent } from '@/config/events';
 import type {
   UseFavoritesState,
   UseFavoritesActions,
@@ -10,13 +12,11 @@ import type {
 
 export * from '../types/favorite.types';
 
-const FAVORITES_EVENT = 'flux:favorites-changed';
-
 export function useFavorites(): UseFavoritesReturn {
   const toggleFavoriteMutation = useToggleProjectFavorite();
 
   const getStorageKey = useCallback(() => {
-    return 'sidebar_favorites';
+    return STORAGE_KEYS.SIDEBAR_FAVORITES;
   }, []);
 
   const readFavorites = useCallback((): Set<string> => {
@@ -46,11 +46,11 @@ export function useFavorites(): UseFavoritesReturn {
     };
 
     window.addEventListener('storage', handleSync);
-    window.addEventListener(FAVORITES_EVENT, handleSync);
+    const offFavorites = onAppEvent(APP_EVENTS.FAVORITES_CHANGED, handleSync);
 
     return () => {
       window.removeEventListener('storage', handleSync);
-      window.removeEventListener(FAVORITES_EVENT, handleSync);
+      offFavorites();
     };
   }, [readFavorites]);
 
@@ -58,8 +58,8 @@ export function useFavorites(): UseFavoritesReturn {
     (next: Set<string>) => {
       try {
         const serialized = JSON.stringify(Array.from(next));
-        localStorage.setItem('sidebar_favorites', serialized);
-        window.dispatchEvent(new CustomEvent(FAVORITES_EVENT));
+        localStorage.setItem(STORAGE_KEYS.SIDEBAR_FAVORITES, serialized);
+        emitAppEvent(APP_EVENTS.FAVORITES_CHANGED);
       } catch {
         // Handle storage error
       }

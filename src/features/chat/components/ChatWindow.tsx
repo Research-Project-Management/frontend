@@ -287,7 +287,7 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
                 <>
                   <Avatar className="size-5 rounded-md shrink-0">
                     <AvatarImage src={conversation.avatar || undefined} />
-                    <AvatarFallback className="rounded-md text-[10px] font-medium bg-muted text-foreground">
+                    <AvatarFallback className="rounded-md text-10 font-medium bg-muted text-foreground">
                       {conversation.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -298,7 +298,7 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
                   <div className="relative shrink-0">
                     <Avatar className="size-5 rounded-full">
                       <AvatarImage src={conversation.avatar || conversation.otherUser?.avatar || undefined} />
-                      <AvatarFallback className="text-[10px] font-medium bg-muted text-foreground">
+                      <AvatarFallback className="text-10 font-medium bg-muted text-foreground">
                         {conversation.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>

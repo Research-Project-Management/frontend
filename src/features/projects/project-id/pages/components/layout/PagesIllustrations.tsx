@@ -1,46 +1,14 @@
 'use client';
 
 import React from 'react';
+import {
+  ILLUSTRATION_TOKENS,
+  type IllustrationProps,
+} from '@/shared/components/illustrations';
 
-export const pagesIllustrationStyles = `
-  :root, .plane-pages-illustration, [data-theme='light'] {
-    --illustration-fill-primary: #ffffff;
-    --illustration-fill-secondary: #f4f5f5;
-    --illustration-fill-tertiary: #eaebeb;
-    --illustration-fill-quaternary: #cfd2d3;
-    --illustration-stroke-primary: #cfd2d3;
-    --illustration-stroke-secondary: #8a9093;
-    --illustration-stroke-tertiary: #1d1f20;
-  }
-  .dark .plane-pages-illustration,
-  [data-theme='dark'] .plane-pages-illustration {
-    --illustration-fill-primary: #18181b;
-    --illustration-fill-secondary: #27272a;
-    --illustration-fill-tertiary: #3f3f46;
-    --illustration-fill-quaternary: #52525b;
-    --illustration-stroke-primary: #3f3f46;
-    --illustration-stroke-secondary: #71717a;
-    --illustration-stroke-tertiary: #e4e4e7;
-  }
-`;
+export const ILLUSTRATION_COLOR_TOKEN_MAP = ILLUSTRATION_TOKENS;
 
-export const ILLUSTRATION_COLOR_TOKEN_MAP = {
-  fill: {
-    primary: 'var(--illustration-fill-primary, #FFFFFF)',
-    secondary: 'var(--illustration-fill-secondary, #F4F5F5)',
-    tertiary: 'var(--illustration-fill-tertiary, #EAEBEB)',
-    quaternary: 'var(--illustration-fill-quaternary, #CFD2D3)',
-  },
-  stroke: {
-    primary: 'var(--illustration-stroke-primary, #CFD2D3)',
-    secondary: 'var(--illustration-stroke-secondary, #8A9093)',
-    tertiary: 'var(--illustration-stroke-tertiary, #1D1F20)',
-  },
-};
-
-export interface TIllustrationAssetProps {
-  className?: string;
-}
+export type TIllustrationAssetProps = IllustrationProps;
 
 /**
  * Shared Isometric 3-Tier Base Slab Foundation matching Library & Storage standards

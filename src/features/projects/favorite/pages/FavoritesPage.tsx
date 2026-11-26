@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/shared/components/ui/button';
+import { STORAGE_KEYS } from '@/config/storage-keys';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +54,7 @@ export function FavoritesPage() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('flux:projects-view-mode') as ViewMode | null;
+      const saved = localStorage.getItem(STORAGE_KEYS.PROJECTS_VIEW_MODE) as ViewMode | null;
       if (saved === 'grid' || saved === 'list') {
         setViewMode(saved);
       }

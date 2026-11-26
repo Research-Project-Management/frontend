@@ -406,7 +406,7 @@ export default function StickyDock({
                   >
                     <MessageSquare className="size-4.5 text-foreground shrink-0" strokeWidth={1.75} />
                     {totalBadgeCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-[9px] font-semibold leading-none pointer-events-none">
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-9 font-semibold leading-none pointer-events-none">
                         {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
                       </span>
                     )}

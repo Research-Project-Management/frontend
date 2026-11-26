@@ -192,8 +192,9 @@ function WordCountModal({
         scope === 'selection'
           ? 'selection.tex'
           : activeFileName || 'main.tex';
-      const targetProjectId = scope === 'project' ? effectiveProjectId || undefined : undefined;
-      const targetPageId = scope === 'project' ? storePageId || undefined : undefined;
+      // Always include workspace spaceId/pageId so ProjectAccessGuard authorizes all scopes.
+      const targetProjectId = effectiveProjectId || undefined;
+      const targetPageId = storePageId || undefined;
       const filesForScope = scope === 'project' && projectFilesMap ? projectFilesMap : undefined;
 
       const cacheKey = hashWordCountInput(

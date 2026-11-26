@@ -272,7 +272,7 @@ export function CompilerLogs({
                 />
                 <span>Raw logs</span>
                 {isTruncatedLog && (
-                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  <span className="text-10 font-normal px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                     Truncated preview
                   </span>
                 )}
@@ -282,7 +282,7 @@ export function CompilerLogs({
                 <button
                   type="button"
                   onClick={s.handleDownloadFullRawLog}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border text-[11px] font-medium text-primary hover:bg-muted transition-colors cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border text-11 font-medium text-primary hover:bg-muted transition-colors cursor-pointer shrink-0"
                 >
                   <Download className="size-3" />
                   <span>Download full output.log</span>

@@ -3,6 +3,7 @@ import type * as Y from 'yjs';
 import { programmaticSyncAnnotation } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
+import { logger } from '@/shared/lib/logger';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import {
@@ -296,7 +297,7 @@ export function syncDecorations(params: {
         ],
       });
     } catch (err) {
-      console.debug('[ReviewCoordinator] Failed to sync decorations:', err);
+      logger.debug('[ReviewCoordinator] Failed to sync decorations', { err });
     }
   }
 }

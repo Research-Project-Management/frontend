@@ -12,6 +12,7 @@ import {
   ChevronDown,
   Loader2,
   Check,
+  Square,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -42,7 +43,7 @@ export const CompileButton = React.memo(function CompileButton({
   onCompile,
   onClearCacheAndCompile,
   onStopCompilation,
-  showCompileModeControls = false,
+  showCompileModeControls = true,
 }: CompileButtonProps) {
   const compileStatus = useCompileStore((s) => s.compileStatus);
 
@@ -84,29 +85,35 @@ export const CompileButton = React.memo(function CompileButton({
 
   return (
     <div className="inline-flex items-center rounded-md select-none">
-      {/* ── Left: Main Action Button ── */}
-      <button
-        type="button"
-        onClick={handleCompile}
-        disabled={isRunning}
-        aria-label="Recompile document (Ctrl+Enter)"
-        title="Recompile (Ctrl+Enter)"
-        className={cn(
-          'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring select-none bg-primary text-primary-foreground',
-          isRunning
-            ? 'opacity-90 cursor-wait'
-            : 'hover:bg-primary/90 cursor-pointer'
-        )}
-      >
-        {isRunning ? (
-          <>
-            <Loader2 className="size-3.5 animate-spin shrink-0" />
-            <span>Compiling...</span>
-          </>
-        ) : (
-          <span>Recompile</span>
-        )}
-      </button>
+      {/* ── Left: Main Action Button (Recompile / 1-Click Stop while running) ── */}
+      {isRunning ? (
+        <button
+          type="button"
+          onClick={handleStopCompilation}
+          aria-label="Stop compilation"
+          title="Click to stop compilation"
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring select-none bg-primary text-primary-foreground hover:bg-destructive hover:text-destructive-foreground cursor-pointer group"
+        >
+          <Loader2 className="size-3.5 animate-spin shrink-0 group-hover:hidden" />
+          <Square className="size-3 fill-current shrink-0 hidden group-hover:inline-block" />
+          <span className="group-hover:hidden">Compiling...</span>
+          <span className="hidden group-hover:inline">Stop</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleCompile}
+          aria-label="Recompile document (Ctrl+Enter)"
+          title={
+            compileMode === 'draft'
+              ? 'Recompile in Fast (draft) mode (Ctrl+Enter)'
+              : 'Recompile (Ctrl+Enter)'
+          }
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring select-none bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+        >
+          <span>{compileMode === 'draft' ? 'Recompile (Draft)' : 'Recompile'}</span>
+        </button>
+      )}
 
       {/* ── Right: Options Dropdown Trigger ── */}
       <DropdownMenu>

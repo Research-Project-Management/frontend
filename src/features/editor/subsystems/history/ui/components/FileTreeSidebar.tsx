@@ -48,7 +48,7 @@ export function FileTreeSidebar({
           Files
         </span>
         {versionLabel && (
-          <span className="text-[11px] font-mono text-muted-foreground">
+          <span className="text-11 font-mono text-muted-foreground">
             {versionLabel}
           </span>
         )}
@@ -130,7 +130,7 @@ export function FileTreeSidebar({
                 </div>
 
                 {mode === 'compare' && (
-                  <div className="flex items-center gap-1 shrink-0 font-mono text-[10px]">
+                  <div className="flex items-center gap-1 shrink-0 font-mono text-10">
                     {isDeleted ? (
                       <span className="text-destructive font-medium">del</span>
                     ) : (

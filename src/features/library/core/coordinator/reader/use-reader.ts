@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { multiTabBus } from '@/shared/lib/multi-tab';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import {
@@ -212,6 +213,7 @@ function cancelIdleRamEvictTimer(): void {
 export function markReaderMounted(): void {
   activeReaderMountCount += 1;
   cancelIdleRamEvictTimer();
+  memoryGovernor.setActiveDomain('reader');
 }
 
 /**
@@ -222,6 +224,9 @@ export function markReaderMounted(): void {
 export function markReaderUnmounted(): void {
   activeReaderMountCount = Math.max(0, activeReaderMountCount - 1);
   if (activeReaderMountCount === 0 && typeof window !== 'undefined') {
+    if (memoryGovernor.getActiveDomain() === 'reader') {
+      memoryGovernor.setActiveDomain('workspace');
+    }
     cancelIdleRamEvictTimer();
     idleRamEvictTimer = setTimeout(() => {
       idleRamEvictTimer = null;
@@ -283,31 +288,38 @@ export function hibernateInactiveWarmReaderPools(): number {
   return evictedCount;
 }
 
-const READER_BACKGROUND_HIBERNATION_MS = 3 * 60 * 1000; // 3 minutes
-
 if (typeof window !== 'undefined') {
-  multiTabBus.subscribe((event) => {
-    if (event.type === 'AUTH_LOGOUT') {
-      clearAllWarmReaderPools();
-    }
-  });
-
-  if (typeof document !== 'undefined') {
-    let hibernationTimer: ReturnType<typeof setTimeout> | null = null;
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        if (hibernationTimer) clearTimeout(hibernationTimer);
-        hibernationTimer = setTimeout(() => {
-          if (document.visibilityState === 'hidden') {
-            hibernateInactiveWarmReaderPools();
-          }
-        }, READER_BACKGROUND_HIBERNATION_MS);
-      } else if (hibernationTimer) {
-        clearTimeout(hibernationTimer);
-        hibernationTimer = null;
+  memoryGovernor.register({
+    id: 'library-reader-warm-pools',
+    domain: 'reader',
+    priority: 30,
+    reclaim: ({ level }) => {
+      if (level === 'logout') {
+        const count = warmObjectUrlPool.size + warmViewerPool.size;
+        clearAllWarmReaderPools();
+        return count;
       }
-    });
-  }
+      if (level === 'route-handover' && activeReaderMountCount === 0) {
+        const count = warmObjectUrlPool.size + warmViewerPool.size;
+        clearAllWarmReaderPools();
+        return count;
+      }
+      if (level === 'tab-hidden' || level === 'pressure' || level === 'route-handover') {
+        return hibernateInactiveWarmReaderPools();
+      }
+      return 0;
+    },
+    getStats: () => ({
+      id: 'library-reader-warm-pools',
+      domain: 'reader',
+      entryCount: warmObjectUrlPool.size + warmViewerPool.size,
+      details: {
+        warmObjectUrls: warmObjectUrlPool.size,
+        warmViewerTabs: warmViewerPool.size,
+        activeMountCount: activeReaderMountCount,
+      },
+    }),
+  });
 }
 
 registerReaderResourceCleanupHandler(cleanupReaderResourcesForItems);

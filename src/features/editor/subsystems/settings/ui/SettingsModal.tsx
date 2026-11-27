@@ -16,7 +16,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { GithubTab } from './GithubTab';
-import { DictionaryTab } from '@/features/editor/subsystems/spelling/ui/DictionaryTab';
+import { SpellingTab } from '@/features/editor/subsystems/spelling/ui/SpellingTab';
 import { CompilerEditorSection } from './CompilerEditorSection';
 import { GitCloneCard } from './GitCloneCard';
 import { useSettingsModal, type SettingsView } from './hooks/useSettingsModal';
@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'compiler', label: 'Compiler', icon: <Cpu className="size-3.5 shrink-0" /> },
   { id: 'editor', label: 'Editor', icon: <Code2 className="size-3.5 shrink-0" /> },
   { id: 'github', label: 'GitHub', icon: <GitHubIcon className="size-3.5 shrink-0" /> },
-  { id: 'dictionary', label: 'Dictionary', icon: <SpellCheck className="size-3.5 shrink-0" /> },
+  { id: 'dictionary', label: 'Spelling', icon: <SpellCheck className="size-3.5 shrink-0" /> },
 ];
 
 export function SettingsModal() {
@@ -85,7 +85,7 @@ export function SettingsModal() {
           </nav>
 
           {s.activeView === 'dictionary' ? (
-            <DictionaryTab projectId={s.projectId} />
+            <SpellingTab projectId={s.projectId} />
           ) : (
             <div className="flex-1 min-h-0 overflow-y-scroll p-5">
               {s.activeView === 'compiler' && (

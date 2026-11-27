@@ -23,13 +23,22 @@ import {
 } from '@codemirror/state';
 import katex from 'katex';
 import 'katex/contrib/mhchem';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { findMatchingBrace } from './latex-visual-headings';
 import { findBeginDocumentLine } from './latex-visual-document-shell';
 
 // ── KaTeX Render Cache (LRU) ──────────────────────────────────────────────────
 
-const KATEX_CACHE_MAX = 250;
+const KATEX_CACHE_MAX = memoryGovernor.getBudget().maxKatexCacheEntries;
 const katexHtmlCache = new Map<string, string>();
+
+export function clearKaTeXRenderCache(): void {
+  katexHtmlCache.clear();
+}
+
+export function getKaTeXRenderCacheSize(): number {
+  return katexHtmlCache.size;
+}
 
 function renderKaTeXCached(formula: string, displayMode: boolean): string | null {
   if (!formula || !formula.trim()) return null;

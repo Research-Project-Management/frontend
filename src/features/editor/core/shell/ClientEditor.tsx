@@ -12,6 +12,7 @@ import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 import { editorBootstrapQuery } from '@/features/editor/core/queries/document.queries';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import { usePageStore } from '../store/editor.store';
 import { resetEditorWorkspace } from '../../editor-workspace-lifecycle';
@@ -90,6 +91,7 @@ export default function ClientEditor() {
   }, [bootstrapTargetId, isProjectRoute]);
 
   useEffect(() => {
+    memoryGovernor.setActiveDomain('editor');
     const mountedTarget = bootstrapTargetId;
     return () => {
       if (mountedTarget && activeEditorTargetId === mountedTarget) {
@@ -98,6 +100,9 @@ export default function ClientEditor() {
           scopeId: mountedTarget,
         });
         activeEditorTargetId = null;
+      }
+      if (memoryGovernor.getActiveDomain() === 'editor') {
+        memoryGovernor.setActiveDomain('workspace');
       }
     };
   }, [bootstrapTargetId]);

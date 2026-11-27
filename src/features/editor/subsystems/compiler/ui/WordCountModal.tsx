@@ -125,20 +125,31 @@ function WordCountModal({
     }
   }, [open, hasSelection]);
 
-  // Build project files map for backend project-scope word count
+  // Build project files map for backend project-scope word count.
+  // Only include files with non-empty client content so empty tree metadata never overrides DB files.
   const projectFilesMap = useMemo(() => {
-    if (!Array.isArray(projectFiles) || projectFiles.length === 0) return undefined;
     const map: Record<string, string> = {};
-    for (const f of projectFiles) {
-      const name = f?.title || '';
-      if (!name) continue;
-      const lower = name.toLowerCase();
+    if (Array.isArray(projectFiles)) {
+      for (const f of projectFiles) {
+        const name = f?.title || '';
+        if (!name) continue;
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.tex') || lower.endsWith('.bbl') || !lower.includes('.')) {
+          const text = extractDocumentContentString(f?.content);
+          if (text.trim().length > 0) {
+            map[name] = text;
+          }
+        }
+      }
+    }
+    if (activeFileName && content.trim().length > 0) {
+      const lower = activeFileName.toLowerCase();
       if (lower.endsWith('.tex') || lower.endsWith('.bbl') || !lower.includes('.')) {
-        map[name] = extractDocumentContentString(f?.content);
+        map[activeFileName] = content;
       }
     }
     return Object.keys(map).length > 0 ? map : undefined;
-  }, [projectFiles]);
+  }, [projectFiles, activeFileName, content]);
 
   // Determine current active text based on selected scope
   const activeContent = useMemo(() => {

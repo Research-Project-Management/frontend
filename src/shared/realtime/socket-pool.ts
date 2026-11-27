@@ -1,6 +1,7 @@
 'use client';
 
 import type { Socket } from 'socket.io-client';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { createSocket, type ConnectionStatus, type Namespace } from './config';
 
 interface PoolEntry {
@@ -94,6 +95,10 @@ class SocketPool {
     };
   }
 
+  public get size(): number {
+    return this.entries.size;
+  }
+
   public disconnectAll(): void {
     this.activeUserId = null;
     for (const entry of Array.from(this.entries.values())) {
@@ -130,3 +135,22 @@ class SocketPool {
 }
 
 export const socketPool = new SocketPool();
+
+memoryGovernor.register({
+  id: 'realtime-socket-pool',
+  domain: 'global',
+  priority: 10,
+  reclaim: ({ level }) => {
+    if (level === 'logout') {
+      const count = socketPool.size;
+      socketPool.disconnectAll();
+      return count;
+    }
+    return 0;
+  },
+  getStats: () => ({
+    id: 'realtime-socket-pool',
+    domain: 'global',
+    entryCount: socketPool.size,
+  }),
+});

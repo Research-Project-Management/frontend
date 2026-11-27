@@ -62,10 +62,6 @@ export function CompilerEditorSection({
   const setEditorTheme = useSettingsStore((s) => s.setEditorTheme);
   const pdfViewer = useSettingsStore((s) => s.pdfViewer);
   const setPdfViewer = useSettingsStore((s) => s.setPdfViewer);
-  const spellCheck = useSettingsStore((s) => s.spellCheck);
-  const setSpellCheck = useSettingsStore((s) => s.setSpellCheck);
-  const spellCheckLanguage = useSettingsStore((s) => s.spellCheckLanguage || 'en-US');
-  const setSpellCheckLanguage = useSettingsStore((s) => s.setSpellCheckLanguage);
 
   const showCompiler = section === 'all' || section === 'compiler';
   const showEditor = section === 'all' || section === 'editor';
@@ -279,36 +275,6 @@ export function CompilerEditorSection({
                 <SelectItem value="emacs" className="cursor-pointer text-xs">
                   Emacs
                 </SelectItem>
-              </SelectContent>
-            </Select>
-          </SettingRow>
-
-          <SettingRow title="Spell check">
-            <Select
-              value={spellCheck ? spellCheckLanguage.replace('_', '-') : 'off'}
-              onValueChange={(val) => {
-                if (val === 'off') {
-                  setSpellCheck(false);
-                } else {
-                  setSpellCheck(true);
-                  setSpellCheckLanguage(val);
-                }
-              }}
-            >
-              <SelectTrigger
-                aria-label="Spell check language"
-                className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"
-              >
-                <SelectValue placeholder="Language" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="off" className="cursor-pointer text-xs">Off</SelectItem>
-                <SelectItem value="en-US" className="cursor-pointer text-xs">English (US)</SelectItem>
-                <SelectItem value="en-GB" className="cursor-pointer text-xs">English (UK)</SelectItem>
-                <SelectItem value="vi" className="cursor-pointer text-xs">Tiếng Việt</SelectItem>
-                <SelectItem value="fr" className="cursor-pointer text-xs">Français</SelectItem>
-                <SelectItem value="de" className="cursor-pointer text-xs">Deutsch</SelectItem>
-                <SelectItem value="es" className="cursor-pointer text-xs">Español</SelectItem>
               </SelectContent>
             </Select>
           </SettingRow>

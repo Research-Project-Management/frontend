@@ -44,8 +44,12 @@ export function useSettingsModal() {
       setActiveView('compiler');
       return;
     }
-    if (settingsActiveTab === 'github') {
-      setActiveView('github');
+    if (
+      settingsActiveTab === 'github' ||
+      settingsActiveTab === 'dictionary' ||
+      settingsActiveTab === 'editor'
+    ) {
+      setActiveView(settingsActiveTab);
     } else {
       setActiveView('compiler');
     }
@@ -64,10 +68,10 @@ export function useSettingsModal() {
           target === 'editor'
         ) {
           setActiveView(target);
-          if (target === 'github') setSettingsActiveTab('github');
+          setSettingsActiveTab(target);
         } else {
           setActiveView('compiler');
-          setSettingsActiveTab('editor');
+          setSettingsActiveTab('compiler');
         }
         setOpen(true);
       }
@@ -89,8 +93,7 @@ export function useSettingsModal() {
 
   const selectView = (view: SettingsView) => {
     setActiveView(view);
-    if (view === 'github') setSettingsActiveTab('github');
-    else if (view === 'compiler' || view === 'editor') setSettingsActiveTab('editor');
+    setSettingsActiveTab(view);
   };
 
   const handleMainFileChange = (newMainFileName: string) => {

@@ -5,6 +5,7 @@
  */
 
 import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/types/reader.types';
+import { resolveHardwareBudget } from '@/shared/lib/memory-governor';
 
 export const DEFAULT_READER_TABS: ReaderTab[] = [
   { id: 'library', title: 'My Library', type: 'library' },
@@ -151,21 +152,7 @@ export interface TabPoolEntry {
 export const DEFAULT_ZOTERO_WARM_TAB_CAPACITY = 5;
 
 export function calculateAdaptiveTabPoolCapacity(deviceMemoryGb?: number): number {
-  const detectedRam =
-    typeof deviceMemoryGb === 'number' && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
-      ? deviceMemoryGb
-      : typeof navigator !== 'undefined' &&
-          'deviceMemory' in navigator &&
-          typeof (navigator as { deviceMemory?: number }).deviceMemory === 'number'
-        ? (navigator as { deviceMemory: number }).deviceMemory
-        : undefined;
-
-  if (detectedRam !== undefined) {
-    if (detectedRam <= 2) return 3;
-    if (detectedRam >= 8) return 8;
-  }
-
-  return DEFAULT_ZOTERO_WARM_TAB_CAPACITY;
+  return resolveHardwareBudget(deviceMemoryGb).warmTabPoolCapacity;
 }
 
 export class LruTabPool<T = TabPoolEntry> {

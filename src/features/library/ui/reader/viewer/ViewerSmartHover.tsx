@@ -26,6 +26,7 @@ import {
   type SemanticOverlayEntry,
   type SemanticPageOverlay,
 } from '@/features/library/domain/reader/semantic-overlays';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { cn } from '@/shared/lib/utils';
 
 export { TextSelectionToolbar } from './TextSelectionToolbar';
@@ -265,6 +266,9 @@ export function useViewerSmartHover({
 
       const cachedGeo = canonicalGeometryCacheRef.current.get(pageNum);
       if (cachedGeo) {
+        // Touch LRU order
+        canonicalGeometryCacheRef.current.delete(pageNum);
+        canonicalGeometryCacheRef.current.set(pageNum, cachedGeo);
         commitPageOverlays(pageNum, cachedGeo, rev);
         return;
       }
@@ -277,10 +281,29 @@ export function useViewerSmartHover({
       const docSnapshot = pdfDocument;
       void getPageFn
         .call(docSnapshot, pageNum)
-        .then((page) => extractPdfPageHoverGeometry(page, 0))
+        .then((page) => {
+          try {
+            return extractPdfPageHoverGeometry(page, 0);
+          } finally {
+            try {
+              (page as { cleanup?: () => void })?.cleanup?.();
+            } catch {
+              // ignore cleanup errors
+            }
+          }
+        })
         .then((geometry) => {
           if (activePdfDocRef.current !== docSnapshot) return;
-          canonicalGeometryCacheRef.current.set(pageNum, geometry);
+          const geoCache = canonicalGeometryCacheRef.current;
+          const maxGeoPages = memoryGovernor.getBudget().maxReaderHoverGeometryPages;
+          if (geoCache.size >= maxGeoPages && !geoCache.has(pageNum)) {
+            const oldestPage = geoCache.keys().next().value;
+            if (oldestPage !== undefined) {
+              geoCache.delete(oldestPage);
+              computedRevisionByPageRef.current.delete(oldestPage);
+            }
+          }
+          geoCache.set(pageNum, geometry);
           commitPageOverlays(pageNum, geometry, lookupRevisionRef.current);
         })
         .catch(() => undefined)

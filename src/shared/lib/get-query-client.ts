@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { ApiError } from '@/shared/types/api.types';
 import { getErrorMessage } from '@/shared/utils/error.util';
 import { QUERY_TIMINGS } from '@/config/query';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 
 /**
  * Default query & mutation options shared across server and client instances.
@@ -70,6 +71,42 @@ export function getQueryClient(): QueryClient {
   // Browser: initialize singleton once and reuse
   if (!browserQueryClient) {
     browserQueryClient = makeQueryClient();
+    const client = browserQueryClient;
+    memoryGovernor.register({
+      id: 'tanstack-query-cache',
+      domain: 'global',
+      priority: 80,
+      reclaim: ({ level }) => {
+        if (level === 'logout') {
+          const count = client.getQueryCache().getAll().length;
+          client.clear();
+          return count;
+        }
+        if (level === 'pressure' || level === 'tab-hidden') {
+          const before = client.getQueryCache().getAll().length;
+          client.removeQueries({ type: 'inactive' });
+          const after = client.getQueryCache().getAll().length;
+          return Math.max(0, before - after);
+        }
+        return 0;
+      },
+      getStats: () => {
+        const allQueries = client.getQueryCache().getAll();
+        let activeCount = 0;
+        for (const q of allQueries) {
+          if (q.getObserversCount() > 0) activeCount += 1;
+        }
+        return {
+          id: 'tanstack-query-cache',
+          domain: 'global',
+          entryCount: allQueries.length,
+          details: {
+            activeQueries: activeCount,
+            inactiveQueries: allQueries.length - activeCount,
+          },
+        };
+      },
+    });
   }
   return browserQueryClient;
 }

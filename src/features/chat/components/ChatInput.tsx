@@ -52,6 +52,8 @@ export function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingAttachmentsRef = useRef<PendingAttachment[]>(pendingAttachments);
+  pendingAttachmentsRef.current = pendingAttachments;
 
   // Auto-focus textarea when replying to a message
   useEffect(() => {
@@ -73,7 +75,7 @@ export function ChatInput({
   useEffect(() => {
     return () => {
       if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
-      pendingAttachments.forEach((item) => {
+      pendingAttachmentsRef.current.forEach((item) => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
       });
     };
@@ -244,6 +246,9 @@ export function ChatInput({
     onTyping(false);
 
     onSendMessage(trimmed, replyingToMessage, readyAttachments);
+    pendingAttachments.forEach((item) => {
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+    });
     setContent('');
     setPendingAttachments([]);
     setErrorMessage(null);

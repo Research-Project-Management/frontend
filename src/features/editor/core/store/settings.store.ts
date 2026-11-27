@@ -35,6 +35,7 @@ export type KeybindingMode = 'standard' | 'vim' | 'emacs';
 export type SettingsTab =
   | 'editor'
   | 'compiler'
+  | 'dictionary'
   | 'references'
   | 'github'
   | 'appearance';

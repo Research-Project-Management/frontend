@@ -37,15 +37,38 @@ import type { WorkspaceProjectItem } from '@/features/editor/core/coordinator/wo
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { filestore } from '@/features/editor/sdk/pages/filestore.client';
 import { fetchAuthorized, resolveFileUrl } from '@/shared/lib/file-client';
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { findBeginDocumentLine } from './latex-visual-document-shell';
 import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
 const END_DOC_RE = /^\s*\\end\{document\}\s*(?:%.*)?$/;
 const BEGIN_FLOAT_RE = /^\s*\\begin\{(figure\*?|table\*?|tabular\*?)\}(.*)$/;
 const PREVIEWABLE_IMAGE_EXTS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg']);
-const MAX_CACHED_IMAGE_BLOBS = 64;
+const MAX_CACHED_IMAGE_BLOBS = memoryGovernor.getBudget().maxVisualFigureBlobs;
 const figureBlobUrlCache = new Map<string, string>();
 const pendingBlobRequests = new Map<string, Promise<string | null>>();
+
+export function getVisualFigureBlobCacheSize(): number {
+  return figureBlobUrlCache.size;
+}
+
+/**
+ * Deterministically revokes all cached figure Blob ObjectURLs and clears in-flight requests
+ * so switching projects or logging out reclaims native browser blob memory immediately.
+ */
+export function clearVisualFigureBlobCache(): void {
+  pendingBlobRequests.clear();
+  for (const blobUrl of figureBlobUrlCache.values()) {
+    if (blobUrl && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+      try {
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        // Ignore revocation errors
+      }
+    }
+  }
+  figureBlobUrlCache.clear();
+}
 
 function normalizeLatexAssetPath(raw: string): string {
   return raw

@@ -181,16 +181,25 @@ export function useInspectorItemResolver({
 
   useEffect(() => {
     if (!effectiveItem?.id) return;
+    const snapMap = latestItemSnapshotRef.current;
+    const verMap = latestVersionRef.current;
     if (
       !pendingMutationPromiseRef.current.has(effectiveItem.id) ||
-      !latestItemSnapshotRef.current.has(effectiveItem.id)
+      !snapMap.has(effectiveItem.id)
     ) {
-      latestItemSnapshotRef.current.set(effectiveItem.id, effectiveItem);
+      if (snapMap.size >= 32 && !snapMap.has(effectiveItem.id)) {
+        const oldestKey = snapMap.keys().next().value;
+        if (oldestKey !== undefined && !pendingMutationPromiseRef.current.has(oldestKey)) {
+          snapMap.delete(oldestKey);
+          verMap.delete(oldestKey);
+        }
+      }
+      snapMap.set(effectiveItem.id, effectiveItem);
     }
     if (typeof effectiveItem.version === 'number') {
-      const tracked = latestVersionRef.current.get(effectiveItem.id);
+      const tracked = verMap.get(effectiveItem.id);
       if (tracked === undefined || effectiveItem.version > tracked) {
-        latestVersionRef.current.set(effectiveItem.id, effectiveItem.version);
+        verMap.set(effectiveItem.id, effectiveItem.version);
       }
     }
   }, [effectiveItem]);

@@ -91,6 +91,9 @@ export function useProjectExport() {
         document.body.removeChild(anchor);
       } else {
         const resp = await fetch(pdfUrl);
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}`);
+        }
         const blob = await resp.blob();
         triggerFileDownload(blob, filename);
       }

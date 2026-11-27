@@ -6,28 +6,14 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/shared/lib/utils';
 import { FILE_OUTLINE_VIRTUAL_THRESHOLD } from '@/features/editor/domain/constants/editor.constants';
 import { editorCommandBus, usePageStore, documentFacade } from '@/features/editor/core';
-import { extractDocumentContentString, extractProjectId } from '@/features/editor/domain/types/core.types';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import {
   parseDocumentOutline,
-  dtoToOutlineEntries,
   cacheBackendOutline,
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
-
-const outlineResultCache = new Map<string, OutlineEntry[]>();
-const outlineInFlightCache = new Map<string, Promise<OutlineEntry[]>>();
-
-function hashOutlineKey(projectId: string, filePath: string | undefined, content: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < content.length; i++) {
-    h ^= content.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return `${projectId}|${filePath ?? ''}|${content.length}:${h >>> 0}`;
-}
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
@@ -135,37 +121,66 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     [outlineHeight],
   );
 
-  const [outline, setOutline] = useState<OutlineEntry[]>([]);
-  const [collapsedLines, setCollapsedLines] = useState<Set<number>>(() => new Set());
-  const lastFetchedHashRef = useRef<string | null>(null);
+  const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(() => new Set());
   const outlineScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const toggleSectionCollapse = useCallback((line: number, e: React.MouseEvent) => {
+  // Reset collapsed sections only when switching to a different file
+  useEffect(() => {
+    setCollapsedKeys(new Set());
+  }, [activeFileName]);
+
+  const toggleSectionCollapse = useCallback((collapseKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setCollapsedLines((prev) => {
+    setCollapsedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(line)) next.delete(line);
-      else next.add(line);
+      if (next.has(collapseKey)) next.delete(collapseKey);
+      else next.add(collapseKey);
       return next;
     });
   }, []);
 
-  const sectionOutline = useMemo(
-    () => outline.filter((entry) => entry.type !== 'figure' && entry.type !== 'table'),
-    [outline],
-  );
+  // Parse outline instantaneously on the client (< 1ms) without redundant backend round-trips per keystroke
+  const outline = useMemo<OutlineEntry[]>(() => {
+    if (!isOutlineOpen) return [];
+    return parseDocumentOutline(content, activeFileName);
+  }, [content, activeFileName, isOutlineOpen]);
+
+  useEffect(() => {
+    if (isOutlineOpen) {
+      cacheBackendOutline(outline);
+    }
+  }, [outline, isOutlineOpen]);
+
+  const sectionOutline = useMemo(() => {
+    const filtered = outline.filter((entry) => entry.type !== 'figure' && entry.type !== 'table');
+    const seenCounts = new Map<string, number>();
+    return filtered.map((entry) => {
+      const baseKey = `${entry.level}:${entry.title}`;
+      const occ = seenCounts.get(baseKey) ?? 0;
+      seenCounts.set(baseKey, occ + 1);
+      return {
+        entry,
+        collapseKey: `${baseKey}#${occ}`,
+      };
+    });
+  }, [outline]);
 
   const minLevel = useMemo(
-    () => (sectionOutline.length > 0 ? Math.min(...sectionOutline.map((e) => e.level)) : 0),
+    () => (sectionOutline.length > 0 ? Math.min(...sectionOutline.map((e) => e.entry.level)) : 0),
     [sectionOutline],
   );
 
   const visibleEntries = useMemo(() => {
-    const result: Array<{ entry: OutlineEntry; hasChildren: boolean; isCollapsed: boolean }> = [];
+    const result: Array<{
+      entry: OutlineEntry;
+      collapseKey: string;
+      hasChildren: boolean;
+      isCollapsed: boolean;
+    }> = [];
     const collapsedStack: number[] = [];
 
     for (let i = 0; i < sectionOutline.length; i++) {
-      const entry = sectionOutline[i];
+      const { entry, collapseKey } = sectionOutline[i];
       while (collapsedStack.length > 0 && entry.level <= collapsedStack[collapsedStack.length - 1]) {
         collapsedStack.pop();
       }
@@ -173,17 +188,17 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         continue;
       }
 
-      const nextEntry = sectionOutline[i + 1];
+      const nextEntry = sectionOutline[i + 1]?.entry;
       const hasChildren = Boolean(nextEntry && nextEntry.level > entry.level);
-      const isCollapsed = hasChildren && collapsedLines.has(entry.line);
-      result.push({ entry, hasChildren, isCollapsed });
+      const isCollapsed = hasChildren && collapsedKeys.has(collapseKey);
+      result.push({ entry, collapseKey, hasChildren, isCollapsed });
 
       if (isCollapsed) {
         collapsedStack.push(entry.level);
       }
     }
     return result;
-  }, [sectionOutline, collapsedLines]);
+  }, [sectionOutline, collapsedKeys]);
 
   const isVirtualized = isOutlineOpen && visibleEntries.length >= FILE_OUTLINE_VIRTUAL_THRESHOLD;
   const rowVirtualizer = useVirtualizer({
@@ -194,85 +209,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     enabled: isVirtualized,
   });
 
-  useEffect(() => {
-    if (!isOutlineOpen) {
-      return;
-    }
-    const pageState = usePageStore.getState();
-    const projectId =
-      pageState.spaceId ||
-      pageState.projectId ||
-      extractProjectId(pageState.currentPage) ||
-      pageState.currentPage?.id ||
-      '';
-    const activePageId = pageState.rootPageId || pageState.parentPageId || pageState.currentPage?.id || undefined;
-    const activeDocId = pageState.activeDocId || pageState.activePageId || undefined;
-    const outlineTargetId = activePageId || projectId;
-    if (!outlineTargetId) {
-      setOutline(parseDocumentOutline(content));
-      return;
-    }
-
-    const outlineHash = hashOutlineKey(outlineTargetId, activeFileName, content);
-    if (lastFetchedHashRef.current === outlineHash) {
-      return;
-    }
-
-    const cached = outlineResultCache.get(outlineHash);
-    if (cached) {
-      lastFetchedHashRef.current = outlineHash;
-      cacheBackendOutline(cached);
-      setOutline(cached);
-      return;
-    }
-
-    let cancelled = false;
-    let requestPromise = outlineInFlightCache.get(outlineHash);
-    if (!requestPromise) {
-      requestPromise = pagesService.structure
-        .getOutline(outlineTargetId, {
-          filePath: activeFileName,
-          docId: activeDocId,
-          pageId: activePageId,
-          content,
-        })
-        .then((res) => {
-          const mapped = dtoToOutlineEntries(res?.entries);
-          if (outlineResultCache.size >= 32) {
-            const oldestKey = outlineResultCache.keys().next().value;
-            if (oldestKey !== undefined) {
-              outlineResultCache.delete(oldestKey);
-            }
-          }
-          outlineResultCache.set(outlineHash, mapped);
-          return mapped;
-        })
-        .finally(() => {
-          outlineInFlightCache.delete(outlineHash);
-        });
-      outlineInFlightCache.set(outlineHash, requestPromise);
-    }
-
-    requestPromise
-      .then((mapped) => {
-        if (cancelled) return;
-        lastFetchedHashRef.current = outlineHash;
-        cacheBackendOutline(mapped);
-        setOutline(mapped);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          lastFetchedHashRef.current = outlineHash;
-          setOutline(parseDocumentOutline(content));
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [content, activeFileName, isOutlineOpen]);
-
-  // Active section heading containing the current cursor position
+  // Active section heading containing the current cursor position (-1 when cursor is in preamble)
   const activeSectionIndex = useMemo(() => {
     if (visibleEntries.length === 0) return -1;
     let currentIdx = -1;
@@ -283,7 +220,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         break;
       }
     }
-    return currentIdx >= 0 ? currentIdx : 0;
+    return currentIdx;
   }, [visibleEntries, activeLine]);
 
   // Scroll active item into view
@@ -324,15 +261,15 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   );
 
   const renderOutlineRow = (
-    item: { entry: OutlineEntry; hasChildren: boolean; isCollapsed: boolean },
+    item: { entry: OutlineEntry; collapseKey: string; hasChildren: boolean; isCollapsed: boolean },
     index: number,
   ) => {
-    const { entry, hasChildren, isCollapsed } = item;
+    const { entry, collapseKey, hasChildren, isCollapsed } = item;
     const isActive = index === activeSectionIndex;
     const relativeDepth = Math.max(0, entry.level - minLevel);
     return (
       <div
-        key={`${entry.line}-${index}`}
+        key={`${collapseKey}-${entry.line}`}
         ref={!isVirtualized && isActive ? activeItemRef : undefined}
         role="button"
         tabIndex={0}
@@ -364,7 +301,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
         {hasChildren ? (
           <button
             type="button"
-            onClick={(e) => toggleSectionCollapse(entry.line, e)}
+            onClick={(e) => toggleSectionCollapse(collapseKey, e)}
             aria-label={isCollapsed ? 'Expand section' : 'Collapse section'}
             className="size-4 flex items-center justify-center rounded-sm hover:bg-muted shrink-0 cursor-pointer"
           >

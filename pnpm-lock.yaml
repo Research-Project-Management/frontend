@@ -138,6 +138,9 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.14.13
         version: 3.14.13(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      bibtex-tidy:
+        specifier: ^1.15.1
+        version: 1.15.1
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2274,6 +2277,11 @@ packages:
   baseline-browser-mapping@2.11.13:
     resolution: {integrity: sha512-k9HNuUVMlqVjQ9UHzfPjIqiDbWw7WqT1AoT7GL8VwvF3r0ZfArtgiSPAlmupyNquNgOJHTuH4CKYf8ttMTWBTQ==}
     engines: {node: '>=6.0.0'}
+    hasBin: true
+
+  bibtex-tidy@1.15.1:
+    resolution: {integrity: sha512-sGCPkDpbnxIeb3Tix80jHVn/5wA51V5I88R47cQEDXXCSvlz5ASAy2H6+D9qESJ6JnuMQWQRH+suJX+EzJ+MQA==}
+    engines: {node: '>12'}
     hasBin: true
 
   bidi-js@1.0.3:
@@ -5666,6 +5674,8 @@ snapshots:
   balanced-match@4.0.4: {}
 
   baseline-browser-mapping@2.11.13: {}
+
+  bibtex-tidy@1.15.1: {}
 
   bidi-js@1.0.3:
     dependencies:

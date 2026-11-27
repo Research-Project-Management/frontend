@@ -18,6 +18,8 @@ import {
   WidgetType,
 } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { cleanInlineLatexText, findMatchingBrace } from './latex-visual-headings';
 
 function focusChipOffset(view: EditorView, chip: HTMLElement, offsetInRaw: number): void {
@@ -32,7 +34,81 @@ function focusChipOffset(view: EditorView, chip: HTMLElement, offsetInRaw: numbe
 
 // ── Badge Widgets ─────────────────────────────────────────────────────────────
 
+interface ParsedCiteCommand {
+  prefix: string;
+  command: string;
+  prenote: string;
+  postnote: string;
+  keys: string[];
+}
+
+function parseCiteCommand(rawText: string, fallbackKeys: string[]): ParsedCiteCommand {
+  const m = /^(~?)(\\[a-zA-Z]+\*?)(?:\[([^\]]*)\])?(?:\[([^\]]*)\])?\{([^}]*)\}$/.exec(rawText);
+  if (!m) {
+    return { prefix: '', command: '\\cite', prenote: '', postnote: '', keys: fallbackKeys };
+  }
+  const prefix = m[1] || '';
+  const command = m[2] || '\\cite';
+  const opt1 = m[3];
+  const opt2 = m[4];
+  // In LaTeX: \cite[postnote]{k} has 1 optional arg; \cite[prenote][postnote]{k} has 2.
+  const prenote = opt2 !== undefined ? (opt1 ?? '') : '';
+  const postnote = opt2 !== undefined ? opt2 : (opt1 ?? '');
+  const keys = (m[5] || '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+  return { prefix, command, prenote, postnote, keys: keys.length > 0 ? keys : fallbackKeys };
+}
+
+function buildCiteCommand(parsed: ParsedCiteCommand): string {
+  const cleanKeys = parsed.keys.map((k) => k.trim()).filter(Boolean).join(', ');
+  const pre = parsed.prenote.trim();
+  const post = parsed.postnote.trim();
+  let opts = '';
+  if (pre && post) opts = `[${pre}][${post}]`;
+  else if (pre) opts = `[${pre}][]`;
+  else if (post) opts = `[${post}]`;
+  return `${parsed.prefix}${parsed.command}${opts}{${cleanKeys}}`;
+}
+
+function formatVisualCitationLabel(keys: string[], prenote: string, postnote: string): string {
+  const parts = keys.map((key) => {
+    const entry = latexSymbolsIndex.getCitationByKey(key);
+    if (!entry) return key;
+    const authors = entry.authors && entry.authors.length > 0
+      ? entry.authors
+      : entry.author
+        ? entry.author.split(/\s+and\s+/i).map((a) => a.trim()).filter(Boolean)
+        : [];
+    let authorLabel = '';
+    if (authors.length > 0) {
+      const first = authors[0];
+      const surname = first.includes(',') ? first.split(',')[0].trim() : (first.split(/\s+/).pop() || first);
+      authorLabel = authors.length > 2 ? `${surname} et al.` : authors.length === 2 ? `${surname} & ${authors[1].includes(',') ? authors[1].split(',')[0].trim() : (authors[1].split(/\s+/).pop() || authors[1])}` : surname;
+    }
+    const year = entry.year || '';
+    if (authorLabel && year) return `${authorLabel}, ${year}`;
+    if (authorLabel) return authorLabel;
+    return key;
+  });
+  const body = parts.join('; ');
+  const pre = prenote.trim() ? `${prenote.trim()} ` : '';
+  const post = postnote.trim() ? `, ${postnote.trim()}` : '';
+  return `[${pre}${body}${post}]`;
+}
+
+let activeCitationPopover: HTMLElement | null = null;
+function closeActiveCitationPopover(): void {
+  if (activeCitationPopover) {
+    activeCitationPopover.remove();
+    activeCitationPopover = null;
+  }
+}
+
 class CitationBadgeWidget extends WidgetType {
+  private readonly label: string;
+
   constructor(
     public readonly keys: string[],
     public readonly rawText: string,
@@ -40,10 +116,12 @@ class CitationBadgeWidget extends WidgetType {
     public readonly to: number,
   ) {
     super();
+    const parsed = parseCiteCommand(rawText, keys);
+    this.label = formatVisualCitationLabel(parsed.keys, parsed.prenote, parsed.postnote);
   }
 
   override eq(other: CitationBadgeWidget): boolean {
-    return this.rawText === other.rawText;
+    return this.rawText === other.rawText && this.label === other.label;
   }
 
   override ignoreEvent(event: Event): boolean {
@@ -53,19 +131,116 @@ class CitationBadgeWidget extends WidgetType {
   toDOM(view: EditorView): HTMLElement {
     const chip = document.createElement('span');
     chip.className = 'cm-visual-citation-chip';
-    chip.title = `Citation: ${this.keys.join(', ')} (click to edit)`;
+    chip.title = `${this.rawText} (click to edit citation)`;
 
     const text = document.createElement('span');
     text.className = 'cm-visual-citation-label';
-    text.textContent = `[${this.keys.join(', ')}]`;
+    text.textContent = this.label;
 
     chip.appendChild(text);
 
     chip.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const bracePos = this.rawText.indexOf('{');
-      focusChipOffset(view, chip, bracePos !== -1 ? bracePos + 1 : 0);
+      closeActiveCitationPopover();
+
+      const parsed = parseCiteCommand(this.rawText, this.keys);
+      const rect = chip.getBoundingClientRect();
+      const pop = document.createElement('div');
+      pop.className =
+        'fixed z-50 w-72 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-lg space-y-2';
+      pop.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 300))}px`;
+      pop.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 230)}px`;
+
+      pop.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-foreground">Edit Citation (${parsed.command})</span>
+          <button type="button" data-action="raw" class="text-[11px] text-muted-foreground hover:text-foreground underline cursor-pointer">Raw LaTeX</button>
+        </div>
+        <label class="block space-y-1">
+          <span class="text-[11px] text-muted-foreground">Citation key(s)</span>
+          <input data-field="keys" type="text" class="w-full h-7 px-2 rounded border border-border bg-background font-mono text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="block space-y-1">
+            <span class="text-[11px] text-muted-foreground">Prenote</span>
+            <input data-field="prenote" type="text" placeholder="e.g. see" class="w-full h-7 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+          </label>
+          <label class="block space-y-1">
+            <span class="text-[11px] text-muted-foreground">Postnote</span>
+            <input data-field="postnote" type="text" placeholder="e.g. p. 12" class="w-full h-7 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+          </label>
+        </div>
+        <div class="flex items-center justify-between pt-1">
+          <button type="button" data-action="library" class="h-7 px-2 rounded border border-border hover:bg-muted text-xs text-foreground cursor-pointer">Browse Library</button>
+          <div class="flex items-center gap-1.5">
+            <button type="button" data-action="cancel" class="h-7 px-2 rounded hover:bg-muted text-xs text-muted-foreground cursor-pointer">Cancel</button>
+            <button type="button" data-action="apply" class="h-7 px-2.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium cursor-pointer">Apply</button>
+          </div>
+        </div>
+      `;
+
+      const keysInput = pop.querySelector<HTMLInputElement>('input[data-field="keys"]')!;
+      const preInput = pop.querySelector<HTMLInputElement>('input[data-field="prenote"]')!;
+      const postInput = pop.querySelector<HTMLInputElement>('input[data-field="postnote"]')!;
+      keysInput.value = parsed.keys.join(', ');
+      preInput.value = parsed.prenote;
+      postInput.value = parsed.postnote;
+
+      const onOutsideMouseDown = (ev: MouseEvent) => {
+        if (!pop.contains(ev.target as Node) && ev.target !== chip) {
+          cleanup();
+        }
+      };
+      const onKeyDown = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') {
+          cleanup();
+        } else if (ev.key === 'Enter' && pop.contains(ev.target as Node)) {
+          ev.preventDefault();
+          applyEdit();
+        }
+      };
+      const cleanup = () => {
+        document.removeEventListener('mousedown', onOutsideMouseDown, true);
+        document.removeEventListener('keydown', onKeyDown, true);
+        closeActiveCitationPopover();
+      };
+
+      const applyEdit = () => {
+        const currentPos = view.posAtDOM(chip);
+        const nextKeys = keysInput.value.split(',').map((k) => k.trim()).filter(Boolean);
+        if (nextKeys.length > 0 && currentPos >= 0) {
+          const replacement = buildCiteCommand({
+            ...parsed,
+            keys: nextKeys,
+            prenote: preInput.value,
+            postnote: postInput.value,
+          });
+          view.dispatch({
+            changes: { from: currentPos, to: currentPos + this.rawText.length, insert: replacement },
+          });
+        }
+        cleanup();
+        view.focus();
+      };
+
+      pop.querySelector('[data-action="apply"]')?.addEventListener('click', applyEdit);
+      pop.querySelector('[data-action="cancel"]')?.addEventListener('click', cleanup);
+      pop.querySelector('[data-action="library"]')?.addEventListener('click', () => {
+        cleanup();
+        editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+      });
+      pop.querySelector('[data-action="raw"]')?.addEventListener('click', () => {
+        const bracePos = this.rawText.indexOf('{');
+        cleanup();
+        focusChipOffset(view, chip, bracePos !== -1 ? bracePos + 1 : 0);
+      });
+
+      document.body.appendChild(pop);
+      activeCitationPopover = pop;
+      document.addEventListener('mousedown', onOutsideMouseDown, true);
+      document.addEventListener('keydown', onKeyDown, true);
+      keysInput.focus();
     });
 
     return chip;
@@ -502,8 +677,32 @@ const visualCitationsPlugin = ViewPlugin.fromClass(VisualCitationsPlugin, {
   decorations: (v) => v.decorations,
 });
 
+/**
+ * Overleaf Visual Editor parity: typing `@` at the start of a line or after whitespace/opening
+ * punctuation opens the Citation Picker modal without leaving a stray `@` in the LaTeX source.
+ * Emails (e.g. `user@domain.com`), escaped `\@`, and `%` comment lines pass through untouched.
+ */
+const visualCitationAtTrigger = EditorView.inputHandler.of((view, from, to, text) => {
+  if (text !== '@' || from !== to) return false;
+  const line = view.state.doc.lineAt(from);
+  const beforeCursor = line.text.slice(0, from - line.from);
+  // Ignore inside a % comment
+  for (let i = 0; i < beforeCursor.length; i++) {
+    if (beforeCursor[i] === '%' && (i === 0 || beforeCursor[i - 1] !== '\\')) {
+      return false;
+    }
+  }
+  const prevChar = beforeCursor.length > 0 ? beforeCursor[beforeCursor.length - 1] : '';
+  if (prevChar && !/[\s([{"']/.test(prevChar)) {
+    return false;
+  }
+  editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'citation-picker' });
+  return true;
+});
+
 export const latexVisualCitations = (): Extension => [
   visualCitationsPlugin,
+  visualCitationAtTrigger,
   EditorView.atomicRanges.of((view) => view.plugin(visualCitationsPlugin)?.decorations ?? Decoration.none),
   visualCitationsTheme,
 ];

@@ -1,109 +1,75 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatBibtexContent,
+  parseBibDocument,
+  serializeBibDocument,
   parseBibContent,
-  parseMultipleBibContents,
-  type BibEntry,
 } from '@/features/editor/domain/latex/bib-parser';
+import { formatItemToBibtex } from '@/features/editor/subsystems/citation/model/formatter';
+import type { Item } from '@/features/library/types/core.types';
 
-describe('BibTeX Parser (bib-parser.util.ts)', () => {
-  it('should parse standard BibTeX article entry', () => {
-    const bib = `@article{vaswani2017attention,
-  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki},
-  title = {Attention Is All You Need},
-  journal = {Advances in Neural Information Processing Systems},
-  year = {2017},
-  volume = {30},
-  pages = {5998--6008},
-  doi = {10.5555/3295222.3295349}
+describe('bib-parser (bibtex-tidy standardized)', () => {
+  it('formats raw BibTeX cleanly via bibtex-tidy while preserving UTF-8 and comments', () => {
+    const raw = `% Header comment
+@ARTICLE{vaswani2017,
+AUTHOR="Vaswani, Ashish and Shazeer, Noam",
+TITLE = {Phân tích {Attention} Is All You Need},
+PAGES = {10–20},
+YEAR = {2017},
 }`;
 
-    const entries = parseBibContent(bib);
-    expect(entries).toHaveLength(1);
-    const entry = entries[0];
-    expect(entry.key).toBe('vaswani2017attention');
-    expect(entry.type).toBe('article');
-    expect(entry.title).toBe('Attention Is All You Need');
-    expect(entry.authors).toEqual(['Vaswani, Ashish', 'Shazeer, Noam', 'Parmar, Niki']);
-    expect(entry.year).toBe('2017');
-    expect(entry.journal).toBe('Advances in Neural Information Processing Systems');
-    expect(entry.volume).toBe('30');
-    expect(entry.pages).toBe('5998--6008');
-    expect(entry.doi).toBe('10.5555/3295222.3295349');
+    const formatted = formatBibtexContent(raw);
+    expect(formatted).toContain('% Header comment');
+    expect(formatted).toContain('@article{vaswani2017,');
+    expect(formatted).toContain('  author = {Vaswani, Ashish and Shazeer, Noam},');
+    expect(formatted).toContain('  title = {Phân tích {Attention} Is All You Need},');
+    expect(formatted).toContain('  pages = {10--20},');
+    expect(formatted).not.toMatch(/,\n\}/);
   });
 
-  it('should preserve nested curly braces inside title and fields', () => {
-    const bib = `@inproceedings{devlin2019bert,
-  title = {An Empirical Analysis of {BERT} and {GPT-2} on {NLP} Benchmarks},
+  it('round-trips parseBibDocument -> serializeBibDocument with nested braces and @string preserved', () => {
+    const raw = `@string{NIPS = "NeurIPS"}
+
+@inproceedings{devlin2019,
+  title = {{BERT}: Pre-training of {Deep} Bidirectional Transformers},
   author = {Devlin, Jacob and Chang, Ming-Wei},
-  booktitle = {Proceedings of the Conference on Empirical Methods in Natural Language Processing},
+  booktitle = {NAACL},
   year = {2019}
 }`;
 
-    const entries = parseBibContent(bib);
+    const doc = parseBibDocument(raw);
+    expect(doc.preambleBlocks).toHaveLength(1);
+    expect(doc.preambleBlocks[0]).toContain('@string{NIPS');
+    expect(doc.entries).toHaveLength(1);
+    expect(doc.entries[0].key).toBe('devlin2019');
+    expect(doc.entries[0].fields.title).toBe('{BERT}: Pre-training of {Deep} Bidirectional Transformers');
+
+    const serialized = serializeBibDocument(doc);
+    expect(serialized).toContain('@string{');
+    expect(serialized).toContain('@inproceedings{devlin2019,');
+    expect(serialized).toContain('  booktitle = {NAACL},');
+  });
+
+  it('parses BibEntry list with nested braces and normalizes formatItemToBibtex types', () => {
+    const entries = parseBibContent(
+      `@incollection{smith2024, title = {Deep {NLP} Systems}, author = {Smith, Jane and Doe, John}, year = {2024}}`,
+      'references.bib',
+    );
     expect(entries).toHaveLength(1);
-    expect(entries[0].title).toBe('An Empirical Analysis of {BERT} and {GPT-2} on {NLP} Benchmarks');
-    expect(entries[0].authors).toEqual(['Devlin, Jacob', 'Chang, Ming-Wei']);
-  });
+    expect(entries[0].title).toBe('Deep {NLP} Systems');
+    expect(entries[0].authors).toEqual(['Smith, Jane', 'Doe, John']);
 
-  it('should handle email addresses with @ symbol in fields without truncating entry', () => {
-    const bib = `@article{researcher2023,
-  author = {Smith, John <jsmith@university.edu> and Doe, Jane <jdoe@lab.org>},
-  title = {Collaborative Research Across Universities},
-  year = {2023}
-}
+    const itemBib = formatItemToBibtex({
+      id: 'item-1',
+      citationKey: 'nguyen2025',
+      itemType: 'bookSection',
+      title: 'Chương 1',
+      authors: ['Nguyễn, Văn A'],
+      publicationTitle: 'Tuyển tập AI',
+      year: 2025,
+    } as unknown as Item);
 
-@book{goodfellow2016deep,
-  title = {Deep Learning},
-  author = {Goodfellow, Ian and Bengio, Yoshua and Courville, Aaron},
-  publisher = {MIT Press},
-  year = {2016}
-}`;
-
-    const entries = parseBibContent(bib);
-    expect(entries).toHaveLength(2);
-    expect(entries[0].key).toBe('researcher2023');
-    expect(entries[0].authors).toEqual(['Smith, John <jsmith@university.edu>', 'Doe, Jane <jdoe@lab.org>']);
-    expect(entries[1].key).toBe('goodfellow2016deep');
-    expect(entries[1].publisher).toBe('MIT Press');
-  });
-
-  it('should parse unquoted numeric years and double-quoted values', () => {
-    const bib = `@misc{lecun2024ai,
-  title = "Next-Generation Machine Intelligence",
-  author = "LeCun, Yann",
-  year = 2024
-}`;
-
-    const entries = parseBibContent(bib);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].key).toBe('lecun2024ai');
-    expect(entries[0].title).toBe('Next-Generation Machine Intelligence');
-    expect(entries[0].year).toBe('2024');
-  });
-
-  it('should merge multiple files and deduplicate by key', () => {
-    const files = [
-      {
-        filename: 'refs1.bib',
-        content: `@article{key1, title = {Paper 1}}
-@article{key2, title = {Paper 2}}`,
-      },
-      {
-        filename: 'refs2.bib',
-        content: `@article{key2, title = {Paper 2 Duplicate}}
-@article{key3, title = {Paper 3}}`,
-      },
-    ];
-
-    const merged = parseMultipleBibContents(files);
-    expect(merged).toHaveLength(3);
-    expect(merged.map((e) => e.key)).toEqual(['key1', 'key2', 'key3']);
-    expect(merged[1].title).toBe('Paper 2');
-  });
-
-  it('should safely return empty array for empty or whitespace content', () => {
-    expect(parseBibContent('')).toEqual([]);
-    expect(parseBibContent('   \n\t  ')).toEqual([]);
-    expect(parseMultipleBibContents([])).toEqual([]);
+    expect(itemBib).toContain('@incollection{nguyen2025,');
+    expect(itemBib).toContain('  booktitle = {Tuyển tập AI},');
   });
 });

@@ -4,7 +4,11 @@
  */
 
 import type { Item } from '@/features/library/types/core.types';
-import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
+import {
+  formatBibtexContent,
+  serializeBibDocument,
+  type BibEntry,
+} from '@/features/editor/domain/latex/bib-parser';
 import { stripLatexComments } from '@/features/editor/domain/latex/dependency-graph';
 
 export { stripLatexComments };
@@ -29,10 +33,6 @@ const INLINE_CITEKEY_REGEX = /(?:^|[^\w\\])@([a-zA-Z0-9_:-]+)/g;
 
 const CODE_BLOCK_STRIP_REGEX = /```[\s\S]*?```/g;
 const VALID_CITEKEY_REGEX = /^[a-zA-Z0-9_:-]+$/;
-const LATEX_TRIGGER_REGEX =
-  /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?(?:\[[^\]]*\])?\{([^}]*)$/i;
-const MD_BRACKET_TRIGGER_REGEX = /\[@([a-zA-Z0-9_:-]*)$/;
-const MD_MULTI_TRIGGER_REGEX = /;\s*@([a-zA-Z0-9_:-]*)$/;
 const VIETNAMESE_DIACRITIC_REGEX =
   /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
 const COMBINING_DIACRITICS_REGEX = /[\u0300-\u036f]/g;
@@ -43,11 +43,6 @@ const WHITESPACE_SPLIT_REGEX = /\s+/;
 const WHITESPACE_COLLAPSE_REGEX = /\s+/g;
 const COMMA_SPACING_REGEX = /,\s*/g;
 const ABSTRACT_PREFIX_REGEX = /^(?:(?:abstract|background)\s*[:\-\u2013\u2014]\s*)+/i;
-const NO_TRIGGER_RESULT: CitationTriggerContext = {
-  isTrigger: false,
-  format: 'latex',
-  searchPrefix: '',
-};
 
 /**
  * Strips fenced markdown code blocks (```...```) to avoid scanning citation examples in code snippets.
@@ -136,67 +131,6 @@ function isValidCitekey(key: string): boolean {
   if (!key || key.length < 2) return false;
   // Valid citekeys typically contain letters, digits, underscores, colons, and hyphens
   return VALID_CITEKEY_REGEX.test(key);
-}
-
-type CitationTriggerFormat = 'latex' | 'markdown';
-
-interface CitationTriggerContext {
-  isTrigger: boolean;
-  format: CitationTriggerFormat;
-  searchPrefix: string;
-  commandRangeStart?: number;
-}
-
-/**
- * Checks if the text immediately preceding the editor cursor is an active citation trigger.
- * Used by CodeMirror 6 completion providers and auto-suggestions.
- *
- * Triggers:
- * - LaTeX: `\cite{`, `\citep{`, `\citet{`, `\cite{vas`
- * - Markdown: `[@`, `[@smith; @`
- */
-export function detectCitationTrigger(lineBeforeCursor: string): CitationTriggerContext {
-  if (!lineBeforeCursor) {
-    return NO_TRIGGER_RESULT;
-  }
-  if (lineBeforeCursor.indexOf('\\') === -1 && lineBeforeCursor.indexOf('@') === -1) {
-    return NO_TRIGGER_RESULT;
-  }
-
-  // LaTeX trigger check: matches \cite...{ prefix
-  const latexMatch = lineBeforeCursor.match(LATEX_TRIGGER_REGEX);
-  if (latexMatch) {
-    const currentParam = latexMatch[1] ?? '';
-    // If comma-separated, get the part after the last comma
-    const parts = currentParam.split(',');
-    const activeSearch = parts[parts.length - 1]?.trimStart() ?? '';
-    return {
-      isTrigger: true,
-      format: 'latex',
-      searchPrefix: activeSearch,
-    };
-  }
-
-  // Markdown Pandoc trigger check: matches [@... or ; @...
-  const mdBracketMatch = lineBeforeCursor.match(MD_BRACKET_TRIGGER_REGEX);
-  if (mdBracketMatch) {
-    return {
-      isTrigger: true,
-      format: 'markdown',
-      searchPrefix: mdBracketMatch[1] ?? '',
-    };
-  }
-
-  const mdMultiMatch = lineBeforeCursor.match(MD_MULTI_TRIGGER_REGEX);
-  if (mdMultiMatch) {
-    return {
-      isTrigger: true,
-      format: 'markdown',
-      searchPrefix: mdMultiMatch[1] ?? '',
-    };
-  }
-
-  return NO_TRIGGER_RESULT;
 }
 
 /**
@@ -509,27 +443,12 @@ export function formatItemAuthorSummary(item: Item): string {
   return `${firstLastName} et al.`;
 }
 
-function appendBibtexFields(
-  fields: string[],
-  entries: ReadonlyArray<readonly [string, string | number | null | undefined]>,
-): void {
-  for (const [key, value] of entries) {
-    if (value !== undefined && value !== null && value !== '') {
-      fields.push(`  ${key} = {${value}}`);
-    }
-  }
-}
-
 /**
  * Formats an Item into a standard BibTeX entry (@article, @inproceedings, @book).
  */
 export function formatItemToBibtex(item: Item): string {
   const key = item.citationKey || item.id || 'reference';
-  const itemType = (item.itemType || 'article').toLowerCase();
-  let type = 'article';
-  if (itemType.includes('book')) type = 'book';
-  else if (itemType.includes('conf') || itemType.includes('proc')) type = 'inproceedings';
-  else if (itemType.includes('thesis')) type = 'phdthesis';
+  const type = normalizeBibtexEntryType(item.itemType || 'article');
 
   let authorValue: string | undefined;
   if (item.authors && item.authors.length > 0) {
@@ -545,18 +464,21 @@ export function formatItemToBibtex(item: Item): string {
     if (names.length > 0) authorValue = names.join(' and ');
   }
 
-  const fields: string[] = [];
-  appendBibtexFields(fields, [
-    ['title', item.title],
-    ['author', authorValue],
-    ['journal', item.publicationTitle],
-    ['year', item.year],
-    ['doi', item.doi],
-    ['volume', item.volume],
-    ['pages', item.pages],
-  ]);
+  const venueField =
+    type === 'inproceedings' || type === 'incollection' ? 'booktitle' : 'journal';
+  const fields: Record<string, string> = {};
+  if (item.title) fields.title = String(item.title);
+  if (authorValue) fields.author = authorValue;
+  if (item.publicationTitle) fields[venueField] = String(item.publicationTitle);
+  if (item.year) fields.year = String(item.year);
+  if (item.doi) fields.doi = String(item.doi);
+  if (item.volume) fields.volume = String(item.volume);
+  if (item.pages) fields.pages = String(item.pages);
 
-  return `@${type}{${key},\n${fields.join(',\n')}\n}`;
+  return serializeBibDocument({
+    preambleBlocks: [],
+    entries: [{ id: key, type, key, fields }],
+  }).trim();
 }
 
 function normalizeBibtexEntryType(rawType?: string): string {
@@ -605,29 +527,33 @@ function normalizeBibtexEntryType(rawType?: string): string {
  */
 export function formatBibEntryToBibtex(entry: BibEntry): string {
   if (entry.raw && entry.raw.trim().startsWith('@')) {
-    return entry.raw.trim();
+    return formatBibtexContent(entry.raw.trim()).trim();
   }
   const type = normalizeBibtexEntryType(entry.type);
   const isRedundantDoiUrl =
     Boolean(entry.doi && entry.url) &&
     entry.url!.toLowerCase().includes(entry.doi!.toLowerCase());
-  const fields: string[] = [];
+  const fields: Record<string, string> = {};
+  if (entry.title) fields.title = entry.title;
+  if (entry.authors && entry.authors.length > 0) {
+    fields.author = entry.authors.join(' and ');
+  } else if (entry.author) {
+    fields.author = entry.author;
+  }
+  if (entry.journal) fields.journal = entry.journal;
+  if (entry.booktitle) fields.booktitle = entry.booktitle;
+  if (entry.year) fields.year = entry.year;
+  if (entry.volume) fields.volume = entry.volume;
+  if (entry.number) fields.number = entry.number;
+  if (entry.pages) fields.pages = entry.pages;
+  if (entry.publisher) fields.publisher = entry.publisher;
+  if (entry.doi) fields.doi = entry.doi;
+  if (entry.url && !isRedundantDoiUrl) fields.url = entry.url;
 
-  appendBibtexFields(fields, [
-    ['title', entry.title],
-    ['author', entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined],
-    ['journal', entry.journal],
-    ['booktitle', entry.booktitle],
-    ['year', entry.year],
-    ['volume', entry.volume],
-    ['number', entry.number],
-    ['pages', entry.pages],
-    ['publisher', entry.publisher],
-    ['doi', entry.doi],
-    ['url', isRedundantDoiUrl ? undefined : entry.url],
-  ]);
-
-  return `@${type}{${entry.key},\n${fields.join(',\n')}\n}`;
+  return serializeBibDocument({
+    preambleBlocks: [],
+    entries: [{ id: entry.key, type, key: entry.key, fields }],
+  }).trim();
 }
 
 /**

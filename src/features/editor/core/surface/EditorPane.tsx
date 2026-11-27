@@ -34,6 +34,11 @@ const ImagePanel = dynamic(
   { ssr: false }
 );
 
+const BibVisualEditor = dynamic(
+  () => import('@/features/editor/subsystems/citation/ui/BibVisualEditor').then((m) => m.BibVisualEditor),
+  { ssr: false }
+);
+
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContextMenu } from './EditorContextMenu';
 import {
@@ -143,6 +148,27 @@ export function EditorPane({
       }
     }
   };
+
+  const editorMode = useSettingsStore((s) => s.editorMode);
+  const isBibFile = Boolean(fileId && !isAsset && fileName.toLowerCase().endsWith('.bib'));
+  const isBibVisualMode = isBibFile && editorMode === 'visual';
+  const [bibVisualValue, setBibVisualValue] = React.useState<string>(() => rawContent);
+
+  React.useEffect(() => {
+    if (!isBibVisualMode || !fileId) return;
+    const live = getEditorEngineForFile(fileId)?.getContent();
+    setBibVisualValue(live !== undefined && live !== '' ? live : rawContent);
+  }, [isBibVisualMode, fileId, rawContent]);
+
+  const handleBibVisualChange = React.useCallback(
+    (nextBibtex: string) => {
+      setBibVisualValue(nextBibtex);
+      if (fileId) {
+        getEditorEngineForFile(fileId)?.setContent(nextBibtex);
+      }
+    },
+    [fileId],
+  );
 
   return (
     <div
@@ -274,7 +300,19 @@ export function EditorPane({
         ) : fileId ? (
           <div onMouseDown={handleSyncFocus} className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
             <EditorToolbar readOnly={isLocked} />
-            <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col overflow-hidden">
+            {isBibVisualMode && (
+              <BibVisualEditor
+                value={bibVisualValue}
+                readOnly={isLocked}
+                onChange={handleBibVisualChange}
+              />
+            )}
+            <div
+              className={cn(
+                'flex-1 min-h-0 min-w-0 w-full flex flex-col overflow-hidden',
+                isBibVisualMode && 'hidden',
+              )}
+            >
               <EditorContextMenu>
                 <CodeMirrorView
                   key={paneId || 'primary'}

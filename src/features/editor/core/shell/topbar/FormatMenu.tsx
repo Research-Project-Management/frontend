@@ -32,19 +32,40 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
+import { toast } from 'sonner';
 import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
 import { useSettingsStore } from '../../store/settings.store';
+import { usePageStore } from '../../store/editor.store';
 import { editorCommandBus } from '../../bus/command-bus';
 import { isMacPlatform } from '@/features/editor/domain/constants/editor.constants';
+import { formatBibtexContent } from '@/features/editor/domain/latex/bib-parser';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
   const editorMode = useSettingsStore((s) => s.editorMode);
+  const activeFileTitle = usePageStore(
+    (s) => s.activeFilePage?.title || s.currentPage?.title || '',
+  );
+  const isBibFile = activeFileTitle.toLowerCase().endsWith('.bib');
 
   // Platform-aware modifier label
   const isMac = useMemo(() => isMacPlatform(), []);
   const modLabel = isMac ? '⌘' : 'Ctrl ';
+
+  const handleFormatBib = useCallback(() => {
+    if (!engine) return;
+    const raw = engine.getContent();
+    if (!raw.trim()) return;
+    const formatted = formatBibtexContent(raw);
+    if (formatted !== raw) {
+      engine.setContent(formatted);
+      toast.success('Formatted BibTeX file');
+    } else {
+      toast.info('BibTeX file is already formatted');
+    }
+    engine.focus();
+  }, [engine]);
 
   const handleFormat = useCallback(
     (format: LatexFormatType) => {
@@ -208,6 +229,18 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
         >
           <span className="whitespace-nowrap">Subparagraph</span>
         </MenubarItem>
+
+        {isBibFile && (
+          <>
+            <MenubarSeparator className="my-1 bg-border" />
+            <MenubarItem
+              onClick={handleFormatBib}
+              className="px-2.5 py-1.5 cursor-pointer text-xs rounded-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+            >
+              <span className="whitespace-nowrap">Format BibTeX (.bib)</span>
+            </MenubarItem>
+          </>
+        )}
       </MenubarContent>
     </MenubarMenu>
   );

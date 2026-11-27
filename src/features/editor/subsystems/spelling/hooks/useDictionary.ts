@@ -9,7 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { invalidateSpellingCache } from '../extensions/extension';
+import { spellingCache } from '../model/cache';
 
 const dictionaryKeys = {
   project: (projectId?: string) => ['spelling-dictionary', projectId] as const,
@@ -37,7 +37,7 @@ export function useDictionary(projectId?: string, enabled = true) {
       return normalized;
     },
     onSuccess: (word) => {
-      invalidateSpellingCache(undefined, projectId);
+      spellingCache.invalidate(undefined, projectId);
       queryClient.invalidateQueries({ queryKey: dictionaryKeys.project(projectId) });
       toast.success(`Added "${word}" to dictionary`, { id: `spelling-${word}` });
     },
@@ -55,7 +55,7 @@ export function useDictionary(projectId?: string, enabled = true) {
       return word;
     },
     onSuccess: (word) => {
-      invalidateSpellingCache(word, projectId);
+      spellingCache.invalidate(word, projectId);
       queryClient.invalidateQueries({ queryKey: dictionaryKeys.project(projectId) });
       toast.success(`Removed "${word}" from dictionary`, { id: `spelling-${word}` });
     },

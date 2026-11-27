@@ -25,6 +25,7 @@ import {
   type IDocumentSpillSink,
 } from '@/features/editor/domain/offline-storage';
 import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
+import { resolveHardwareBudget } from '@/shared/lib/memory-governor';
 
 export { measureUtf8Bytes };
 export type { IDocumentSpillSink, DocumentManifestEntry, LRUNode };
@@ -76,8 +77,9 @@ export interface DocumentModelStats {
   lruFileId: string | null;
 }
 
-const DEFAULT_CAPACITY: number = EDITOR_LIMITS.LRU_MAX_FILES;
-const DEFAULT_MAX_BYTES: number = EDITOR_LIMITS.LRU_MAX_BYTES;
+const HARDWARE_BUDGET = resolveHardwareBudget();
+const DEFAULT_CAPACITY: number = HARDWARE_BUDGET.lruMaxFiles || EDITOR_LIMITS.LRU_MAX_FILES;
+const DEFAULT_MAX_BYTES: number = HARDWARE_BUDGET.lruMaxBytes || EDITOR_LIMITS.LRU_MAX_BYTES;
 
 export class LRUDocumentCache {
   private readonly models = new Map<string, DocumentModelState>();

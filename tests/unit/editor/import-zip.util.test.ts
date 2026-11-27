@@ -125,6 +125,18 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
         importZipToProject({ projectId: 'project-1', zipFile: emptyZip }),
       ).rejects.toThrow('A non-empty ZIP archive file is required for import.');
     });
+
+    it('rejects renamed non-ZIP files locally via 4-byte PKZIP magic header check before network upload', async () => {
+      const importSpy = vi.spyOn(pagesService.export, 'importProjectZip');
+      const fakeZip = new File(['<html>not a zip</html>'], 'corrupted.zip', {
+        type: 'application/zip',
+      });
+
+      await expect(
+        importZipToProject({ projectId: 'project-1', zipFile: fakeZip }),
+      ).rejects.toThrow('Selected file is not a valid PKZIP archive.');
+      expect(importSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('filestore.upload & uploadPageFile pageId routing', () => {

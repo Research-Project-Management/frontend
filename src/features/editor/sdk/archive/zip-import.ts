@@ -1,8 +1,8 @@
 /**
  * zip-import.ts
  *
- * GoF Chain of Responsibility (Pre-flight Archive Validation) + Observer Pattern (`ImportProgressSubject`)
- * for authoritative server-side project ZIP import (`POST /api/v1/pages/spaces/:spaceId/import/zip`).
+ * O(1) 4-byte PKZIP magic-header pre-flight check + authoritative server-side project ZIP import
+ * (`POST /api/v1/pages/spaces/:spaceId/import/zip`).
  */
 
 import { exportDocs } from '../pages/export.client';
@@ -28,88 +28,22 @@ export interface ImportZipProgress {
   total: number;
 }
 
-export type ImportProgressObserver = (progress: ImportZipProgress) => void;
-
-/**
- * GoF Observer Pattern: Decouples import progress emission from UI subscribers.
- */
-export class ImportProgressSubject {
-  private readonly observers = new Set<ImportProgressObserver>();
-
-  public subscribe(observer?: ImportProgressObserver): () => void {
-    if (!observer) return () => {};
-    this.observers.add(observer);
-    return () => {
-      this.observers.delete(observer);
-    };
-  }
-
-  public notify(
-    phase: ImportZipProgress['phase'],
-    message: string,
-    current: number,
-    total = 2,
-  ): void {
-    const payload: ImportZipProgress = { phase, message, current, total };
-    for (const observer of this.observers) {
-      observer(payload);
-    }
-  }
-}
-
-/**
- * GoF Chain of Responsibility: Sequential pre-flight validation before uploading ZIP payload.
- */
-abstract class ZipUploadValidationHandler {
-  private nextHandler: ZipUploadValidationHandler | null = null;
-
-  public setNext(next: ZipUploadValidationHandler): ZipUploadValidationHandler {
-    this.nextHandler = next;
-    return next;
-  }
-
-  public validate(file: File | Blob | undefined): void {
-    this.check(file);
-    this.nextHandler?.validate(file);
-  }
-
-  protected abstract check(file: File | Blob | undefined): void;
-}
-
-class NonEmptyZipUploadValidator extends ZipUploadValidationHandler {
-  protected check(file: File | Blob | undefined): void {
-    if (!file || file.size === 0) {
-      throw new Error('A non-empty ZIP archive file is required for import.');
-    }
-  }
-}
-
-class MaxZipUploadSizeValidator extends ZipUploadValidationHandler {
-  protected check(file: File | Blob | undefined): void {
-    if (file && file.size > MAX_CLIENT_ARCHIVE_BYTES) {
-      throw new Error('ZIP archive exceeds maximum allowed size of 500 MB.');
-    }
-  }
-}
-
-const ZIP_PREFLIGHT_VALIDATOR: ZipUploadValidationHandler = (() => {
-  const head = new NonEmptyZipUploadValidator();
-  head.setNext(new MaxZipUploadSizeValidator());
-  return head;
-})();
-
 export interface ImportZipOptions {
   zipFile: File | Blob;
   projectName?: string;
   projectId?: string;
   parentPageId?: string;
   preferredRootDoc?: string;
-  onProgress?: ImportProgressObserver;
+  onProgress?: (progress: ImportZipProgress) => void;
 }
 
 export function isZipFile(file: File | Blob | string): boolean {
   if (typeof file === 'string') {
-    const clean = file.split('?')[0].split('#')[0].toLowerCase();
+    const qIdx = file.indexOf('?');
+    const hIdx = file.indexOf('#');
+    const cut =
+      qIdx === -1 ? hIdx : hIdx === -1 ? qIdx : Math.min(qIdx, hIdx);
+    const clean = (cut === -1 ? file : file.slice(0, cut)).toLowerCase();
     return clean.endsWith('.zip');
   }
   if (file instanceof File && file.name.toLowerCase().endsWith('.zip')) {
@@ -125,8 +59,9 @@ export function isZipFile(file: File | Blob | string): boolean {
 }
 
 export function isTextFile(path: string): boolean {
-  const ext = (path.split('.').pop() || '').toLowerCase();
-  return TEXT_EXTENSIONS.has(ext);
+  const dotIdx = path.lastIndexOf('.');
+  if (dotIdx === -1) return false;
+  return TEXT_EXTENSIONS.has(path.slice(dotIdx + 1).toLowerCase());
 }
 
 export function inferArchiveProjectName(
@@ -138,6 +73,20 @@ export function inferArchiveProjectName(
     if (base) return base;
   }
   return fallback;
+}
+
+/**
+ * O(1) time & 4-byte memory check verifying PKZIP magic signature (`0x50 0x4B` = 'PK')
+ * before streaming multi-megabyte payloads over the network.
+ */
+async function assertPkzipMagicSignature(blob: File | Blob): Promise<void> {
+  if (blob.size < 2 || typeof blob.slice !== 'function') return;
+  const headerSlice = blob.slice(0, 4);
+  if (typeof headerSlice.arrayBuffer !== 'function') return;
+  const header = new Uint8Array(await headerSlice.arrayBuffer());
+  if (header.byteLength >= 2 && (header[0] !== 0x50 || header[1] !== 0x4b)) {
+    throw new Error('Selected file is not a valid PKZIP archive.');
+  }
 }
 
 function extractCreatedProjectId(res: unknown): string {
@@ -168,58 +117,57 @@ export async function importZipToProject({
   mainFileId?: string;
   summary: ImportProjectZipResult;
 }> {
-  ZIP_PREFLIGHT_VALIDATOR.validate(zipFile);
-
-  const progressSubject = new ImportProgressSubject();
-  const unsubscribe = progressSubject.subscribe(onProgress);
-
-  try {
-    const finalProjectName =
-      projectName?.trim() ||
-      inferArchiveProjectName(zipFile, 'Imported LaTeX Project');
-
-    let targetProjectId = existingProjectId?.trim() || '';
-    if (!targetProjectId && !parentPageId) {
-      progressSubject.notify(
-        'creating_project',
-        `Creating project "${finalProjectName}"...`,
-        0,
-      );
-      const created = await ProjectService.create({
-        name: finalProjectName,
-        modules: ['pages', 'work-items'],
-      });
-      targetProjectId = extractCreatedProjectId(created);
-      if (!targetProjectId) {
-        throw new Error('Could not initialize project container.');
-      }
-    }
-
-    const targetSpaceId = targetProjectId || parentPageId || '';
-    if (!targetSpaceId) {
-      throw new Error('Target space ID is required for ZIP import.');
-    }
-
-    progressSubject.notify(
-      'uploading',
-      `Importing "${finalProjectName}" on server...`,
-      1,
-    );
-    const summary = await exportDocs.importProjectZip(targetSpaceId, zipFile, {
-      ...(preferredRootDoc ? { preferredRootDoc } : {}),
-      ...(parentPageId ? { pageId: parentPageId } : {}),
-    });
-
-    const rootPageId = summary.rootDocId || parentPageId || '';
-    progressSubject.notify('done', 'Imported project archive successfully.', 2);
-
-    return {
-      projectId: summary.projectId || targetSpaceId,
-      rootPageId,
-      mainFileId: summary.rootDocId || undefined,
-      summary,
-    };
-  } finally {
-    unsubscribe();
+  if (!zipFile || zipFile.size === 0) {
+    throw new Error('A non-empty ZIP archive file is required for import.');
   }
+  if (zipFile.size > MAX_CLIENT_ARCHIVE_BYTES) {
+    throw new Error('ZIP archive exceeds maximum allowed size of 500 MB.');
+  }
+  await assertPkzipMagicSignature(zipFile);
+
+  const report = (
+    phase: ImportZipProgress['phase'],
+    message: string,
+    current: number,
+  ) => {
+    onProgress?.({ phase, message, current, total: 2 });
+  };
+
+  const finalProjectName =
+    projectName?.trim() ||
+    inferArchiveProjectName(zipFile, 'Imported LaTeX Project');
+
+  let targetProjectId = existingProjectId?.trim() || '';
+  if (!targetProjectId && !parentPageId) {
+    report('creating_project', `Creating project "${finalProjectName}"...`, 0);
+    const created = await ProjectService.create({
+      name: finalProjectName,
+      modules: ['pages', 'work-items'],
+    });
+    targetProjectId = extractCreatedProjectId(created);
+    if (!targetProjectId) {
+      throw new Error('Could not initialize project container.');
+    }
+  }
+
+  const targetSpaceId = targetProjectId || parentPageId || '';
+  if (!targetSpaceId) {
+    throw new Error('Target space ID is required for ZIP import.');
+  }
+
+  report('uploading', `Importing "${finalProjectName}" on server...`, 1);
+  const summary = await exportDocs.importProjectZip(targetSpaceId, zipFile, {
+    ...(preferredRootDoc ? { preferredRootDoc } : {}),
+    ...(parentPageId ? { pageId: parentPageId } : {}),
+  });
+
+  const rootPageId = summary.rootDocId || parentPageId || '';
+  report('done', 'Imported project archive successfully.', 2);
+
+  return {
+    projectId: summary.projectId || targetSpaceId,
+    rootPageId,
+    mainFileId: summary.rootDocId || undefined,
+    summary,
+  };
 }

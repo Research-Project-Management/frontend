@@ -1,8 +1,7 @@
 /**
  * zip-export.ts
  *
- * GoF Template Method + Strategy Pattern for Project ZIP, arXiv Submission ZIP,
- * and Historical Version ZIP exports.
+ * Flat, data-driven Project ZIP, arXiv Submission ZIP, and Historical Version ZIP exports.
  */
 
 import { updater } from '../pages/docs.client';
@@ -31,160 +30,115 @@ export interface ExportVersionZipOptions {
   projectTitle?: string;
 }
 
-interface ResolvedZipContext<TOptions> {
-  options: TOptions;
-  spaceId: string;
-  pageId?: string;
-  cleanTitle: string;
+interface WorkspaceZipPreset {
+  mode: 'standard' | 'arxiv';
+  cleanArxiv: boolean;
+  includePdf: boolean;
+  defaultTitle: string;
+  prefix: string;
 }
 
-/**
- * GoF Strategy + Template Method: Abstract base defining the invariant ZIP export skeleton:
- * 1. Resolve coordinates (`spaceId`, `pageId`, `cleanTitle`)
- * 2. Flush dirty local/Yjs documents
- * 3. Fetch authoritative PKZIP `Blob` from backend
- * 4. Compute canonical `.zip` filename & trigger browser download
- */
-abstract class AbstractZipExportStrategy<TOptions> {
-  protected abstract readonly defaultTitleFallback: string;
+const WORKSPACE_ZIP_PRESETS: Record<'standard' | 'arxiv', WorkspaceZipPreset> = {
+  standard: {
+    mode: 'standard',
+    cleanArxiv: false,
+    includePdf: true,
+    defaultTitle: 'flux-project',
+    prefix: '',
+  },
+  arxiv: {
+    mode: 'arxiv',
+    cleanArxiv: true,
+    includePdf: false,
+    defaultTitle: 'manuscript',
+    prefix: 'arxiv-',
+  },
+};
 
-  public async execute(options: TOptions): Promise<string> {
-    const ctx = this.resolveContext(options);
-    await this.flushBeforeExport(ctx);
-    const zipBlob = await this.fetchZipBlob(ctx);
-    const filename = this.formatDownloadFilename(ctx);
-    triggerFileDownload(zipBlob, filename);
-    return filename;
-  }
+async function flushDirtyDocuments(spaceId: string): Promise<void> {
+  const hasDirty =
+    typeof sessionCoordinator.hasDirtyDocuments === 'function'
+      ? sessionCoordinator.hasDirtyDocuments()
+      : true;
+  if (!hasDirty) return;
 
-  protected abstract resolveContext(options: TOptions): ResolvedZipContext<TOptions>;
-  protected abstract flushBeforeExport(ctx: ResolvedZipContext<TOptions>): Promise<void>;
-  protected abstract fetchZipBlob(ctx: ResolvedZipContext<TOptions>): Promise<Blob>;
-  protected abstract formatDownloadFilename(ctx: ResolvedZipContext<TOptions>): string;
-}
-
-abstract class WorkspaceProjectZipStrategy extends AbstractZipExportStrategy<ExportZipOptions> {
-  protected resolveContext(options: ExportZipOptions): ResolvedZipContext<ExportZipOptions> {
-    if (!options.parentPageId && !options.spaceId) {
-      throw new Error('Project or page identifier is required to export ZIP.');
-    }
-    const store = usePageStore.getState();
-    const spaceId =
-      options.spaceId || store.spaceId || store.projectId || options.parentPageId;
-    const pageId = options.pageId || store.rootPageId || options.parentPageId;
-    const cleanTitle = sanitizeArchiveName(options.projectTitle, this.defaultTitleFallback);
-    return { options, spaceId, pageId: pageId || undefined, cleanTitle };
-  }
-
-  protected async flushBeforeExport(ctx: ResolvedZipContext<ExportZipOptions>): Promise<void> {
-    const hasDirty =
-      typeof sessionCoordinator.hasDirtyDocuments === 'function'
-        ? sessionCoordinator.hasDirtyDocuments()
-        : true;
-    if (!hasDirty) return;
-
-    const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
-    if (!flushRes || flushRes.total > 0) {
-      await updater.flushProject(ctx.spaceId).catch(() => null);
-    }
+  const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
+  if (!flushRes || flushRes.total > 0) {
+    await updater.flushProject(spaceId).catch(() => null);
   }
 }
 
-class StandardProjectZipStrategy extends WorkspaceProjectZipStrategy {
-  protected readonly defaultTitleFallback = 'flux-project';
-
-  protected fetchZipBlob(ctx: ResolvedZipContext<ExportZipOptions>): Promise<Blob> {
-    return exportDocs.exportProjectZip(ctx.spaceId, {
-      cleanArxiv: false,
-      includePdf: true,
-      mode: 'standard',
-      projectName: ctx.cleanTitle,
-      ...(ctx.pageId ? { pageId: ctx.pageId } : {}),
-    });
+async function downloadWorkspaceZip(
+  preset: WorkspaceZipPreset,
+  options: ExportZipOptions,
+): Promise<string> {
+  if (!options.parentPageId && !options.spaceId) {
+    throw new Error('Project or page identifier is required to export ZIP.');
   }
 
-  protected formatDownloadFilename(ctx: ResolvedZipContext<ExportZipOptions>): string {
-    return `${ctx.cleanTitle}.zip`;
-  }
+  const store = usePageStore.getState();
+  const spaceId =
+    options.spaceId || store.spaceId || store.projectId || options.parentPageId;
+  const pageId = options.pageId || store.rootPageId || options.parentPageId;
+  const cleanTitle = sanitizeArchiveName(options.projectTitle, preset.defaultTitle);
+
+  await flushDirtyDocuments(spaceId);
+
+  const zipBlob = await exportDocs.exportProjectZip(spaceId, {
+    cleanArxiv: preset.cleanArxiv,
+    includePdf: preset.includePdf,
+    mode: preset.mode,
+    projectName: cleanTitle,
+    ...(pageId ? { pageId } : {}),
+  });
+
+  const filename = `${preset.prefix}${cleanTitle}.zip`;
+  triggerFileDownload(zipBlob, filename);
+  return filename;
 }
-
-class ArxivProjectZipStrategy extends WorkspaceProjectZipStrategy {
-  protected readonly defaultTitleFallback = 'manuscript';
-
-  protected fetchZipBlob(ctx: ResolvedZipContext<ExportZipOptions>): Promise<Blob> {
-    return exportDocs.exportProjectZip(ctx.spaceId, {
-      cleanArxiv: true,
-      includePdf: false,
-      mode: 'arxiv',
-      projectName: ctx.cleanTitle,
-      ...(ctx.pageId ? { pageId: ctx.pageId } : {}),
-    });
-  }
-
-  protected formatDownloadFilename(ctx: ResolvedZipContext<ExportZipOptions>): string {
-    return `arxiv-${ctx.cleanTitle}.zip`;
-  }
-}
-
-class HistoricalVersionZipStrategy extends AbstractZipExportStrategy<ExportVersionZipOptions> {
-  protected readonly defaultTitleFallback = 'flux-project';
-
-  protected resolveContext(
-    options: ExportVersionZipOptions,
-  ): ResolvedZipContext<ExportVersionZipOptions> {
-    const store = usePageStore.getState();
-    const spaceId =
-      options.spaceId ||
-      options.projectId ||
-      store.spaceId ||
-      store.projectId ||
-      options.parentPageId ||
-      '';
-    if (!spaceId) {
-      throw new Error('Space ID is required to export version ZIP.');
-    }
-    const cleanTitle = sanitizeArchiveName(options.projectTitle, this.defaultTitleFallback);
-    return { options, spaceId, pageId: options.pageId, cleanTitle };
-  }
-
-  protected async flushBeforeExport(): Promise<void> {
-    await sessionCoordinator.flushAllPending().catch(() => null);
-  }
-
-  protected fetchZipBlob(ctx: ResolvedZipContext<ExportVersionZipOptions>): Promise<Blob> {
-    const version = ctx.options.version ?? ctx.options.versionId ?? 1;
-    return history.exportVersionZip(
-      ctx.spaceId,
-      version,
-      ctx.cleanTitle,
-      ctx.pageId ? { pageId: ctx.pageId } : undefined,
-    );
-  }
-
-  protected formatDownloadFilename(ctx: ResolvedZipContext<ExportVersionZipOptions>): string {
-    const { revisionLabel, version, revisionDate } = ctx.options;
-    const effectiveLabel = revisionLabel || (version ? `v${version}` : undefined);
-    const suffix = effectiveLabel
-      ? `-${sanitizeArchiveName(effectiveLabel, 'snapshot')}`
-      : revisionDate
-        ? `-${new Date(revisionDate).toISOString().slice(0, 10)}`
-        : '-snapshot';
-    return `${ctx.cleanTitle}${suffix}.zip`;
-  }
-}
-
-const STANDARD_ZIP_STRATEGY = new StandardProjectZipStrategy();
-const ARXIV_ZIP_STRATEGY = new ArxivProjectZipStrategy();
-const VERSION_ZIP_STRATEGY = new HistoricalVersionZipStrategy();
 
 export function exportProjectAsZip(options: ExportZipOptions): Promise<string> {
-  return STANDARD_ZIP_STRATEGY.execute(options);
+  return downloadWorkspaceZip(WORKSPACE_ZIP_PRESETS.standard, options);
 }
 
 export function exportArxivSubmissionZip(options: ExportZipOptions): Promise<string> {
-  return ARXIV_ZIP_STRATEGY.execute(options);
+  return downloadWorkspaceZip(WORKSPACE_ZIP_PRESETS.arxiv, options);
 }
 
-export function exportVersionAsZip(options: ExportVersionZipOptions): Promise<string> {
-  return VERSION_ZIP_STRATEGY.execute(options);
+export async function exportVersionAsZip(options: ExportVersionZipOptions): Promise<string> {
+  const store = usePageStore.getState();
+  const spaceId =
+    options.spaceId ||
+    options.projectId ||
+    store.spaceId ||
+    store.projectId ||
+    options.parentPageId ||
+    '';
+  if (!spaceId) {
+    throw new Error('Space ID is required to export version ZIP.');
+  }
+
+  const version = options.version ?? options.versionId ?? 1;
+  const cleanTitle = sanitizeArchiveName(options.projectTitle, 'flux-project');
+
+  await sessionCoordinator.flushAllPending().catch(() => null);
+
+  const zipBlob = await history.exportVersionZip(
+    spaceId,
+    version,
+    cleanTitle,
+    options.pageId ? { pageId: options.pageId } : undefined,
+  );
+
+  const effectiveLabel =
+    options.revisionLabel || (options.version ? `v${options.version}` : undefined);
+  const suffix = effectiveLabel
+    ? `-${sanitizeArchiveName(effectiveLabel, 'snapshot')}`
+    : options.revisionDate
+      ? `-${new Date(options.revisionDate).toISOString().slice(0, 10)}`
+      : '-snapshot';
+
+  const filename = `${cleanTitle}${suffix}.zip`;
+  triggerFileDownload(zipBlob, filename);
+  return filename;
 }

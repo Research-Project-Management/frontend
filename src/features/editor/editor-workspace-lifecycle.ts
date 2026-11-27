@@ -6,11 +6,22 @@
  * reset across `core/`, `domain/`, and `subsystems/` without introducing reverse dependencies.
  */
 
+import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { workspaceCoordinator } from './core/coordinator/workspace.coordinator';
+import {
+  clearVisualFigureBlobCache,
+  getVisualFigureBlobCacheSize,
+} from './core/engine/extensions/latex-visual-floats';
+import {
+  clearKaTeXRenderCache,
+  getKaTeXRenderCacheSize,
+} from './core/engine/extensions/latex-visual-math';
 import { useDocumentCollaborationStore } from './core/store/collaboration.store';
 import { useSearchStore } from './core/store/search.store';
+import { lruDocumentCache } from './domain/document/lru-document-cache';
 import { latexSymbolsIndex } from './domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from './domain/latex/dependency-graph';
+import { clearAllOfflineMemory } from './domain/offline-storage';
 import { warmEditorStatePool } from './domain/workspace/editor-tab-pool.domain';
 import {
   compilerCoordinator,
@@ -44,6 +55,9 @@ export function resetEditorWorkspace(options: ResetEditorWorkspaceOptions = {}):
 
   workspaceCoordinator.resetAllState({ skipFlush, scopeId });
   warmEditorStatePool.clear();
+  clearVisualFigureBlobCache();
+  clearKaTeXRenderCache();
+  clearAllOfflineMemory();
 
   latexSymbolsIndex.clear();
   latexDependencyGraph.clear();
@@ -57,4 +71,58 @@ export function resetEditorWorkspace(options: ResetEditorWorkspaceOptions = {}):
   collabStore.clearCollaborators();
   collabStore.clearPendingComment();
   collabStore.resetUnreadChatCount();
+}
+
+if (typeof window !== 'undefined') {
+  memoryGovernor.register({
+    id: 'editor-workspace-memory',
+    domain: 'editor',
+    priority: 20,
+    reclaim: ({ level }) => {
+      if (level === 'logout') {
+        const docStats = lruDocumentCache.getStats();
+        const evicted =
+          docStats.size +
+          warmEditorStatePool.size +
+          getVisualFigureBlobCacheSize() +
+          getKaTeXRenderCacheSize();
+        resetEditorWorkspace({ skipFlush: true });
+        return evicted;
+      }
+
+      if (level === 'route-handover' || level === 'tab-hidden' || level === 'pressure') {
+        const evicted =
+          warmEditorStatePool.size +
+          getVisualFigureBlobCacheSize() +
+          getKaTeXRenderCacheSize();
+        warmEditorStatePool.clear();
+        clearVisualFigureBlobCache();
+        clearKaTeXRenderCache();
+        if (level === 'pressure') {
+          clearAllOfflineMemory();
+        }
+        return evicted;
+      }
+      return 0;
+    },
+    getStats: () => {
+      const docStats = lruDocumentCache.getStats();
+      const warmTabs = warmEditorStatePool.size;
+      const figureBlobs = getVisualFigureBlobCacheSize();
+      const katexEntries = getKaTeXRenderCacheSize();
+      return {
+        id: 'editor-workspace-memory',
+        domain: 'editor',
+        entryCount: docStats.size + warmTabs + figureBlobs + katexEntries,
+        estimatedBytes: docStats.totalBytes,
+        details: {
+          lruDocs: docStats.size,
+          lruDirtyDocs: docStats.dirtyCount,
+          warmEditorTabs: warmTabs,
+          figureBlobs,
+          katexEntries,
+        },
+      };
+    },
+  });
 }

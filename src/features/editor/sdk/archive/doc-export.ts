@@ -1,8 +1,8 @@
 /**
  * doc-export.ts
  *
- * GoF Strategy + Registry + Template Method for single-document formatted exports
- * (`POST /api/v1/pages/docs/:pageId/export`).
+ * Data-driven single-document formatted export (`POST /api/v1/pages/docs/:pageId/export`)
+ * with native zero-copy `Uint8Array.fromBase64` binary decoding when supported by runtime.
  */
 
 import { exportDocs } from '../pages/export.client';
@@ -15,100 +15,69 @@ export interface ExportSingleDocOptions {
   includeChildren?: boolean;
 }
 
-/**
- * GoF Strategy Pattern: Decodes transport payload (`base64` binary vs `utf8` text) into a `Blob`.
- */
-interface IPayloadDecoderStrategy {
-  toBlob(rawContent: string, mimeType: string): Blob;
+interface DocFormatSpec {
+  extension: string;
+  mimeType: string;
+  binary: boolean;
 }
 
-class Base64BinaryPayloadDecoder implements IPayloadDecoderStrategy {
-  public toBlob(rawContent: string, mimeType: string): Blob {
-    const binaryStr = window.atob(rawContent);
-    const bytes = new Uint8Array(new ArrayBuffer(binaryStr.length));
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return new Blob([bytes], { type: mimeType });
-  }
-}
-
-class Utf8TextPayloadDecoder implements IPayloadDecoderStrategy {
-  public toBlob(rawContent: string, mimeType: string): Blob {
-    return new Blob([rawContent], { type: mimeType });
-  }
-}
-
-interface IDocExportFormatDescriptor {
-  readonly format: DocumentExportFormat;
-  readonly extension: string;
-  readonly mimeType: string;
-  readonly decoder: IPayloadDecoderStrategy;
-}
-
-const BINARY_DECODER = new Base64BinaryPayloadDecoder();
-const TEXT_DECODER = new Utf8TextPayloadDecoder();
-
-/**
- * GoF Registry Pattern (Open/Closed Principle) for supported single-document export formats.
- */
-class DocExportFormatRegistry {
-  private readonly formats = new Map<DocumentExportFormat, IDocExportFormatDescriptor>();
-
-  constructor(descriptors: ReadonlyArray<IDocExportFormatDescriptor>) {
-    for (const d of descriptors) {
-      this.formats.set(d.format, d);
-    }
-  }
-
-  public resolve(format: DocumentExportFormat): IDocExportFormatDescriptor {
-    const found = this.formats.get(format);
-    if (!found) {
-      throw new Error(`Unsupported document export format: "${format}"`);
-    }
-    return found;
-  }
-}
-
-const DOC_EXPORT_REGISTRY = new DocExportFormatRegistry([
-  {
-    format: 'docx',
+const DOC_FORMATS: Partial<Record<DocumentExportFormat, DocFormatSpec>> = {
+  docx: {
     extension: 'docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    decoder: BINARY_DECODER,
+    binary: true,
   },
-  {
-    format: 'md',
+  md: {
     extension: 'md',
     mimeType: 'text/markdown;charset=utf-8',
-    decoder: TEXT_DECODER,
+    binary: false,
   },
-  {
-    format: 'html',
+  html: {
     extension: 'html',
     mimeType: 'text/html;charset=utf-8',
-    decoder: TEXT_DECODER,
+    binary: false,
   },
-  {
-    format: 'tex',
+  tex: {
     extension: 'tex',
     mimeType: 'application/x-tex;charset=utf-8',
-    decoder: TEXT_DECODER,
+    binary: false,
   },
-]);
+};
 
-/**
- * GoF Template Method: Executes the unified single-document export lifecycle.
- */
+type Uint8ArrayWithFromBase64 = typeof Uint8Array & {
+  fromBase64?: (b64: string) => Uint8Array<ArrayBuffer>;
+};
+
+function decodeBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
+  const ctor = Uint8Array as Uint8ArrayWithFromBase64;
+  if (typeof ctor.fromBase64 === 'function') {
+    return ctor.fromBase64(base64);
+  }
+
+  const binaryStr = window.atob(base64);
+  const len = binaryStr.length;
+  const bytes = new Uint8Array(new ArrayBuffer(len));
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryStr.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export async function exportFormattedDocument(
   format: DocumentExportFormat,
   { docId, projectTitle, includeChildren = true }: ExportSingleDocOptions,
 ): Promise<string> {
-  const descriptor = DOC_EXPORT_REGISTRY.resolve(format);
-  const res = await exportDocs.exportDocument(docId, descriptor.format, includeChildren);
-  const blob = descriptor.decoder.toBlob(res.content, descriptor.mimeType);
+  const spec = DOC_FORMATS[format];
+  if (!spec) {
+    throw new Error(`Unsupported document export format: "${format}"`);
+  }
+
+  const res = await exportDocs.exportDocument(docId, format, includeChildren);
+  const payload = spec.binary ? decodeBase64ToBytes(res.content) : res.content;
+  const blob = new Blob([payload], { type: spec.mimeType });
   const filename =
-    res.filename || `${sanitizeDocExportSlug(projectTitle)}.${descriptor.extension}`;
+    res.filename || `${sanitizeDocExportSlug(projectTitle)}.${spec.extension}`;
+
   triggerFileDownload(blob, filename);
   return filename;
 }

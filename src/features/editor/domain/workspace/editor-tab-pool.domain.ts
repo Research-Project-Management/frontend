@@ -17,33 +17,21 @@ import {
   splitVirtualPath,
 } from '@/features/editor/domain/document/document-naming';
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
+import { resolveHardwareBudget } from '@/shared/lib/memory-governor';
 
 export const MAX_EDITOR_TABS = EDITOR_LIMITS.MAX_EDITOR_TABS;
 export const MAX_PERSISTED_EDITOR_PAGES = EDITOR_LIMITS.MAX_PERSISTED_EDITOR_PAGES;
 const DEFAULT_WARM_EDITOR_TAB_CAPACITY = 5;
 
 /**
- * Hardware-adaptive warm standby capacity matching Zotero/Reader's 3/5/8 curve:
+ * Hardware-adaptive warm standby capacity matching Zotero/Reader's 3/5/8 curve
+ * delegated to the centralized `memoryGovernor` Strategy:
  * - <= 2 GB RAM: K = 3 warm states
  * - 4 GB / unknown RAM: K = 5 warm states
  * - >= 8 GB RAM: K = 8 warm states
  */
 export function calculateAdaptiveEditorTabPoolCapacity(deviceMemoryGb?: number): number {
-  const detectedRam =
-    typeof deviceMemoryGb === 'number' && Number.isFinite(deviceMemoryGb) && deviceMemoryGb > 0
-      ? deviceMemoryGb
-      : typeof navigator !== 'undefined' &&
-          'deviceMemory' in navigator &&
-          typeof (navigator as { deviceMemory?: number }).deviceMemory === 'number'
-        ? (navigator as { deviceMemory: number }).deviceMemory
-        : undefined;
-
-  if (detectedRam !== undefined) {
-    if (detectedRam <= 2) return 3;
-    if (detectedRam >= 8) return 8;
-  }
-
-  return DEFAULT_WARM_EDITOR_TAB_CAPACITY;
+  return resolveHardwareBudget(deviceMemoryGb).warmTabPoolCapacity;
 }
 
 class LruEditorNode<T> {

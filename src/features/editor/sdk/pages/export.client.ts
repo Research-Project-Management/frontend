@@ -1,13 +1,8 @@
 /**
  * export.client.ts
  *
- * GoF Facade + Fluent Builder (`QueryStringBuilder`) for Backend `ExportImportController` (`api/v1/pages`):
- * 1. GET  /spaces/:spaceId/export/zip
- * 2. POST /spaces/:spaceId/import/zip
- * 3. POST /spaces/:spaceId/import/url
- * 4. POST /spaces/:spaceId/import/convert
- * 5. POST /spaces/:spaceId/templates/:templateId/scaffold
- * 6. POST /docs/:pageId/export
+ * Canonical 1:1 HTTP client for Backend `ExportImportController` (`api/v1/pages`)
+ * with single-flight in-flight request coalescing for idempotent export endpoints.
  */
 
 import { apiPost, rawFetch } from '@/shared/lib/api';
@@ -21,35 +16,33 @@ import type {
 } from './types';
 import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 
-/**
- * GoF Builder Pattern: Fluent query-string construction without repetitive branching.
- */
-class QueryStringBuilder {
-  private readonly params = new URLSearchParams();
+const inFlightExports = new Map<string, Promise<unknown>>();
 
-  public flag(key: string, enabled?: boolean): this {
-    if (enabled) this.params.set(key, 'true');
-    return this;
-  }
+function coalesceInFlight<T>(key: string, factory: () => Promise<T>): Promise<T> {
+  const existing = inFlightExports.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
 
-  public string(key: string, value?: string): this {
-    const trimmed = value?.trim();
-    if (trimmed) this.params.set(key, trimmed);
-    return this;
-  }
-
-  public number(key: string, value?: number): this {
-    if (value !== undefined) this.params.set(key, String(value));
-    return this;
-  }
-
-  public build(): string {
-    const qs = this.params.toString();
-    return qs ? `?${qs}` : '';
-  }
+  const task = factory().finally(() => {
+    inFlightExports.delete(key);
+  });
+  inFlightExports.set(key, task);
+  return task;
 }
 
-function createMultipartForm(file: File | Blob): FormData {
+function buildQuery(
+  entries: Record<string, string | number | boolean | undefined>,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(entries)) {
+    if (value === undefined || value === false) continue;
+    const str = typeof value === 'boolean' ? 'true' : String(value).trim();
+    if (str) params.set(key, str);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function toFileFormData(file: File | Blob): FormData {
   const formData = new FormData();
   formData.append('file', file);
   return formData;
@@ -64,29 +57,29 @@ async function parseErrorMessage(res: Response, fallbackPrefix: string): Promise
 }
 
 export const exportDocs = {
-  exportProjectZip: async (
+  exportProjectZip: (
     spaceId: string,
     query: ExportZipQuery = {},
   ): Promise<Blob> => {
     const cleanPageId = query.pageId?.trim();
     const targetSpaceId = spaceId || cleanPageId || '';
-    const qs = new QueryStringBuilder()
-      .flag('includePdf', query.includePdf)
-      .flag('cleanArxiv', query.cleanArxiv)
-      .string('mode', query.mode)
-      .number('version', query.version)
-      .string('projectName', query.projectName)
-      .string('pageId', cleanPageId)
-      .build();
+    const qs = buildQuery({
+      includePdf: query.includePdf,
+      cleanArxiv: query.cleanArxiv,
+      mode: query.mode,
+      version: query.version,
+      projectName: query.projectName,
+      pageId: cleanPageId,
+    });
+    const url = `${getPagesBaseUrl()}/spaces/${encodeURIComponent(targetSpaceId)}/export/zip${qs}`;
 
-    const res = await rawFetch(
-      `${getPagesBaseUrl()}/spaces/${encodeURIComponent(targetSpaceId)}/export/zip${qs}`,
-      'GET',
-    );
-    if (!res.ok) {
-      throw new Error(await parseErrorMessage(res, 'Export ZIP failed'));
-    }
-    return res.blob();
+    return coalesceInFlight(`zip:${url}`, async () => {
+      const res = await rawFetch(url, 'GET');
+      if (!res.ok) {
+        throw new Error(await parseErrorMessage(res, 'Export ZIP failed'));
+      }
+      return res.blob();
+    });
   },
 
   importProjectZip: async (
@@ -94,15 +87,15 @@ export const exportDocs = {
     file: File | Blob,
     options?: { preferredRootDoc?: string; pageId?: string },
   ): Promise<ImportProjectZipResult> => {
-    const qs = new QueryStringBuilder()
-      .string('preferredRootDoc', options?.preferredRootDoc)
-      .string('pageId', options?.pageId)
-      .build();
+    const qs = buildQuery({
+      preferredRootDoc: options?.preferredRootDoc,
+      pageId: options?.pageId,
+    });
 
     const res = await rawFetch(
       `${getPagesBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/import/zip${qs}`,
       'POST',
-      createMultipartForm(file),
+      toFileFormData(file),
     );
     if (!res.ok) {
       throw new Error(await parseErrorMessage(res, 'Import ZIP failed'));
@@ -130,15 +123,15 @@ export const exportDocs = {
     file: File | Blob,
     options?: { format?: 'docx' | 'md'; pageId?: string },
   ): Promise<ImportProjectZipResult> => {
-    const qs = new QueryStringBuilder()
-      .string('format', options?.format)
-      .string('pageId', options?.pageId)
-      .build();
+    const qs = buildQuery({
+      format: options?.format,
+      pageId: options?.pageId,
+    });
 
     const res = await rawFetch(
       `${getPagesBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/import/convert${qs}`,
       'POST',
-      createMultipartForm(file),
+      toFileFormData(file),
     );
     if (!res.ok) {
       throw new Error(await parseErrorMessage(res, 'Document conversion failed'));
@@ -152,21 +145,24 @@ export const exportDocs = {
     options?: { pageId?: string },
   ): Promise<ImportProjectZipResult> => {
     const cleanPageId = options?.pageId?.trim();
-    const qs = new QueryStringBuilder().string('pageId', cleanPageId).build();
+    const qs = buildQuery({ pageId: cleanPageId });
     return apiPost<ImportProjectZipResult>(
       `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/templates/${encodeURIComponent(templateId)}/scaffold${qs}`,
       cleanPageId ? { pageId: cleanPageId } : {},
     );
   },
 
-  exportDocument: async (
+  exportDocument: (
     docId: string,
     format: DocumentExportFormat,
     includeChildren = true,
   ): Promise<ExportFileResult> => {
-    return apiPost<ExportFileResult>(
-      `${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/export`,
-      { format, includeChildren },
+    const key = `doc:${docId}:${format}:${includeChildren}`;
+    return coalesceInFlight(key, () =>
+      apiPost<ExportFileResult>(
+        `${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/export`,
+        { format, includeChildren },
+      ),
     );
   },
 };

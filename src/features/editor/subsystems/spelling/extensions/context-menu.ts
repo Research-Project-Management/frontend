@@ -1,14 +1,12 @@
 /**
  * subsystems/spelling/extensions/context-menu.ts
  *
- * Right-click spelling context menu for replacing words, learning to project dictionary,
- * and ignoring within the current session.
+ * Pure right-click spelling context menu UI for CodeMirror 6.
+ * Delegates dictionary persistence to an injected `onLearnWord` handler.
  */
 
 import type { Extension } from '@codemirror/state';
 import { EditorView, ViewPlugin } from '@codemirror/view';
-import { toast } from 'sonner';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 import { findErrorAt, ignoreWordEffect } from './decorations';
 
 function escapeHtml(value: string): string {
@@ -21,8 +19,7 @@ function escapeHtml(value: string): string {
 }
 
 export function createSpellingContextMenu(
-  resolveProjectId: () => string,
-  onDictionaryChanged?: (unlearnedWord?: string) => void,
+  onLearnWord: (word: string) => Promise<void>,
 ): Extension {
   let menuEl: HTMLDivElement | null = null;
   let listenersAttached = false;
@@ -103,7 +100,6 @@ export function createSpellingContextMenu(
             item.onclick = (clickEvent) => {
               clickEvent.preventDefault();
               clickEvent.stopPropagation();
-              // Guard against stale offsets if Yjs mutated the document while menu was open
               if (
                 to <= view.state.doc.length &&
                 view.state.doc.sliceString(from, to) === word
@@ -133,26 +129,13 @@ export function createSpellingContextMenu(
             <svg class="size-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
             <span>Add to project dictionary</span>
           `;
-          learnBtn.onclick = async (clickEvent) => {
+          learnBtn.onclick = (clickEvent) => {
             clickEvent.preventDefault();
             clickEvent.stopPropagation();
             view.dispatch({ effects: ignoreWordEffect.of(word) });
             closeMenu();
             view.focus();
-
-            const activeProjectId = resolveProjectId();
-            if (!activeProjectId) return;
-
-            try {
-              await pagesService.spelling.learnWord(activeProjectId, word);
-              onDictionaryChanged?.();
-              toast.success(`Added "${word}" to project dictionary`, { id: `spell-dict-${word}` });
-            } catch {
-              onDictionaryChanged?.(word);
-              toast.error(`Failed to save "${word}" to project dictionary`, {
-                id: `spell-dict-${word}`,
-              });
-            }
+            void onLearnWord(word);
           };
           actions.appendChild(learnBtn);
         }

@@ -25,8 +25,11 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import { githubImportService, GitHubRepoItem } from '@/features/pages/services/github-import.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import { integrationService } from '@/features/settings/services/integration.service';
+import type { IntegrationStatusItem, RemoteCollection } from '@/features/settings/types/integration.types';
 import { pageKeys } from '@/features/pages/hooks/use-page';
+import { buildPageEditorHref } from '@/features/pages/utils/page-url';
 
 interface ImportGithubModalProps {
   isOpen: boolean;
@@ -50,27 +53,34 @@ export function ImportGithubModal({
 
   // 1. Fetch connection status
   const {
-    data: status,
+    data: statuses = [],
     isLoading: isStatusLoading,
     refetch: refetchStatus,
-  } = useQuery({
+  } = useQuery<IntegrationStatusItem[]>({
     queryKey: ['github-integration-status'],
-    queryFn: () => githubImportService.getStatus(),
+    queryFn: () => integrationService.getStatuses(),
     enabled: isOpen,
     staleTime: 10_000,
   });
 
-  const isConnected = Boolean(status?.github?.connected);
-  const accountName = status?.github?.accountName;
+  const githubStatus = useMemo(
+    () =>
+      Array.isArray(statuses)
+        ? statuses.find((s) => s.provider === 'github' && s.status === 'connected')
+        : undefined,
+    [statuses],
+  );
+  const isConnected = Boolean(githubStatus);
+  const accountName = githubStatus?.accountName;
 
   // 2. Fetch repos if connected
   const {
     data: repos = [],
     isLoading: isReposLoading,
     refetch: refetchRepos,
-  } = useQuery<GitHubRepoItem[]>({
+  } = useQuery<RemoteCollection[]>({
     queryKey: ['github-repos'],
-    queryFn: () => githubImportService.listRepos(),
+    queryFn: () => integrationService.listGithubRepos(),
     enabled: isOpen && isConnected,
     staleTime: 60_000,
   });
@@ -78,7 +88,7 @@ export function ImportGithubModal({
   // 3. Fetch branches when repo is selected
   const { data: branches = [], isLoading: isBranchesLoading } = useQuery<string[]>({
     queryKey: ['github-branches', selectedRepo],
-    queryFn: () => (selectedRepo ? githubImportService.listBranches(selectedRepo) : []),
+    queryFn: () => (selectedRepo ? integrationService.listGithubBranches(selectedRepo) : []),
     enabled: isOpen && Boolean(selectedRepo),
     staleTime: 60_000,
   });
@@ -100,7 +110,7 @@ export function ImportGithubModal({
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
-      const { authUrl } = await githubImportService.getAuthUrl();
+      const { authUrl } = await integrationService.getAuthUrl('github');
       const popup = window.open(
         authUrl,
         'github-oauth',
@@ -115,21 +125,21 @@ export function ImportGithubModal({
           refetchRepos();
         }
       }, 1000);
-    } catch (err) {
+    } catch {
       setIsConnecting(false);
       toast.error('Failed to initiate GitHub OAuth authorization.');
     }
   };
 
   const handleImport = async () => {
-    if (!selectedRepo || !projectId) return;
+    if (!selectedRepo) return;
 
     setIsImporting(true);
     const toastId = toast.loading(`Cloning and importing ${selectedRepo} on branch ${selectedBranch}...`);
 
     try {
-      const result = await githubImportService.importRepo({
-        pageId: projectId,
+      const res = await pagesService.git.importGithubRepo({
+        spaceId: projectId || 'personal',
         repoFullName: selectedRepo,
         branch: selectedBranch,
       });
@@ -139,12 +149,15 @@ export function ImportGithubModal({
       setIsOpen(false);
       setSelectedRepo(null);
 
-      if (result?.rootDocId) {
-        if (!projectId || projectId === 'personal') {
-          router.push(`/pages/${result.rootDocId}`);
-        } else {
-          router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
-        }
+      const targetPageId = res?.pageId || res?.rootDocId;
+      if (targetPageId) {
+        const dest = res.isPersonal
+          ? `/pages/${targetPageId}`
+          : buildPageEditorHref(targetPageId, {
+              spaceKind: 'project',
+              projectId: res.spaceId || projectId,
+            });
+        router.push(dest);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'GitHub import failed', { id: toastId });

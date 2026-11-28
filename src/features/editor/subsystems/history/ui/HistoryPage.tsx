@@ -43,7 +43,34 @@ export function HistoryPage({
   const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? '');
   const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? '');
   const storeSpaceId = usePageStore((s) => s.spaceId);
+  const storeSpaceType = usePageStore((s) => s.spaceType);
+  const storePermissions = usePageStore((s) => s.permissions);
   const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || '');
+
+  const isPersonalSpace =
+    (!params?.projectId || params.projectId === 'personal') &&
+    (!propProjectId || propProjectId === 'personal') &&
+    storeSpaceType !== 'project';
+  const normalizedRole = storePermissions?.role?.toLowerCase() ?? null;
+  const canEditHistory =
+    isPersonalSpace ||
+    (storePermissions
+      ? storePermissions.canEdit &&
+        normalizedRole !== 'reviewer' &&
+        normalizedRole !== 'viewer' &&
+        normalizedRole !== 'revoked'
+      : true);
+  const canRestoreFullVersion =
+    isPersonalSpace ||
+    (storePermissions
+      ? storePermissions.canEdit &&
+        !['reviewer', 'viewer', 'revoked', 'contributor'].includes(normalizedRole || '')
+      : true);
+  const restoreDisabledReason = !canRestoreFullVersion
+    ? normalizedRole === 'contributor'
+      ? 'Only project coordinators or owners can restore an entire version'
+      : 'View-only reviewers cannot restore versions'
+    : undefined;
 
   const pageId = propPageId || params?.pageId || storeRootPageId || currentPageId || '';
   const knownSpaceId =
@@ -160,7 +187,7 @@ export function HistoryPage({
       </header>
 
       {/* Project Restore Confirmation Bar */}
-      {state.confirmRestore && state.targetVersion != null && (
+      {canRestoreFullVersion && state.confirmRestore && state.targetVersion != null && (
         <div className="flex items-center justify-between gap-3 px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs shrink-0">
           <div className="flex items-center gap-2 text-foreground">
             <RotateCcw className="size-3.5 text-destructive shrink-0" />
@@ -223,6 +250,7 @@ export function HistoryPage({
             confirmRestore={state.confirmFileRestore}
             onConfirmRestoreChange={state.setConfirmFileRestore}
             onRestoreFile={(v) => actions.restoreFile.mutate(v)}
+            canRestoreFile={canEditHistory}
           />
         ) : (
           <DiffPane
@@ -238,6 +266,7 @@ export function HistoryPage({
             isRestoringSingleFile={actions.restoreFile.isPending}
             confirmingFileRestore={state.confirmFileRestore}
             setConfirmingFileRestore={state.setConfirmFileRestore}
+            canRestoreFile={canEditHistory}
           />
         )}
 
@@ -257,7 +286,13 @@ export function HistoryPage({
           onAddLabel={(version, label) => actions.addLabel.mutate({ version, label })}
           onDeleteLabel={(labelId) => actions.deleteLabel.mutate(labelId)}
           onDownloadVersion={(v) => void actions.downloadZip(v)}
-          onRestoreVersion={(v) => state.requestRestoreVersion(v, actions.versions)}
+          onRestoreVersion={(v) => {
+            if (!canRestoreFullVersion) return;
+            state.requestRestoreVersion(v, actions.versions);
+          }}
+          canRestoreVersion={canRestoreFullVersion}
+          restoreDisabledReason={restoreDisabledReason}
+          canManageLabels={canEditHistory}
           isAddingLabelLoading={actions.addLabel.isPending}
         />
       </div>

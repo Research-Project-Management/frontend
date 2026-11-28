@@ -17,6 +17,12 @@ interface EditorGithubLinkInfo {
   lastSyncedAt: string | null;
 }
 
+export interface PageBuildConfig {
+  compiler?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+  texlive?: string;
+  spellLang?: string;
+}
+
 export interface DocumentEditorState {
   // ── Coordinate Model (spaceId -> pageId -> activeDocId) ──
   spaceId: string;
@@ -38,6 +44,7 @@ export interface DocumentEditorState {
   selectedAsset: AssetInfo | null;
   permissions: { role: string; canEdit: boolean; canCompile: boolean } | null;
   githubLink: EditorGithubLinkInfo | null;
+  pageBuildConfig: PageBuildConfig | null;
 
   // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: Page | PageFile | null | ((prev: Page | PageFile | null) => Page | PageFile | null)) => void;
@@ -45,6 +52,7 @@ export interface DocumentEditorState {
   setProjectId: (id: string) => void;
   setWorkspaceTitle: (workspaceTitle: string) => void;
   setGithubLink: (githubLink: EditorGithubLinkInfo | null) => void;
+  setPageBuildConfig: (config: PageBuildConfig | null) => void;
   setRootPageId: (id: string | null) => void;
   setRootDocId: (id: string | null) => void;
   setMainFilePath: (path: string | null) => void;
@@ -101,6 +109,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
   selectedAsset: null,
   permissions: null,
   githubLink: null,
+  pageBuildConfig: null,
 
   setCurrentPage: (pageOrUpdater) =>
     set((state) => {
@@ -158,6 +167,12 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
     set((state) => (state.workspaceTitle === workspaceTitle ? state : { workspaceTitle })),
   setGithubLink: (githubLink) =>
     set((state) => (state.githubLink === githubLink ? state : { githubLink })),
+  setPageBuildConfig: (pageBuildConfig) =>
+    set((state) => ({
+      pageBuildConfig: pageBuildConfig
+        ? { ...(state.pageBuildConfig ?? {}), ...pageBuildConfig }
+        : null,
+    })),
   setRootPageId: (rootPageId) =>
     set((state) =>
       state.rootPageId === rootPageId && state.parentPageId === rootPageId
@@ -276,6 +291,7 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
       selectedAsset: null,
       permissions: null,
       githubLink: null,
+      pageBuildConfig: null,
     }),
 
   // ── Canonical Manuscript Accessor Implementations ───────────────────────

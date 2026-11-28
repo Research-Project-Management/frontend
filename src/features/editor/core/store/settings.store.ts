@@ -155,6 +155,11 @@ export interface DocumentSettingsState {
   removeSuppressedWarning: (pattern: string) => void;
 }
 
+export function normalizeSpellCheckLanguage(lang?: string | null): string {
+  if (!lang || !lang.trim()) return 'en-US';
+  return lang.trim().replace(/_/g, '-');
+}
+
 export const useSettingsStore = create<DocumentSettingsState>()(
   persist(
     (set) => ({
@@ -180,7 +185,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       isShortcutsOpen: false,
       isTemplateModalOpen: false,
       spellCheck: true,
-      spellCheckLanguage: 'en_US',
+      spellCheckLanguage: 'en-US',
       texLiveVersion: '2025',
       fontFamily: 'default',
       lineHeight: 1.6,
@@ -244,7 +249,8 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       setTrackChangesViewMode: (trackChangesViewMode) => set({ trackChangesViewMode }),
       setSpellCheck: (spellCheck) => set({ spellCheck }),
       toggleSpellCheck: () => set((s) => ({ spellCheck: !s.spellCheck })),
-      setSpellCheckLanguage: (spellCheckLanguage) => set({ spellCheckLanguage }),
+      setSpellCheckLanguage: (spellCheckLanguage) =>
+        set({ spellCheckLanguage: normalizeSpellCheckLanguage(spellCheckLanguage) }),
       setTexLiveVersion: (texLiveVersion) => set({ texLiveVersion }),
       setAutoCloseBrackets: (autoCloseBrackets) => set({ autoCloseBrackets }),
       toggleAutoCloseBrackets: () => set((s) => ({ autoCloseBrackets: !s.autoCloseBrackets })),
@@ -293,10 +299,10 @@ export const useSettingsStore = create<DocumentSettingsState>()(
     }),
     {
       name: EDITOR_STORAGE_KEYS.SETTINGS,
-      version: 5,
+      version: 6,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
-          return version < 3 ? { wordWrap: true, errorLensEnabled: false } : persistedState;
+          return version < 3 ? { wordWrap: true, errorLensEnabled: false, spellCheckLanguage: 'en-US' } : persistedState;
         }
         const next = { ...(persistedState as Record<string, unknown>) };
         if (version < 3) {
@@ -313,7 +319,20 @@ export const useSettingsStore = create<DocumentSettingsState>()(
         if (version < 5) {
           next.errorLensEnabled = false;
         }
+        if (typeof next.spellCheckLanguage === 'string') {
+          next.spellCheckLanguage = normalizeSpellCheckLanguage(next.spellCheckLanguage);
+        } else {
+          next.spellCheckLanguage = 'en-US';
+        }
         return next;
+      },
+      merge: (persistedState: unknown, currentState: DocumentSettingsState) => {
+        const merged = {
+          ...currentState,
+          ...(persistedState && typeof persistedState === 'object' ? persistedState : {}),
+        };
+        merged.spellCheckLanguage = normalizeSpellCheckLanguage(merged.spellCheckLanguage);
+        return merged;
       },
       partialize: (state) => {
         // Don't persist transient UI state or auto-compile (always on by default)

@@ -9,6 +9,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { rawFetch, tryRefresh } from '@/shared/lib/api';
 import {
   exportZip as runExportZip,
   exportArxivZip,
@@ -78,7 +79,13 @@ export function useExport() {
         anchor.click();
         document.body.removeChild(anchor);
       } else {
-        const resp = await fetch(pdfUrl, { credentials: 'include' });
+        let resp = await rawFetch(pdfUrl, 'GET');
+        if (resp.status === 401) {
+          const refreshed = await tryRefresh();
+          if (refreshed.success && refreshed.accessToken) {
+            resp = await rawFetch(pdfUrl, 'GET');
+          }
+        }
         if (!resp.ok) {
           throw new Error(`HTTP ${resp.status}`);
         }

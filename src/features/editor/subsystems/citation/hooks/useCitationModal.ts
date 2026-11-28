@@ -88,12 +88,15 @@ export function useCitationPickerState({
     const p = s.currentPage?.projectId;
     return typeof p === 'string' ? p : p?.id || '';
   });
+  const storeRootPageId = usePageStore((s) => s.rootPageId);
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
   const storeSpaceId = usePageStore((s) => s.spaceId);
+  const spaceType = usePageStore((s) => s.spaceType);
 
-  const rootId = params?.pageId || storeParentPageId || currentPageId || '';
+  const rootId = params?.pageId || storeRootPageId || storeParentPageId || currentPageId || '';
   const { spaceId: effectiveProjectId, libraryScope } = resolveCitationScope({
+    spaceType,
     propProjectId: propsProjectId,
     routeProjectId: params?.projectId,
     storeProjectId: storeProjectId || undefined,
@@ -131,6 +134,7 @@ export function useCitationPickerState({
 
   const { libraryItems = [] } = useEditorCitations({
     projectId: libraryScope,
+    pageId: rootId || undefined,
     enabled: open,
   });
 
@@ -186,6 +190,7 @@ export function useCitationPickerState({
           effectiveProjectId,
           search.trim(),
           25,
+          rootId || undefined,
         );
         if (active && Array.isArray(res?.items)) {
           const mapped = mapServerBibDtos(res.items);
@@ -202,7 +207,7 @@ export function useCitationPickerState({
       active = false;
       clearTimeout(timer);
     };
-  }, [open, effectiveProjectId, search]);
+  }, [open, effectiveProjectId, rootId, search]);
 
   const allMergedItems = useMemo(
     () => mergeUniqueBibEntries(localBaseItems, serverItems),
@@ -361,6 +366,7 @@ export function useCitationPickerState({
         const res = await pagesService.citations.upsertEntries(effectiveProjectId, {
           entries: [matchedLibItem ?? entry],
           targetBibFile: preferredBib,
+          ...(rootId ? { pageId: rootId } : {}),
         });
 
         if (res.entries.length > 0) {
@@ -546,7 +552,12 @@ export function useCitationPickerState({
 
   const handleResolveIdentifier = async () => {
     if (!effectiveProjectId || !search.trim()) return;
-    const newEntry = await resolveAcademicIdentifier(effectiveProjectId, search.trim());
+    const newEntry = await resolveAcademicIdentifier(
+      effectiveProjectId,
+      search.trim(),
+      undefined,
+      rootId || undefined,
+    );
     if (newEntry) {
       setServerItems((prev) => [newEntry, ...prev]);
       setSelectedKey(newEntry.key);

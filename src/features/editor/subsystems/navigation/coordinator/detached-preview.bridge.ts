@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@/shared/lib/logger';
+import { buildPageScopeHref } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import {
@@ -259,26 +260,51 @@ export class DetachedPreviewBridge {
         useWorkspaceStore.getState().setPdfDetached(true);
         useCompileStore.getState().setIsViewerPoppedOut(true);
         const pageStore = usePageStore.getState();
+        const routeProjectMatch =
+          typeof window !== 'undefined'
+            ? window.location.pathname.match(/\/projects\/([^/]+)/)?.[1] ?? null
+            : null;
+        const routePageMatch =
+          typeof window !== 'undefined'
+            ? window.location.pathname.match(/\/pages\/([^/]+)/)?.[1] ?? null
+            : null;
+        const pageId =
+          pageStore.parentPageId ||
+          pageStore.rootPageId ||
+          pageStore.currentPage?.id ||
+          routePageMatch ||
+          null;
         const projectId =
           cmd.projectId ||
-          pageStore.projectId ||
-          pageStore.spaceId ||
-          extractProjectId(pageStore.currentPage) ||
-          pageStore.parentPageId ||
-          pageStore.currentPage?.id ||
-          (typeof window !== 'undefined'
-            ? window.location.pathname.match(/\/projects\/([^/]+)/)?.[1]
-            : null);
-        const pageId = pageStore.parentPageId || pageStore.rootPageId || null;
+          routeProjectMatch ||
+          (pageStore.spaceType === 'personal'
+            ? null
+            : pageStore.projectId ||
+              extractProjectId(pageStore.currentPage) ||
+              pageStore.spaceId ||
+              null);
+        const isPersonal =
+          !cmd.projectId &&
+          !routeProjectMatch &&
+          (pageStore.spaceType === 'personal' || !projectId || projectId === 'personal');
         if (!this.isCustomChannel) {
           this.syncScopedChannel();
         }
-        if (projectId && typeof window !== 'undefined') {
-          const url =
-            pageId && pageId !== projectId
-              ? `/projects/${encodeURIComponent(projectId)}/preview?pageId=${encodeURIComponent(pageId)}`
-              : `/projects/${projectId}/preview`;
-          window.open(url, '_blank');
+        if (typeof window !== 'undefined') {
+          if (isPersonal && pageId) {
+            const url = buildPageScopeHref(pageId, {
+              spaceKind: 'personal',
+              subpath: 'preview',
+            });
+            window.open(url, '_blank');
+          } else if (projectId) {
+            const url = buildPageScopeHref(pageId || projectId, {
+              spaceKind: 'project',
+              projectId,
+              subpath: 'preview',
+            });
+            window.open(url, '_blank');
+          }
         }
       }),
       editorCommandBus.subscribe('preview:attach', () => {

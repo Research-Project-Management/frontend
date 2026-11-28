@@ -139,9 +139,13 @@ export function scheduleLocalCreate(
         : null;
 
     const servicePort = host.getServicePort();
+    const wireType: 'insert' | 'delete' =
+      latest.type === 'delete' || (!latest.suggestedText && Boolean(latest.originalText))
+        ? 'delete'
+        : 'insert';
     const payload = {
       pageId: docId,
-      type: latest.type,
+      type: wireType,
       originalText: latest.originalText || '',
       suggestedText: latest.suggestedText || '',
       fromLine: latest.fromLine || 1,
@@ -152,7 +156,7 @@ export function scheduleLocalCreate(
       ...(anchorStart ? { anchorStart } : {}),
       ...(anchorEnd ? { anchorEnd } : {}),
       ...(typeof cachedRev === 'number' ? { baseDocRev: cachedRev } : {}),
-      idempotencyKey: sug.id,
+      headers: { 'Idempotency-Key': sug.id },
       silent: true,
     };
 

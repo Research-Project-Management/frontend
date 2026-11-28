@@ -56,6 +56,9 @@ export interface TimelineSidebarProps {
   onDeleteLabel: (labelId: string) => void;
   onDownloadVersion?: (version: number) => void;
   onRestoreVersion?: (version: number) => void;
+  canRestoreVersion?: boolean;
+  restoreDisabledReason?: string;
+  canManageLabels?: boolean;
   isAddingLabelLoading?: boolean;
 }
 
@@ -76,6 +79,9 @@ export function TimelineSidebar({
   onDeleteLabel,
   onDownloadVersion,
   onRestoreVersion,
+  canRestoreVersion = true,
+  restoreDisabledReason,
+  canManageLabels = true,
   isAddingLabelLoading = false,
 }: TimelineSidebarProps) {
   const [labelingVersion, setLabelingVersion] = useState<number | null>(null);
@@ -222,16 +228,18 @@ export function TimelineSidebar({
                       onClick={(e) => e.stopPropagation()}
                       className="w-52 text-xs"
                     >
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLabelingVersion(v.version);
-                        }}
-                        className="gap-2 cursor-pointer"
-                      >
-                        <Tag className="size-3.5 text-muted-foreground" />
-                        <span>Label this version</span>
-                      </DropdownMenuItem>
+                      {canManageLabels && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLabelingVersion(v.version);
+                          }}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Tag className="size-3.5 text-muted-foreground" />
+                          <span>Label this version</span>
+                        </DropdownMenuItem>
+                      )}
                       {onDownloadVersion && (
                         <DropdownMenuItem
                           onClick={(e) => {
@@ -248,8 +256,11 @@ export function TimelineSidebar({
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            disabled={!canRestoreVersion}
+                            title={!canRestoreVersion ? restoreDisabledReason : undefined}
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!canRestoreVersion) return;
                               onRestoreVersion(v.version);
                             }}
                             className="gap-2 cursor-pointer"

@@ -244,10 +244,14 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
       const result = await pagesService.export.importZip(effectiveSpaceId, file);
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Archive imported successfully', { id: toastId });
-      const targetDocId = result?.rootDocId;
-      if (targetDocId) {
-        const isPersonalScope = !spaceId || spaceId === 'personal';
-        router.push(!isPersonalScope ? `/projects/${spaceId}/pages/${targetDocId}` : `/pages/${targetDocId}`);
+      const newId = result?.pageId || result?.rootDocId;
+      if (newId) {
+        router.push(
+          buildPageEditorHref(newId, {
+            spaceKind: isProjectMode ? 'project' : 'personal',
+            projectId: isProjectMode ? spaceId : null,
+          }),
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed', { id: toastId });

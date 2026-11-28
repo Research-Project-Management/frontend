@@ -16,6 +16,11 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
+import {
+  useSettingsStore,
+  normalizeSpellCheckLanguage,
+  type CompilerEngine,
+} from '@/features/editor/core/store/settings.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 import {
@@ -197,6 +202,36 @@ export function hydrateEditorBootstrap(
     mainFilePath: normalizedMainFilePath,
   });
   latexDependencyGraph.setServerRootDoc(normalizedMainFilePath, workspace.rootDocId ?? null);
+
+  // 3b. Hydrate active Page build config (compiler, texlive, spellLang) without clobbering UI preferences
+  const pageCompiler = data.page?.compiler ?? workspace.compiler ?? activeDoc.page?.compiler;
+  const pageTexlive = data.page?.texlive ?? workspace.texlive ?? activeDoc.page?.texlive;
+  const pageSpellLang = data.page?.spellLang ?? workspace.spellLang ?? activeDoc.page?.spellLang;
+
+  if (pageCompiler || pageTexlive || pageSpellLang) {
+    pageStore.setPageBuildConfig({
+      ...(pageCompiler ? { compiler: pageCompiler } : {}),
+      ...(pageTexlive ? { texlive: pageTexlive } : {}),
+      ...(pageSpellLang ? { spellLang: pageSpellLang } : {}),
+    });
+    const settingsStore = useSettingsStore.getState();
+    const validEngines = new Set(['pdflatex', 'xelatex', 'lualatex', 'latex']);
+    if (pageCompiler && validEngines.has(pageCompiler)) {
+      settingsStore.setEngine(pageCompiler as CompilerEngine);
+    }
+    if (typeof pageTexlive === 'string' && pageTexlive.trim()) {
+      settingsStore.setTexLiveVersion(pageTexlive.trim());
+    }
+    if (typeof pageSpellLang === 'string' && pageSpellLang.trim()) {
+      const cleanSpell = pageSpellLang.trim();
+      if (cleanSpell.toLowerCase() === 'off') {
+        settingsStore.setSpellCheck(false);
+      } else {
+        settingsStore.setSpellCheck(true);
+        settingsStore.setSpellCheckLanguage(normalizeSpellCheckLanguage(cleanSpell));
+      }
+    }
+  }
 
   if (resolvedProjectId) {
     queryClient.setQueryData(['github-link', resolvedProjectId], {

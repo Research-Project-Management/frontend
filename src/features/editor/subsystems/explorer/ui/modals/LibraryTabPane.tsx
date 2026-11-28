@@ -56,8 +56,9 @@ export function LibraryTabPane({
   });
 
   const storeProjectId = usePageStore((s) => s.projectId);
+  const spaceType = usePageStore((s) => s.spaceType);
   const { data: libraryData, isLoading: isLoadingLibrary } = useViewItems(
-    storeProjectId || 'user',
+    spaceType === 'personal' ? 'user' : storeProjectId || 'user',
     'all',
     librarySearch,
   );
@@ -94,11 +95,15 @@ export function LibraryTabPane({
 
     setIsExportingBib(true);
     try {
+      const storeState = usePageStore.getState();
+      const activePageId =
+        parentPageId || storeState.rootPageId || storeState.currentPage?.id || undefined;
       const targetSpaceId =
-        usePageStore.getState().spaceId || usePageStore.getState().projectId || parentPageId;
+        storeState.spaceId || storeState.projectId || parentPageId;
       const res = await pagesService.citations.upsertEntries(targetSpaceId, {
         entries: chosenItems,
         targetBibFile: targetName,
+        ...(activePageId ? { pageId: activePageId } : {}),
       });
       const createdId = res.docId || res.filePath || targetName;
       navigationCoordinator.openDocument({

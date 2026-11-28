@@ -13,6 +13,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
   formatBibEntryToBibtex,
@@ -51,13 +52,31 @@ export function useCitationPickerActions() {
   }, []);
 
   const resolveAcademicIdentifier = useCallback(
-    async (projectId: string, query: string): Promise<BibEntry | null> => {
+    async (
+      projectId: string,
+      query: string,
+      targetBibFile?: string,
+      pageId?: string,
+    ): Promise<BibEntry | null> => {
       const trimmed = query.trim();
       if (!projectId || !trimmed) return null;
 
+      const storeState = usePageStore.getState();
+      const effectivePageId =
+        pageId ||
+        storeState.rootPageId ||
+        storeState.parentPageId ||
+        storeState.currentPage?.id ||
+        undefined;
+
       setIsResolving(true);
       try {
-        const res = await pagesService.citations.resolve(projectId, trimmed);
+        const res = await pagesService.citations.resolve(
+          projectId,
+          trimmed,
+          targetBibFile,
+          effectivePageId,
+        );
         const resolved = res?.entries?.[0];
         if (resolved?.key) {
           toast.success(`Resolved BibTeX for ${resolved.key}`);
@@ -91,12 +110,25 @@ export function useCitationPickerActions() {
   );
 
   const syncLibraryToProject = useCallback(
-    async (projectId: string, collectionId?: string | null, targetFilename?: string) => {
+    async (
+      projectId: string,
+      collectionId?: string | null,
+      targetFilename?: string,
+      pageId?: string,
+    ) => {
       if (!projectId) return null;
+      const storeState = usePageStore.getState();
+      const effectivePageId =
+        pageId ||
+        storeState.rootPageId ||
+        storeState.parentPageId ||
+        storeState.currentPage?.id ||
+        undefined;
       try {
         const res = await pagesService.citations.syncLibrary(projectId, {
           collectionId: collectionId ?? '',
           targetBibFile: targetFilename,
+          ...(effectivePageId ? { pageId: effectivePageId } : {}),
         });
         if (res?.conflicts && res.conflicts.length > 0) {
           toast.warning(

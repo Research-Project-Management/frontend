@@ -23,6 +23,7 @@ import { cn, formatBytes } from '@/shared/lib/utils';
 import { UPLOAD_LIMITS } from '@/config/limits';
 import { pagesService } from '@/features/editor/core';
 import { pageKeys } from '@/features/pages/hooks/use-page';
+import { buildPageEditorHref } from '@/features/pages/utils/page-url';
 
 interface ImportDocumentModalProps {
   isOpen: boolean;
@@ -117,12 +118,9 @@ export function ImportDocumentModal({
       setIsOpen(false);
       setSelectedFile(null);
 
-      if (result?.rootDocId) {
-        if (!projectId || projectId === 'personal') {
-          router.push(`/pages/${result.rootDocId}`);
-        } else {
-          router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
-        }
+      const newId = result?.pageId || result?.rootDocId;
+      if (newId) {
+        router.push(buildPageEditorHref(newId, { projectId }));
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Conversion failed', { id: toastId });

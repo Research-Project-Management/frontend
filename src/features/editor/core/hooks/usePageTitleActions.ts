@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { useExport } from '@/features/editor/core/hooks/useExport';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { buildPageScopeHref } from '@/features/editor/core/coordinator/editor-scope';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 export interface UseProjectTitleActionsOptions {
@@ -172,8 +173,18 @@ export function usePageTitleActions({
         const newPageId = res?.page?.id || res?.rootPageId || res?.id;
         toast.success('Document duplicated', { id: toastId });
         if (newPageId) {
-          const isPersonal = !effectiveProjectId || effectiveProjectId === 'personal' || effectiveProjectId === targetPageId;
-          router.push(isPersonal ? `/pages/${newPageId}` : `/projects/${effectiveProjectId}/pages/${newPageId}`);
+          const storeState = usePageStore.getState();
+          const isPersonal =
+            storeState.spaceType === 'personal' ||
+            !effectiveProjectId ||
+            effectiveProjectId === 'personal' ||
+            effectiveProjectId === targetPageId;
+          router.push(
+            buildPageScopeHref(newPageId, {
+              spaceKind: isPersonal ? 'personal' : 'project',
+              projectId: isPersonal ? null : effectiveProjectId,
+            }),
+          );
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Failed to duplicate document, downloading backup file instead.';

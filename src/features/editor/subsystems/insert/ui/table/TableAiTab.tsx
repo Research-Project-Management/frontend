@@ -64,11 +64,9 @@ export function TableAiTab({
     if ((!prompt.trim() && !image) || isGenerating) return;
     setIsGenerating(true);
     try {
-      const parts: string[] = [];
-      if (prompt.trim()) parts.push(prompt.trim());
-      if (image) parts.push(`[Attached table image: ${image.file.name}]`);
-
-      const output = await pagesService.ai.generateLatexTable(parts.join('\n\n'));
+      const output = await pagesService.ai.generateLatexTable(prompt.trim(), {
+        image: image?.file ?? null,
+      });
       const imported = onApplyRaw(output) || onFallbackImport(output);
       if (imported) {
         toast.success('Generated table with AI', { id: 'ai-table-gen' });

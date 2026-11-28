@@ -168,7 +168,7 @@ export class SessionCoordinator {
   public isRealtimeConnected(fileId: string): boolean {
     const model = lruDocumentCache.getModel(fileId);
     const projectId = this.resolveEffectiveProjectId(model?.projectId);
-    const provider = projectId ? getActiveYjsProvider(projectId, fileId) : null;
+    const provider = getActiveYjsProvider(fileId, projectId || undefined);
     const providerConnected = Boolean(
       this.realtimeConnected.get(fileId) || (provider && !provider.isDestroyed && provider.isSynced),
     );

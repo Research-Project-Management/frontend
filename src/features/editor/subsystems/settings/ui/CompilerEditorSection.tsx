@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import {
+  pagesService,
   usePageStore,
   useSettingsStore,
   type CompilerEngine,
@@ -44,6 +45,27 @@ export function CompilerEditorSection({
   const texLiveVersion = useSettingsStore((s) => s.texLiveVersion || '2025');
   const setTexLiveVersion = useSettingsStore((s) => s.setTexLiveVersion);
   const mainFilePath = usePageStore((s) => s.mainFilePath);
+  const rootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || s.currentPage?.id || '');
+  const canEdit = usePageStore((s) => s.permissions?.canEdit ?? true);
+  const isLocked = useSettingsStore((s) => s.isLocked);
+  const setPageBuildConfig = usePageStore((s) => s.setPageBuildConfig);
+
+  const handleEngineChange = (val: string) => {
+    const nextEngine = val as CompilerEngine;
+    setEngine(nextEngine);
+    setPageBuildConfig({ compiler: nextEngine });
+    if (rootPageId && canEdit && !isLocked) {
+      void pagesService.docs.updateMetadata(rootPageId, { compiler: nextEngine }).catch(() => {});
+    }
+  };
+
+  const handleTexLiveChange = (val: string) => {
+    setTexLiveVersion(val);
+    setPageBuildConfig({ texlive: val });
+    if (rootPageId && canEdit && !isLocked) {
+      void pagesService.docs.updateMetadata(rootPageId, { texlive: val }).catch(() => {});
+    }
+  };
   const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);
   const setAutoCloseBrackets = useSettingsStore((s) => s.setAutoCloseBrackets);
   const autoComplete = useSettingsStore((s) => s.autoComplete);
@@ -73,7 +95,7 @@ export function CompilerEditorSection({
           <SettingRow title="Compiler">
             <Select
               value={engine}
-              onValueChange={(val) => setEngine(val as CompilerEngine)}
+              onValueChange={handleEngineChange}
             >
               <SelectTrigger
                 aria-label="Compiler engine"
@@ -99,7 +121,7 @@ export function CompilerEditorSection({
           </SettingRow>
 
           <SettingRow title="TeX Live version">
-            <Select value={texLiveVersion} onValueChange={setTexLiveVersion}>
+            <Select value={texLiveVersion} onValueChange={handleTexLiveChange}>
               <SelectTrigger
                 aria-label="TeX Live version"
                 className="w-36 h-8 text-xs font-medium cursor-pointer border-border bg-background"

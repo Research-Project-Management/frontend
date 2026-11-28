@@ -29,6 +29,7 @@ export interface DiffPaneProps {
   isRestoringSingleFile?: boolean;
   confirmingFileRestore: boolean;
   setConfirmingFileRestore: (confirming: boolean) => void;
+  canRestoreFile?: boolean;
 }
 
 const DIFF_LINE_WIDTHS = [
@@ -61,6 +62,7 @@ export function DiffPane({
   isRestoringSingleFile = false,
   confirmingFileRestore,
   setConfirmingFileRestore,
+  canRestoreFile = true,
 }: DiffPaneProps) {
   const activeFileDiff = useMemo(() => {
     if (!diffData?.files || diffData.files.length === 0) return null;
@@ -160,7 +162,7 @@ export function DiffPane({
               )}
             </div>
 
-            {selectedBaseVersion && (
+            {selectedBaseVersion && canRestoreFile && (
               <div className="flex items-center gap-1 shrink-0">
                 <Button
                   variant={confirmingFileRestore || activeFileDiff.status === 'deleted' ? 'destructive' : 'secondary'}

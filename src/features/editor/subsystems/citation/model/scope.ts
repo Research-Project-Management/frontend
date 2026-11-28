@@ -3,9 +3,12 @@
  * Single source of truth for resolving Editor -> Library & Citations scope.
  */
 
+import { resolvePageScope } from '@/features/editor/core/coordinator/editor-scope';
+
 export const PERSONAL_LIBRARY_SCOPE = 'user' as const;
 
 export interface CitationScopeInput {
+  spaceType?: 'personal' | 'project' | null;
   propProjectId?: string;
   routeProjectId?: string;
   storeProjectId?: string;
@@ -24,16 +27,29 @@ export interface CitationScope {
 }
 
 export function resolveCitationScope(input: CitationScopeInput): CitationScope {
-  const projectId =
-    input.propProjectId ||
-    input.routeProjectId ||
-    input.storeProjectId ||
-    input.pageProjectId ||
-    '';
+  const isExplicitPersonal = input.spaceType === 'personal';
+  const rawProjectId = isExplicitPersonal
+    ? input.routeProjectId || ''
+    : input.propProjectId ||
+      input.routeProjectId ||
+      input.storeProjectId ||
+      input.pageProjectId ||
+      '';
 
-  const spaceId = projectId || input.storeSpaceId || '';
-  const libraryScope = projectId || PERSONAL_LIBRARY_SCOPE;
-  const pageId = input.pageId || '';
+  const pageScope = resolvePageScope({
+    spaceType: input.spaceType,
+    projectId: rawProjectId,
+    spaceId: input.storeSpaceId || input.propProjectId || rawProjectId,
+    pageId: input.pageId,
+  });
+
+  const spaceId =
+    (pageScope.spaceKind === 'project'
+      ? pageScope.projectId
+      : input.storeSpaceId || input.propProjectId || '') || '';
+  const libraryScope =
+    pageScope.spaceKind === 'personal' ? PERSONAL_LIBRARY_SCOPE : pageScope.libraryScope;
+  const pageId = pageScope.pageId;
 
   return { spaceId, libraryScope, pageId };
 }

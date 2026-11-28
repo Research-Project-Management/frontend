@@ -11,7 +11,7 @@ export interface ReviewServicePort {
   ): Promise<unknown>;
   createSuggestion?(payload: {
     pageId: string;
-    type: 'insert' | 'delete' | 'replace';
+    type: 'insert' | 'delete';
     originalText: string;
     suggestedText: string;
     fromLine: number;
@@ -22,6 +22,7 @@ export interface ReviewServicePort {
     anchorStart?: string;
     anchorEnd?: string;
     baseDocRev?: number;
+    headers?: Record<string, string>;
     idempotencyKey?: string;
     silent?: boolean;
   }): Promise<{

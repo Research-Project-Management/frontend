@@ -21,6 +21,7 @@ import {
 } from '@/shared/components/ui/select';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useDictionary } from '../hooks/useDictionary';
 
 const SPELL_LANGUAGES = [
@@ -39,6 +40,8 @@ export interface SpellingTabProps {
 
 export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {}) {
   const storeProjectId = usePageStore((s) => s.projectId || s.spaceId || '');
+  const rootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || s.currentPage?.id || '');
+  const setPageBuildConfig = usePageStore((s) => s.setPageBuildConfig);
   const canEdit = usePageStore((s) => s.permissions?.canEdit ?? true);
   const isLocked = useSettingsStore((s) => s.isLocked);
   const spellCheck = useSettingsStore((s) => s.spellCheck);
@@ -54,9 +57,20 @@ export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {})
   const handleLanguageChange = (value: string) => {
     if (value === 'off') {
       setSpellCheck(false);
+      setPageBuildConfig({ spellLang: 'off' });
+      if (rootPageId && !isReadOnly) {
+        void pagesService.docs.updateMetadata(rootPageId, { spellLang: 'off' }).catch(() => {});
+      }
     } else {
+      const normalized = value.replace('_', '-');
       setSpellCheck(true);
-      setSpellCheckLanguage(value);
+      setSpellCheckLanguage(normalized);
+      setPageBuildConfig({ spellLang: normalized });
+      if (rootPageId && !isReadOnly) {
+        void pagesService.docs
+          .updateMetadata(rootPageId, { spellLang: normalized })
+          .catch(() => {});
+      }
     }
   };
 

@@ -35,6 +35,7 @@ interface SnapshotFileViewProps {
   confirmRestore: boolean;
   onConfirmRestoreChange: (confirm: boolean) => void;
   onRestoreFile: (version: number) => void;
+  canRestoreFile?: boolean;
 }
 
 const SNAPSHOT_LINE_WIDTHS = [
@@ -67,6 +68,7 @@ export function SnapshotFileView({
   confirmRestore,
   onConfirmRestoreChange,
   onRestoreFile,
+  canRestoreFile = true,
 }: SnapshotFileViewProps) {
   const fileEntry = findSnapshotFile(snapshot?.files, activeFile);
 
@@ -143,7 +145,7 @@ export function SnapshotFileView({
           )}
         </div>
 
-        {version != null && (
+        {version != null && canRestoreFile && (
           <div className="flex items-center gap-1 shrink-0">
             <Button
               variant={confirmRestore ? 'destructive' : 'secondary'}

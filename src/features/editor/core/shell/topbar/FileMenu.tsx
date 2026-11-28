@@ -26,12 +26,14 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
+  const storeProjectId = usePageStore((s) =>
+    s.spaceType === 'personal' ? '' : s.projectId || s.spaceId,
+  );
 
   const effectiveProjectId =
     params?.projectId ||
-    extractProjectId(currentPage) ||
     storeProjectId ||
+    extractProjectId(currentPage) ||
     '';
 
   const {

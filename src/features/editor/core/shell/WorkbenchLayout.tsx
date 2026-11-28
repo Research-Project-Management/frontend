@@ -127,7 +127,9 @@ export function WorkbenchLayout() {
 
   const storeProjectId = usePageStore((s) => s.projectId);
   const spaceId = usePageStore((s) => s.spaceId);
+  const spaceType = usePageStore((s) => s.spaceType);
   const { libraryScope } = resolveCitationScope({
+    spaceType,
     routeProjectId,
     storeProjectId: storeProjectId || undefined,
     storeSpaceId: spaceId || undefined,

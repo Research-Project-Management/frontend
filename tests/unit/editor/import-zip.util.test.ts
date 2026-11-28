@@ -164,23 +164,37 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
       fetchSpy.mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            id: 'file-2',
-            projectId: 'page-standalone',
-            filename: 'standalone.png',
-            sizeBytes: 8,
-            hash: 'def',
-            mimeType: 'image/png',
-            createdAt: '2026-01-01T00:00:00.000Z',
+            success: true,
+            data: {
+              id: 'file-2',
+              nodeId: 'node-2',
+              fileId: 'file-2',
+              projectId: 'page-standalone',
+              filename: 'standalone.png',
+              sizeBytes: 8,
+              hash: 'def',
+              mimeType: 'image/png',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         ),
       );
 
-      await filestore.uploadPageFile('page-standalone', png, null, undefined, undefined);
+      const standaloneItem = await filestore.uploadPageFile(
+        'page-standalone',
+        png,
+        null,
+        undefined,
+        undefined,
+      );
       const secondUrl = String(fetchSpy.mock.calls[1]?.[0]);
       expect(secondUrl).toContain(
         '/spaces/page-standalone/files?name=diagram.png&pageId=page-standalone',
       );
+      expect(standaloneItem.id).toBe('file-2');
+      expect(standaloneItem.nodeId).toBe('node-2');
+      expect(standaloneItem.fileId).toBe('file-2');
     });
   });
 });

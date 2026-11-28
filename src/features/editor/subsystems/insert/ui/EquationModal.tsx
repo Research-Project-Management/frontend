@@ -81,11 +81,9 @@ export function EquationModal({
     if ((!prompt.trim() && !image) || isGenerating) return;
     setIsGenerating(true);
     try {
-      const parts: string[] = [];
-      if (prompt.trim()) parts.push(prompt.trim());
-      if (image) parts.push(`[Attached equation image: ${image.file.name}]`);
-
-      const equation = await pagesService.ai.generateLatexEquation(parts.join('\n\n'));
+      const equation = await pagesService.ai.generateLatexEquation(prompt.trim(), {
+        image: image?.file ?? null,
+      });
       if (!equation) {
         toast.error('Could not generate an equation. Try rephrasing.', {
           id: 'ai-equation-gen',

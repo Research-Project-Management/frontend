@@ -28,6 +28,15 @@ export { useEditorScope } from './hooks/useEditorScope';
 export {
   resolveEditorScope,
   resolveEditorScopeFromState,
+  resolvePageScope,
+  buildPageScopeHref,
+  PERSONAL_SPACE_PARAM,
+  PERSONAL_LIBRARY_SCOPE_KEY,
+  type PageScope,
+  type PageScopeInput,
+  type PageSpaceKind,
+  type PageEditorSubpath,
+  type BuildPageEditorHrefOptions,
   type ResolvedEditorScope,
   type EditorScopeOverrides,
 } from './coordinator/editor-scope';

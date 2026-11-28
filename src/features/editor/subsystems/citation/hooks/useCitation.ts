@@ -11,7 +11,8 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/types/core.types';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import {
@@ -19,9 +20,11 @@ import {
   formatCitationSnippet,
   formatItemAuthorSummary,
 } from '../model/formatter';
+import { PERSONAL_LIBRARY_SCOPE } from '../model/scope';
 
 export interface UseEditorCitationsOptions {
   projectId?: string;
+  pageId?: string;
   content?: string;
   enabled?: boolean;
 }
@@ -43,10 +46,20 @@ export interface UseEditorCitationsResult {
 
 export function useEditorCitations({
   projectId,
+  pageId: propPageId,
   content = '',
   enabled = true,
 }: UseEditorCitationsOptions): UseEditorCitationsResult {
-  const { data, isLoading, isError } = useViewItems(projectId || 'user', 'all');
+  const spaceType = usePageStore((s) => s.spaceType);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
+  const activePageId = usePageStore(
+    (s) => propPageId || s.rootPageId || s.parentPageId || s.currentPage?.id || '',
+  );
+  const effectiveLibraryScope =
+    spaceType === 'personal' || !projectId || projectId === 'personal'
+      ? PERSONAL_LIBRARY_SCOPE
+      : projectId;
+  const { data, isLoading, isError } = useViewItems(effectiveLibraryScope, 'all');
   const libraryItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
   useEffect(() => {
@@ -57,6 +70,13 @@ export function useEditorCitations({
 
   useEffect(() => {
     if (!enabled) return;
+    const targetSpaceId =
+      (projectId && projectId !== PERSONAL_LIBRARY_SCOPE ? projectId : '') || storeSpaceId;
+    if (targetSpaceId && activePageId) {
+      void pagesService.citations
+        .list(targetSpaceId, '', 500, activePageId)
+        .catch(() => null);
+    }
     const seenIds = new Set<string>();
     const wsFiles = workspaceCoordinator.getProjectFiles() || [];
     for (const wf of wsFiles) {
@@ -79,7 +99,7 @@ export function useEditorCitations({
         latexSymbolsIndex.indexFile(model.fileId, fileName, model.content, true);
       }
     }
-  }, [projectId, enabled]);
+  }, [projectId, storeSpaceId, activePageId, enabled]);
 
   const documentKeys = useMemo(() => {
     if (!content || !enabled) return [];

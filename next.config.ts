@@ -200,7 +200,7 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     const excludedPrefixes =
-      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|chat|friends|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages|experiments|drafts|home';
+      'api|git|auth|health|projects|library|storage|settings|stickies|your-work|ai|chat|friends|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages|experiments|drafts|home';
     return [
       {
         source: `/:workspaceId((?!${excludedPrefixes}).+)/projects/:projectId/:path*`,
@@ -323,6 +323,10 @@ const nextConfig: NextConfig = {
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,
+      },
+      {
+        source: '/git/:path*',
+        destination: `${backendUrl}/git/:path*`,
       },
       {
         source: '/auth/:path((?!callback$).*)*',

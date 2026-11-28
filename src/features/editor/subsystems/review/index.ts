@@ -51,7 +51,7 @@ export {
 } from './ui/subcomponents/Badges';
 
 // 4. Hooks
-export { useReviewSync } from './ui/hooks/useReviewSync';
+export { useReviewSync } from './hooks/useReviewSync';
 export {
   useReviewPendingCount,
-} from './ui/hooks/usePendingCount';
+} from './hooks/usePendingCount';

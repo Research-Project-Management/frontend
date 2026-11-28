@@ -1,26 +1,30 @@
 /**
  * session-persistence.strategy.ts
  *
- * REST CAS retry, conflict resolution extraction, realtime Yjs flush, and
- * post-save bookkeeping strategies for SessionCoordinator.
+ * REST CAS retry, conflict resolution, realtime Yjs flush, and tab/session
+ * lifecycle helpers for SessionCoordinator (zero offline shadow DB).
  */
 
 import { logger } from '@/shared/lib/logger';
-import { lruDocumentCache, type DocumentModelState } from '@/features/editor/domain/document/lru-document-cache';
 import {
-  unsyncedEditsStore,
-  syncedDocCacheStore,
-} from '@/features/editor/domain/offline-storage';
+  lruDocumentCache,
+  type DocumentModelState,
+} from '@/features/editor/domain/document/lru-document-cache';
 import { type sessionFsmTransition } from '@/features/editor/domain/document/session-fsm';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
+  evictYjsProviderByDocId,
 } from '@/features/editor/sdk/realtime';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
-import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
-import { editorCommandBus } from '../bus/command-bus';
-import type { UnsyncedEditsCoordinator } from './unsynced-edits.coordinator';
+import {
+  editorCommandBus,
+  getAllRegisteredEngines,
+  getEditorEngineForFile,
+  getActiveEditorEngine,
+} from '../bus/command-bus';
 import type { DocumentConflictCoordinator } from './document-conflict.coordinator';
 
 const TRANSIENT_ERROR_MSG_REGEX =
@@ -145,27 +149,12 @@ export async function persistWithRetry(
 
 export interface SessionPersistenceHost {
   readonly persistenceAdapter: DocumentPersistencePort;
-  readonly unsyncedEdits: UnsyncedEditsCoordinator;
   readonly conflicts: DocumentConflictCoordinator;
   readonly autoSaveDelay: number;
   transitionFsm(fileId: string, event: Parameters<typeof sessionFsmTransition>[1]): void;
   resolveEffectiveProjectId(modelProjectId?: string): string;
   isRealtimeConnected(fileId: string): boolean;
   scheduleAutoSave(fileId: string, delayMs: number): void;
-  saveUnsyncedEdit(fileId: string, content: string, projectId?: string): void;
-  clearUnsyncedEdit(fileId: string): void;
-  enqueueOfflineEdit(
-    fileId: string,
-    model: {
-      projectId?: string;
-      spaceId?: string;
-      pageId?: string;
-      content: string;
-      filePath?: string;
-      serverRev?: number;
-    },
-    options?: { flushImmediate?: boolean },
-  ): void;
 }
 
 export async function finalizeSuccessfulSave(
@@ -185,30 +174,14 @@ export async function finalizeSuccessfulSave(
 
   const model = lruDocumentCache.getModel(fileId);
   if (!model) {
-    const edit = await unsyncedEditsStore.get(fileId).catch(() => null);
-    if (!edit || edit.content === sentContent) {
-      lruDocumentCache.markClean(fileId);
-      clearWorkspaceTabDirty(fileId);
-      host.clearUnsyncedEdit(fileId);
-      return true;
-    }
-    return false;
+    lruDocumentCache.markClean(fileId);
+    clearWorkspaceTabDirty(fileId);
+    return true;
   }
   if (lruDocumentCache.markCleanIfUnchanged(fileId, sentContent, sentVersion)) {
     lruDocumentCache.markClean(fileId);
     clearWorkspaceTabDirty(fileId, model.projectId);
-    host.clearUnsyncedEdit(fileId);
     const effectiveProjectId = host.resolveEffectiveProjectId(model.projectId);
-    void syncedDocCacheStore.put({
-      id: fileId,
-      projectId: effectiveProjectId,
-      title: model.filePath || fileId,
-      content: sentContent,
-      filePath: model.filePath,
-      rev: model.serverRev,
-      hash: model.hash,
-      updatedAt: Date.now(),
-    });
     latexSymbolsIndex.refreshFromServer(effectiveProjectId);
     return true;
   }
@@ -279,7 +252,6 @@ export async function handleSaveConflictOrError(
 
     const localContent = model?.content ?? sentContent;
 
-    // Case A: Server already has identical content — resync rev cleanly without conflict UI
     if (
       typeof resolvedRemoteContent === 'string' &&
       resolvedRemoteContent === localContent
@@ -288,26 +260,7 @@ export async function handleSaveConflictOrError(
         lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
       }
       await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
-      useConnectivityStore.getState().setSyncStatus('synced');
       return true;
-    }
-
-    // Case B: Stale local serverRev (e.g. after Yjs/self-save) — server matches our last synced snapshot
-    const cachedSynced = await syncedDocCacheStore.get(fileId).catch(() => null);
-    if (
-      typeof resolvedRemoteContent === 'string' &&
-      remoteRev !== undefined &&
-      cachedSynced?.content === resolvedRemoteContent
-    ) {
-      lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
-      try {
-        await persistWithRetry(host.persistenceAdapter, fileId, sentContent, remoteRev);
-        await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
-        useConnectivityStore.getState().setSyncStatus('synced');
-        return true;
-      } catch {
-        // Fall through to real conflict reporting if retry fails
-      }
     }
 
     host.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
@@ -315,7 +268,6 @@ export async function handleSaveConflictOrError(
       lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
     }
     const hasAuthoritativeRemote = typeof resolvedRemoteContent === 'string';
-    host.unsyncedEdits.flushNow(fileId, localContent, model?.projectId);
     host.conflicts.recordConflict(
       fileId,
       localContent,
@@ -325,18 +277,10 @@ export async function handleSaveConflictOrError(
         hasAuthoritativeRemote,
       },
     );
-    useConnectivityStore.getState().setSyncStatus('error');
     return false;
   }
 
   host.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
-  if (isNetworkError(err) && model) {
-    useConnectivityStore.getState().recordOffline();
-    host.saveUnsyncedEdit(fileId, model.content, model.projectId);
-    host.enqueueOfflineEdit(fileId, model, { flushImmediate: false });
-  } else {
-    useConnectivityStore.getState().setSyncStatus('error');
-  }
   return false;
 }
 
@@ -348,33 +292,15 @@ function commitCleanState(
   projectId: string | undefined,
   savedVersion: number,
   currentVersion: number,
-  savedAt?: string,
 ): void {
-  const model = lruDocumentCache.getModel(docId);
-  host.clearUnsyncedEdit(docId);
   lruDocumentCache.markSaved(docId);
   lruDocumentCache.markClean(docId);
   clearWorkspaceTabDirty(docId, projectId);
-  if (model) {
-    const effectiveProjectId = host.resolveEffectiveProjectId(model.projectId);
-    void syncedDocCacheStore.put({
-      id: docId,
-      projectId: effectiveProjectId,
-      title: model.filePath || docId,
-      content: model.content,
-      filePath: model.filePath,
-      rev: model.serverRev,
-      hash: model.hash,
-      updatedAt: savedAt ? new Date(savedAt).getTime() : Date.now(),
-    });
-  }
   host.transitionFsm(docId, {
     type: 'SAVE_SUCCESS',
     savedVersion,
     currentVersion,
   });
-  useConnectivityStore.getState().setSyncStatus('synced');
-  useConnectivityStore.getState().setLastSavedAt(savedAt ? new Date(savedAt) : new Date());
 }
 
 export function flushViaRealtimeYjsStrategy(
@@ -384,14 +310,9 @@ export function flushViaRealtimeYjsStrategy(
 ): boolean {
   const effectiveProjectId = host.resolveEffectiveProjectId(projectId);
   flushYjsProvider(effectiveProjectId, fileId);
-  const model = lruDocumentCache.getModel(fileId);
-  if (model) {
-    host.saveUnsyncedEdit(fileId, model.content, effectiveProjectId);
-  }
   const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
   pendingRealtimeFlushVersions.set(fileId, currentVersion);
   host.transitionFsm(fileId, { type: 'SAVE_START' });
-  useConnectivityStore.getState().setSyncStatus('saving');
   return true;
 }
 
@@ -422,12 +343,11 @@ export function handleDocumentPersisted(
       savedVersion: flushedVersion,
       currentVersion,
     });
-    useConnectivityStore.getState().setLastSavedAt(savedAt ? new Date(savedAt) : new Date());
     return;
   }
 
   pendingRealtimeFlushVersions.delete(docId);
-  commitCleanState(host, docId, model?.projectId, currentVersion, currentVersion, savedAt);
+  commitCleanState(host, docId, model?.projectId, currentVersion, currentVersion);
 }
 
 export async function flushViaRestCasStrategy(
@@ -441,14 +361,9 @@ export async function flushViaRestCasStrategy(
   const sentVersion = lruDocumentCache.getContentVersion(fileId);
   const expectedRev = model.serverRev;
   try {
-    useConnectivityStore.getState().incrementPending();
     await persistWithRetry(host.persistenceAdapter, fileId, sentContent, expectedRev);
-    const clean = await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
-    useConnectivityStore.getState().decrementPending();
-    useConnectivityStore.getState().setLastSavedAt(new Date());
-    return clean;
+    return await finalizeSuccessfulSave(host, fileId, sentContent, sentVersion);
   } catch (err) {
-    useConnectivityStore.getState().decrementPending();
     const resolvedCleanly = await handleSaveConflictOrError(
       host,
       fileId,
@@ -456,10 +371,7 @@ export async function flushViaRestCasStrategy(
       err,
       sentVersion,
     );
-    if (resolvedCleanly) {
-      useConnectivityStore.getState().setLastSavedAt(new Date());
-      return true;
-    }
+    if (resolvedCleanly) return true;
     logger.error(`[SessionCoordinator] Failed to flush file ${fileId}`, err);
     return false;
   }
@@ -479,11 +391,6 @@ export function executeResolveConflictHelper(params: {
   host.transitionFsm(fileId, { type: 'CONFLICT_RESOLVED', resolution });
 
   if (resolution === 'take-remote') {
-    host.unsyncedEdits.flushNow(
-      fileId,
-      conflict.localContent,
-      lruDocumentCache.getModel(fileId)?.projectId,
-    );
     if (
       conflict.hasAuthoritativeRemote === false &&
       conflict.remoteContent === '' &&
@@ -503,11 +410,6 @@ export function executeResolveConflictHelper(params: {
       fileId,
     });
   } else if (resolution === 'custom-merge' && typeof mergedContent === 'string') {
-    host.unsyncedEdits.flushNow(
-      fileId,
-      conflict.localContent,
-      lruDocumentCache.getModel(fileId)?.projectId,
-    );
     lruDocumentCache.updateContent(fileId, mergedContent, true);
     reindex(fileId, mergedContent);
     editorCommandBus.dispatch({
@@ -524,24 +426,13 @@ export function executeResolveConflictHelper(params: {
 export async function executeFlushAllDirtyModelsHelper(params: {
   dirtyModels: DocumentModelState[];
   flushFile: (fileId: string) => Promise<boolean>;
-  enqueueOfflineEdit: (fileId: string, model: DocumentModelState) => void;
 }): Promise<{
   total: number;
   succeeded: number;
   failed: number;
   results: Array<{ fileId: string; success: boolean; error?: unknown }>;
 }> {
-  const { dirtyModels, flushFile, enqueueOfflineEdit } = params;
-  const isOnline = useConnectivityStore.getState().checkIsOnline();
-
-  if (!isOnline) {
-    useConnectivityStore.getState().setSyncStatus('offline');
-    for (const model of dirtyModels) {
-      enqueueOfflineEdit(model.fileId, model);
-    }
-    return { total: dirtyModels.length, succeeded: 0, failed: 0, results: [] };
-  }
-
+  const { dirtyModels, flushFile } = params;
   const results: Array<{ fileId: string; success: boolean; error?: unknown }> = [];
   let succeeded = 0;
   let failed = 0;
@@ -564,4 +455,122 @@ export async function executeFlushAllDirtyModelsHelper(params: {
 
   await Promise.allSettled(flushPromises);
   return { total: dirtyModels.length, succeeded, failed, results };
+}
+
+export function clearDeletedFileSessionResources(params: {
+  fileId: string;
+  conflicts: DocumentConflictCoordinator;
+  lastCompiledContentMap: Map<string, string>;
+  realtimeConnected: Map<string, boolean>;
+  fsmContexts: Map<string, unknown>;
+}): void {
+  const { fileId, conflicts, lastCompiledContentMap, realtimeConnected, fsmContexts } = params;
+  evictYjsProviderByDocId(fileId, { skipFlush: true });
+  fsmContexts.delete(fileId);
+  warmEditorStatePool.delete(fileId);
+  lruDocumentCache.markClean(fileId);
+  lruDocumentCache.evictModel(fileId, { skipPersistence: true });
+  lastCompiledContentMap.delete(fileId);
+  realtimeConnected.delete(fileId);
+  conflicts.evictFile(fileId);
+}
+
+export function finalizeTabCloseEviction(params: {
+  fileId: string;
+  hasInFlightFlush: boolean;
+  flushFile: (fileId: string) => Promise<boolean>;
+  conflicts: DocumentConflictCoordinator;
+  lastCompiledContentMap: Map<string, string>;
+  realtimeConnected: Map<string, boolean>;
+}): void {
+  const {
+    fileId,
+    hasInFlightFlush,
+    flushFile,
+    conflicts,
+    lastCompiledContentMap,
+    realtimeConnected,
+  } = params;
+  warmEditorStatePool.delete(fileId);
+  const model = lruDocumentCache.getModel(fileId);
+  lastCompiledContentMap.delete(fileId);
+  realtimeConnected.delete(fileId);
+
+  const finalizeEviction = () => {
+    const wsState = useWorkspaceStore.getState();
+    const stillOpenInAnyTab = Object.values(wsState.tabsByProject).some((tabs) =>
+      tabs?.some((t) => t.id === fileId),
+    );
+    if (!stillOpenInAnyTab && !lruDocumentCache.isDirty(fileId)) {
+      lruDocumentCache.evictModel(fileId);
+      conflicts.evictFile(fileId);
+    }
+  };
+
+  if (model?.isDirty || hasInFlightFlush) {
+    void flushFile(fileId).finally(finalizeEviction);
+  } else {
+    lruDocumentCache.evictModel(fileId);
+    conflicts.evictFile(fileId);
+  }
+}
+
+export function executeSwitchTabDeactivate(params: {
+  fromFileId: string | null;
+  toFileId: string;
+  transitionDeactivate: (fileId: string) => void;
+  transitionActivate: (fileId: string) => void;
+}): void {
+  const { fromFileId, toFileId, transitionDeactivate, transitionActivate } = params;
+  if (fromFileId && fromFileId !== toFileId) {
+    const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
+    const fromEngine =
+      getEditorEngineForFile?.(fromFileId) ??
+      (registeredCount === 0 ? getActiveEditorEngine() : null);
+    const fromContent = fromEngine?.getContent();
+    const fromModel = lruDocumentCache.getModel(fromFileId);
+    if (fromContent !== undefined && fromModel && fromModel.content !== fromContent) {
+      lruDocumentCache.updateContent(fromFileId, fromContent, true);
+    }
+    transitionDeactivate(fromFileId);
+  }
+  transitionActivate(toFileId);
+  lruDocumentCache.setActiveFileId(toFileId);
+}
+
+export function executeRemoteContentUpdatedHelper(params: {
+  fileId: string;
+  remoteContent: string;
+  isRealtimeConnected: (fileId: string) => boolean;
+  transitionRemoteEdit: (fileId: string, version: number) => void;
+  transitionConflictDetected: (fileId: string) => void;
+  reindex: (fileId: string, content: string) => void;
+  conflicts: DocumentConflictCoordinator;
+}): void {
+  const {
+    fileId,
+    remoteContent,
+    isRealtimeConnected,
+    transitionRemoteEdit,
+    transitionConflictDetected,
+    reindex,
+    conflicts,
+  } = params;
+  const model = lruDocumentCache.getModel(fileId);
+  if (!model?.isDirty) {
+    lruDocumentCache.updateContent(fileId, remoteContent, false);
+    lruDocumentCache.markClean(fileId);
+    const v = lruDocumentCache.getContentVersion(fileId) || 0;
+    transitionRemoteEdit(fileId, v);
+    reindex(fileId, remoteContent);
+    return;
+  }
+  if (model.content === remoteContent) {
+    conflicts.clearConflict(fileId);
+    return;
+  }
+  if (isRealtimeConnected(fileId)) return;
+
+  transitionConflictDetected(fileId);
+  conflicts.recordConflict(fileId, model.content, remoteContent);
 }

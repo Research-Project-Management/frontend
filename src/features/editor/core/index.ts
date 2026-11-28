@@ -6,7 +6,7 @@
  * Responsibilities:
  * - Central Command Bus (IEditorCommandBus) & strongly-typed discriminated unions.
  * - CodeMirror 6 Host, Extension Compartments, Keymaps & Themes.
- * - Unified Workspace, Document, Layout, Connectivity & Collaboration Stores.
+ * - Unified Workspace, Document, Layout & Collaboration Stores.
  * - Workbench Layout Shell (ActivityBar, Topbar, WorkbenchShell).
  */
 
@@ -23,7 +23,14 @@ export {
   getEditorEngineForFile,
   getAllRegisteredEngines,
 } from './bus/command-bus';
-export { useEditorInstance } from './bus/useEditorInstance';
+export { useEditorInstance } from './hooks/useEditorInstance';
+export { useEditorScope } from './hooks/useEditorScope';
+export {
+  resolveEditorScope,
+  resolveEditorScopeFromState,
+  type ResolvedEditorScope,
+  type EditorScopeOverrides,
+} from './coordinator/editor-scope';
 
 export type {
   IEditorCommandBus,
@@ -34,7 +41,7 @@ export type {
   DialogName,
   EditorDiagnosticItem,
 } from './bus/command-bus.port';
-export type { IEditorEngine, EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
+export type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 // 2. Workbench Stores
 export {
@@ -86,10 +93,6 @@ export type {
   SettingsTab,
 } from './store/settings.store';
 
-export {
-  useConnectivityStore,
-} from './store/connectivity.store';
-
 export * from '@/features/editor/domain/constants/editor.constants';
 
 export {
@@ -126,7 +129,6 @@ export {
   shouldUseRealtimePersistence,
   type DocumentPersistencePort,
   type DocumentSessionOptions,
-  type UnsyncedDocEdit,
   type DocumentConflict,
   type ConflictListener,
 } from './coordinator/session.coordinator';

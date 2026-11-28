@@ -6,10 +6,6 @@
 
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
-  unsyncedEditsStore,
-  syncedDocCacheStore,
-} from '@/features/editor/domain/offline-storage';
-import {
   normalizeVirtualPath,
   isUnderVirtualFolder,
   rewritePathPrefix,
@@ -159,15 +155,9 @@ export function executeCascadePathChange(params: {
 
   const cachedModel = lruDocumentCache.getModel(itemId);
   lruDocumentCache.renameFile(itemId, newPath);
-  void unsyncedEditsStore.renamePath(oldPath, newPath, itemId).catch(() => {});
-  void syncedDocCacheStore.renamePath(oldPath, newPath, itemId).catch(() => {});
   const cascadedDescendants = oldPrefix
     ? lruDocumentCache.renameFolderPrefix(oldPrefix, newPrefix)
     : [];
-  for (const desc of cascadedDescendants) {
-    void unsyncedEditsStore.renamePath(desc.oldPath, desc.newPath, desc.fileId).catch(() => {});
-    void syncedDocCacheStore.renamePath(desc.oldPath, desc.newPath, desc.fileId).catch(() => {});
-  }
   const cascadedIds = new Set(cascadedDescendants.map((d) => d.fileId));
   const unopenedDescendants: Array<{
     ids: string[];

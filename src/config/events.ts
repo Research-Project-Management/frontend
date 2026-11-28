@@ -10,7 +10,6 @@ export const APP_EVENTS = {
   TOGGLE_PAGES_SIDEBAR: 'toggle-pages-sidebar',
   FAVORITES_CHANGED: 'flux:favorites-changed',
   FILETREE_UPDATED: 'flux:filetree-updated',
-  OUTBOX_MUTATED: 'flux:outbox:mutated',
   USER_COVER_CHANGED: 'flux_user_cover_changed',
 } as const;
 

@@ -10,14 +10,9 @@ import {
   useWorkspaceStore,
   type EditorTab,
 } from '@/features/editor/core/store/workspace.store';
-import { useConnectivityStore } from '@/features/editor/core/store/connectivity.store';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { syncShallowFileUrlParam } from '@/features/editor/domain/constants/editor.constants';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import {
-  unsyncedEditsStore,
-  syncedDocCacheStore,
-} from '@/features/editor/domain/offline-storage';
 import { isProtectedRootTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 
 export interface TabNavigationHost {
@@ -32,86 +27,6 @@ export interface TabNavigationHost {
     highlight?: 'error' | 'synctex';
     preview?: boolean;
   }) => void;
-}
-
-export function hydrateUnopenedDocumentFromOffline(params: {
-  fileId: string;
-  title: string;
-  path?: string;
-  tabGroupId: string;
-}): void {
-  const { fileId, title, path: optPath, tabGroupId } = params;
-  void Promise.all([
-    unsyncedEditsStore.get(fileId).catch(() => null),
-    syncedDocCacheStore.get(fileId).catch(() => null),
-  ]).then(([unsyncedEdit, syncedDoc]) => {
-    const latestModel = lruDocumentCache.getModel(fileId);
-    if (latestModel && latestModel.isAuthoritative !== false) return;
-
-    const manifest = lruDocumentCache.getManifestEntry(fileId);
-    const isOnline = useConnectivityStore.getState().checkIsOnline();
-    if (
-      unsyncedEdit &&
-      typeof unsyncedEdit.content === 'string' &&
-      (!syncedDoc || unsyncedEdit.savedAt >= syncedDoc.updatedAt) &&
-      !(
-        isOnline &&
-        manifest?.rev !== undefined &&
-        unsyncedEdit.expectedRev !== undefined &&
-        manifest.rev > unsyncedEdit.expectedRev
-      )
-    ) {
-      lruDocumentCache.registerModel(fileId, {
-        content: unsyncedEdit.content,
-        filePath: optPath || title || unsyncedEdit.title || syncedDoc?.filePath || fileId,
-        projectId: unsyncedEdit.projectId || syncedDoc?.projectId || tabGroupId,
-        serverRev: unsyncedEdit.expectedRev ?? syncedDoc?.rev ?? manifest?.rev,
-        hash: syncedDoc?.hash ?? manifest?.hash ?? null,
-        isAuthoritative: true,
-      });
-      lruDocumentCache.markDirty(fileId);
-      if (usePageStore.getState().getActiveDocumentId() === fileId) {
-        const ps = usePageStore.getState();
-        ps.setActiveFilePage({
-          id: fileId,
-          title,
-          path: optPath || title,
-          content: unsyncedEdit.content,
-          pageId: ps.currentPage?.id || tabGroupId || fileId,
-          spaceId: ps.spaceId,
-          projectId: ps.projectId,
-        });
-      }
-      return;
-    }
-
-    if (
-      syncedDoc &&
-      typeof syncedDoc.content === 'string' &&
-      (!isOnline || lruDocumentCache.isSyncedCacheFreshAgainstManifest(fileId, syncedDoc))
-    ) {
-      lruDocumentCache.registerModel(fileId, {
-        content: syncedDoc.content,
-        filePath: optPath || title || syncedDoc.filePath || fileId,
-        projectId: syncedDoc.projectId || tabGroupId,
-        serverRev: syncedDoc.rev ?? manifest?.rev,
-        hash: syncedDoc.hash ?? manifest?.hash ?? null,
-        isAuthoritative: true,
-      });
-      if (usePageStore.getState().getActiveDocumentId() === fileId) {
-        const ps = usePageStore.getState();
-        ps.setActiveFilePage({
-          id: fileId,
-          title,
-          path: optPath || title,
-          content: syncedDoc.content,
-          pageId: ps.currentPage?.id || tabGroupId || fileId,
-          spaceId: ps.spaceId,
-          projectId: ps.projectId,
-        });
-      }
-    }
-  });
 }
 
 function openOrRestoreTabEntry(

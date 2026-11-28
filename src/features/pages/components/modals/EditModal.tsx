@@ -17,9 +17,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { PageService, replacePageLabels } from '../../services/page.service';
-import { pageKeys } from '../../hooks/use-page';
-import type { Page, PageStatus } from '../../types/page.types';
+import { PageService } from '@/features/pages/services/page.service';
+import { pageKeys } from '@/features/pages/hooks/use-page';
+import type { Page, PageStatus } from '@/features/pages/types/page.types';
 import type { PageLabelItem } from './CreateModal';
 
 interface EditModalProps {
@@ -121,7 +121,7 @@ export function EditModal({
       });
 
       if (spaceId) {
-        await replacePageLabels(spaceId, page.id, selectedLabelIds);
+        await PageService.replaceLabels(spaceId, page.id, selectedLabelIds);
       }
 
       queryClient.invalidateQueries({ queryKey: pageKeys.all });

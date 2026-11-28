@@ -46,16 +46,16 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 
-import { usePageStore } from '../../store/editor.store';
-import { useSettingsStore } from '../../store/settings.store';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
-import { editorCommandBus } from '../../bus/command-bus';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/core.types';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { useProjectTitleActions } from './useProjectTitleActions';
+import { usePageTitleActions } from '@/features/editor/core/hooks/usePageTitleActions';
 
 function ProjectTitleDropdown() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
@@ -109,7 +109,7 @@ function ProjectTitleDropdown() {
     handleMakeCopy,
     handleDownloadZip,
     handleDownloadPdf,
-  } = useProjectTitleActions({
+  } = usePageTitleActions({
     effectiveProjectId,
     displayTitle,
     currentPage: currentPageId ? { id: currentPageId, title: currentPageTitle || '' } : null,

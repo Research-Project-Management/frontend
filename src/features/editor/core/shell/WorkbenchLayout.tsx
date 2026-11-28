@@ -33,7 +33,7 @@ import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
@@ -51,7 +51,7 @@ const CitationModal = dynamic(() => import('@/features/editor/subsystems/citatio
 const TableModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/table/TableModal'), { ssr: false });
 const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/EquationModal'), { ssr: false });
 const FigureModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/FigureModal'), { ssr: false });
-const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal'), { ssr: false });
+const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal').then((m) => m.TemplateGalleryModal), { ssr: false });
 const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal'), { ssr: false });
 const QuickOpenModal = dynamic(() => import('@/features/editor/subsystems/navigation/ui/QuickOpenModal'), { ssr: false });
 

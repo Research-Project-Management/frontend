@@ -13,12 +13,12 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
 import { usePageStore } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { usePageComments } from '../hooks/useComments';
+import { usePageComments } from '@/features/editor/subsystems/review/hooks/useComments';
 import {
   usePageSuggestions,
   useAcceptSuggestion,
   useRejectSuggestion,
-} from '../hooks/useSuggestions';
+} from '@/features/editor/subsystems/review/hooks/useSuggestions';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';

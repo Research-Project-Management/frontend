@@ -97,18 +97,23 @@ export function diagnosticsToParsedLog(
       rawExcerpt: rawExcerpt ? rawExcerpt.replace(/—/g, '-') : undefined,
       quickFix: item.quickFix,
       explanation: item.explanation
-        ? {
-            code: (item.explanation as any).code,
-            title: item.explanation.title,
-            whyItHappened:
-              'whyItHappened' in item.explanation
-                ? (item.explanation as any).whyItHappened
-                : (item.explanation as any).explanation || (item.explanation as any).summary || '',
-            howToFix:
-              'howToFix' in item.explanation
-                ? (item.explanation as any).howToFix
-                : (item.explanation as any).suggestedFix || '',
-          }
+        ? (() => {
+            const exp = item.explanation as {
+              code?: string;
+              title: string;
+              whyItHappened?: string;
+              explanation?: string;
+              summary?: string;
+              howToFix?: string;
+              suggestedFix?: string;
+            };
+            return {
+              code: exp.code,
+              title: exp.title,
+              whyItHappened: exp.whyItHappened ?? exp.explanation ?? exp.summary ?? '',
+              howToFix: exp.howToFix ?? exp.suggestedFix ?? '',
+            };
+          })()
         : undefined,
     };
 

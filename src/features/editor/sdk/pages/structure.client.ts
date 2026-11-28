@@ -17,7 +17,7 @@ import type {
   StructureNodeDto,
   ProjectOutlineResponseDto,
   ProjectSymbolsResponseDto,
-} from './types';
+} from './types/structure.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
 

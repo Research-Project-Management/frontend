@@ -38,10 +38,10 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { useContainerWidth } from './useContainerWidth';
+import { useContainerWidth } from '../hooks/useContainerWidth';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import { STYLE_OPTIONS, useEditorToolbarActions } from './useEditorToolbarActions';
+import { STYLE_OPTIONS, useEditorToolbarActions } from '../hooks/useEditorToolbarActions';
 import { EditorToolbarOverflowMenu, OmegaIcon } from './EditorToolbarOverflowMenu';
 import { TablePopover } from '@/features/editor/subsystems/insert/ui/table/TablePopover';
 

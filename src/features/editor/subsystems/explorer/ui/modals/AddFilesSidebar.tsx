@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { cn } from '@/shared/lib/utils';
-import type { AddFilesTab, AddFilesTabItem } from './add-files.types';
+import type { AddFilesTab, AddFilesTabItem } from '@/features/editor/subsystems/explorer/model/add-files.types';
 
 export interface AddFilesSidebarProps {
   tabs: AddFilesTabItem[];

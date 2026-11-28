@@ -4,11 +4,10 @@
  * Workspace ZIP, arXiv submission ZIP, and historical version ZIP exports.
  */
 
-import { updater } from '../pages/docs.client';
 import { exportDocs } from '../pages/export.client';
 import { history } from '../pages/history.client';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { resolveEditorScope } from '@/features/editor/core/coordinator/editor-scope';
 import { sanitizeArchiveName, triggerFileDownload } from './download';
 
 export interface ExportZipOptions {
@@ -52,30 +51,17 @@ const ZIP_PRESETS: Record<'standard' | 'arxiv', ZipPreset> = {
   },
 };
 
-async function flushDirtyDocs(spaceId: string): Promise<void> {
-  const hasDirty =
-    typeof sessionCoordinator.hasDirtyDocuments === 'function'
-      ? sessionCoordinator.hasDirtyDocuments()
-      : true;
-  if (!hasDirty) return;
-
-  const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
-  if (!flushRes || flushRes.total > 0) {
-    await updater.flushProject(spaceId).catch(() => null);
-  }
-}
-
 async function downloadZip(preset: ZipPreset, options: ExportZipOptions): Promise<string> {
   if (!options.pageId && !options.spaceId) {
     throw new Error('Space or page identifier is required to export ZIP.');
   }
 
-  const store = usePageStore.getState();
-  const spaceId = options.spaceId || store.spaceId || store.projectId || options.pageId || '';
-  const pageId = options.pageId || store.rootPageId;
+  const scope = resolveEditorScope({ spaceId: options.spaceId, pageId: options.pageId });
+  const spaceId = scope.effectiveScopeId;
+  const pageId = options.pageId || scope.rootPageId || undefined;
   const cleanTitle = sanitizeArchiveName(options.title, preset.defaultTitle);
 
-  await flushDirtyDocs(spaceId);
+  await sessionCoordinator.syncBeforeServerRead(spaceId);
 
   const zipBlob = await exportDocs.exportZip(spaceId, {
     cleanArxiv: preset.cleanArxiv,
@@ -99,9 +85,10 @@ export function exportArxivZip(options: ExportZipOptions): Promise<string> {
 }
 
 export async function exportVersionZip(options: ExportVersionZipOptions): Promise<string> {
-  const store = usePageStore.getState();
-  const spaceId =
-    options.spaceId || store.spaceId || store.projectId || options.pageId || '';
+  const spaceId = resolveEditorScope({
+    spaceId: options.spaceId,
+    pageId: options.pageId,
+  }).effectiveScopeId;
   if (!spaceId) {
     throw new Error('Space ID is required to export version ZIP.');
   }
@@ -112,7 +99,7 @@ export async function exportVersionZip(options: ExportVersionZipOptions): Promis
   }
 
   const cleanTitle = sanitizeArchiveName(options.title, 'flux-archive');
-  await sessionCoordinator.flushAllPending().catch(() => null);
+  await sessionCoordinator.syncBeforeServerRead(spaceId);
 
   const zipBlob = await history.exportVersionZip(
     spaceId,

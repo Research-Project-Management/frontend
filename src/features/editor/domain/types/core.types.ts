@@ -95,24 +95,24 @@ export interface Page {
   id: string;
   title: string;
   path?: string;
-  content: DocumentContent; // LaTeX source text or JSON structure
-  status: PageStatus;
-  projectId: string | PageProjectContext;
+  content?: DocumentContent;
+  status?: PageStatus;
+  projectId?: string | PageProjectContext;
   spaceId?: string;
   rev?: number;
   version?: number;
   hash?: string | null;
   sizeBytes?: number;
-  author: PageAuthor;
-  views: number;
-  lastAccessedAt: string;
-  createdAt: string;
-  updatedAt: string;
-  /** Null = top-level page-project. Populated = this is a file inside a page-project. */
+  author?: PageAuthor;
+  views?: number;
+  lastAccessedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   parentPage?: string | null;
-  /** The child page designated as the main entry point (for compilation & thumbnail). Can be a full Page object when populated. */
-  mainFile?: string | Page | null;
-  /** Base64 JPEG data URL of the first page of the last successful PDF build. */
+  mainFile?: string | { id: string; title?: string } | Page | null;
+  mainFileId?: string | null;
+  rootPageId?: string | null;
+  thumbnail?: string | null;
   pdfThumbnail?: string | null;
 }
 
@@ -153,17 +153,10 @@ export interface TextDocument {
 /**
  * Safely extracts a string spaceId/projectId from a Page, PageFile, PageProjectContext, or raw string.
  */
-export function extractProjectId(
-  doc?:
-    | Page
-    | PageFile
-    | PageProjectContext
-    | { id?: string; spaceId?: string; projectId?: string | PageProjectContext }
-    | string
-    | null,
-): string | undefined {
+export function extractProjectId(doc?: unknown): string | undefined {
   if (!doc) return undefined;
   if (typeof doc === 'string') return doc;
+  if (typeof doc !== 'object') return undefined;
   if ('projectId' in doc && doc.projectId) {
     if (typeof doc.projectId === 'string') return doc.projectId;
     return (doc.projectId as PageProjectContext).id;

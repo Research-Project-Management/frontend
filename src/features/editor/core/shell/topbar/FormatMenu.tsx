@@ -33,10 +33,10 @@ import {
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
 import { toast } from 'sonner';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
-import { useSettingsStore } from '../../store/settings.store';
-import { usePageStore } from '../../store/editor.store';
-import { editorCommandBus } from '../../bus/command-bus';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { isMacPlatform } from '@/features/editor/domain/constants/editor.constants';
 import { formatBibtexContent } from '@/features/editor/domain/latex/bib-parser';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';

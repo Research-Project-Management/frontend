@@ -17,9 +17,9 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore } from '../../store/settings.store';
-import { useWorkspaceStore } from '../../store/workspace.store';
-import { useEditorInstance } from '../../bus/useEditorInstance';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 
 export function EditingModeDropdown() {
   const reviewMode = useSettingsStore((s) => s.reviewMode);

@@ -12,7 +12,7 @@ import {
   cacheBackendOutline,
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
 
 export interface FileOutlineSectionProps {

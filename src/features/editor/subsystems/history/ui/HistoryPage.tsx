@@ -18,8 +18,8 @@ import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { usePageStore } from '@/features/editor/core';
 
-import { useHistoryState, useHistoryAutoSelect } from './hooks/useHistoryState';
-import { useHistoryActions } from './hooks/useHistoryActions';
+import { useHistoryState, useHistoryAutoSelect } from '../hooks/useHistoryState';
+import { useHistoryActions } from '../hooks/useHistoryActions';
 import { FileTreeSidebar } from './components/FileTreeSidebar';
 import { SnapshotFileView } from './components/SnapshotFileView';
 import { DiffPane } from './components/DiffPane';

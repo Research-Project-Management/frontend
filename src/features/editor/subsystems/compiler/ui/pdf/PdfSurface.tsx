@@ -48,7 +48,7 @@ import {
   extractPageDimensionsPt,
   normalizePdfTextItem,
 } from './PdfPage';
-import { usePdfViewportVirtualizer } from '../../hooks/usePdfVirtualizer';
+import { usePdfViewportVirtualizer } from '@/features/editor/subsystems/compiler/hooks/usePdfVirtualizer';
 
 if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
   pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;

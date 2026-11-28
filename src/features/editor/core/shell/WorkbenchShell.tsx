@@ -21,7 +21,6 @@ import React, { useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { ResizeHandle } from './ResizeHandle';
-import { OfflineBanner } from './OfflineBanner';
 import { cn } from '@/shared/lib/utils';
 
 export interface WorkbenchShellProps {
@@ -164,9 +163,6 @@ export function WorkbenchShell({
     <div className={cn('h-full w-full flex flex-col bg-background min-h-0', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
-
-      {/* ── Offline Connectivity Banner ─────────────────────────────────── */}
-      <OfflineBanner />
 
       {/* ── Core Workspace (Horizontal Shell Area) ────────────────────────── */}
       <main className="flex-1 flex relative min-h-0">

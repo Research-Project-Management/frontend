@@ -48,7 +48,6 @@ interface PageEvent {
   sizeBytes?: number;
 }
 
-export type ProjectEvent = PageEvent;
 
 interface DiffChunk {
   type: 'added' | 'deleted' | 'removed' | 'unchanged' | 'change';

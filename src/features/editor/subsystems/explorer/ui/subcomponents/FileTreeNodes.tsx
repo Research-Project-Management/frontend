@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useStorageItemActions } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
+import { useStorageItemActions } from '@/features/editor/subsystems/explorer/hooks/useFileExplorerActions';
 import {
   BookText,
   Braces,
@@ -31,7 +31,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorageMutations } from '@/features/editor/subsystems/explorer/ui/hooks/useStorage';
+import { useEditorStorageMutations } from '@/features/editor/subsystems/explorer/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import {
   RASTER_AND_VECTOR_IMAGE_EXTENSIONS,

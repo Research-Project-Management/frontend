@@ -20,7 +20,7 @@ import type {
   AddFilesTab,
   AddFilesModalProps,
   AddFilesTabItem,
-} from './add-files.types';
+} from '@/features/editor/subsystems/explorer/model/add-files.types';
 import { AddFilesSidebar } from './AddFilesSidebar';
 import { NewFileTabPane } from './NewFileTabPane';
 import { UploadTabPane } from './UploadTabPane';

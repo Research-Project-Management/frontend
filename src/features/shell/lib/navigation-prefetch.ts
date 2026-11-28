@@ -34,7 +34,7 @@ import {
   libraryKeys,
   normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
-import { CollectionsService } from '@/features/library/sdk/clients/catalog-entities.client';
+import { CollectionsService } from '@/features/library/sdk/clients/collections.client';
 import { ItemsService } from '@/features/library/sdk/clients/items.client';
 
 /**

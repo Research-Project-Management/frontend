@@ -20,7 +20,7 @@ import {
   getSyncTexChannelName,
 } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
-import { useCompileStore } from '../../store/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 
 const PdfViewer = dynamic(
   () => import('./PdfViewer'),

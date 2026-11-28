@@ -1,16 +1,12 @@
 /**
  * session.coordinator.ts
  *
- * Unified Document Session Coordinator (Deep Module - Coordinators Layer):
- * - Finite State Machine: Tracks document session lifecycle to prevent race conditions.
- * - Single source of truth for in-memory & persisted document state.
+ * Unified Document Session Coordinator:
+ * - Finite State Machine tracking document lifecycle (autosave, realtime Yjs, OCC conflicts).
+ * - Server-authoritative with hot RAM LRU cache (zero offline shadow DB).
  */
 
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import {
-  type UnsyncedDocEdit,
-  type SyncedDocCacheEntry,
-} from '@/features/editor/domain/offline-storage';
 import {
   createInitialSessionContext,
   sessionFsmTransition,
@@ -23,13 +19,10 @@ import { pagesService } from '@/features/editor/sdk/pages.service';
 import { getActiveYjsProvider } from '@/features/editor/sdk/realtime';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
-import { useConnectivityStore } from '../store/connectivity.store';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
-import { multiTabBus } from '@/shared/lib/multi-tab';
-import { subscribeNetworkStatus } from '@/shared/lib/network';
+import { getIsOnline } from '@/shared/lib/network';
 import { editorCommandBus } from '../bus/command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
-import { UnsyncedEditsCoordinator } from './unsynced-edits.coordinator';
 import {
   DocumentConflictCoordinator,
   type DocumentConflict,
@@ -43,26 +36,16 @@ import {
   handleDocumentPersisted,
   executeResolveConflictHelper,
   executeFlushAllDirtyModelsHelper,
-  type DocumentPersistencePort,
-  type SessionPersistenceHost,
-} from './session-persistence.strategy';
-import {
-  enqueueOfflineEditHelper,
-  flushViaOfflineQueueStrategy,
-  replayPendingOfflineMutations,
-  dispatchMultiTabSyncEvent,
-  performEmergencyUnloadSave,
   clearDeletedFileSessionResources,
   finalizeTabCloseEviction,
   executeSwitchTabDeactivate,
   executeRemoteContentUpdatedHelper,
-  type OfflineMutationModel,
-} from './session-offline-sync';
+  type DocumentPersistencePort,
+  type SessionPersistenceHost,
+} from './session-persistence.strategy';
 
 export { shouldUseRealtimePersistence };
 export type {
-  UnsyncedDocEdit,
-  SyncedDocCacheEntry,
   DocumentSessionState,
   DocumentConflict,
   ConflictListener,
@@ -91,7 +74,7 @@ export interface DocumentSessionOptions {
 }
 
 const DEFAULT_AUTOSAVE_DELAY = 800; // ms
-const DEFAULT_AUTOCOMPILE_DELAY = 1500; // ms (Overleaf parity)
+const DEFAULT_AUTOCOMPILE_DELAY = 1500; // ms
 const MAX_FSM_CONTEXTS = 200;
 const STRUCTURAL_DIRECTIVE_REGEX =
   /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/;
@@ -109,22 +92,14 @@ export class SessionCoordinator {
   private readonly fsmContexts = new Map<string, SessionFsmContext>();
   private readonly options: DocumentSessionOptions;
   private readonly realtimeConnected = new Map<string, boolean>();
-  private readonly unsyncedEdits: UnsyncedEditsCoordinator;
   private readonly conflicts = new DocumentConflictCoordinator();
-  private multiTabUnsubscriber: (() => void) | null = null;
-  private networkUnsubscriber: (() => void) | null = null;
 
   constructor(options: DocumentSessionOptions = {}) {
     this.options = options;
     this.customPersistenceAdapter = options.persistenceAdapter;
-    this.unsyncedEdits = new UnsyncedEditsCoordinator((projectId) =>
-      this.resolveEffectiveProjectId(projectId),
-    );
 
     this.initVisibilityFlushHandler();
     this.initCommandSubscriptions();
-    this.initOnlineListener();
-    this.initMultiTabSubscriptions();
   }
 
   private get persistenceAdapter(): DocumentPersistencePort {
@@ -134,7 +109,6 @@ export class SessionCoordinator {
   private createPersistenceHost(): SessionPersistenceHost {
     return {
       persistenceAdapter: this.persistenceAdapter,
-      unsyncedEdits: this.unsyncedEdits,
       conflicts: this.conflicts,
       autoSaveDelay: this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY,
       transitionFsm: (fileId, event) => {
@@ -144,11 +118,6 @@ export class SessionCoordinator {
         this.resolveEffectiveProjectId(modelProjectId),
       isRealtimeConnected: (fileId) => this.isRealtimeConnected(fileId),
       scheduleAutoSave: (fileId, delayMs) => this.scheduleAutoSave(fileId, delayMs),
-      saveUnsyncedEdit: (fileId, content, projectId) =>
-        this.saveUnsyncedEdit(fileId, content, projectId),
-      clearUnsyncedEdit: (fileId) => this.clearUnsyncedEdit(fileId),
-      enqueueOfflineEdit: (fileId, model, opts) =>
-        this.enqueueOfflineEdit(fileId, model, opts),
     };
   }
 
@@ -161,10 +130,9 @@ export class SessionCoordinator {
     if (!ctx) {
       if (this.fsmContexts.size >= MAX_FSM_CONTEXTS) {
         const oldestKey = this.fsmContexts.keys().next().value;
-        if (oldestKey !== undefined) this.fsmContexts.delete(oldestKey);
+        if (oldestKey) this.fsmContexts.delete(oldestKey);
       }
-      const version = lruDocumentCache.getContentVersion(fileId) || 0;
-      ctx = createInitialSessionContext(fileId, version);
+      ctx = createInitialSessionContext(fileId);
       this.fsmContexts.set(fileId, ctx);
     }
     return ctx;
@@ -174,70 +142,43 @@ export class SessionCoordinator {
     fileId: string,
     event: Parameters<typeof sessionFsmTransition>[1],
   ): SessionFsmContext {
-    const ctx = this.getOrCreateFsmContext(fileId);
-    const updated = sessionFsmTransition(ctx, event);
-    this.fsmContexts.set(fileId, updated);
-    return updated;
+    const prev = this.getOrCreateFsmContext(fileId);
+    const next = sessionFsmTransition(prev, event);
+    this.fsmContexts.set(fileId, next);
+    return next;
   }
 
   private resolveEffectiveProjectId(modelProjectId?: string): string {
-    if (modelProjectId) return modelProjectId;
-    if (this.options.getProjectId) {
-      const p = this.options.getProjectId();
-      if (p) return p;
-    }
-    const state = usePageStore.getState();
-    return state.spaceId || state.projectId || 'workspace-local';
+    if (modelProjectId && modelProjectId.trim()) return modelProjectId;
+    const fromOpt = this.options.getProjectId?.();
+    if (fromOpt && fromOpt.trim()) return fromOpt;
+    const ps = usePageStore.getState();
+    return ps.spaceId || ps.projectId || ps.rootPageId || '';
   }
 
   public setRealtimeConnected(fileId: string, connected: boolean): void {
-    const previous = this.realtimeConnected.get(fileId);
     this.realtimeConnected.set(fileId, connected);
-    if (previous === true && !connected) {
-      const model = lruDocumentCache.getModel(fileId);
-      if (model?.isDirty) {
-        this.saveUnsyncedEdit(fileId, model.content, model.projectId);
-        this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
-      }
+    if (connected) {
+      this.cancelPendingAutoSave(fileId);
+    } else {
+      this.resumeAutoSaveIfDirty(fileId);
     }
-  }
-
-  public clearRealtimeStatus(fileId: string): void {
-    this.realtimeConnected.delete(fileId);
   }
 
   public isRealtimeConnected(fileId: string): boolean {
-    if (this.realtimeConnected.get(fileId) !== true) return false;
-    const activeProvider = getActiveYjsProvider(fileId);
-    if (activeProvider) {
-      return activeProvider.status === 'connected' && activeProvider.isSynced;
-    }
-    return true;
-  }
-
-  public beginRecoveryDecision(fileId: string): void {
-    this.unsyncedEdits.beginRecoveryDecision(fileId);
-  }
-
-  public endRecoveryDecision(fileId: string): void {
-    this.unsyncedEdits.endRecoveryDecision(fileId);
-  }
-
-  public isRecoveryDecisionPending(fileId: string): boolean {
-    return this.unsyncedEdits.isRecoveryDecisionPending(fileId);
-  }
-
-  public restoreUnsyncedEdit(fileId: string, content: string): void {
-    this.endRecoveryDecision(fileId);
-    lruDocumentCache.updateContent(fileId, content, true);
-    this.notifyContentChange(fileId, content, {
-      isRealtimeActive: this.isRealtimeConnected(fileId),
+    const model = lruDocumentCache.getModel(fileId);
+    const projectId = this.resolveEffectiveProjectId(model?.projectId);
+    const provider = projectId ? getActiveYjsProvider(projectId, fileId) : null;
+    const providerConnected = Boolean(
+      this.realtimeConnected.get(fileId) || (provider && !provider.isDestroyed && provider.isSynced),
+    );
+    const providerSynced = provider ? provider.isSynced : true;
+    return shouldUseRealtimePersistence({
+      hasYText: Boolean(model?.yText),
+      isOnline: getIsOnline(),
+      isProviderConnected: providerConnected,
+      isProviderSynced: providerSynced,
     });
-  }
-
-  public discardUnsyncedEdit(fileId: string): void {
-    this.endRecoveryDecision(fileId);
-    this.clearUnsyncedEdit(fileId);
   }
 
   public onConflict(listener: ConflictListener): () => void {
@@ -275,44 +216,6 @@ export class SessionCoordinator {
     }
   }
 
-  public async handleOnline(): Promise<void> {
-    const connStore = useConnectivityStore.getState();
-    connStore.recordOnline();
-    connStore.setIsSyncingOfflineQueue(true);
-    try {
-      await this.replayPendingMutations();
-      await this.flushAllPending();
-      if (useConnectivityStore.getState().offlinePendingCompile) {
-        useConnectivityStore.getState().setOfflinePendingCompile(false);
-        editorCommandBus.dispatch({ type: 'compiler:trigger', reason: 'external-trigger' });
-      }
-    } finally {
-      useConnectivityStore.getState().setIsSyncingOfflineQueue(false);
-    }
-  }
-
-  public handleOffline(): void {
-    useConnectivityStore.getState().recordOffline();
-    this.flushPendingUnsyncedEdits();
-  }
-
-  private initOnlineListener(): void {
-    if (typeof window === 'undefined') return;
-    this.disposeOnlineListener();
-    this.networkUnsubscriber = subscribeNetworkStatus((online) => {
-      if (online) {
-        void this.handleOnline();
-      } else {
-        this.handleOffline();
-      }
-    });
-  }
-
-  public disposeOnlineListener(): void {
-    this.networkUnsubscriber?.();
-    this.networkUnsubscriber = null;
-  }
-
   private initCommandSubscriptions(): void {
     editorCommandBus.subscribe('document:content-updated', (cmd) => {
       this.handleRemoteContentUpdated(cmd.docId, cmd.content);
@@ -322,43 +225,22 @@ export class SessionCoordinator {
     });
   }
 
-  private initMultiTabSubscriptions(): void {
-    this.multiTabUnsubscriber?.();
-    this.multiTabUnsubscriber = multiTabBus.subscribe((event) => {
-      dispatchMultiTabSyncEvent(event, (fileId, content) => this.reindex(fileId, content));
-    });
-  }
-
   public handleRemoteContentUpdated(fileId: string, remoteContent: string): void {
     executeRemoteContentUpdatedHelper({
       fileId,
       remoteContent,
       isRealtimeConnected: (fid) => this.isRealtimeConnected(fid),
-      transitionRemoteEdit: (fid, v) => this.transitionFsm(fid, { type: 'REMOTE_EDIT', version: v }),
-      transitionConflictDetected: (fid) => this.transitionFsm(fid, { type: 'CONFLICT_DETECTED' }),
+      transitionRemoteEdit: (fid, v) =>
+        this.transitionFsm(fid, { type: 'REMOTE_EDIT', version: v }),
+      transitionConflictDetected: (fid) =>
+        this.transitionFsm(fid, { type: 'CONFLICT_DETECTED' }),
       reindex: (fid, c) => this.reindex(fid, c),
-      unsyncedEdits: this.unsyncedEdits,
       conflicts: this.conflicts,
-    });
-  }
-
-  public recordOfflineEditConflict(
-    fileId: string,
-    localContent: string,
-    remoteContent: string,
-    options?: { projectId?: string; currentRev?: number },
-  ): void {
-    this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
-    this.unsyncedEdits.flushNow(fileId, localContent, options?.projectId);
-    this.conflicts.recordConflict(fileId, localContent, remoteContent, {
-      currentRev: options?.currentRev,
-      hasAuthoritativeRemote: true,
     });
   }
 
   private initVisibilityFlushHandler(): void {
     visibilityCoordinator.registerFlushHandler(async () => {
-      this.flushPendingUnsyncedEdits();
       await this.flushAllPending();
     });
   }
@@ -368,10 +250,9 @@ export class SessionCoordinator {
     this.beforeUnloadInitialized = true;
 
     const handler = (e: BeforeUnloadEvent) => {
-      if (performEmergencyUnloadSave((pid) => this.resolveEffectiveProjectId(pid))) {
+      if (this.hasDirtyDocuments()) {
         e.preventDefault();
         e.returnValue = '';
-        this.flushPendingUnsyncedEdits();
         void this.flushAllPending();
         return '';
       }
@@ -426,15 +307,7 @@ export class SessionCoordinator {
       );
     }
 
-    if (isRemote) {
-      if (currentModel?.isDirty) {
-        this.saveUnsyncedEdit(fileId, content, currentModel.projectId);
-      }
-      return;
-    }
-
-    const activeProjectId = this.resolveEffectiveProjectId(currentModel?.projectId);
-    this.saveUnsyncedEdit(fileId, content, activeProjectId);
+    if (isRemote) return;
 
     if (!isRealtime) {
       this.scheduleAutoSave(
@@ -470,34 +343,10 @@ export class SessionCoordinator {
     if (!model || !model.isDirty) return true;
 
     const host = this.createPersistenceHost();
-    const mode = this.selectFlushStrategyMode(fileId);
-    if (mode === 'realtime-yjs') return flushViaRealtimeYjsStrategy(host, fileId, model.projectId);
-    if (mode === 'offline-queue') return flushViaOfflineQueueStrategy(host, fileId, model);
+    if (this.isRealtimeConnected(fileId)) {
+      return flushViaRealtimeYjsStrategy(host, fileId, model.projectId);
+    }
     return flushViaRestCasStrategy(host, fileId, model);
-  }
-
-  public selectFlushStrategyMode(
-    fileId: string,
-  ): 'realtime-yjs' | 'offline-queue' | 'rest-cas' {
-    if (this.isRealtimeConnected(fileId)) return 'realtime-yjs';
-    if (!useConnectivityStore.getState().checkIsOnline()) return 'offline-queue';
-    return 'rest-cas';
-  }
-
-  private enqueueOfflineEdit(
-    fileId: string,
-    model: OfflineMutationModel,
-    options?: { flushImmediate?: boolean },
-  ): void {
-    enqueueOfflineEditHelper(
-      {
-        unsyncedEdits: this.unsyncedEdits,
-        resolveEffectiveProjectId: (projectId) => this.resolveEffectiveProjectId(projectId),
-      },
-      fileId,
-      model,
-      options,
-    );
   }
 
   public hasDirtyDocuments(): boolean {
@@ -515,7 +364,6 @@ export class SessionCoordinator {
 
     for (const timer of this.saveTimers.values()) clearTimeout(timer);
     this.saveTimers.clear();
-    this.flushPendingUnsyncedEdits();
 
     const dirtyModels = lruDocumentCache.getDirtyModels();
     if (dirtyModels.length === 0) {
@@ -527,45 +375,22 @@ export class SessionCoordinator {
       return await executeFlushAllDirtyModelsHelper({
         dirtyModels,
         flushFile: (fid) => this.flushFile(fid),
-        enqueueOfflineEdit: (fid, model) => this.enqueueOfflineEdit(fid, model),
       });
     } finally {
       this.isFlushingAll = false;
     }
   }
 
-  public async replayPendingMutations(): Promise<{
-    total: number;
-    succeeded: number;
-    failed: number;
-  }> {
-    return replayPendingOfflineMutations(this.createPersistenceHost());
-  }
-
-  public flushPendingUnsyncedEdits(): void {
-    this.unsyncedEdits.flushPending();
-  }
-
-  public saveUnsyncedEdit(fileId: string, content: string, projectId?: string): void {
-    this.unsyncedEdits.scheduleSave(fileId, content, projectId);
-  }
-
-  public clearUnsyncedEdit(fileId: string): void {
-    this.unsyncedEdits.clear(fileId);
-  }
-
-  public checkUnsyncedEditRecovery(
-    fileId: string,
-    serverContent: string,
-  ): { hasRecoverableEdit: boolean; edit?: UnsyncedDocEdit } {
-    return this.unsyncedEdits.checkRecoverySync(fileId, serverContent);
-  }
-
-  public async checkUnsyncedEditRecoveryAsync(
-    fileId: string,
-    serverContent: string,
-  ): Promise<{ hasRecoverableEdit: boolean; edit?: UnsyncedDocEdit }> {
-    return this.unsyncedEdits.checkRecoveryAsync(fileId, serverContent);
+  /**
+   * Deep flush barrier before any server-side read/mutation (search, replace-all, zip export).
+   * Hides the 2-tier persistence ordering constraint (client dirty buffers -> backend updater flush).
+   */
+  public async syncBeforeServerRead(spaceOrPageId?: string | null): Promise<void> {
+    if (!this.hasDirtyDocuments()) return;
+    const flushRes = await this.flushAllPending().catch(() => null);
+    if (spaceOrPageId && (!flushRes || flushRes.total > 0)) {
+      await pagesService.updater.flushProject(spaceOrPageId).catch(() => null);
+    }
   }
 
   public switchTab(fromFileId: string | null, toFileId: string): void {
@@ -574,8 +399,6 @@ export class SessionCoordinator {
       toFileId,
       transitionDeactivate: (fid) => this.transitionFsm(fid, { type: 'DEACTIVATE' }),
       transitionActivate: (fid) => this.transitionFsm(fid, { type: 'ACTIVATE' }),
-      saveUnsyncedEdit: (fid, c, pid) => this.saveUnsyncedEdit(fid, c, pid),
-      flushPendingUnsyncedEdits: () => this.flushPendingUnsyncedEdits(),
     });
   }
 
@@ -604,14 +427,12 @@ export class SessionCoordinator {
     if (lruDocumentCache.markCleanIfUnchanged(fileId, expectedText)) {
       lruDocumentCache.markClean(fileId);
       clearWorkspaceTabDirty(fileId, model.projectId);
-      this.clearUnsyncedEdit(fileId);
       const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, {
         type: 'SAVE_SUCCESS',
         savedVersion: currentVersion,
         currentVersion,
       });
-      useConnectivityStore.getState().setLastSavedAt(new Date());
     }
   }
 
@@ -625,12 +446,10 @@ export class SessionCoordinator {
     this.transitionFsm(fileId, { type: 'EVICT' });
     clearDeletedFileSessionResources({
       fileId,
-      unsyncedEdits: this.unsyncedEdits,
       conflicts: this.conflicts,
       lastCompiledContentMap: this.lastCompiledContentMap,
       realtimeConnected: this.realtimeConnected,
       fsmContexts: this.fsmContexts,
-      clearUnsyncedEdit: (fid) => this.clearUnsyncedEdit(fid),
     });
   }
 
@@ -640,9 +459,6 @@ export class SessionCoordinator {
       fileId,
       hasInFlightFlush: this.inFlightFileFlushes.has(fileId),
       flushFile: (fid) => this.flushFile(fid),
-      saveUnsyncedEdit: (fid, content, pid) => this.saveUnsyncedEdit(fid, content, pid),
-      flushPendingUnsyncedEdits: () => this.flushPendingUnsyncedEdits(),
-      unsyncedEdits: this.unsyncedEdits,
       conflicts: this.conflicts,
       lastCompiledContentMap: this.lastCompiledContentMap,
       realtimeConnected: this.realtimeConnected,
@@ -662,7 +478,6 @@ export class SessionCoordinator {
     this.lastCompiledContentMap.clear();
     this.realtimeConnected.clear();
     warmEditorStatePool.clear();
-    this.unsyncedEdits.clearAll();
     this.conflicts.clearAll();
   }
 
@@ -691,7 +506,11 @@ export class SessionCoordinator {
 
     const currentContent = lruDocumentCache.getModel(fileId)?.content;
     const prevCompiled = this.lastCompiledContentMap.get(fileId);
-    if (prevCompiled !== undefined && currentContent !== undefined && prevCompiled === currentContent) {
+    if (
+      prevCompiled !== undefined &&
+      currentContent !== undefined &&
+      prevCompiled === currentContent
+    ) {
       return;
     }
 

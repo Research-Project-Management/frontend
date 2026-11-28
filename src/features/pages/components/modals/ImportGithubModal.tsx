@@ -25,8 +25,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import { githubImportService, GitHubRepoItem } from '../../services/github-import.service';
-import { pageKeys } from '../../hooks/use-page';
+import { githubImportService, GitHubRepoItem } from '@/features/pages/services/github-import.service';
+import { pageKeys } from '@/features/pages/hooks/use-page';
 
 interface ImportGithubModalProps {
   isOpen: boolean;

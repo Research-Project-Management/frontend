@@ -14,8 +14,8 @@ import {
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
 import { formatDate } from '@/shared/lib/utils';
-import { usePageActions } from '../../hooks/use-page';
-import type { Page } from '../../types/page.types';
+import { usePageActions } from '@/features/pages/hooks/use-page';
+import type { Page } from '@/features/pages/types/page.types';
 
 interface TrashViewProps {
   pages: Page[];

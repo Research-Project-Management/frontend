@@ -36,26 +36,25 @@ import {
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import {
-  isNetworkError,
-  useConnectivityStore,
-} from '@/features/editor/core/store/connectivity.store';
+import { getIsOnline } from '@/shared/lib/network';
 import { useCompileStore } from '../store/compiler.store';
 import { isCompilerFsmRunning } from '@/features/editor/domain/document/compiler-fsm';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import type {
-  CompileError,
   CompileOutcome,
   CompileReport,
   CompileStatus,
-  DiagnosticsSummary,
 } from '@/features/editor/domain/types/compiler.types';
 import { hasHardSyntaxErrors } from '@/features/editor/subsystems/diagnostics/model/local-latex-linter';
 import {
   extractDocumentContentString,
   extractProjectId,
 } from '@/features/editor/domain/types/core.types';
-import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
+import {
+  isCompileNetworkError as isNetworkError,
+  resolveDiagnosticsWithSummary,
+  VALID_COMPILE_STATUSES,
+} from '../model/compile-diagnostics.mapper';
 import {
   SnapshotProvider,
   buildPageStoreFilePaths,
@@ -66,61 +65,6 @@ import {
 } from './snapshot';
 
 export { SnapshotProvider, buildPageStoreFilePaths, type CreateSnapshotOptions };
-
-const VALID_COMPILE_STATUSES = new Set<CompileStatus>([
-  'idle',
-  'flushing',
-  'compiling',
-  'syncing',
-  'done',
-  'success',
-  'error',
-  'aborted',
-]);
-
-function resolveDiagnosticsWithSummary(params: {
-  backendDiags: CompilerDiagnostic[];
-  fallbackErrors?: CompileError[];
-  rawLog: string;
-  mainFile: string;
-  backendSummary?: DiagnosticsSummary;
-}): { diagnostics: CompilerDiagnostic[]; summary: DiagnosticsSummary } {
-  const { backendDiags, fallbackErrors, rawLog, mainFile, backendSummary } = params;
-  const parsedFallback =
-    backendDiags.length > 0 || !rawLog
-      ? []
-      : fallbackErrors && fallbackErrors.length > 0
-        ? fallbackErrors
-        : parseCompileErrors(rawLog);
-
-  const diagnostics: CompilerDiagnostic[] =
-    backendDiags.length > 0
-      ? backendDiags
-      : parsedFallback.map((item) => ({
-          file: item.file || mainFile,
-          line: item.line,
-          message: item.message,
-          context: item.context ?? '',
-          severity: item.severity || ('error' as const),
-          source: item.source,
-          highlightCommand: item.highlightCommand,
-          code: item.code,
-          suggestion: item.suggestion,
-          quickFix: 'quickFix' in item ? item.quickFix : undefined,
-        }));
-
-  const summary: DiagnosticsSummary = backendSummary ?? {
-    totalErrors: diagnostics.filter((diag) => diag.severity === 'error').length,
-    totalWarnings: diagnostics.filter((diag) => diag.severity === 'warning').length,
-    totalBadboxes: diagnostics.filter(
-      (diag) => diag.severity === 'badbox' || diag.category === 'badbox',
-    ).length,
-    suppressedCascadeCount: 0,
-    truncated: false,
-  };
-
-  return { diagnostics, summary };
-}
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -341,16 +285,12 @@ export class CompilerCoordinator {
     const fallbackMainFile =
       activeDoc?.path || activeDoc?.title || pageStore.mainFilePath || 'main.tex';
 
-    const isOnline = useConnectivityStore.getState().checkIsOnline();
-    if (!isOnline) {
-      useConnectivityStore.getState().setOfflinePendingCompile(true);
-      sessionCoordinator.flushPendingUnsyncedEdits();
+    if (!getIsOnline()) {
       compileStore.dispatchCompileEvent({
         type: 'BLOCKED_OFFLINE',
         mainFile: fallbackMainFile,
         logText:
-          '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
-          'Compilation has been queued and will start automatically when connection is restored.',
+          'You are currently offline. Reconnect to compile this document on the server.',
       });
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       return false;
@@ -727,17 +667,13 @@ export class CompilerCoordinator {
       }
 
       if (isNetworkError(err)) {
-        useConnectivityStore.getState().recordOffline();
-        useConnectivityStore.getState().setOfflinePendingCompile(true);
-        sessionCoordinator.flushPendingUnsyncedEdits();
         this.pendingCompileOptions = undefined;
         compileStore.dispatchCompileEvent({
           type: 'BLOCKED_OFFLINE',
           runId,
           mainFile: resolvedMainFile,
           logText:
-            '[Offline Mode] Network connection lost during compilation request.\n' +
-            'Your draft is saved locally and will automatically recompile when reconnected.',
+            'Network connection lost during compilation request. Reconnect and retry.',
         });
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
         this.finalizeRun(runId, currentController);

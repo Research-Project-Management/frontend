@@ -10,21 +10,16 @@
  * - Create with AI tab: natural language prompt and image upload / drag-and-drop
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Table as TableIcon,
   Check,
   Plus,
   Trash2,
   FileSpreadsheet,
-  Loader2,
   Merge,
   Split,
-  Upload,
-  X,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import {
   Dialog,
@@ -39,8 +34,10 @@ import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { useTableEditor, type TableTab } from './useTableEditor';
+import { useTableEditor, type TableTab } from '@/features/editor/subsystems/insert/hooks/useTableEditor';
 import type { TableCellMerge } from '@/features/editor/domain/latex/table-matrix';
+import { TableImportTab } from './TableImportTab';
+import { TableAiTab } from './TableAiTab';
 
 export interface TableModalProps {
   open: boolean;
@@ -183,75 +180,6 @@ export function TableModal({
     !borders.outer &&
     !borders.innerHorizontal &&
     !borders.innerVertical;
-
-  const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [image, setImage] = useState<{ file: File; previewUrl: string } | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const clearImage = useCallback(() => {
-    setImage((prev) => {
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return null;
-    });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (image?.previewUrl) {
-        URL.revokeObjectURL(image.previewUrl);
-      }
-    };
-  }, [image]);
-
-  const handleImagePick = (file: File | null | undefined) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file (PNG, JPG, WebP, etc.)', {
-        id: 'ai-table-image',
-      });
-      return;
-    }
-    const previewUrl = URL.createObjectURL(file);
-    setImage((prev) => {
-      if (prev?.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return { file, previewUrl };
-    });
-  };
-
-  const handleGenerate = useCallback(async () => {
-    if ((!prompt.trim() && !image) || isGenerating) return;
-    setIsGenerating(true);
-    try {
-      const parts: string[] = [];
-      if (prompt.trim()) parts.push(prompt.trim());
-      if (image) parts.push(`[Attached table image: ${image.file.name}]`);
-
-      const output = await pagesService.ai.generateLatexTable(parts.join('\n\n'));
-      const imported = importRaw(output);
-      if (imported) {
-        toast.success('Generated table with AI', { id: 'ai-table-gen' });
-        setPrompt('');
-        clearImage();
-        setTab('table');
-      } else {
-        setImportText(output);
-        if (importFromText()) {
-          toast.success('Generated table with AI', { id: 'ai-table-gen' });
-          setPrompt('');
-          clearImage();
-          setTab('table');
-        }
-      }
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to generate table with AI', {
-        id: 'ai-table-gen',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [prompt, image, isGenerating, importRaw, importFromText, setImportText, clearImage, setTab]);
 
   const renderRowCells = (rowIdx: number, values: string[], isHeader: boolean) => {
     const out: React.ReactNode[] = [];
@@ -632,142 +560,26 @@ export function TableModal({
         )}
 
         {activeTab === 'import' && (
-          <div className="flex-1 min-h-0 flex flex-col gap-3">
-            <p className="text-xs text-muted-foreground">
-              Paste cells copied from Excel or Google Sheets, CSV data, or an existing{' '}
-              <code className="font-mono text-foreground">{'\\begin{tabular}'}</code> block.
-            </p>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              aria-label="Paste Excel, CSV, or LaTeX code"
-              placeholder="Paste TSV, CSV, or \begin{tabular}...\end{tabular} snippet..."
-              rows={8}
-              className="w-full flex-1 min-h-[160px] p-3 text-xs font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ring"
-            />
-            <div className="flex items-center justify-end">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!importText.trim()}
-                onClick={() => {
-                  if (importFromText()) {
-                    setTab('table');
-                  }
-                }}
-                className="h-8 px-3 text-xs cursor-pointer"
-              >
-                Import to Grid
-              </Button>
-            </div>
-          </div>
+          <TableImportTab
+            importText={importText}
+            onChangeText={setImportText}
+            onImport={() => {
+              if (importFromText()) {
+                setTab('table');
+              }
+            }}
+          />
         )}
 
         {activeTab === 'ai' && aiEnabled && (
-          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-0.5">
-            <div className="space-y-1.5">
-              <label htmlFor="ai-table-prompt" className="text-11 font-medium text-foreground block">
-                Describe the table
-              </label>
-              <textarea
-                id="ai-table-prompt"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    void handleGenerate();
-                  }
-                }}
-                placeholder="Describe columns, rows, or paste unformatted text (Ctrl+Enter to generate)..."
-                rows={4}
-                className="w-full p-2.5 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-11 font-medium text-foreground block">
-                Table image (optional)
-              </span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleImagePick(e.target.files?.[0])}
-              />
-              {image ? (
-                <div className="flex items-center justify-between gap-3 p-2.5 border border-border rounded-md bg-muted/20">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={image.previewUrl}
-                      alt={image.file.name}
-                      className="size-12 rounded-sm object-cover border border-border shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-foreground truncate">
-                        {image.file.name}
-                      </p>
-                      <p className="text-11 text-muted-foreground">
-                        {Math.max(1, Math.round(image.file.size / 1024))} KB
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearImage}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive cursor-pointer shrink-0"
-                    aria-label="Remove uploaded image"
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(true);
-                  }}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(false);
-                    handleImagePick(e.dataTransfer.files?.[0]);
-                  }}
-                  className={cn(
-                    'w-full flex flex-col items-center justify-center gap-1.5 p-4 rounded-md border border-dashed transition-colors cursor-pointer text-center',
-                    isDragOver
-                      ? 'border-ai bg-ai/10'
-                      : 'border-border bg-muted/15 hover:bg-muted/30',
-                  )}
-                >
-                  <Upload className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">
-                    Drop a screenshot of a table or click to upload
-                  </span>
-                  <span className="text-11 text-muted-foreground">PNG, JPG, WebP</span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => void handleGenerate()}
-                disabled={isGenerating || (!prompt.trim() && !image)}
-                className="h-8 px-3 text-xs bg-ai text-ai-foreground hover:bg-ai-hover font-medium cursor-pointer gap-1.5 shadow-none"
-              >
-                {isGenerating && <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />}
-                <span>{isGenerating ? 'Generating...' : 'Generate Table'}</span>
-              </Button>
-            </div>
-          </div>
+          <TableAiTab
+            onApplyRaw={(output) => Boolean(importRaw(output))}
+            onFallbackImport={(output) => {
+              setImportText(output);
+              return Boolean(importFromText());
+            }}
+            onSuccess={() => setTab('table')}
+          />
         )}
 
         <DialogFooter className="flex items-center justify-end gap-2 pt-2 border-t border-border shrink-0">

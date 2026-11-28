@@ -21,7 +21,6 @@ import { useSearchStore } from './core/store/search.store';
 import { lruDocumentCache } from './domain/document/lru-document-cache';
 import { latexSymbolsIndex } from './domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from './domain/latex/dependency-graph';
-import { clearAllOfflineMemory } from './domain/offline-storage';
 import { warmEditorStatePool } from './domain/workspace/editor-tab-pool.domain';
 import {
   compilerCoordinator,
@@ -57,7 +56,6 @@ export function resetEditorWorkspace(options: ResetEditorWorkspaceOptions = {}):
   warmEditorStatePool.clear();
   clearVisualFigureBlobCache();
   clearKaTeXRenderCache();
-  clearAllOfflineMemory();
 
   latexSymbolsIndex.clear();
   latexDependencyGraph.clear();
@@ -98,9 +96,6 @@ if (typeof window !== 'undefined') {
         warmEditorStatePool.clear();
         clearVisualFigureBlobCache();
         clearKaTeXRenderCache();
-        if (level === 'pressure') {
-          clearAllOfflineMemory();
-        }
         return evicted;
       }
       return 0;

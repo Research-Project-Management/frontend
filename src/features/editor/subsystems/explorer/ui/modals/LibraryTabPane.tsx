@@ -97,7 +97,7 @@ export function LibraryTabPane({
       const targetSpaceId =
         usePageStore.getState().spaceId || usePageStore.getState().projectId || parentPageId;
       const res = await pagesService.citations.upsertEntries(targetSpaceId, {
-        entries: chosenItems as unknown as Array<Record<string, unknown>>,
+        entries: chosenItems,
         targetBibFile: targetName,
       });
       const createdId = res.docId || res.filePath || targetName;

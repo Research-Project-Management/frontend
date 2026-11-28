@@ -11,7 +11,7 @@ import type {
   SearchResultResponse,
   BatchReplaceOptions,
   BatchReplaceResultResponse,
-} from './types';
+} from './types/search-export.types';
 
 export const search = {
   search: async (

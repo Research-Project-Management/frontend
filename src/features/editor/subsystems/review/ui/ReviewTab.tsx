@@ -3,12 +3,12 @@
 import React from 'react';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { useReviewState } from './hooks/useReviewState';
+import { useReviewState } from '../hooks/useReviewState';
 import {
   useDeleteComment,
   useInfiniteResolvedComments,
   useResolveComment,
-} from './hooks/useComments';
+} from '../hooks/useComments';
 import {
   ReviewHeader,
   ReviewBottomNav,

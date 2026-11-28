@@ -1,9 +1,99 @@
+import crypto from 'node:crypto';
 import dns from 'node:dns/promises';
+import http from 'node:http';
+import https from 'node:https';
+import { Readable } from 'node:stream';
 import { NextRequest, NextResponse } from 'next/server';
+import { API_BASE_URL } from '@/config/env';
 import { isTokenValid } from '@/shared/utils/auth-token.util';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const VERIFIED_TOKEN_CACHE_MAX = 500;
+const VERIFIED_TOKEN_TTL_MS = 60_000;
+const verifiedTokenCache = new Map<string, number>();
+
+function extractTokenExpSeconds(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payloadJson = Buffer.from(parts[1], 'base64url').toString('utf8');
+    const payload = JSON.parse(payloadJson) as { exp?: unknown } | null;
+    return typeof payload?.exp === 'number' && Number.isFinite(payload.exp) ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+function verifyHmacJwtLocally(token: string, secret: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  try {
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')) as {
+      alg?: string;
+    };
+    const algMap: Record<string, string> = {
+      HS256: 'sha256',
+      HS384: 'sha384',
+      HS512: 'sha512',
+    };
+    const hashAlg = header?.alg ? algMap[header.alg] : undefined;
+    if (!hashAlg) return false;
+    const expectedSig = crypto
+      .createHmac(hashAlg, secret)
+      .update(`${parts[0]}.${parts[1]}`)
+      .digest();
+    const actualSig = Buffer.from(parts[2], 'base64url');
+    if (expectedSig.length !== actualSig.length) return false;
+    return crypto.timingSafeEqual(expectedSig, actualSig);
+  } catch {
+    return false;
+  }
+}
+
+async function verifyAccessToken(token: string | null | undefined): Promise<boolean> {
+  if (!token || !isTokenValid(token)) return false;
+  const trimmed = token.trim();
+  const expSeconds = extractTokenExpSeconds(trimmed);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  // Reject tokens without an explicit unexpired exp claim
+  if (expSeconds === null || expSeconds <= nowSeconds) return false;
+
+  const jwtSecret = process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET;
+  if (jwtSecret) {
+    return verifyHmacJwtLocally(trimmed, jwtSecret);
+  }
+
+  const tokenHash = crypto.createHash('sha256').update(trimmed).digest('hex');
+  const cachedUntil = verifiedTokenCache.get(tokenHash);
+  if (cachedUntil && cachedUntil > Date.now()) {
+    return true;
+  }
+
+  try {
+    const authCheckUrl = `${API_BASE_URL.replace(/\/$/, '')}/api/users/me`;
+    const res = await fetch(authCheckUrl, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${trimmed}`,
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(3_000),
+      cache: 'no-store',
+    });
+    if (!res.ok) return false;
+    if (verifiedTokenCache.size >= VERIFIED_TOKEN_CACHE_MAX) {
+      const oldestKey = verifiedTokenCache.keys().next().value;
+      if (oldestKey) verifiedTokenCache.delete(oldestKey);
+    }
+    const expiresAtMs = Math.min(Date.now() + VERIFIED_TOKEN_TTL_MS, expSeconds * 1000);
+    verifiedTokenCache.set(tokenHash, expiresAtMs);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const DISALLOWED_HOSTNAMES = new Set([
   'localhost',
@@ -84,37 +174,115 @@ function isPrivateOrDisallowedHost(rawHostname: string): boolean {
   return false;
 }
 
-async function validateHostSafety(hostname: string, port?: string): Promise<boolean> {
+interface ResolvedHostTarget {
+  address: string;
+  family: 4 | 6;
+}
+
+async function resolveSafeHost(
+  hostname: string,
+  port?: string,
+): Promise<ResolvedHostTarget | null> {
   if (port && port !== '80' && port !== '443') {
-    return false;
+    return null;
   }
   const norm = normalizeHostname(hostname);
   if (isPrivateOrDisallowedHost(norm)) {
-    return false;
+    return null;
   }
   try {
     const addresses = await dns.lookup(norm, { all: true });
     if (!addresses || addresses.length === 0) {
-      return false;
+      return null;
     }
     for (const addr of addresses) {
       if (isDisallowedIp(addr.address)) {
-        return false;
+        return null;
       }
     }
+    const first = addresses[0];
+    return {
+      address: first.address,
+      family: first.family === 6 ? 6 : 4,
+    };
   } catch {
-    return false;
+    return null;
   }
-  return true;
+}
+
+interface PinnedUpstreamResponse {
+  status: number;
+  headers: Headers;
+  body: ReadableStream<Uint8Array>;
+  destroy: () => void;
+}
+
+function fetchWithPinnedIp(
+  targetUrl: URL,
+  pinned: ResolvedHostTarget,
+  headers: Record<string, string>,
+  signal: AbortSignal,
+): Promise<PinnedUpstreamResponse> {
+  return new Promise((resolve, reject) => {
+    const isHttps = targetUrl.protocol === 'https:';
+    const transport = isHttps ? https : http;
+    const req = transport.request(
+      {
+        protocol: targetUrl.protocol,
+        hostname: targetUrl.hostname,
+        port: targetUrl.port || (isHttps ? 443 : 80),
+        path: `${targetUrl.pathname}${targetUrl.search}`,
+        method: 'GET',
+        headers: {
+          ...headers,
+          Host: targetUrl.host,
+        },
+        signal,
+        // Pin DNS resolution to the already-validated IP to prevent TOCTOU DNS rebinding
+        lookup: (_hostname, options, callback) => {
+          if (typeof options === 'object' && options !== null && 'all' in options && options.all) {
+            callback(null, [{ address: pinned.address, family: pinned.family }]);
+          } else {
+            callback(null, pinned.address, pinned.family);
+          }
+        },
+        ...(isHttps ? { servername: targetUrl.hostname } : {}),
+      },
+      (res) => {
+        const resHeaders = new Headers();
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (Array.isArray(v)) {
+            for (const item of v) resHeaders.append(k, item);
+          } else if (typeof v === 'string') {
+            resHeaders.set(k, v);
+          }
+        }
+        const webBody = Readable.toWeb(res) as unknown as ReadableStream<Uint8Array>;
+        resolve({
+          status: res.statusCode ?? 502,
+          headers: resHeaders,
+          body: webBody,
+          destroy: () => {
+            res.destroy();
+            req.destroy();
+          },
+        });
+      },
+    );
+
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 export async function GET(request: NextRequest) {
-  // 1. Authentication check (mitigate open proxy - require valid unexpired access token)
+  // 1. Cryptographic / server-verified authentication check (mitigate open proxy)
   const rawToken = request.cookies.get('accessToken')?.value;
   const authHeader = request.headers.get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  const isAuthenticated = isTokenValid(rawToken) || isTokenValid(bearerToken);
+  const isAuthenticated =
+    (await verifyAccessToken(rawToken)) || (await verifyAccessToken(bearerToken));
 
   if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized access to PDF proxy' }, { status: 401 });
@@ -138,24 +306,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Only HTTP and HTTPS protocols are allowed' }, { status: 400 });
   }
 
-  const isInitialHostSafe = await validateHostSafety(parsed.hostname, parsed.port);
-  if (!isInitialHostSafe) {
-    return NextResponse.json({ error: 'Requests to internal or disallowed networks are prohibited' }, { status: 403 });
-  }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
   const incomingRange = request.headers.get('range');
   const incomingIfRange = request.headers.get('if-range');
 
+  let upstreamResponse: PinnedUpstreamResponse | null = null;
   try {
     let currentUrl = parsed.toString();
-    let upstreamResponse: Response | null = null;
 
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       const currentParsed = new URL(currentUrl);
-      const isHopSafe = await validateHostSafety(currentParsed.hostname, currentParsed.port);
-      if (!isHopSafe) {
+      const pinnedTarget = await resolveSafeHost(currentParsed.hostname, currentParsed.port);
+      if (!pinnedTarget) {
         clearTimeout(timeoutId);
         return NextResponse.json(
           { error: 'Requests to internal or disallowed networks are prohibited' },
@@ -176,15 +339,16 @@ export async function GET(request: NextRequest) {
         upstreamHeaders['If-Range'] = incomingIfRange;
       }
 
-      upstreamResponse = await fetch(currentUrl, {
-        method: 'GET',
-        headers: upstreamHeaders,
-        signal: controller.signal,
-        redirect: 'manual',
-      });
+      upstreamResponse = await fetchWithPinnedIp(
+        currentParsed,
+        pinnedTarget,
+        upstreamHeaders,
+        controller.signal,
+      );
 
       if (upstreamResponse.status >= 300 && upstreamResponse.status < 400) {
         const locationHeader = upstreamResponse.headers.get('location');
+        upstreamResponse.destroy();
         if (!locationHeader) break;
         if (hop === MAX_REDIRECTS) {
           clearTimeout(timeoutId);
@@ -210,14 +374,6 @@ export async function GET(request: NextRequest) {
             { status: 403 },
           );
         }
-        const isRedirectSafe = await validateHostSafety(nextUrl.hostname, nextUrl.port);
-        if (!isRedirectSafe) {
-          clearTimeout(timeoutId);
-          return NextResponse.json(
-            { error: 'Redirect to internal or disallowed network is prohibited' },
-            { status: 403 },
-          );
-        }
         currentUrl = nextUrl.toString();
         continue;
       }
@@ -232,9 +388,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!upstreamResponse.ok) {
+    if (upstreamResponse.status < 200 || upstreamResponse.status >= 300) {
       clearTimeout(timeoutId);
-      if (upstreamResponse.status === 403) {
+      const status = upstreamResponse.status;
+      upstreamResponse.destroy();
+      if (status === 403) {
         return NextResponse.json(
           {
             error:
@@ -245,9 +403,9 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json(
         {
-          error: `External publisher returned HTTP ${upstreamResponse.status}`,
+          error: `External publisher returned HTTP ${status}`,
         },
-        { status: upstreamResponse.status }
+        { status }
       );
     }
 
@@ -271,6 +429,7 @@ export async function GET(request: NextRequest) {
     // Strictly prevent XSS or non-PDF mime types being interpreted by the browser
     if (isRejectedMimeType || !isAllowedMimeType) {
       clearTimeout(timeoutId);
+      upstreamResponse.destroy();
       return NextResponse.json(
         {
           error:
@@ -285,6 +444,7 @@ export async function GET(request: NextRequest) {
       const parsedLength = parseInt(contentLengthHeader, 10);
       if (!Number.isNaN(parsedLength) && parsedLength > MAX_PAYLOAD_BYTES) {
         clearTimeout(timeoutId);
+        upstreamResponse.destroy();
         return NextResponse.json(
           { error: 'Remote document exceeds maximum allowed size (50MB)' },
           { status: 413 }
@@ -303,9 +463,43 @@ export async function GET(request: NextRequest) {
     let body: ReadableStream<Uint8Array> | null = upstreamResponse.body;
     if (body && typeof body.getReader === 'function') {
       const reader = body.getReader();
-      const firstRead = await reader.read();
-      if (!firstRead.done && firstRead.value && firstRead.value.byteLength >= 5) {
-        const prefix = new TextDecoder('ascii').decode(firstRead.value.subarray(0, 1024));
+      // Buffer at least 5 bytes (up to 1024 bytes) before inspecting magic bytes
+      // so fragmented TCP chunks < 5 bytes cannot bypass verification.
+      const initialChunks: Uint8Array[] = [];
+      let totalBytesRead = 0;
+      let streamEnded = false;
+      while (totalBytesRead < 5) {
+        const readResult = await reader.read();
+        if (readResult.done) {
+          streamEnded = true;
+          break;
+        }
+        if (readResult.value && readResult.value.byteLength > 0) {
+          initialChunks.push(readResult.value);
+          totalBytesRead += readResult.value.byteLength;
+          if (totalBytesRead > MAX_PAYLOAD_BYTES) {
+            clearTimeout(timeoutId);
+            await reader.cancel().catch(() => undefined);
+            return NextResponse.json(
+              { error: 'Remote document exceeds maximum allowed size (50MB)' },
+              { status: 413 },
+            );
+          }
+        }
+      }
+
+      const inspectLen = Math.min(totalBytesRead, 1024);
+      const inspectBuf = new Uint8Array(inspectLen);
+      let offset = 0;
+      for (const chunk of initialChunks) {
+        const take = Math.min(chunk.byteLength, inspectLen - offset);
+        if (take <= 0) break;
+        inspectBuf.set(chunk.subarray(0, take), offset);
+        offset += take;
+      }
+
+      if (inspectLen > 0) {
+        const prefix = new TextDecoder('ascii').decode(inspectBuf);
         const trimmedPrefix = prefix.trimStart();
         if (
           trimmedPrefix.startsWith('<!DOCTYPE') ||
@@ -328,23 +522,16 @@ export async function GET(request: NextRequest) {
           );
         }
       }
-      let totalBytesRead = !firstRead.done && firstRead.value ? firstRead.value.byteLength : 0;
-      if (totalBytesRead > MAX_PAYLOAD_BYTES) {
-        clearTimeout(timeoutId);
-        await reader.cancel().catch(() => undefined);
-        return NextResponse.json(
-          { error: 'Remote document exceeds maximum allowed size (50MB)' },
-          { status: 413 },
-        );
-      }
+
       // Initial connection and magic-byte verification succeeded; switch from total-download timeout
       // to a per-chunk inactivity timeout so large PDFs streaming >30s are not prematurely aborted.
       clearTimeout(timeoutId);
       body = new ReadableStream<Uint8Array>({
         start(streamController) {
-          if (!firstRead.done && firstRead.value) {
-            streamController.enqueue(firstRead.value);
-          } else if (firstRead.done) {
+          for (const chunk of initialChunks) {
+            streamController.enqueue(chunk);
+          }
+          if (streamEnded) {
             streamController.close();
           }
         },
@@ -400,11 +587,18 @@ export async function GET(request: NextRequest) {
       status: isPartialContent ? 206 : 200,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (err: unknown) {
     clearTimeout(timeoutId);
+    upstreamResponse?.destroy();
+    const isAbort =
+      (err instanceof Error && err.name === 'AbortError') || controller.signal.aborted;
     return NextResponse.json(
-      { error: 'Failed to fetch remote document from upstream server' },
-      { status: 502 }
+      {
+        error: isAbort
+          ? 'Timed out while fetching remote document from upstream server'
+          : 'Failed to fetch remote document from upstream server',
+      },
+      { status: isAbort ? 504 : 502 },
     );
   }
 }

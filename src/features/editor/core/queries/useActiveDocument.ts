@@ -191,17 +191,19 @@ export function useActiveDocument() {
     const ws = bootstrapData.workspace;
     const resolvedRootProjectId = ws.spaceType === 'project' ? ws.spaceId : '';
     if (bootstrapData.activeDoc.id === ws.rootDocId) {
-      return {
+      const page: Page = {
         ...bootstrapData.activeDoc.page,
         id: ws.rootDocId,
         title: ws.mainFilePath || bootstrapData.activeDoc.page.title,
+        status: (bootstrapData.activeDoc.page.status as Page['status']) || 'published',
         projectId: resolvedRootProjectId,
         mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
         mainFileId: ws.rootDocId,
         rootPageId: ws.pageId || ws.rootDocId,
-      } as unknown as Page;
+      };
+      return page;
     }
-    return {
+    const page: Page = {
       id: ws.rootDocId,
       title: ws.mainFilePath || 'main.tex',
       path: ws.mainFilePath,
@@ -210,7 +212,8 @@ export function useActiveDocument() {
       mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
       mainFileId: ws.rootDocId,
       rootPageId: ws.pageId || ws.rootDocId,
-    } as unknown as Page;
+    };
+    return page;
   }, [bootstrapData]);
 
   const serverFiles = serverFilesData ?? EMPTY_FILE_ARRAY;
@@ -279,7 +282,7 @@ export function useActiveDocument() {
         title: nextTitle,
         path: nextPath,
         content: cached.content,
-      } as unknown as Page;
+      };
     }
     const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;

@@ -183,6 +183,5 @@ export interface IEditorEngine {
   onDestroy(): void;
 }
 
-export type EditorEngine = IEditorEngine;
 
 

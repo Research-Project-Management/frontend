@@ -14,21 +14,15 @@ import {
   DocumentManifestStore,
   findModelByNormalizedPath,
   mergeModelRegistration,
-  persistEvictedModelToSink,
-  resolveHydratedRegistrationFromSink,
   rewriteModelsFolderPrefix,
   type DocumentManifestEntry,
   type ManifestTreeNode,
 } from './document-manifest.store';
-import {
-  defaultDocumentSpillSink,
-  type IDocumentSpillSink,
-} from '@/features/editor/domain/offline-storage';
 import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
 import { resolveHardwareBudget } from '@/shared/lib/memory-governor';
 
 export { measureUtf8Bytes };
-export type { IDocumentSpillSink, DocumentManifestEntry, LRUNode };
+export type { DocumentManifestEntry, LRUNode };
 
 export interface DocumentCursorSelection {
   anchor: number;
@@ -94,15 +88,8 @@ export class LRUDocumentCache {
   private readonly fileListeners = new Map<string, Set<CacheSubscriber>>();
   private readonly dirtyFileIds = new Set<string>();
   private readonly evictionListeners = new Set<ModelEvictionListener>();
-  private persistenceSink: IDocumentSpillSink | null = defaultDocumentSpillSink;
 
-  constructor(persistenceSink: IDocumentSpillSink | null = defaultDocumentSpillSink) {
-    this.persistenceSink = persistenceSink;
-  }
-
-  public setPersistenceSink(sink: IDocumentSpillSink | null): void {
-    this.persistenceSink = sink;
-  }
+  constructor() {}
 
   public setActiveFileId(fileId: string | null): void {
     this.activeFileId = fileId;
@@ -262,21 +249,6 @@ export class LRUDocumentCache {
     if (existing && existing.isAuthoritative !== false) return existing;
 
     const manifest = this.manifestStore.getEntry(fileId);
-    if (this.persistenceSink) {
-      const hydrated = await resolveHydratedRegistrationFromSink(
-        this.persistenceSink,
-        manifest,
-        fileId,
-        filePath,
-        projectId,
-      );
-      if (hydrated) {
-        const model = this.registerModel(fileId, hydrated.data);
-        if (hydrated.isDirty) this.markDirty(fileId);
-        return model;
-      }
-    }
-
     return this.registerModel(fileId, {
       content: fallbackContent,
       filePath: filePath || fileId,
@@ -577,10 +549,8 @@ export class LRUDocumentCache {
     const { fileId } = node;
     const model = this.models.get(fileId);
 
-    if (options?.skipPersistence) this.dirtyFileIds.delete(fileId);
-
-    if (!options?.skipPersistence && model && this.persistenceSink) {
-      persistEvictedModelToSink(this.persistenceSink, fileId, model, this.dirtyFileIds);
+    if (options?.skipPersistence || !model?.isDirty) {
+      this.dirtyFileIds.delete(fileId);
     }
 
     this.lruList.remove(fileId);

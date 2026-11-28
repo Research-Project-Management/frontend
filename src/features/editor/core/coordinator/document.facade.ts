@@ -25,10 +25,10 @@ import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractDocumentContentString,
-  extractProjectId,
   type Page,
   type PageFile,
 } from '@/features/editor/domain/types/core.types';
+import { resolveEditorScope } from './editor-scope';
 
 export interface ProjectFileReadModel {
   id: string;
@@ -106,39 +106,25 @@ export class DocumentFacade {
     projectId?: string | null;
     pageId?: string | null;
   }): { projectId: string; rootPageId: string; activeFileId: string | null } {
+    const scope = resolveEditorScope(params);
     const pageState = usePageStore.getState();
-    const currentPage = pageState.currentPage;
-    const activeFilePage = pageState.activeFilePage;
-
-    const rootPageId =
-      params?.pageId ||
-      pageState.parentPageId ||
-      params?.projectId ||
-      currentPage?.id ||
-      '';
-
-    const projectId =
-      params?.projectId ||
-      pageState.projectId ||
-      pageState.spaceId ||
-      extractProjectId(currentPage) ||
-      rootPageId ||
-      '';
-
     const wsState = useWorkspaceStore.getState();
     const wsActiveId =
-      (rootPageId ? wsState.activeByProject[rootPageId] : null) ||
-      (projectId ? wsState.activeByProject[projectId] : null) ||
+      (scope.rootPageId ? wsState.activeByProject[scope.rootPageId] : null) ||
+      (scope.effectiveScopeId ? wsState.activeByProject[scope.effectiveScopeId] : null) ||
       null;
 
     const activeFileId =
-      activeFilePage?.id ||
+      pageState.activeFilePage?.id ||
       pageState.activePageId ||
       wsActiveId ||
-      currentPage?.id ||
-      null;
+      scope.activeFileId;
 
-    return { projectId, rootPageId, activeFileId };
+    return {
+      projectId: scope.effectiveScopeId,
+      rootPageId: scope.rootPageId,
+      activeFileId,
+    };
   }
 
   /**

@@ -13,7 +13,7 @@ import type {
   ProjectReviewOverviewResponseDto,
   ProjectReviewFileOverviewDto,
   CreateSuggestionPayload,
-} from './types';
+} from './types/review.types';
 import type { Page } from '@/features/editor/domain/types/core.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';

@@ -5,7 +5,6 @@
  * and offline spill persistence/hydration helpers for LRUDocumentCache (Domain Layer - Pure).
  */
 
-import type { IDocumentSpillSink } from '@/features/editor/domain/offline-storage';
 import {
   normalizeVirtualPath,
   rewritePathPrefix,
@@ -218,69 +217,6 @@ export function mergeModelRegistration(
   return bytesDelta;
 }
 
-export async function resolveHydratedRegistrationFromSink(
-  persistenceSink: IDocumentSpillSink,
-  manifest: DocumentManifestEntry | undefined,
-  fileId: string,
-  filePath?: string,
-  projectId?: string,
-): Promise<{
-  isDirty: boolean;
-  data: {
-    content: string;
-    filePath?: string;
-    projectId?: string;
-    serverRev?: number;
-    hash?: string | null;
-    isAuthoritative: boolean;
-  };
-} | null> {
-  try {
-    const [unsyncedEdit, syncedDoc] = await Promise.all([
-      persistenceSink.getUnsyncedEdit(fileId).catch(() => null),
-      persistenceSink.getSyncedDoc
-        ? persistenceSink.getSyncedDoc(fileId).catch(() => null)
-        : Promise.resolve(null),
-    ]);
-
-    if (
-      unsyncedEdit &&
-      typeof unsyncedEdit.content === 'string' &&
-      (!syncedDoc || (unsyncedEdit.savedAt ?? Infinity) >= (syncedDoc.updatedAt ?? 0))
-    ) {
-      return {
-        isDirty: true,
-        data: {
-          content: unsyncedEdit.content,
-          filePath:
-            filePath || unsyncedEdit.title || syncedDoc?.filePath || syncedDoc?.title || fileId,
-          projectId: projectId || unsyncedEdit.projectId || syncedDoc?.projectId,
-          serverRev: unsyncedEdit.expectedRev ?? syncedDoc?.rev ?? manifest?.rev,
-          hash: syncedDoc?.hash ?? manifest?.hash,
-          isAuthoritative: true,
-        },
-      };
-    }
-
-    if (syncedDoc && typeof syncedDoc.content === 'string') {
-      return {
-        isDirty: false,
-        data: {
-          content: syncedDoc.content,
-          filePath: filePath || syncedDoc.filePath || syncedDoc.title || fileId,
-          projectId: projectId || syncedDoc.projectId,
-          serverRev: syncedDoc.rev ?? manifest?.rev,
-          hash: syncedDoc.hash ?? manifest?.hash,
-          isAuthoritative: true,
-        },
-      };
-    }
-  } catch {
-    // Fallback to caller's default registration
-  }
-  return null;
-}
-
 export function rewriteModelsFolderPrefix<
   T extends { fileId: string; filePath: string; content: string; lastActiveAt: number },
 >(
@@ -310,51 +246,4 @@ export function rewriteModelsFolderPrefix<
     }
   }
   return updated;
-}
-
-export function persistEvictedModelToSink(
-  persistenceSink: IDocumentSpillSink,
-  fileId: string,
-  model: SpillableModelRecord,
-  dirtyFileIds: Set<string>,
-): void {
-  if (model.isDirty) {
-    dirtyFileIds.add(fileId);
-    const savePromise =
-      model.serverRev !== undefined
-        ? persistenceSink.saveUnsyncedEdit(
-            fileId,
-            model.content,
-            model.projectId || 'workspace-local',
-            model.filePath,
-            model.serverRev,
-          )
-        : persistenceSink.saveUnsyncedEdit(
-            fileId,
-            model.content,
-            model.projectId || 'workspace-local',
-            model.filePath,
-          );
-    savePromise.catch(() => {});
-  } else {
-    dirtyFileIds.delete(fileId);
-    if (
-      model.isAuthoritative !== false &&
-      (model.content.length > 0 || model.serverRev !== undefined || model.hash !== undefined) &&
-      persistenceSink.putSyncedDoc
-    ) {
-      persistenceSink
-        .putSyncedDoc({
-          id: fileId,
-          projectId: model.projectId || 'workspace-local',
-          title: model.filePath,
-          content: model.content,
-          filePath: model.filePath,
-          rev: model.serverRev,
-          hash: model.hash,
-          updatedAt: Date.now(),
-        })
-        .catch(() => {});
-    }
-  }
 }

@@ -89,7 +89,7 @@ export const usePageActions = () => {
 
   const updateTitle = useMutation({
     mutationFn: ({ pageId, title }: { pageId: string; title: string }) =>
-      PageService.updateTitle(pageId, title),
+      PageService.update(pageId, { title }),
     onSuccess: (data) => {
       if (data?.id) {
         queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });

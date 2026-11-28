@@ -22,7 +22,7 @@ import { Button } from '@/shared/components/ui/button';
 import { cn, formatBytes } from '@/shared/lib/utils';
 import { UPLOAD_LIMITS } from '@/config/limits';
 import { pagesService } from '@/features/editor/core';
-import { pageKeys } from '../../hooks/use-page';
+import { pageKeys } from '@/features/pages/hooks/use-page';
 
 interface ImportDocumentModalProps {
   isOpen: boolean;

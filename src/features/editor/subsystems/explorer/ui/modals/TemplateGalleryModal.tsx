@@ -3,16 +3,12 @@
 /**
  * TemplateGalleryModal.tsx
  *
- * Unified Academic & Custom LaTeX Template Gallery (Overleaf parity).
- * Serves both Editor mode (`<TemplateGalleryModal />`) and Project Pages mode
- * (`<TemplateGalleryModal mode="project" open={...} onOpenChange={...} projectId={...} />`).
+ * Unified Academic & Custom LaTeX Page Template Gallery (Overleaf parity).
  */
 
 import React from 'react';
 import {
   BookOpen,
-  Check,
-  Copy,
   FileArchive,
   FileCheck,
   FileText,
@@ -38,19 +34,17 @@ import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import type { TemplateSummary } from '@/features/editor/sdk/pages/templates.client';
+import type { TemplateCategory } from '@/features/editor/sdk/pages/templates.client';
 import {
   useTemplateGallery,
-  type GalleryMode,
-} from '../hooks/useTemplateGallery';
-
-export type ProjectTemplate = TemplateSummary;
+  type GalleryCategoryFilter,
+  type GalleryScopeFilter,
+} from '@/features/editor/subsystems/explorer/hooks/useTemplateGallery';
 
 export interface TemplateGalleryModalProps {
-  mode?: GalleryMode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  projectId?: string;
+  spaceId?: string;
   initialCategory?: string;
 }
 
@@ -93,9 +87,9 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
               {(
                 [
                   ['all', 'All'],
-                  ['official', 'Official'],
-                  ['custom', 'Custom'],
-                ] as const
+                  ['personal', 'Personal'],
+                  ...(g.isProjectSpace ? [['project', 'Project'] as const] : []),
+                ] as ReadonlyArray<readonly [GalleryScopeFilter, string]>
               ).map(([key, label]) => (
                 <button
                   key={key}
@@ -124,7 +118,7 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
           </button>
         </div>
         <DialogDescription className="sr-only">
-          Browse, preview, publish, and scaffold LaTeX manuscript templates
+          Browse, preview, publish, and instantiate LaTeX page templates
         </DialogDescription>
 
         {/* 3-Column Body */}
@@ -142,7 +136,7 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                   key={cat.id}
                   type="button"
                   onClick={() => {
-                    g.setCategory(cat.id);
+                    g.setCategory(cat.id as GalleryCategoryFilter);
                     g.setSelectedId(null);
                   }}
                   className={cn(
@@ -226,7 +220,11 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                           variant="outline"
                           className="text-[10px] px-1.5 py-0 font-mono shrink-0 rounded-sm"
                         >
-                          {tpl.badge}
+                          {tpl.scope === 'project'
+                            ? 'Project'
+                            : tpl.scope === 'personal'
+                              ? 'Personal'
+                              : tpl.compiler}
                         </Badge>
                       </div>
                       {tpl.description && (
@@ -235,7 +233,9 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                         </p>
                       )}
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 pt-0.5">
-                        <span className="truncate">by {tpl.author}</span>
+                        <span className="truncate">
+                          {tpl.author ? tpl.author : tpl.category}
+                        </span>
                         <span className="font-mono shrink-0">
                           {tpl.compiler} · {tpl.fileCount}{' '}
                           {tpl.fileCount === 1 ? 'file' : 'files'}
@@ -259,7 +259,7 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                         <button
                           key={f.path}
                           type="button"
-                          onClick={() => g.setActiveFilePath(f.path)}
+                          onClick={() => g.setPreviewPath(f.path)}
                           className={cn(
                             'px-2 py-0.5 rounded-sm text-11 font-mono transition-colors cursor-pointer shrink-0 border',
                             g.activeFile?.path === f.path
@@ -278,39 +278,18 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {g.selected.license && (
-                      <span className="hidden lg:inline text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                        {g.selected.license}
-                      </span>
-                    )}
-                    {g.selected.visibility !== 'official' && (
+                    {g.selected.isCustom && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         disabled={g.busy}
                         onClick={g.deleteSelected}
-                        title="Delete custom template"
-                        aria-label="Delete custom template"
+                        title="Delete template"
+                        aria-label="Delete template"
                         className="h-7 px-2 text-11 text-muted-foreground hover:text-destructive cursor-pointer"
                       >
                         <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                    {g.activeFile?.kind === 'doc' && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={g.copyPreview}
-                        className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
-                      >
-                        {g.copied ? (
-                          <Check className="size-3" />
-                        ) : (
-                          <Copy className="size-3" />
-                        )}
-                        <span>{g.copied ? 'Copied' : 'Copy'}</span>
                       </Button>
                     )}
                   </div>
@@ -323,7 +302,7 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                       <Skeleton className="h-3.5 w-80 rounded-sm" />
                       <Skeleton className="h-3.5 w-64 rounded-sm" />
                     </div>
-                  ) : g.activeFile?.kind === 'file' ? (
+                  ) : g.activeFile?.type === 'FILE' ? (
                     <div className="h-full flex flex-col items-center justify-center text-center font-sans text-muted-foreground gap-2">
                       <FileArchive className="size-7 opacity-60" />
                       <div className="text-xs font-medium text-foreground">
@@ -331,8 +310,8 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
                       </div>
                       <div className="text-11">
                         Binary asset ({g.activeFile.mimeType} ·{' '}
-                        {formatBytes(g.activeFile.sizeBytes)}) — included
-                        automatically on scaffold
+                        {formatBytes(g.activeFile.sizeBytes)}) — linked zero-copy
+                        when instantiated
                       </div>
                     </div>
                   ) : (
@@ -348,16 +327,88 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
           </div>
         </div>
 
+        {/* Inline Publish Bar (Flat Precision SaaS Style: h-8, text-12, rounded-md) */}
+        {g.publishOpen && g.canPublishPage && (
+          <div className="px-5 py-2.5 border-t border-border bg-muted/30 flex flex-wrap items-center gap-2 shrink-0">
+            <input
+              type="text"
+              value={g.publishName}
+              onChange={(e) => g.setPublishName(e.target.value)}
+              placeholder="Template name…"
+              aria-label="Template name"
+              className="flex-1 min-w-44 h-8 px-2.5 text-12 rounded-md border border-border bg-background focus:border-ring focus:ring-1 focus:ring-ring text-foreground outline-none select-text"
+            />
+            <select
+              value={g.publishCategory}
+              onChange={(e) =>
+                g.setPublishCategory(e.target.value as TemplateCategory)
+              }
+              aria-label="Template category"
+              className="h-8 px-2 text-12 rounded-md border border-border bg-background text-foreground outline-none cursor-pointer"
+            >
+              {CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+              <option value="other">Other</option>
+            </select>
+            {g.isProjectSpace && (
+              <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-11 h-8">
+                {(
+                  [
+                    ['project', 'Project'],
+                    ['personal', 'Personal'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => g.setPublishScope(key)}
+                    className={cn(
+                      'px-2 h-full rounded-sm transition-colors cursor-pointer',
+                      g.publishScope === key
+                        ? 'bg-background text-foreground font-medium shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              disabled={g.busy || !g.publishName.trim()}
+              onClick={g.publishCurrentPage}
+              className="h-8 px-3 text-12 font-medium cursor-pointer"
+            >
+              {g.existingForPage ? 'Update template' : 'Save template'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={g.busy}
+              onClick={() => g.setPublishOpen(false)}
+              className="h-8 px-2 text-12 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Close
+            </Button>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="px-5 py-2.5 border-t border-border bg-background flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
           <div>
-            {g.mode === 'editor' && g.spaceId && (
+            {g.canPublishPage && !g.publishOpen && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 disabled={g.busy}
-                onClick={g.publishCurrentPage}
+                onClick={g.openPublishBar}
                 className="h-8 gap-1.5 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <Plus className="size-3.5" />
@@ -378,25 +429,11 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
               Cancel
             </Button>
 
-            {g.mode === 'editor' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!g.selected || g.busy}
-                onClick={g.insertIntoActiveFile}
-                className="h-8 gap-1.5 px-3 text-12 font-medium cursor-pointer"
-              >
-                <FileText className="size-3.5" />
-                <span>Insert into file</span>
-              </Button>
-            )}
-
             <Button
               type="button"
               size="sm"
               disabled={!g.selected || g.busy}
-              onClick={g.scaffold}
+              onClick={g.instantiate}
               className="h-8 gap-1.5 px-3.5 text-12 font-medium cursor-pointer"
             >
               {g.busy ? (
@@ -404,13 +441,7 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
               ) : (
                 <FileCheck className="size-3.5" />
               )}
-              <span>
-                {g.busy
-                  ? 'Scaffolding…'
-                  : g.mode === 'project'
-                    ? 'Create from template'
-                    : 'Scaffold page'}
-              </span>
+              <span>{g.busy ? 'Creating…' : 'Use template'}</span>
             </Button>
           </div>
         </div>
@@ -418,5 +449,3 @@ export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
     </Dialog>
   );
 }
-
-export default TemplateGalleryModal;

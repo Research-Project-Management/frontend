@@ -48,7 +48,6 @@ export interface TeXcountStats {
   rawOutput?: string;
 }
 
-export type LatexWordCountResult = TeXcountStats;
 
 export interface ProjectTeXcountStats extends TeXcountStats {
   rootFile: string;

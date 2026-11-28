@@ -30,7 +30,7 @@ import { history } from './pages/history.client';
 import { exportDocs } from './pages/export.client';
 import { search } from './pages/search.client';
 import { structure } from './pages/structure.client';
-import { filestore, linkedFiles } from './pages/filestore.client';
+import { filestore } from './pages/filestore.client';
 import { citations } from './pages/citations.client';
 import { spelling } from './pages/spelling.client';
 import { ai, suggestLatexFix } from './pages/ai.client';
@@ -73,7 +73,6 @@ export const pagesService = {
   spelling,
   ai,
   suggestLatexFix,
-  linkedFiles,
   restoreProjectVersionFile: history.restoreProjectVersionFile,
 };
 

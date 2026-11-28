@@ -52,6 +52,7 @@ const VIEW_OPTIONS = [
 
 const TEMPLATE_CATEGORIES = [
   { label: 'Journal articles', category: 'journal' },
+  { label: 'Conferences', category: 'conference' },
   { label: 'Books', category: 'book' },
   { label: 'Formal letters', category: 'letter' },
   { label: 'Assignments', category: 'assignment' },

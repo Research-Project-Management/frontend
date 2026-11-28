@@ -15,7 +15,7 @@ import { editorBootstrapQuery } from '@/features/editor/core/queries/document.qu
 import { memoryGovernor } from '@/shared/lib/memory-governor';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import { usePageStore } from '../store/editor.store';
-import { resetEditorWorkspace } from '../../editor-workspace-lifecycle';
+import { resetEditorWorkspace } from '@/features/editor/editor-workspace-lifecycle';
 import EditorSkeleton from './EditorSkeleton';
 
 const WorkbenchLayout = dynamic(

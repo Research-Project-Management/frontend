@@ -27,10 +27,6 @@ export {
   type DocumentModelState,
 } from '@/features/editor/domain/document/lru-document-cache';
 
-export type {
-  ProjectTemplate,
-} from './ui/modals/TemplateGalleryModal';
-
 export {
   normalizeVirtualPath,
 } from '@/features/editor/domain/document/document-naming';

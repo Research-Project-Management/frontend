@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '@/shared/lib/api';
-import { PAGES_API_BASE } from '@/features/editor/sdk/pages/base';
+import { PAGES_SERVICE_BASE_URL as PAGES_API_BASE } from '@/config/env';
 import type {
   Page,
   PageStatus,
@@ -91,29 +91,9 @@ export const PageService = {
     return res.page;
   },
 
-  updateTitle: async (pageId: string, title: string) => {
-    return PageService.update(pageId, { title });
-  },
+  replaceLabels: (spaceId: string, pageId: string, labelIds: string[]) =>
+    apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
+      `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
+      { labelIds },
+    ),
 };
-
-export const getPageLabels = (spaceId: string, pageId: string) =>
-  apiGet<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`
-  );
-
-export const assignPageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
-  apiPost<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
-    { labelIds }
-  );
-
-export const replacePageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
-  apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
-    { labelIds }
-  );
-
-export const removePageLabel = (spaceId: string, pageId: string, labelId: string) =>
-  apiDelete<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels/${labelId}`
-  );

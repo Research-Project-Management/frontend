@@ -95,21 +95,32 @@ const OUTLINE_LEVEL_META: Record<string, { level: number; levelName: string; typ
 /**
  * Maps backend `LatexOutlineEntryDto[]` to `OutlineEntry[]`.
  */
-export function dtoToOutlineEntries(entries: LatexOutlineEntryDto[] | null | undefined): OutlineEntry[] {
+export function dtoToOutlineEntries(
+  entries: ReadonlyArray<LatexOutlineEntryDto | OutlineEntry> | null | undefined,
+): OutlineEntry[] {
   if (!entries || !Array.isArray(entries)) return [];
-  return entries.map((e: any) => {
+  return entries.map((e) => {
     const rawLevel = e.level;
-    const meta = typeof rawLevel === 'string' && OUTLINE_LEVEL_META[rawLevel]
-      ? OUTLINE_LEVEL_META[rawLevel]
-      : { level: typeof rawLevel === 'number' ? rawLevel : 1, levelName: e.levelName || 'Section', type: (e.type || 'section') as OutlineEntry['type'] };
+    const levelName = 'levelName' in e ? e.levelName : undefined;
+    const type = 'type' in e ? e.type : undefined;
+    const file = 'file' in e ? e.file : undefined;
+    const sourceFile = 'sourceFile' in e ? e.sourceFile : undefined;
+    const meta =
+      typeof rawLevel === 'string' && OUTLINE_LEVEL_META[rawLevel]
+        ? OUTLINE_LEVEL_META[rawLevel]
+        : {
+            level: typeof rawLevel === 'number' ? rawLevel : 1,
+            levelName: levelName || 'Section',
+            type: (type || 'section') as OutlineEntry['type'],
+          };
 
     return {
       level: meta.level,
-      levelName: e.levelName || meta.levelName,
+      levelName: levelName || meta.levelName,
       title: e.title,
       line: e.line,
-      type: (e.type || meta.type) as OutlineEntry['type'],
-      sourceFile: e.file || e.sourceFile,
+      type: (type || meta.type) as OutlineEntry['type'],
+      sourceFile: file || sourceFile,
     };
   });
 }
@@ -117,7 +128,7 @@ export function dtoToOutlineEntries(entries: LatexOutlineEntryDto[] | null | und
 let cachedOutlineEntries: OutlineEntry[] = [];
 
 export function cacheBackendOutline(entries: LatexOutlineEntryDto[] | OutlineEntry[]): void {
-  cachedOutlineEntries = dtoToOutlineEntries(entries as any);
+  cachedOutlineEntries = dtoToOutlineEntries(entries);
 }
 
 export function clearOutlineMemoCache(): void {

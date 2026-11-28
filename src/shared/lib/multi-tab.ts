@@ -58,12 +58,6 @@ export type MultiTabEventPayload =
       type: 'FEEDS_READ_IDS_SYNC';
     }
   | {
-      type: 'OFFLINE_OUTBOX_MUTATED';
-      action: 'ENQUEUED' | 'FLUSHED' | 'FAILED' | 'RETRY';
-      count: number;
-      mutationId?: string;
-    }
-  | {
       type: 'EDITOR_COMPILATION_COMPLETED';
       projectId: string;
       pdfUrl: string | null;

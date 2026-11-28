@@ -27,7 +27,7 @@ import {
 import { DeleteFileDialog } from './modals/DeleteFileDialog';
 import { FileTreeContainer } from './FileTreeContainer';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
-import { useFilesTabController } from './hooks/useFilesTabController';
+import { useFilesTabController } from '../hooks/useFilesTabController';
 
 const AddFilesModal = dynamic(
   () => import('@/features/editor/subsystems/explorer/ui/modals/AddFilesModal'),

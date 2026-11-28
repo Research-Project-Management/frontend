@@ -18,9 +18,15 @@ import {
   formatCitationSnippet,
   formatBibEntryToBibtex,
   formatItemToBibtex,
-  parseBibtexAuthors,
-  cleanBibtexTitle,
 } from '../model/formatter';
+import {
+  CitationSpecs,
+  mergeCitationSources,
+  mapServerBibDtos,
+  mergeUniqueBibEntries,
+  type CitationStyle,
+  type CitationPredicate,
+} from '../model/citation-specs';
 import { validateIdentifier } from '../model/schema';
 import {
   buildRetractedCitationMap,
@@ -28,7 +34,6 @@ import {
 } from '../model/retraction';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import type { BibEntryDto } from '@/features/editor/sdk/pages/types';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useRetractedItems } from '@/features/library/sdk/queries/ingestion.queries';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
@@ -50,46 +55,8 @@ import {
   entryMatchesCollection,
   type CollectionNode,
 } from '../model/collection-tree';
-export type { CollectionNode };
-
-export type CitationStyle =
-  | 'latex-cite'
-  | 'latex-citep'
-  | 'latex-citet'
-  | 'latex-autocite'
-  | 'markdown-bracket'
-  | 'markdown-inline';
-
-export type CitationPredicate = (entry: BibEntry) => boolean;
-
-export const CitationSpecs = {
-  all: (): CitationPredicate => () => true,
-  isLibrarySource: (): CitationPredicate => (item) =>
-    item.source === 'library' || item.sourceFile === 'workspace-library',
-  isBibSource: (): CitationPredicate => (item) =>
-    item.source === 'bib' ||
-    Boolean(item.sourceFile && item.sourceFile !== 'workspace-library'),
-  isCitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
-    Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
-  isUncitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
-    !Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
-  matchesQuery: (rawQuery: string): CitationPredicate => {
-    const query = rawQuery.trim().toLowerCase();
-    if (!query) return () => true;
-    return (entry) => {
-      const keyMatch = entry.key?.toLowerCase().includes(query);
-      const titleMatch = entry.title?.toLowerCase().includes(query);
-      const authorMatch = entry.authors?.some((a) => a.toLowerCase().includes(query));
-      const yearMatch = entry.year?.toString().includes(query);
-      const doiMatch = entry.doi?.toLowerCase().includes(query);
-      const venueMatch =
-        entry.journal?.toLowerCase().includes(query) ||
-        entry.booktitle?.toLowerCase().includes(query) ||
-        entry.publisher?.toLowerCase().includes(query);
-      return Boolean(keyMatch || titleMatch || authorMatch || yearMatch || doiMatch || venueMatch);
-    };
-  },
-} as const;
+export type { CollectionNode, CitationStyle, CitationPredicate };
+export { CitationSpecs };
 
 export interface UseCitationPickerStateOptions {
   open: boolean;
@@ -177,13 +144,7 @@ export function useCitationPickerState({
     if (!open) return [];
     const engineContent = getActiveEditorEngine()?.getContent();
     if (engineContent) return extractCitationKeys(engineContent);
-    const rawContent = usePageStore.getState().currentPage?.content;
-    const activeContent =
-      typeof rawContent === 'string'
-        ? rawContent
-        : typeof rawContent === 'object' && rawContent !== null
-          ? String(rawContent.source ?? rawContent.text ?? rawContent.content ?? '')
-          : '';
+    const activeContent = extractDocumentContentString(usePageStore.getState().currentPage?.content);
     return extractCitationKeys(activeContent);
   }, [propsCitedKeys, open]);
 
@@ -195,71 +156,7 @@ export function useCitationPickerState({
     if (propsItems && propsItems.length > 0) {
       return propsItems;
     }
-
-    const citationsFromIndex = latexSymbolsIndex.getCitations('');
-    const mapped: BibEntry[] = citationsFromIndex.map((c) => ({
-      key: c.key,
-      type: c.type || 'article',
-      title: cleanBibtexTitle(c.title),
-      authors: parseBibtexAuthors(c.author),
-      author: c.author,
-      year: c.year,
-      journal: c.journal,
-      booktitle: c.booktitle,
-      doi: c.doi,
-      sourceFile: c.sourceFile,
-      source: c.sourceFile === 'workspace-library' ? 'library' : 'bib',
-    }));
-
-    const indexByKey = new Map<string, number>();
-    mapped.forEach((m, idx) => {
-      if (m.key) indexByKey.set(m.key.toLowerCase(), idx);
-    });
-
-    for (const lib of libraryItems) {
-      const k = lib.citationKey || lib.id;
-      if (!k) continue;
-      const lowerKey = k.toLowerCase();
-      const resolvedCollectionIds = lib.collectionIds ?? [];
-
-      const existingIdx = indexByKey.get(lowerKey);
-      if (existingIdx !== undefined) {
-        const existing = mapped[existingIdx];
-        mapped[existingIdx] = {
-          ...existing,
-          title: cleanBibtexTitle(existing.title || lib.title),
-          authors: parseBibtexAuthors(
-            existing.authors && existing.authors.length > 0 ? existing.authors : lib.authors,
-          ),
-          year: existing.year || (lib.year ? String(lib.year) : undefined),
-          journal: existing.journal || lib.publicationTitle,
-          doi: existing.doi || lib.doi,
-          url: existing.url || lib.url,
-          abstract: existing.abstract || lib.abstractNote,
-          collectionId: resolvedCollectionIds[0],
-          collectionIds: resolvedCollectionIds.length > 0 ? resolvedCollectionIds : undefined,
-        };
-      } else {
-        indexByKey.set(lowerKey, mapped.length);
-        mapped.push({
-          key: k,
-          type: lib.itemType || 'article',
-          title: cleanBibtexTitle(lib.title),
-          authors: parseBibtexAuthors(lib.authors),
-          year: lib.year ? String(lib.year) : undefined,
-          journal: lib.publicationTitle,
-          doi: lib.doi,
-          url: lib.url,
-          abstract: lib.abstractNote,
-          source: 'library',
-          sourceFile: 'workspace-library',
-          collectionId: resolvedCollectionIds[0],
-          collectionIds: resolvedCollectionIds.length > 0 ? resolvedCollectionIds : undefined,
-        });
-      }
-    }
-
-    return mapped;
+    return mergeCitationSources(latexSymbolsIndex.getCitations(''), libraryItems);
   }, [propsItems, libraryItems]);
 
   useEffect(() => {
@@ -291,28 +188,8 @@ export function useCitationPickerState({
           25,
         );
         if (active && Array.isArray(res?.items)) {
-          const mapped: BibEntry[] = res.items.map((r: BibEntryDto) => ({
-            key: r.key,
-            type: r.type || 'article',
-            title: cleanBibtexTitle(r.title),
-            authors: Array.isArray(r.authors) ? r.authors : parseBibtexAuthors(r.author),
-            author: Array.isArray(r.authors) ? r.authors.join(' and ') : r.author,
-            year: r.year,
-            journal: r.journal,
-            doi: r.doi,
-            source: 'server',
-            sourceFile: r.sourceFile || 'references.bib',
-          }));
-          setServerItems((prev) => {
-            const merged = new Map<string, BibEntry>();
-            for (const p of prev) {
-              if (p.key) merged.set(p.key.toLowerCase(), p);
-            }
-            for (const m of mapped) {
-              if (m.key) merged.set(m.key.toLowerCase(), m);
-            }
-            return Array.from(merged.values());
-          });
+          const mapped = mapServerBibDtos(res.items);
+          setServerItems((prev) => mergeUniqueBibEntries(mapped, prev));
         }
       } catch {
         // Non-blocking fallback to local bib entries
@@ -327,18 +204,10 @@ export function useCitationPickerState({
     };
   }, [open, effectiveProjectId, search]);
 
-  const allMergedItems = useMemo(() => {
-    const map = new Map<string, BibEntry>();
-    for (const item of localBaseItems) {
-      if (item.key) map.set(item.key.toLowerCase(), item);
-    }
-    for (const sItem of serverItems) {
-      if (sItem.key && !map.has(sItem.key.toLowerCase())) {
-        map.set(sItem.key.toLowerCase(), sItem);
-      }
-    }
-    return Array.from(map.values());
-  }, [localBaseItems, serverItems]);
+  const allMergedItems = useMemo(
+    () => mergeUniqueBibEntries(localBaseItems, serverItems),
+    [localBaseItems, serverItems],
+  );
 
   const { data: retractedItems } = useRetractedItems(
     libraryScope === PERSONAL_LIBRARY_SCOPE ? '' : libraryScope,
@@ -490,7 +359,7 @@ export function useCitationPickerState({
 
       try {
         const res = await pagesService.citations.upsertEntries(effectiveProjectId, {
-          entries: [(matchedLibItem ?? entry) as unknown as Record<string, unknown>],
+          entries: [matchedLibItem ?? entry],
           targetBibFile: preferredBib,
         });
 

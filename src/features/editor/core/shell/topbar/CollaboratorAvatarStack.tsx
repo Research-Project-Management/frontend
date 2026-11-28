@@ -33,12 +33,12 @@ import { cn } from '@/shared/lib/utils';
 import {
   useCollaborationPresence,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/core/collaboration/useCollaboration';
+} from '@/features/editor/core/hooks/useCollaboration';
 import { getCollaboratorColor } from '@/features/editor/core/collaboration/CollaboratorCursors';
 import { aggregateCollaboratorPresences, type AggregatedCollaboratorUser } from '@/features/editor/domain/collaboration/presence-aggregation';
 import { getCachedUser } from '@/features/auth/services/auth.service';
-import { editorCommandBus } from '../../bus/command-bus';
-import { usePageStore } from '../../store/editor.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 export function getInitials(name?: string): string {

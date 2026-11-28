@@ -17,7 +17,7 @@ import type {
   FileTreeFolderNode,
   FlattenedTreeNode,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
-import { isFolderOpen } from './hooks/useFileTree';
+import { isFolderOpen } from '../hooks/useFileTree';
 
 export { isFolderOpen };
 

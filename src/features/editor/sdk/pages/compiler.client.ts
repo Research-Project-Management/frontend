@@ -23,7 +23,7 @@ import type {
   ForwardSyncResult,
   ReverseSyncPayload,
   ReverseSyncResult,
-} from './types';
+} from './types/compiler.types';
 
 const CLSI_API_BASE = `${PAGES_API_BASE}/clsi`;
 

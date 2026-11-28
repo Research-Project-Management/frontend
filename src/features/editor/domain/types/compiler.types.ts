@@ -228,4 +228,3 @@ export interface CompilerLogsProps {
   onFocusTargetHandled?: () => void;
 }
 
-export type LogsProps = CompilerLogsProps;

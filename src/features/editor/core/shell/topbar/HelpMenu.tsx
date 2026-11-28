@@ -15,8 +15,8 @@ import {
   MenubarItem,
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
-import { editorCommandBus } from '../../bus/command-bus';
-import { EDITOR_DOCS_URLS } from '@/features/editor/domain/constants/editor.constants';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { LATEX_DOCS_URLS } from '@/config/env';
 
 function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   const handleOpenShortcuts = () => {
@@ -24,11 +24,11 @@ function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   };
 
   const handleOpenDocumentation = () => {
-    window.open(EDITOR_DOCS_URLS.DOCUMENTATION_HOME, '_blank', 'noopener,noreferrer');
+    window.open(LATEX_DOCS_URLS.DOCUMENTATION_HOME, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenLatexGuide = () => {
-    window.open(EDITOR_DOCS_URLS.LATEX_INTRO_GUIDE, '_blank', 'noopener,noreferrer');
+    window.open(LATEX_DOCS_URLS.LATEX_INTRO_GUIDE, '_blank', 'noopener,noreferrer');
   };
 
   return (

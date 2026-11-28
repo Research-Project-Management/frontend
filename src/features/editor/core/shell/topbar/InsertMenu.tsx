@@ -19,10 +19,10 @@ import {
   MenubarSubContent,
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
-import { editorCommandBus } from '../../bus/command-bus';
-import { useWorkspaceStore } from '../../store/workspace.store';
-import { useSettingsStore } from '../../store/settings.store';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 function InsertMenu({ value = 'insert' }: { value?: string } = {}) {

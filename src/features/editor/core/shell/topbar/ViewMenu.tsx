@@ -17,9 +17,9 @@ import {
 } from 'lucide-react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
 import { cn } from "@/shared/lib/utils";
-import { editorCommandBus } from '../../bus/command-bus';
-import { useSettingsStore } from '../../store/settings.store';
-import { useWorkspaceStore } from '../../store/workspace.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useShallow } from 'zustand/react/shallow';
 import { PenIcon, PdfDocIcon, toggleFocusMode, detachPdfPreview } from './LayoutSwitcher';
 

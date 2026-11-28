@@ -4,12 +4,11 @@
  * Tab Visibility & CRDT/Lifecycle Hibernation Coordinator (Coordinators Layer).
  *
  * Responsibilities:
- * - Monitors Page Visibility API (document.visibilityState) & Window Blur/Focus.
- * - Enforces guaranteed immediate flush of all in-memory dirty buffers to IndexedDB Tier 2
- *   whenever the tab is hidden, guarding against Chrome/Edge aggressive Tab Discarding.
+ * - Monitors Page Visibility API (document.visibilityState).
+ * - Triggers the registered flush handler whenever the tab is hidden to push dirty buffers to the server.
  * - Hibernates expensive background tasks (linter, spellcheck, dirty polling) while hidden.
- * - Manages CRDT Awareness status (online -> away/hibernated -> online) for Figma/Overleaf parity.
- * - Coordinates gentle re-awakening upon tab return (re-sync checks, selective linting).
+ * - Manages CRDT Awareness status (online -> away/hibernated -> online).
+ * - Coordinates gentle re-awakening upon tab return.
  */
 
 import { logger } from '@/shared/lib/logger';

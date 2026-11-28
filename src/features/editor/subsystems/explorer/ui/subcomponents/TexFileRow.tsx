@@ -27,7 +27,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
+import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import { getFileIcon } from './file-icon';
 

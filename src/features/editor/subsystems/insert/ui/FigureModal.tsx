@@ -24,7 +24,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorage } from '@/features/editor/subsystems/explorer/ui/hooks/useStorage';
+import { useEditorStorage } from '@/features/editor/subsystems/explorer/hooks/useStorage';
 import { useAuthorizedImageSrc } from '@/features/editor/core/hooks/useAuthorizedImageSrc';
 import {
   figureWizardSchema,

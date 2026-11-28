@@ -243,7 +243,10 @@ class EditorCommandBusImpl implements IEditorCommandBus {
       this.handlers.set(type, new Set());
     }
     const set = this.handlers.get(type)!;
-    set.add(handler as unknown as CommandHandler<EditorCommand, unknown>);
+    const wrapped: CommandHandler<EditorCommand, unknown> = (cmd) => {
+      handler(cmd as Extract<EditorCommand, { type: K }>);
+    };
+    set.add(wrapped);
 
     // If there are freshly buffered commands for this type, replay all non-expired in FIFO order
     const bufferedQueue = this.bufferedCommands.get(type);
@@ -262,7 +265,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     }
 
     return () => {
-      set.delete(handler as unknown as CommandHandler<EditorCommand, unknown>);
+      set.delete(wrapped);
       if (set.size === 0) {
         this.handlers.delete(type);
       }

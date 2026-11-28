@@ -15,7 +15,7 @@ import {
   useCompileStore,
   selectFilteredCompileDiagnostics,
 } from '@/features/editor/subsystems/compiler/store/compiler.store';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
@@ -42,6 +42,8 @@ import {
 } from '@/features/editor/domain/constants/editor.constants';
 import { type TabType } from '../ui/logs/FilterTabs';
 
+import { findMatchingLogEntry } from '../model/log-entry-matcher';
+
 export interface UseCompilerLogsStateOptions {
   log?: string | null;
   parsedLog?: ParsedLog | null;
@@ -50,95 +52,6 @@ export interface UseCompilerLogsStateOptions {
   onCompile?: () => void;
   focusTarget?: CompilerLogFocusTarget | null;
   onFocusTargetHandled?: () => void;
-}
-
-function normalizeLogPath(filePath?: string): string {
-  return (filePath || '').replace(/^\.\//, '').replace(/^\/+/, '').toLowerCase();
-}
-
-function scoreLogEntryMatch(entry: LogEntry, target: CompilerLogFocusTarget): number {
-  let score = 0;
-  if (typeof target.line === 'number' && entry.line === target.line) {
-    score += 10;
-  }
-
-  const targetMsg = target.message?.trim().toLowerCase() || '';
-  const entryMsg = entry.message?.trim().toLowerCase() || '';
-  if (targetMsg && entryMsg) {
-    if (entryMsg === targetMsg) {
-      score += 8;
-    } else if (entryMsg.includes(targetMsg) || targetMsg.includes(entryMsg)) {
-      score += 5;
-    }
-  }
-
-  const targetFile = normalizeLogPath(target.file);
-  const entryFile = normalizeLogPath(entry.file);
-  if (targetFile && entryFile) {
-    if (targetFile === entryFile) {
-      score += 4;
-    } else {
-      const targetBase = targetFile.split('/').pop() || '';
-      const entryBase = entryFile.split('/').pop() || '';
-      if (targetBase && entryBase && targetBase === entryBase) {
-        score += 2;
-      }
-    }
-  }
-
-  return score;
-}
-
-function findMatchingLogEntry(
-  target: CompilerLogFocusTarget,
-  errors: LogEntry[],
-  warnings: LogEntry[],
-  badBoxes: LogEntry[],
-): { type: 'error' | 'warning' | 'badbox'; index: number; domId: string } | null {
-  const buckets: Array<{ type: 'error' | 'warning' | 'badbox'; prefix: string; items: LogEntry[] }> =
-    target.severity === 'warning'
-      ? [
-          { type: 'warning', prefix: 'warn', items: warnings },
-          { type: 'error', prefix: 'err', items: errors },
-          { type: 'badbox', prefix: 'info', items: badBoxes },
-        ]
-      : [
-          { type: 'error', prefix: 'err', items: errors },
-          { type: 'warning', prefix: 'warn', items: warnings },
-          { type: 'badbox', prefix: 'info', items: badBoxes },
-        ];
-
-  let best: { type: 'error' | 'warning' | 'badbox'; index: number; domId: string; score: number } | null =
-    null;
-
-  for (const bucket of buckets) {
-    for (let i = 0; i < bucket.items.length; i += 1) {
-      const s = scoreLogEntryMatch(bucket.items[i], target);
-      if (s >= 8 && (!best || s > best.score)) {
-        best = {
-          type: bucket.type,
-          index: i,
-          domId: `log-entry-${bucket.prefix}-${i}`,
-          score: s,
-        };
-      }
-    }
-  }
-
-  if (best) {
-    return { type: best.type, index: best.index, domId: best.domId };
-  }
-
-  if (target.severity === 'warning' && warnings.length > 0) {
-    return { type: 'warning', index: 0, domId: 'log-entry-warn-0' };
-  }
-  if (errors.length > 0) {
-    return { type: 'error', index: 0, domId: 'log-entry-err-0' };
-  }
-  if (warnings.length > 0) {
-    return { type: 'warning', index: 0, domId: 'log-entry-warn-0' };
-  }
-  return null;
 }
 
 export interface CompilerLogVisibleRow {
@@ -170,46 +83,6 @@ export function useCompilerLogsState({
   const storeParsedLog = useCompileStore((s) => s.parsedLog);
   const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
   const { engine } = useEditorInstance();
-  const [remoteParsedLog, setRemoteParsedLog] = useState<ParsedLog | null>(null);
-
-  useEffect(() => {
-    const trimmedLog = log?.trim() ?? '';
-    const isProgressStatusOnly =
-      trimmedLog.length > 0 &&
-      trimmedLog
-        .split('\n')
-        .every((line) => !line.trim() || /^\[CLSI[^\]]*\]/.test(line.trim()));
-
-    if (
-      externalParsedLog ||
-      compileReport ||
-      (storeDiagnostics && storeDiagnostics.length > 0) ||
-      compileStatus === 'compiling' ||
-      compileStatus === 'flushing' ||
-      compileStatus === 'syncing' ||
-      !trimmedLog ||
-      isProgressStatusOnly
-    ) {
-      setRemoteParsedLog(null);
-      return;
-    }
-    let active = true;
-    const timer = setTimeout(() => {
-      (pagesService as any).diagnostics
-        ?.parseLog?.(log!)
-        ?.then((report: any) => {
-          if (!active || !report?.items) return;
-          const converted = diagnosticsToParsedLog(report.items);
-          cacheBackendParsedLog(log!, converted);
-          setRemoteParsedLog(converted);
-        })
-        .catch(() => {});
-    }, 250);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [externalParsedLog, compileReport, storeDiagnostics, compileStatus, log]);
 
   const parsed = useMemo(() => {
     if (externalParsedLog) return externalParsedLog;
@@ -227,9 +100,8 @@ export function useCompilerLogsState({
     if (storeDiagnostics && storeDiagnostics.length > 0) {
       return diagnosticsToParsedLog(storeDiagnostics);
     }
-    if (remoteParsedLog) return remoteParsedLog;
     return parseLatexLog(log || '');
-  }, [externalParsedLog, compileReport, storeParsedLog, storeDiagnostics, remoteParsedLog, log]);
+  }, [externalParsedLog, compileReport, storeParsedLog, storeDiagnostics, log]);
 
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);

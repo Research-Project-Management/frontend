@@ -29,7 +29,6 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { DetachedPreviewBridge } from './detached-preview.bridge';
 import { toast } from 'sonner';
 import {
-  hydrateUnopenedDocumentFromOffline,
   executeCloseDocument,
   executeCloseOtherDocuments,
   executeCloseDocumentsToRight,
@@ -429,9 +428,8 @@ export class NavigationCoordinator {
       }
     }
 
-    if (!wasAlreadyAuthoritative && !hasAuthoritativeFallback) {
-      hydrateUnopenedDocumentFromOffline({ fileId, title, path: optPath, tabGroupId });
-    }
+    void wasAlreadyAuthoritative;
+    void hasAuthoritativeFallback;
 
     const rootPageId = pageStore.currentPage?.id || tabGroupId || fileId;
     pageStore.setActiveFilePage({

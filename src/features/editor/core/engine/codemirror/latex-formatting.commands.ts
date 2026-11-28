@@ -23,9 +23,9 @@ import {
   unfoldAll,
 } from '@codemirror/language';
 import { gotoLine, selectNextOccurrence } from '@codemirror/search';
-import { editorCommandBus } from '../../bus/command-bus';
-import { useDocumentCollaborationStore } from '../../store/collaboration.store';
-import { useSettingsStore } from '../../store/settings.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 
 /**
  * Wraps selection with LaTeX formatting command (Overleaf parity).

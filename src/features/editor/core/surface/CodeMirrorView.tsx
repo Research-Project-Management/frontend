@@ -57,7 +57,7 @@ import {
   unregisterEditorEngine,
 } from '@/features/editor/core/bus/engine-registry';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import { useConnectivityStore } from '@/features/editor/core/store/connectivity.store';
+import { getIsOnline } from '@/shared/lib/network';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
@@ -71,7 +71,7 @@ import {
   reconfigureYjsBindingInView,
   type BuildEditorStateOptions,
 } from './codemirror-state-factory';
-import { attachCodeMirrorBusListeners } from './useCodeMirrorBusSync';
+import { attachCodeMirrorBusListeners } from '../hooks/useCodeMirrorBusSync';
 
 export { buildEditorState, type BuildEditorStateOptions };
 
@@ -226,7 +226,7 @@ export function CodeMirrorView({
         if (origin === 'local' && activeId) {
           useWorkspaceStore.getState().pinTabForFile(activeId);
         }
-        const isOnline = useConnectivityStore.getState().isOnline;
+        const isOnline = getIsOnline();
         sessionCoordinator.notifyContentChange(activeId, nextContent, {
           isRealtimeActive: shouldUseRealtimePersistence({
             hasYText: Boolean(yTextRef.current),

@@ -44,11 +44,11 @@ import { CompilationErrorBanner } from '../ErrorBanner';
 import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from '../logs/LogsPanel';
 
-import { usePdfZoom } from '../../hooks/usePdfZoom';
-import { usePdfCompiler } from '../../hooks/useCompiler';
-import { useViewerSyncTeX, type ViewerPageFileEntry } from '../../hooks/useSyncTeX';
-import { useSynchronizedScroll } from '../../hooks/useSyncScroll';
-import { usePdfSearch, type PdfDocumentProxyLike } from '../../hooks/usePdfSearch';
+import { usePdfZoom } from '@/features/editor/subsystems/compiler/hooks/usePdfZoom';
+import { usePdfCompiler } from '@/features/editor/subsystems/compiler/hooks/useCompiler';
+import { useViewerSyncTeX, type ViewerPageFileEntry } from '@/features/editor/subsystems/compiler/hooks/useSyncTeX';
+import { useSynchronizedScroll } from '@/features/editor/subsystems/compiler/hooks/useSyncScroll';
+import { usePdfSearch, type PdfDocumentProxyLike } from '@/features/editor/subsystems/compiler/hooks/usePdfSearch';
 
 const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 

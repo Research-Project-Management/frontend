@@ -72,7 +72,7 @@ export interface AuthorDisplayInfo {
   color: string;
 }
 
-const AUTHOR_COLORS = [
+export const AUTHOR_COLORS = [
   '#0284c7', // Sky
   '#16a34a', // Emerald
   '#7c3aed', // Purple
@@ -83,7 +83,6 @@ const AUTHOR_COLORS = [
   '#4f46e5', // Indigo
 ] as const;
 
-export const AUTHOR_COLOR_PALETTE = AUTHOR_COLORS;
 
 export function getHashColor(str: string): string {
   let hash = 0;

@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,7 +14,7 @@ import {
   usePageActions,
   pageKeys,
 } from './hooks/use-page';
-import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
+import { usePagesWorkspace } from './hooks/use-pages-workspace';
 import { Topbar } from './components/layout/Topbar';
 import { PagesSidebar, type PagesFilterTab } from './components/layout/PagesSidebar';
 import { PagesEmptyState } from './components/layout/PagesEmptyState';
@@ -37,9 +36,6 @@ import {
   WorkspaceViewTransition,
 } from '@/shared/components/layout/WorkspaceSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { MEDIA_QUERY_TABLET, subscribeMediaQuery } from '@/shared/hooks/use-media-query';
-import { STORAGE_KEYS } from '@/config/storage-keys';
-import { APP_EVENTS, onAppEvent } from '@/config/events';
 
 const CreateModal = dynamic(
   () => import('./components/modals/CreateModal').then((m) => m.CreateModal),
@@ -73,81 +69,16 @@ const FILTER_VIEW_LABELS: Record<PagesFilterTab, string> = {
 };
 
 export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useParams() as { projectId?: string };
   const [viewMode, setViewMode] = useState<PagesViewMode>('grid');
   const [activeFilter, setActiveFilter] = useState<PagesFilterTab>('all');
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
-
-  const isProjectMode = Boolean(
-    propSpaceId ||
-      params?.projectId ||
-      (activeSpace.type === 'project' && activeSpace.projectId)
-  );
-
-  // Sync sidebar visibility & responsive behavior matching ProjectLayout
-  useEffect(() => {
-    setMounted(true);
-    const isMobile = window.innerWidth < 1024;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PAGES_SIDEBAR_VISIBLE);
-      if (saved !== null) {
-        setIsSidebarVisible(isMobile ? false : saved === 'true');
-        return;
-      }
-    } catch {
-      // ignore
-    }
-
-    setIsSidebarVisible(!isMobile);
-
-    return subscribeMediaQuery(MEDIA_QUERY_TABLET, (matches) => {
-      setIsSidebarVisible(!matches);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setIsSidebarVisible(false);
-    }
-  }, [pathname]);
-
-  useEffect(() => {
-    const handleToggleEvent = () => {
-      setIsSidebarVisible((prev) => !prev);
-    };
-    return onAppEvent(APP_EVENTS.TOGGLE_PAGES_SIDEBAR, handleToggleEvent);
-  }, []);
-
-  const handleToggleSidebar = (visible: boolean) => {
-    setIsSidebarVisible(visible);
-    try {
-      if (window.innerWidth >= 1024) {
-        localStorage.setItem(STORAGE_KEYS.PAGES_SIDEBAR_VISIBLE, String(visible));
-      }
-    } catch {
-      // ignore
-    }
-  };
-
-  const spaceId = useMemo(() => {
-    if (propSpaceId) return propSpaceId;
-    if (params?.projectId) return params.projectId;
-    if (activeSpace.type === 'project' && activeSpace.projectId) {
-      return activeSpace.projectId;
-    }
-    return '';
-  }, [propSpaceId, params?.projectId, activeSpace.type, activeSpace.projectId]);
-
-  useEffect(() => {
-    if (!propSpaceId && !params?.projectId && activeSpace.type === 'project' && spaceId) {
-      router.replace(`/projects/${spaceId}/pages`);
-    }
-  }, [propSpaceId, params?.projectId, activeSpace.type, spaceId, router]);
+  const {
+    router,
+    spaceId,
+    isProjectMode,
+    mounted,
+    isSidebarVisible,
+    handleToggleSidebar,
+  } = usePagesWorkspace(propSpaceId);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPage, setEditingPage] = useState<Page | null>(null);
@@ -491,10 +422,9 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
 
           {isTemplatePickerOpen && (
             <TemplateGalleryModal
-              mode="project"
               open={isTemplatePickerOpen}
               onOpenChange={setIsTemplatePickerOpen}
-              projectId={effectiveSpaceId}
+              spaceId={effectiveSpaceId}
               initialCategory={templatePickerCategory}
             />
           )}

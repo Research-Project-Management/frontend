@@ -31,14 +31,6 @@ import { logger } from '@/shared/lib/logger';
 import { EditorPane } from './EditorPane';
 import dynamic from 'next/dynamic';
 
-const UnsyncedEditRecoveryDialog = dynamic(
-  () =>
-    import('@/features/editor/core/surface/modals/UnsyncedEditRecoveryDialog').then(
-      (m) => m.UnsyncedEditRecoveryDialog,
-    ),
-  { ssr: false }
-);
-
 const DocumentConflictDialog = dynamic(
   () => import('@/features/editor/core/surface/modals/DocumentConflictDialog').then((m) => m.DocumentConflictDialog),
   { ssr: false }
@@ -57,7 +49,6 @@ import {
   sessionCoordinator,
   isPrimaryModKey,
   DEFAULT_MAIN_FILE,
-  type UnsyncedDocEdit,
   type DocumentConflict,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -227,69 +218,6 @@ export function EditorArea() {
   serverContentRef.current = serverContent;
 
   // Unsynced local edit recovery state
-  const [recoverableEdit, setRecoverableEdit] = React.useState<
-    (UnsyncedDocEdit & { serverContent: string }) | null
-  >(null);
-
-  React.useEffect(() => {
-    let isCancelled = false;
-    const id = displayPage?.id;
-    if (!id || isLoading) {
-      setRecoverableEdit(null);
-      return;
-    }
-
-    // Gate unsynced-edit writes for this file until the user decides (or no edit exists).
-    sessionCoordinator.beginRecoveryDecision(id);
-
-    const checkRecovery = async () => {
-      const server = serverContentRef.current;
-      try {
-        const result = await sessionCoordinator.checkUnsyncedEditRecoveryAsync(id, server);
-        if (isCancelled) return;
-        const live = lruDocumentCache.getModel(id);
-        const alreadyLive = Boolean(live?.isDirty && result.edit && live.content === result.edit.content);
-        if (result.hasRecoverableEdit && result.edit && !alreadyLive) {
-          setRecoverableEdit({ ...result.edit, serverContent: server });
-          return;
-        }
-      } catch (err) {
-        logger.warn('[EditorArea] Unsynced edit recovery check failed', { error: err });
-      }
-      if (!isCancelled) {
-        setRecoverableEdit(null);
-        sessionCoordinator.endRecoveryDecision(id);
-      }
-    };
-
-    void checkRecovery();
-
-    return () => {
-      isCancelled = true;
-      sessionCoordinator.endRecoveryDecision(id);
-    };
-  }, [displayPage?.id, isLoading]);
-
-  const handleRestoreUnsyncedEdit = React.useCallback(() => {
-    if (!recoverableEdit || !displayPage?.id) return;
-    const restoredContent = recoverableEdit.content;
-    sessionCoordinator.restoreUnsyncedEdit(displayPage.id, restoredContent);
-    editorCommandBus.dispatch({
-      type: 'editor:set-content',
-      content: restoredContent,
-      fileId: displayPage.id,
-    });
-    setRecoverableEdit(null);
-    toast.success('Local changes restored', { id: 'unsynced-edit-recovery-status' });
-  }, [recoverableEdit, displayPage?.id]);
-
-  const handleDiscardUnsyncedEdit = React.useCallback(() => {
-    if (!displayPage?.id) return;
-    sessionCoordinator.discardUnsyncedEdit(displayPage.id);
-    setRecoverableEdit(null);
-    toast.info('Kept server version', { id: 'unsynced-edit-recovery-status' });
-  }, [displayPage?.id]);
-
   // Global shortcut (Ctrl+\ / Cmd+\) -> Split Editor Pane
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -335,19 +263,6 @@ export function EditorArea() {
 
   return (
     <div className="flex-1 h-full w-full flex flex-col bg-canvas min-h-0">
-      {/* ── Unsynced Edit Recovery Dialog (explicit decision required) ── */}
-      {recoverableEdit && displayPage && (
-        <UnsyncedEditRecoveryDialog
-          open
-          fileName={displayPage.title || 'main.tex'}
-          unsyncedContent={recoverableEdit.content}
-          serverContent={recoverableEdit.serverContent}
-          savedAt={recoverableEdit.savedAt}
-          onRestore={handleRestoreUnsyncedEdit}
-          onKeepServer={handleDiscardUnsyncedEdit}
-        />
-      )}
-
       {/* ── Document Conflict Dialog (explicit decision & diff/merge) ── */}
       {activeConflict && (
         <DocumentConflictDialog

@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
-import { useSettingsStore } from '../../store/settings.store';
-import { editorCommandBus } from '../../bus/command-bus';
-import { usePageStore } from '../../store/editor.store';
-import { useWorkspaceStore } from '../../store/workspace.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 

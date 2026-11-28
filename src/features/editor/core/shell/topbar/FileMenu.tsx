@@ -9,16 +9,16 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
-import { usePageStore } from '../../store/editor.store';
-import { useSettingsStore } from '../../store/settings.store';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useWorkspaceStore } from '../../store/workspace.store';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
-import { editorCommandBus } from '../../bus/command-bus';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings, History } from 'lucide-react';
 import { GitHubIcon } from '@/shared/components/icons';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { useProjectTitleActions } from './useProjectTitleActions';
+import { usePageTitleActions } from '@/features/editor/core/hooks/usePageTitleActions';
 
 export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
@@ -44,7 +44,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
     handleExportWord,
     handleExportMarkdown,
     handleExportHtml,
-  } = useProjectTitleActions({
+  } = usePageTitleActions({
     effectiveProjectId,
     displayTitle: currentPage?.title || 'Untitled Project',
     currentPage,

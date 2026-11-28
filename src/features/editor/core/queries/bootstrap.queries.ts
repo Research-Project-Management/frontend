@@ -11,7 +11,6 @@ import {
   mapStructureNodesToStorageItems,
   type EditorBootstrapResponseDto,
 } from '@/features/editor/sdk/pages.service';
-import { syncedDocCacheStore } from '@/features/editor/domain/offline-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
@@ -29,7 +28,6 @@ import {
   DOCUMENT_QUERY_STALE_TIME,
   DOCUMENT_QUERY_GC_TIME,
 } from './query-keys';
-import { synthesizeOfflineEditorBootstrap } from './offline-bootstrap';
 
 const inFlightEditorBootstraps = new Map<string, Promise<EditorBootstrapResponseDto | null>>();
 
@@ -81,7 +79,7 @@ export function normalizeBootstrapActivePage(data: EditorBootstrapResponseDto): 
     hash: activeHash,
     createdAt: raw.createdAt || data.serverTimestamp,
     updatedAt: raw.updatedAt || data.serverTimestamp,
-  } as unknown as Page;
+  };
 }
 
 /**
@@ -93,18 +91,13 @@ export function hydrateEditorBootstrap(
   queryClient: QueryClient,
   data: EditorBootstrapResponseDto,
   requestedTargetId?: string,
-  options?: { offlineFallback?: boolean },
 ): void {
   const { workspace, tree, activeDoc, symbols, lastBuild, degradedBranches } = data;
   const activePage = normalizeBootstrapActivePage(data);
   const resolvedProjectId = workspace.spaceType === 'project' ? workspace.spaceId : '';
   const effectiveProjectOrSpace = workspace.spaceId;
 
-  if (!options?.offlineFallback && Array.isArray(tree)) {
-    lruDocumentCache.hydrateManifestFromTree(tree, {
-      rootDocId: workspace.rootDocId,
-      pageId: workspace.pageId,
-    });
+  if (Array.isArray(tree)) {
     for (const node of tree) {
       if (node.type?.toUpperCase() !== 'DOC') continue;
       const docId = node.docId || node.id;
@@ -163,7 +156,7 @@ export function hydrateEditorBootstrap(
   }
   workspaceCoordinator.syncStructureItems(storageItems, workspace.pageId);
 
-  // 2. Warm RAM LRU Cache + IndexedDB Snapshot for ONLY the active file (never overwrite dirty buffers)
+  // 2. Warm RAM LRU Cache for ONLY the active file (never overwrite dirty buffers)
   const filePath = activePage.path || activePage.title || workspace.mainFilePath || 'main.tex';
   if (!lruDocumentCache.isDirty(activePage.id)) {
     const contentText = extractDocumentContentString(activePage.content);
@@ -172,7 +165,6 @@ export function hydrateEditorBootstrap(
       activePage.hash ??
       data.activeDoc.hash ??
       data.activeDoc.page?.hash ??
-      lruDocumentCache.getManifestEntry(activePage.id)?.hash ??
       null;
     lruDocumentCache.registerModel(activePage.id, {
       content: contentText,
@@ -185,24 +177,7 @@ export function hydrateEditorBootstrap(
       serverUpdatedAt: activePage.updatedAt,
       isAuthoritative: true,
     });
-    void syncedDocCacheStore.put({
-      id: activePage.id,
-      projectId: workspace.spaceId,
-      title: activePage.title || 'main.tex',
-      content: contentText,
-      filePath,
-      ...(typeof serverRev === 'number' ? { rev: serverRev } : {}),
-      ...(activeHash !== undefined ? { hash: activeHash } : {}),
-      updatedAt: Date.now(),
-    });
   }
-
-  void syncedDocCacheStore.saveWorkspaceTree(
-    [workspace.pageId, workspace.rootDocId, requestedTargetId].filter(
-      (id): id is string => Boolean(id && id.trim()),
-    ),
-    { workspace, tree },
-  );
 
   // 3. Synchronize pure space/project coordinates, titles, GitHub link & role permissions into PageStore
   const pageStore = usePageStore.getState();
@@ -296,14 +271,6 @@ export const editorBootstrapQuery = (
           }
           return null;
         } catch {
-          const offline = await synthesizeOfflineEditorBootstrap(targetId, fileId);
-          if (offline) {
-            hydrateEditorBootstrap(client, offline.dto, targetId, { offlineFallback: true });
-            if (offline.markActiveDirty) {
-              lruDocumentCache.markDirty(offline.dto.activeDoc.id);
-            }
-            return offline.dto;
-          }
           return null;
         }
       })();

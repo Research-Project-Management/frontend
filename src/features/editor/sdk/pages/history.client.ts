@@ -11,7 +11,7 @@ import type {
   ProjectDiffResponse,
   VersionLabelItem,
   RestoreProjectVersionFileResult,
-} from './types';
+} from './types/history.types';
 
 export const historyKeys = {
   all: ['history'] as const,

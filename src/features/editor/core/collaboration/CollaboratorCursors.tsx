@@ -12,7 +12,7 @@
  */
 
 import {
-  AUTHOR_COLOR_PALETTE,
+  AUTHOR_COLORS,
   getHashColor,
 } from '@/features/editor/domain/collaboration/author-display';
 
@@ -24,7 +24,7 @@ export interface CollaboratorInfo {
   isOnline: boolean;
 }
 
-export const COLLABORATOR_PALETTE = AUTHOR_COLOR_PALETTE;
+export const COLLABORATOR_PALETTE = AUTHOR_COLORS;
 export const getCollaboratorColor = getHashColor;
 
 export function buildCollaboratorCursorCss(): string {

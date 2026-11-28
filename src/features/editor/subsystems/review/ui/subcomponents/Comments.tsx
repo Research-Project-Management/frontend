@@ -35,7 +35,7 @@ import {
   useAddReply,
   useCreateComment,
   useUpdateComment,
-} from '../hooks/useComments';
+} from '@/features/editor/subsystems/review/hooks/useComments';
 import type { PageComment, CommentReply, CreateReplyInput, CreateCommentInput } from '@/features/editor/domain/types/comment.types';
 import { createReplySchema, createCommentSchema } from '@/features/editor/domain/types/comment.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';

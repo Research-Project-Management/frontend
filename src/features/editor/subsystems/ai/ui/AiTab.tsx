@@ -32,8 +32,8 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
-import { useAiChatActions } from './useAiChatActions';
+import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
+import { useAiChatActions } from '../hooks/useAiChatActions';
 
 const EDITOR_SUGGESTIONS: readonly CompanionSuggestionItem[] = QUICK_ACTIONS.slice(
   0,

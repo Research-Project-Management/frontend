@@ -9,9 +9,9 @@
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
-import { editorCommandBus } from '../../bus/command-bus';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { ShieldCheck } from 'lucide-react';
-import { useSearchStore } from '../../store/search.store';
+import { useSearchStore } from '@/features/editor/core/store/search.store';
 
 export function EditMenu({ value = 'edit' }: { value?: string } = {}) {
   const handleUndo = () => editorCommandBus.dispatch({ type: 'editor:undo' });

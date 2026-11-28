@@ -12,7 +12,7 @@ import React from 'react';
 import { ExternalLink, Minimize2, CheckCircle2, AlertCircle, Loader2, Maximize2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
-import { useCompileStore } from '../../store/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
 
 export function DetachedPdfPlaceholder() {
   const compileStatus = useCompileStore((s) => s.compileStatus);

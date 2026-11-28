@@ -6,7 +6,7 @@
 
 import { apiGet, apiPost } from '@/shared/lib/api';
 import { PAGES_API_BASE } from './base';
-import type { BibEntryDto } from './types';
+import type { BibEntryDto } from './types/search-export.types';
 
 export interface ListCitationsResponse {
   items: BibEntryDto[];
@@ -44,7 +44,7 @@ export const citations = {
   upsertEntries: async (
     projectId: string,
     dto: {
-      entries?: Array<Record<string, unknown>>;
+      entries?: ReadonlyArray<object>;
       rawBibtex?: string;
       targetBibFile?: string;
       pageId?: string;

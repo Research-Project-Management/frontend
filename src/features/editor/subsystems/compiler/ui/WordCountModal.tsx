@@ -39,12 +39,11 @@ import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
   EMPTY_TEXCOUNT_STATS,
   type TeXcountStats,
-  type LatexWordCountResult,
   type WordCountSection,
 } from '@/features/editor/domain/document/word-count';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
-export { type TeXcountStats, type LatexWordCountResult, type WordCountSection };
+export { type TeXcountStats, type WordCountSection };
 
 interface WordCountModalFile {
   id: string;

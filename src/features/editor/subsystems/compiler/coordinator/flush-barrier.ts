@@ -43,10 +43,7 @@ export class FlushBarrier {
     activeContent?: string,
     timeoutMs: number = DEFAULT_BARRIER_TIMEOUT_MS,
   ): Promise<FlushBarrierResult> {
-    // 1. Synchronously commit pending unsynced edit timers so local state is crash-resilient
-    sessionCoordinator.flushPendingUnsyncedEdits();
-
-    // 2. Synchronize all mounted editor engines (primary + secondary split panes)
+    // 1. Synchronize all mounted editor engines (primary + secondary split panes)
     let activeFlushed = false;
     const registeredEngines = getAllRegisteredEngines?.();
     if (registeredEngines) {

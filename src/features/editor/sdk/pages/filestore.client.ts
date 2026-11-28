@@ -19,7 +19,7 @@ import {
 import { structure } from './structure.client';
 import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
-import type { FileMetadataDto, ImportFromProjectPayload } from './types';
+import type { FileMetadataDto, ImportFromProjectPayload } from './types/structure.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 
 export type { FileMetadataDto, ImportFromProjectPayload };
@@ -178,61 +178,5 @@ export const filestore = {
         itemPageId || undefined,
       ),
     };
-  },
-};
-
-export interface LinkedFileDto {
-  id: string;
-  name: string;
-  provider: string;
-  sourceProjectId?: string;
-  sourceFileId?: string;
-  sourceUrl?: string;
-  lastSyncedAt?: string;
-  [key: string]: unknown;
-}
-
-export interface CreateLinkedFilePayload {
-  name: string;
-  provider: string;
-  sourceProjectId?: string;
-  sourceFileId?: string;
-  sourceUrl?: string;
-  [key: string]: unknown;
-}
-
-export const linkedFiles = {
-  list: async (projectId: string): Promise<LinkedFileDto[]> => {
-    const res = await apiGet<LinkedFileDto[] | { linkedFiles?: LinkedFileDto[] }>(
-      `${PAGES_API_BASE}/spaces/${projectId}/linked-files`,
-    );
-    return Array.isArray(res) ? res : res?.linkedFiles || [];
-  },
-
-  create: async (projectId: string, payload: CreateLinkedFilePayload): Promise<LinkedFileDto> => {
-    return apiPost<LinkedFileDto>(
-      `${PAGES_API_BASE}/spaces/${projectId}/linked-files`,
-      payload,
-    );
-  },
-
-  refresh: async (projectId: string, linkId: string): Promise<LinkedFileDto> => {
-    return apiPost<LinkedFileDto>(
-      `${PAGES_API_BASE}/spaces/${projectId}/linked-files/${linkId}/refresh`,
-      {},
-    );
-  },
-
-  refreshAll: async (projectId: string): Promise<{ refreshedCount: number; [key: string]: unknown }> => {
-    return apiPost<{ refreshedCount: number; [key: string]: unknown }>(
-      `${PAGES_API_BASE}/spaces/${projectId}/linked-files/refresh-all`,
-      {},
-    );
-  },
-
-  delete: async (projectId: string, linkId: string): Promise<void> => {
-    await apiDelete<void>(
-      `${PAGES_API_BASE}/spaces/${projectId}/linked-files/${linkId}`,
-    );
   },
 };

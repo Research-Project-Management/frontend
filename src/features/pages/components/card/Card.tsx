@@ -29,9 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
-import { usePageActions } from '../../hooks/use-page';
-import type { Page } from '../../types/page.types';
-import { buildPageEditorHref } from '../../utils/page-url';
+import { usePageActions } from '@/features/pages/hooks/use-page';
+import type { Page } from '@/features/pages/types/page.types';
+import { buildPageEditorHref } from '@/features/pages/utils/page-url';
 import { formatDate, copyToClipboard, cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 

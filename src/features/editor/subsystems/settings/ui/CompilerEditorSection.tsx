@@ -41,7 +41,7 @@ export function CompilerEditorSection({
 }: CompilerEditorSectionProps) {
   const engine = useSettingsStore((s) => s.engine);
   const setEngine = useSettingsStore((s) => s.setEngine);
-  const texLiveVersion = useSettingsStore((s) => s.texLiveVersion || '2024');
+  const texLiveVersion = useSettingsStore((s) => s.texLiveVersion || '2025');
   const setTexLiveVersion = useSettingsStore((s) => s.setTexLiveVersion);
   const mainFilePath = usePageStore((s) => s.mainFilePath);
   const autoCloseBrackets = useSettingsStore((s) => s.autoCloseBrackets);

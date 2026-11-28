@@ -10,7 +10,7 @@
 import React from 'react';
 import { Check, Copy, GitBranch, KeyRound } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { useGitClone } from './hooks/useGitClone';
+import { useGitClone } from '../hooks/useGitClone';
 
 export interface GitCloneCardProps {
   projectId: string;

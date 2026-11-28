@@ -11,7 +11,7 @@ vi.mock('@/shared/lib/api', () => apiMocks);
 
 import { templatesApi } from '@/features/editor/sdk/pages/templates.client';
 
-describe('templatesApi SDK (Single-Flight Virtual Proxy & Scaffold)', () => {
+describe('templatesApi SDK (Single-Flight Virtual Proxy & Clean Contracts)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -42,43 +42,45 @@ describe('templatesApi SDK (Single-Flight Virtual Proxy & Scaffold)', () => {
     expect(r2).toEqual(r1);
   });
 
-  it('routes getById, publish, remove, and scaffold to canonical /api/v1/pages endpoints', async () => {
-    apiMocks.apiGet.mockResolvedValueOnce({ id: 'ieee', files: [] });
-    await templatesApi.getById('ieee');
-    expect(apiMocks.apiGet).toHaveBeenCalledWith('/api/v1/pages/templates/ieee');
+  it('routes getById, publish, update, remove, and instantiate to canonical /api/v1/pages endpoints', async () => {
+    apiMocks.apiGet.mockResolvedValueOnce({ id: 'ieee-transactions', files: [] });
+    await templatesApi.getById('ieee-transactions');
+    expect(apiMocks.apiGet).toHaveBeenCalledWith(
+      '/api/v1/pages/templates/ieee-transactions',
+    );
 
     apiMocks.apiPost.mockResolvedValueOnce({ id: 'custom-1', files: [] });
     await templatesApi.publish({
+      pageId: 'page-456',
       name: 'Team Template',
       category: 'journal',
-      visibility: 'workspace',
-      spaceId: 'space-123',
-      pageId: 'page-456',
+      scope: 'project',
     });
     expect(apiMocks.apiPost).toHaveBeenCalledWith('/api/v1/pages/templates', {
+      pageId: 'page-456',
       name: 'Team Template',
       category: 'journal',
-      visibility: 'workspace',
-      spaceId: 'space-123',
-      pageId: 'page-456',
+      scope: 'project',
     });
 
     apiMocks.apiPost.mockResolvedValueOnce({
-      pageId: 'page-456',
-      rootDocId: 'doc-1',
+      pageId: 'page-789',
+      spaceId: 'space-123',
+      isPersonal: false,
+      rootDocId: 'page-789',
+      title: 'Clone Title',
       compiler: 'xelatex',
+      texlive: '2025',
       mainFile: 'main.tex',
-      importedDocs: 2,
-      importedFiles: 1,
-      totalEntries: 3,
+      createdDocs: 2,
+      createdFiles: 1,
     });
-    await templatesApi.scaffold('space-123', 'ieee', {
-      pageId: 'page-456',
+    await templatesApi.instantiate('space-123', 'ieee-transactions', {
       title: 'Clone Title',
     });
     expect(apiMocks.apiPost).toHaveBeenCalledWith(
-      '/api/v1/pages/spaces/space-123/templates/ieee/scaffold?pageId=page-456',
-      { pageId: 'page-456', title: 'Clone Title' },
+      '/api/v1/pages/spaces/space-123/templates/ieee-transactions/instantiate',
+      { title: 'Clone Title' },
     );
 
     apiMocks.apiDelete.mockResolvedValueOnce({ success: true });

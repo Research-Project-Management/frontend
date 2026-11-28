@@ -19,7 +19,7 @@ import { GithubTab } from './GithubTab';
 import { SpellingTab } from '@/features/editor/subsystems/spelling/ui/SpellingTab';
 import { CompilerEditorSection } from './CompilerEditorSection';
 import { GitCloneCard } from './GitCloneCard';
-import { useSettingsModal, type SettingsView } from './hooks/useSettingsModal';
+import { useSettingsModal, type SettingsView } from '../hooks/useSettingsModal';
 
 interface NavItem {
   id: SettingsView;

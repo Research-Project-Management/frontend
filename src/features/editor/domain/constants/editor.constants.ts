@@ -30,10 +30,6 @@ export function getSyncTexChannelName(targetId?: string | null): string {
 export const DEFAULT_MAIN_FILE = 'main.tex';
 export const DEFAULT_BIB_FILE = 'references.bib';
 
-import { LATEX_DOCS_URLS } from '@/config/env';
-
-export const EDITOR_DOCS_URLS = LATEX_DOCS_URLS;
-
 export const EDITOR_LIMITS = {
   MAX_FSM_CONTEXTS: 200,
   MAX_MEMORY_UNSYNCED_EDITS: 50,

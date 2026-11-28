@@ -21,7 +21,7 @@ import type {
   QueueUpdatePayload,
   FlushResultDto,
   EditorBootstrapResponseDto,
-} from './types';
+} from './types/docs.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 export const docs = {

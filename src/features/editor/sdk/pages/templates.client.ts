@@ -2,6 +2,7 @@
  * templates.client.ts
  *
  * GoF Facade + Virtual Single-Flight Proxy (`coalesce`) for Backend `TemplatesController`.
+ * Zero magic filter strings, zero duplicate query/body params, zero legacy aliases.
  */
 
 import { apiDelete, apiGet, apiPatch, apiPost } from '@/shared/lib/api';
@@ -20,30 +21,27 @@ export type TemplateCategory =
   | 'thesis'
   | 'other';
 
-export type TemplateVisibility = 'official' | 'workspace' | 'private';
+export type TemplateScope = 'personal' | 'project';
 
 export type TemplateCompiler = 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
 
 export interface TemplateSummary {
   id: string;
-  slug: string | null;
-  versionId: string;
+  slug: string;
   name: string;
   category: TemplateCategory;
-  visibility: TemplateVisibility;
+  scope: TemplateScope | null;
+  isCustom: boolean;
   description: string | null;
   compiler: TemplateCompiler;
-  texLiveVersion: string;
+  texlive: string;
   mainFile: string;
-  badge: string;
-  author: string;
-  license: string | null;
-  sourceUrl: string | null;
-  thumbnailUrl: string | null;
-  downloadCount: number;
+  author: string | null;
+  thumbnail: string | null;
   fileCount: number;
   tags: string[];
   spaceId: string | null;
+  sourcePageId: string | null;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
@@ -51,11 +49,10 @@ export interface TemplateSummary {
 
 export interface TemplateFileItem {
   path: string;
-  kind: 'doc' | 'file';
+  type: 'DOC' | 'FILE';
   mimeType: string;
   sizeBytes: number;
   content?: string;
-  base64?: string;
 }
 
 export interface TemplateDetail extends TemplateSummary {
@@ -63,9 +60,8 @@ export interface TemplateDetail extends TemplateSummary {
 }
 
 export interface QueryTemplatesParams {
-  category?: string;
-  visibility?: string;
-  tag?: string;
+  category?: TemplateCategory;
+  scope?: TemplateScope;
   search?: string;
   spaceId?: string;
   limit?: number;
@@ -73,42 +69,32 @@ export interface QueryTemplatesParams {
 }
 
 export interface PublishTemplateInput {
+  pageId: string;
   name: string;
   category?: TemplateCategory;
-  visibility?: TemplateVisibility;
+  scope?: TemplateScope;
   description?: string;
-  compiler?: TemplateCompiler;
-  mainFile?: string;
-  license?: string;
-  sourceUrl?: string;
   tags?: string[];
-  files?: Record<string, string>;
-  spaceId?: string;
-  pageId?: string;
 }
 
 export interface UpdateTemplateInput {
   name?: string;
   category?: TemplateCategory;
-  visibility?: TemplateVisibility;
   description?: string;
-  compiler?: TemplateCompiler;
-  mainFile?: string;
-  license?: string;
-  sourceUrl?: string;
   tags?: string[];
-  spaceId?: string;
-  pageId?: string;
 }
 
-export interface ScaffoldTemplateResult {
+export interface InstantiateTemplateResult {
   pageId: string;
-  rootDocId: string | null;
+  spaceId: string;
+  isPersonal: boolean;
+  rootDocId: string;
+  title: string;
   compiler: string;
+  texlive: string;
   mainFile: string;
-  importedDocs: number;
-  importedFiles: number;
-  totalEntries: number;
+  createdDocs: number;
+  createdFiles: number;
 }
 
 const inFlight = new Map<string, Promise<unknown>>();
@@ -127,17 +113,10 @@ function coalesce<T>(key: string, fn: () => Promise<T>): Promise<T> {
 export const templatesApi = {
   list: (query?: QueryTemplatesParams): Promise<TemplateSummary[]> => {
     const params: Record<string, string> = {};
-    if (query?.category && query.category !== 'all') {
-      params.category = query.category;
-    }
-    if (query?.visibility && query.visibility !== 'all') {
-      params.visibility = query.visibility;
-    }
-    if (query?.tag) params.tag = query.tag;
+    if (query?.category) params.category = query.category;
+    if (query?.scope) params.scope = query.scope;
     if (query?.search) params.search = query.search;
-    if (query?.spaceId && query.spaceId !== 'personal') {
-      params.spaceId = query.spaceId;
-    }
+    if (query?.spaceId) params.spaceId = query.spaceId;
     if (query?.limit !== undefined) params.limit = String(query.limit);
     if (query?.offset !== undefined) params.offset = String(query.offset);
 
@@ -174,19 +153,15 @@ export const templatesApi = {
       `${PAGES_API_BASE}/templates/${encodeURIComponent(id)}`,
     ),
 
-  scaffold: (
+  instantiate: (
     spaceId: string,
     templateId: string,
-    opts?: { pageId?: string; title?: string },
-  ): Promise<ScaffoldTemplateResult> => {
-    const cleanPageId = opts?.pageId?.trim();
-    const qs = cleanPageId ? `?pageId=${encodeURIComponent(cleanPageId)}` : '';
-    return apiPost<ScaffoldTemplateResult>(
-      `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/templates/${encodeURIComponent(templateId)}/scaffold${qs}`,
-      {
-        ...(cleanPageId ? { pageId: cleanPageId } : {}),
-        ...(opts?.title?.trim() ? { title: opts.title.trim() } : {}),
-      },
+    opts?: { title?: string },
+  ): Promise<InstantiateTemplateResult> => {
+    const cleanTitle = opts?.title?.trim();
+    return apiPost<InstantiateTemplateResult>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/templates/${encodeURIComponent(templateId)}/instantiate`,
+      cleanTitle ? { title: cleanTitle } : {},
     );
   },
 };

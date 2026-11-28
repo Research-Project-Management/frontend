@@ -1,14 +1,8 @@
 /**
  * table-matrix.ts
  *
- * Core Pure Domain Utilities for LaTeX Table & Matrix Generation and Reverse-Parsing (Domain Layer).
- * Supports:
- * - Table code generation: Booktabs (academic standard), Bordered (full grid), Minimal
- * - Robust Table LaTeX reverse-parser (reconstructing visual grid from LaTeX source)
- * - CSV / TSV / Excel table import parser
- * - Matrix code generation: pmatrix, bmatrix, vmatrix, Bmatrix, Vmatrix, matrix
- * - Matrix presets: Identity (I), Zero (0), Symbolic (a_{ij}), Diagonal
- * - Matrix LaTeX reverse-parser
+ * Pure domain utilities for LaTeX table generation, reverse-parsing,
+ * and CSV/TSV/Excel delimited table import.
  */
 
 export type TableAlignment = 'l' | 'c' | 'r';
@@ -42,25 +36,6 @@ export interface TableGrid {
   merges?: TableCellMerge[];
   borders?: TableBorderConfig;
   wrapInTableEnv?: boolean;
-}
-
-export type MatrixType =
-  | 'pmatrix' // ( )
-  | 'bmatrix' // [ ]
-  | 'vmatrix' // | |
-  | 'Bmatrix' // { }
-  | 'Vmatrix' // || ||
-  | 'matrix';  // plain
-
-export type MatrixWrapper = 'inline' | 'display' | 'equation' | 'raw';
-
-export interface MatrixGrid {
-  type: MatrixType;
-  rows: number;
-  cols: number;
-  cells: string[][];
-  wrapper: MatrixWrapper;
-  equationLabel?: string;
 }
 
 /**
@@ -519,134 +494,5 @@ export function parseDelimitedTextToGrid(
     data,
     cols,
     rows: data.length,
-  };
-}
-
-/**
- * Generates matrix presets (Identity, Zero, Symbolic, Diagonal).
- */
-export function generateMatrixPreset(
-  preset: 'identity' | 'zero' | 'symbolic' | 'diagonal',
-  rows: number,
-  cols: number
-): string[][] {
-  const result: string[][] = [];
-  for (let r = 0; r < rows; r++) {
-    const row: string[] = [];
-    for (let c = 0; c < cols; c++) {
-      if (preset === 'identity') {
-        row.push(r === c ? '1' : '0');
-      } else if (preset === 'zero') {
-        row.push('0');
-      } else if (preset === 'symbolic') {
-        row.push(`a_{${r + 1}${c + 1}}`);
-      } else if (preset === 'diagonal') {
-        row.push(r === c ? `d_{${r + 1}}` : '0');
-      }
-    }
-    result.push(row);
-  }
-  return result;
-}
-
-/**
- * Generates clean LaTeX matrix code.
- */
-export function generateLatexMatrix(grid: MatrixGrid): string {
-  const {
-    type = 'pmatrix',
-    rows,
-    cols,
-    cells,
-    wrapper = 'display',
-    equationLabel = '',
-  } = grid;
-
-  const actualRows = Math.max(rows, cells.length);
-  const actualCols = Math.max(cols, ...cells.map((r) => r.length), 1);
-
-  const rowStrings: string[] = [];
-  for (let r = 0; r < actualRows; r++) {
-    const row = cells[r] || [];
-    const formattedCells = Array.from({ length: actualCols }, (_, c) => {
-      const val = row[c] ?? '';
-      return val.trim() || '0';
-    });
-    rowStrings.push(`  ${formattedCells.join(' & ')}`);
-  }
-
-  const inner = `\\begin{${type}}\n${rowStrings.join(' \\\\\n')}\n\\end{${type}}`;
-
-  switch (wrapper) {
-    case 'inline':
-      return `$${inner}$`;
-    case 'display':
-      return `\\[\n${inner}\n\\]`;
-    case 'equation':
-      return `\\begin{equation}\n${inner}\n${equationLabel ? `  \\label{${equationLabel}}\n` : ''}\\end{equation}`;
-    case 'raw':
-    default:
-      return inner;
-  }
-}
-
-/**
- * Parses LaTeX matrix back into a structured MatrixGrid.
- */
-export function parseLatexMatrix(latex: string): MatrixGrid | null {
-  if (!latex || typeof latex !== 'string') return null;
-
-  const match = latex.match(
-    /\\begin\{(pmatrix|bmatrix|vmatrix|Bmatrix|Vmatrix|matrix)\}([\s\S]*?)\\end\{\1\}/
-  );
-
-  if (!match) return null;
-
-  const type = match[1] as MatrixType;
-  const rawBody = match[2];
-
-  // Determine wrapper
-  let wrapper: MatrixWrapper = 'raw';
-  let equationLabel = '';
-
-  if (/\\begin\{equation\}/.test(latex)) {
-    wrapper = 'equation';
-    const labelMatch = latex.match(/\\label\{([^}]+)\}/);
-    if (labelMatch) equationLabel = labelMatch[1];
-  } else if (/^\\\[[\s\S]*\\\]$/.test(latex.trim())) {
-    wrapper = 'display';
-  } else if (/^\$[^$]+\$$/.test(latex.trim())) {
-    wrapper = 'inline';
-  }
-
-  const rawRows = rawBody.split(/\\\\(?:\s*\[[^\]]*\])?/);
-  const parsedCells: string[][] = [];
-
-  for (let i = 0; i < rawRows.length; i++) {
-    const rawRow = rawRows[i].trim();
-    if (!rawRow) continue;
-    const row = rawRow.split(/(?<!\\)&/).map((c) => c.trim());
-    parsedCells.push(row);
-  }
-
-  if (parsedCells.length === 0) return null;
-
-  const rows = parsedCells.length;
-  const cols = Math.max(...parsedCells.map((r) => r.length), 1);
-
-  // Normalize dimensions
-  const normalizedCells = parsedCells.map((r) => {
-    const row = [...r];
-    while (row.length < cols) row.push('0');
-    return row;
-  });
-
-  return {
-    type,
-    rows,
-    cols,
-    cells: normalizedCells,
-    wrapper,
-    equationLabel,
   };
 }

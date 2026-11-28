@@ -17,7 +17,6 @@ import type {
   LogEntry,
   ParsedLog,
   CompilerLogsProps,
-  LogsProps,
   ErrorExplanationDto,
 } from '@/features/editor/domain/types/compiler.types';
 import { parseLatexLog } from '@/features/editor/domain/latex/compiler-logs-parser';
@@ -30,10 +29,10 @@ import { RawLatexLogsViewer } from './RawLogsViewer';
 import {
   useCompilerLogsState,
   type CompilerLogVisibleRow,
-} from '../../hooks/useLogsState';
+} from '@/features/editor/subsystems/compiler/hooks/useLogsState';
 
 export { parseLatexLog };
-export type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto };
+export type { LogEntry, ParsedLog, CompilerLogsProps, ErrorExplanationDto };
 
 export function CompilerLogs({
   log,

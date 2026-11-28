@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { Page } from '../../types/page.types';
+import type { Page } from '@/features/pages/types/page.types';
 import { Card } from '../card/Card';
 
 interface GridViewProps {

@@ -184,11 +184,10 @@ export function useViewerSyncTeX({
       let targetLine = line;
 
       // 1. Primary Authority: Backend SyncTeX reverse resolution when page & coordinates are provided
-      const rootId = pageId || projectId;
-      if (rootId && pageNum && x !== undefined && y !== undefined && (!targetPath || targetLine < 1)) {
+      if ((pageId || projectId) && pageNum && x !== undefined && y !== undefined && (!targetPath || targetLine < 1)) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
-            projectId || rootId,
+            projectId || 'personal',
             pageNum,
             x,
             y,
@@ -260,8 +259,7 @@ export function useViewerSyncTeX({
     const handleForwardSync = async (line?: number, overrideFilePath?: string) => {
       const targetLine: number = Math.max(1, line ?? getActiveEditorEngine()?.getCursorPosition?.()?.line ?? 1);
 
-      const rootId = pageId || projectId;
-      if (!rootId) return;
+      if (!pageId && !projectId) return;
       const filename = overrideFilePath || activeFilePath || usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
 
       const effectiveScale =
@@ -279,7 +277,7 @@ export function useViewerSyncTeX({
 
       // 1. Primary Authority: Backend Remote SyncTeX Resolution
       const remoteRes = await compilerCoordinator.resolveForwardRemote(
-        projectId || rootId,
+        projectId || 'personal',
         filename,
         targetLine,
         0,
@@ -358,10 +356,10 @@ export function useViewerSyncTeX({
       let resolved: { line: number; sourcePath: string | null } | null = null;
 
       // 1. Primary Authority: Backend Remote SyncTeX Reverse Resolution
-      if (rootId && customX !== undefined && customY !== undefined) {
+      if ((pageId || projectId) && customX !== undefined && customY !== undefined) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
-            projectId || rootId,
+            projectId || 'personal',
             p,
             customX,
             customY,

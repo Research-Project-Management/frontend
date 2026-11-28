@@ -25,6 +25,7 @@ import {
   getEditorEngineForFile,
   usePageStore,
 } from '@/features/editor/core';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import {
   computePreambleInsertion,
   isPreambleOnlySnippet,
@@ -73,8 +74,7 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
 
   const replaceSelection = useCallback(
     (text: string) => {
-      const pageState = usePageStore.getState();
-      const activeId = pageState.activeFilePage?.id || pageState.currentPage?.id || null;
+      const activeId = resolveEditorScopeFromState(usePageStore.getState()).activeFileId;
       const targetEngine =
         selectionFileId && selectionFileId !== activeId
           ? getEditorEngineForFile(selectionFileId)
@@ -103,7 +103,10 @@ export function useAiChatActions({ engine, selectionFileId }: UseAiChatActionsOp
   const proposeDiff = useCallback(
     (code: string, title?: string) => {
       const pageState = usePageStore.getState();
-      const activeId = pageState.activeFilePage?.id || pageState.getActiveDocument()?.id || 'main.tex';
+      const activeId =
+        resolveEditorScopeFromState(pageState).activeFileId ||
+        pageState.getActiveDocument()?.id ||
+        'main.tex';
       const targetFileId = selectionFileId || activeId;
       const targetEngine = selectionFileId ? getEditorEngineForFile(selectionFileId) || engine : engine;
 

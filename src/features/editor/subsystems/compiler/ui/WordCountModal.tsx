@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/pages.service';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
   EMPTY_TEXCOUNT_STATS,
@@ -51,7 +52,7 @@ interface WordCountModalFile {
   content?: unknown;
 }
 
-interface WordCountModalProps {
+export interface WordCountModalProps {
   open: boolean;
   onClose: () => void;
   projectId?: string;
@@ -59,7 +60,6 @@ interface WordCountModalProps {
   selectedText?: string;
   activeFileName?: string;
   projectFiles?: WordCountModalFile[];
-  onInsertSnippet?: (snippet: string) => void;
 }
 
 type WordCountScope = 'document' | 'project' | 'selection';
@@ -94,7 +94,7 @@ function hashWordCountInput(
   return `${scope}|${projectId ?? ''}|${includeBib ? 1 : 0}|${filename}|${source.length}:${h >>> 0}|${filesHash >>> 0}`;
 }
 
-function WordCountModal({
+export function WordCountModal({
   open,
   onClose,
   projectId,
@@ -103,9 +103,11 @@ function WordCountModal({
   activeFileName = 'main.tex',
   projectFiles = [],
 }: WordCountModalProps) {
-  const storeSpaceId = usePageStore((s) => s.projectId || s.spaceId || '');
-  const storePageId = usePageStore((s) => s.parentPageId || s.rootPageId || s.currentPage?.id || '');
-  const effectiveProjectId = projectId || storeSpaceId;
+  const effectiveSpaceId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s, { projectId });
+    return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
+  });
+  const storePageId = usePageStore((s) => resolveEditorScopeFromState(s, { projectId }).rootPageId);
   const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 
   // Initialize scope based on active selection presence
@@ -203,7 +205,7 @@ function WordCountModal({
           ? 'selection.tex'
           : activeFileName || 'main.tex';
       // Always include workspace spaceId/pageId so ProjectAccessGuard authorizes all scopes.
-      const targetProjectId = effectiveProjectId || undefined;
+      const targetProjectId = effectiveSpaceId || undefined;
       const targetPageId = storePageId || undefined;
       const filesForScope = scope === 'project' && projectFilesMap ? projectFilesMap : undefined;
 
@@ -267,7 +269,7 @@ function WordCountModal({
         active = false;
       };
     },
-    [open, scope, activeContent, activeFileName, projectId, includeBib, projectFilesMap],
+    [open, scope, activeContent, activeFileName, effectiveSpaceId, storePageId, includeBib, projectFilesMap],
   );
 
   useEffect(() => {

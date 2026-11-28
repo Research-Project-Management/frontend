@@ -38,22 +38,22 @@ import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocum
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
-import { resolveCitationScope } from '@/features/editor/subsystems/citation/model/scope';
+import { resolveCitationScope } from '@/features/editor/subsystems/citation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
-const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
-const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
-const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings/ui/SettingsModal'), { ssr: false });
-const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/WordCountModal'), { ssr: false });
-const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/CitationModal'), { ssr: false });
-const TableModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/table/TableModal'), { ssr: false });
-const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/EquationModal'), { ssr: false });
-const FigureModal = dynamic(() => import('@/features/editor/subsystems/insert/ui/FigureModal'), { ssr: false });
-const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal').then((m) => m.TemplateGalleryModal), { ssr: false });
-const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal'), { ssr: false });
-const QuickOpenModal = dynamic(() => import('@/features/editor/subsystems/navigation/ui/QuickOpenModal'), { ssr: false });
+const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then((m) => m.PdfViewer), { ssr: false });
+const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then((m) => m.DetachedPdfPlaceholder), { ssr: false });
+const SettingsModal = dynamic(() => import('@/features/editor/subsystems/settings').then((m) => m.SettingsModal), { ssr: false });
+const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler').then((m) => m.WordCountModal), { ssr: false });
+const CitationModal = dynamic(() => import('@/features/editor/subsystems/citation').then((m) => m.CitationModal), { ssr: false });
+const TableModal = dynamic(() => import('@/features/editor/subsystems/insert').then((m) => m.TableModal), { ssr: false });
+const EquationModal = dynamic(() => import('@/features/editor/subsystems/insert').then((m) => m.EquationModal), { ssr: false });
+const FigureModal = dynamic(() => import('@/features/editor/subsystems/insert').then((m) => m.FigureModal), { ssr: false });
+const TemplateGalleryModal = dynamic(() => import('@/features/editor').then((m) => m.TemplateGalleryModal), { ssr: false });
+const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/subsystems/keybinding').then((m) => m.KeyboardShortcutsModal), { ssr: false });
+const QuickOpenModal = dynamic(() => import('@/features/editor/subsystems/navigation').then((m) => m.QuickOpenModal), { ssr: false });
 
 /** Safely extracts LaTeX string content from active engine or document entity */
 function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
@@ -109,10 +109,6 @@ function ConnectedWordCountModal({ open, projectId, rootPageId, engine }: Connec
       selectedText={engine?.getSelectedText() || ''}
       activeFileName={currentDoc?.title || configuredMainFile}
       projectFiles={combinedProjectFiles}
-      onInsertSnippet={(snippet) => {
-        editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
-        editorCommandBus.dispatch({ type: 'editor:focus' });
-      }}
     />
   );
 }
@@ -360,6 +356,8 @@ export function WorkbenchLayout() {
           }}
           initialTab={tableWizardTab}
           initialLatex={tableWizardInitialLatex}
+          pageId={rootPageId || currentPageId || null}
+          spaceId={routeProjectId || storeProjectId || spaceId || null}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
             editorCommandBus.dispatch({ type: 'editor:focus' });
@@ -376,6 +374,8 @@ export function WorkbenchLayout() {
               editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'equation-generator' });
             }
           }}
+          pageId={rootPageId || currentPageId || null}
+          spaceId={routeProjectId || storeProjectId || spaceId || null}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
             editorCommandBus.dispatch({ type: 'editor:focus' });
@@ -393,6 +393,7 @@ export function WorkbenchLayout() {
             }
           }}
           parentPageId={rootPageId || currentPageId || ''}
+          spaceId={routeProjectId || storeProjectId || spaceId || null}
           onInsert={(latexCode) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: latexCode });
             editorCommandBus.dispatch({ type: 'editor:focus' });

@@ -29,8 +29,6 @@ export const defaultWorkspaceServicePort: WorkspaceServicePort = {
   moveNode: (projectId, itemId, data) => pagesService.structure.moveNode(projectId, itemId, data),
   restoreFile: (fileId) => pagesService.docs.restore(fileId),
   setRootDoc: (projectId, fileId) => pagesService.structure.setRootDoc(projectId, fileId),
-  getFilesByProjectId: (projectId) => pagesService.docs.getFiles(projectId),
-  updateFileContent: (fileId, content) => pagesService.docs.updateContent(fileId, content),
 };
 
 export const defaultWorkspaceNotificationPort: WorkspaceNotificationPort = {
@@ -39,9 +37,6 @@ export const defaultWorkspaceNotificationPort: WorkspaceNotificationPort = {
   },
   notifyError: (message, id) => {
     toast.error(message, id ? { id } : undefined);
-  },
-  notifyInfo: (message, id) => {
-    toast.info(message, id ? { id } : undefined);
   },
 };
 
@@ -91,7 +86,6 @@ export const defaultWorkspaceStorePort: WorkspaceStorePort = {
       rootDocId !== undefined ? rootDocId : usePageStore.getState().rootDocId;
     latexDependencyGraph.setServerRootDoc(cleanPath || null, effectiveRootDocId);
   },
-  getActiveDocumentId: () => usePageStore.getState().getActiveDocument()?.id ?? null,
 };
 
 export type CreatedFileNode = Partial<StructureNodeDto> & {

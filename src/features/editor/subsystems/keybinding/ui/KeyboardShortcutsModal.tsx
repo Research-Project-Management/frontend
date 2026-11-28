@@ -68,12 +68,12 @@ export const SHORTCUT_LIST: ShortcutItem[] = [
   { id: 'toggle-ai-panel', label: 'Toggle AI Panel', category: 'Layout', keys: ['Ctrl', 'J'] },
 ];
 
-interface KeyboardShortcutsModalProps {
+export interface KeyboardShortcutsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export default function KeyboardShortcutsModal({
+export function KeyboardShortcutsModal({
   open,
   onOpenChange,
 }: KeyboardShortcutsModalProps) {
@@ -160,3 +160,5 @@ export default function KeyboardShortcutsModal({
     </Dialog>
   );
 }
+
+export default KeyboardShortcutsModal;

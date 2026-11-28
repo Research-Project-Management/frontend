@@ -9,7 +9,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { usePageStore, useSettingsStore } from '@/features/editor/core';
+import {
+  usePageStore,
+  useSettingsStore,
+  resolveEditorScopeFromState,
+  PERSONAL_SPACE_PARAM,
+} from '@/features/editor/core';
 import {
   templatesApi,
   type TemplateCategory,
@@ -62,18 +67,18 @@ export function useTemplateGallery(opts: UseTemplateGalleryOptions = {}) {
   );
 
   // Canonical Coordinate Model (spaceId -> pageId)
-  const storeSpaceId = usePageStore((s) => s.spaceId);
-  const spaceType = usePageStore((s) => s.spaceType);
-  const pageId = usePageStore((s) => s.rootPageId || s.currentPage?.id || '');
+  const storeSpaceId = usePageStore((s) => resolveEditorScopeFromState(s).spaceId);
+  const storeSpaceKind = usePageStore((s) => resolveEditorScopeFromState(s).spaceKind);
+  const pageId = usePageStore((s) => resolveEditorScopeFromState(s).rootPageId);
   const activeTitle = usePageStore(
     (s) => s.workspaceTitle || s.currentPage?.title,
   );
 
-  const spaceId = opts.spaceId || storeSpaceId || 'personal';
+  const spaceId = opts.spaceId || storeSpaceId || PERSONAL_SPACE_PARAM;
   const validSpaceUuid = isUuid(spaceId) ? spaceId : undefined;
   const isProjectSpace =
     Boolean(validSpaceUuid) &&
-    (opts.spaceId ? opts.spaceId !== 'personal' : spaceType === 'project');
+    (opts.spaceId ? opts.spaceId !== PERSONAL_SPACE_PARAM : storeSpaceKind === 'project');
   const canPublishPage = !isControlled && isUuid(pageId);
 
   const [category, setCategory] = useState<GalleryCategoryFilter>(

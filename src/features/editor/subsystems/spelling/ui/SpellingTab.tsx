@@ -19,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { pagesService } from '@/features/editor/sdk/pages.service';
+import { normalizeSpellLanguage } from '../extensions/extension';
 import { useDictionary } from '../hooks/useDictionary';
 
 const SPELL_LANGUAGES = [
@@ -39,8 +41,11 @@ export interface SpellingTabProps {
 }
 
 export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {}) {
-  const storeProjectId = usePageStore((s) => s.projectId || s.spaceId || '');
-  const rootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || s.currentPage?.id || '');
+  const storeSpaceId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s);
+    return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
+  });
+  const rootPageId = usePageStore((s) => resolveEditorScopeFromState(s).rootPageId);
   const setPageBuildConfig = usePageStore((s) => s.setPageBuildConfig);
   const canEdit = usePageStore((s) => s.permissions?.canEdit ?? true);
   const isLocked = useSettingsStore((s) => s.isLocked);
@@ -50,8 +55,8 @@ export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {})
   const setSpellCheckLanguage = useSettingsStore((s) => s.setSpellCheckLanguage);
 
   const isReadOnly = isLocked || !canEdit;
-  const projectId = propProjectId || storeProjectId || undefined;
-  const { words, isError, addWord, removeWord, isAddingWord } = useDictionary(projectId, true);
+  const spaceId = propProjectId?.trim() || storeSpaceId || undefined;
+  const { words, isError, addWord, removeWord, isAddingWord } = useDictionary(spaceId, true);
   const [draftWord, setDraftWord] = useState('');
 
   const handleLanguageChange = (value: string) => {
@@ -62,7 +67,7 @@ export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {})
         void pagesService.docs.updateMetadata(rootPageId, { spellLang: 'off' }).catch(() => {});
       }
     } else {
-      const normalized = value.replace('_', '-');
+      const normalized = normalizeSpellLanguage(value);
       setSpellCheck(true);
       setSpellCheckLanguage(normalized);
       setPageBuildConfig({ spellLang: normalized });
@@ -94,7 +99,7 @@ export function SpellingTab({ projectId: propProjectId }: SpellingTabProps = {})
           </p>
         </div>
         <Select
-          value={spellCheck ? spellCheckLanguage.replace('_', '-') : 'off'}
+          value={spellCheck ? normalizeSpellLanguage(spellCheckLanguage) : 'off'}
           onValueChange={handleLanguageChange}
         >
           <SelectTrigger

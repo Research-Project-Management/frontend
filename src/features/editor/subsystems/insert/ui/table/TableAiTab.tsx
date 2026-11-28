@@ -9,17 +9,22 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { resolveEditorScope } from '@/features/editor/core/coordinator/editor-scope';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 
 export interface TableAiTabProps {
+  pageId?: string | null;
+  spaceId?: string | null;
   onApplyRaw: (latexOutput: string) => boolean;
   onFallbackImport: (latexOutput: string) => boolean;
   onSuccess: () => void;
 }
 
 export function TableAiTab({
+  pageId,
+  spaceId,
   onApplyRaw,
   onFallbackImport,
   onSuccess,
@@ -64,7 +69,10 @@ export function TableAiTab({
     if ((!prompt.trim() && !image) || isGenerating) return;
     setIsGenerating(true);
     try {
+      const scope = resolveEditorScope({ pageId, spaceId });
       const output = await pagesService.ai.generateLatexTable(prompt.trim(), {
+        spaceId: scope.spaceId || scope.routeSpaceParam,
+        pageId: scope.rootPageId || undefined,
         image: image?.file ?? null,
       });
       const imported = onApplyRaw(output) || onFallbackImport(output);
@@ -81,7 +89,7 @@ export function TableAiTab({
     } finally {
       setIsGenerating(false);
     }
-  }, [prompt, image, isGenerating, onApplyRaw, onFallbackImport, clearImage, onSuccess]);
+  }, [prompt, image, isGenerating, pageId, spaceId, onApplyRaw, onFallbackImport, clearImage, onSuccess]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-0.5">

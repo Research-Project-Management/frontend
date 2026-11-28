@@ -34,7 +34,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { cn } from '@/shared/lib/utils';
-import { useTableEditor, type TableTab } from '@/features/editor/subsystems/insert/hooks/useTableEditor';
+import { useTableEditor, type TableTab } from '../../hooks/useTableEditor';
 import type { TableCellMerge } from '@/features/editor/domain/latex/table-matrix';
 import { TableImportTab } from './TableImportTab';
 import { TableAiTab } from './TableAiTab';
@@ -45,6 +45,8 @@ export interface TableModalProps {
   onInsert: (latexCode: string) => void;
   initialTab?: TableTab | 'matrix';
   initialLatex?: string;
+  pageId?: string | null;
+  spaceId?: string | null;
 }
 
 interface CellSelection {
@@ -69,6 +71,8 @@ export function TableModal({
   onInsert,
   initialTab = 'table',
   initialLatex = '',
+  pageId,
+  spaceId,
 }: TableModalProps) {
   const isEditMode = Boolean(initialLatex?.trim());
   const {
@@ -573,6 +577,8 @@ export function TableModal({
 
         {activeTab === 'ai' && aiEnabled && (
           <TableAiTab
+            pageId={pageId}
+            spaceId={spaceId}
             onApplyRaw={(output) => Boolean(importRaw(output))}
             onFallbackImport={(output) => {
               setImportText(output);

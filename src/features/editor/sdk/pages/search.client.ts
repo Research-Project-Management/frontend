@@ -19,11 +19,12 @@ export const search = {
     query: string,
     options: SearchOptions = {},
   ): Promise<SearchResultResponse> => {
+    const cleanProjectId = projectId?.trim();
     const cleanPageId = options.pageId?.trim();
     const endpoint =
-      !projectId && cleanPageId
+      (!cleanProjectId || cleanProjectId === 'personal') && cleanPageId
         ? `${PAGES_API_BASE}/pages/${encodeURIComponent(cleanPageId)}/search`
-        : `${PAGES_API_BASE}/spaces/${projectId}/search`;
+        : `${PAGES_API_BASE}/spaces/${encodeURIComponent(cleanProjectId || cleanPageId || '')}/search`;
     return apiPost<SearchResultResponse>(endpoint, {
       query,
       ...options,
@@ -36,11 +37,12 @@ export const search = {
     replaceWith: string,
     options: BatchReplaceOptions = {},
   ): Promise<BatchReplaceResultResponse> => {
+    const cleanProjectId = projectId?.trim();
     const cleanPageId = options.pageId?.trim();
     const endpoint =
-      !projectId && cleanPageId
+      (!cleanProjectId || cleanProjectId === 'personal') && cleanPageId
         ? `${PAGES_API_BASE}/pages/${encodeURIComponent(cleanPageId)}/replace`
-        : `${PAGES_API_BASE}/spaces/${projectId}/replace`;
+        : `${PAGES_API_BASE}/spaces/${encodeURIComponent(cleanProjectId || cleanPageId || '')}/replace`;
     return apiPost<BatchReplaceResultResponse>(endpoint, {
       query,
       replaceWith,

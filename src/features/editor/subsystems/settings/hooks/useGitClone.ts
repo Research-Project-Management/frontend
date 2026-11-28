@@ -1,8 +1,8 @@
 /**
  * useGitClone.ts
  *
- * GoF Command + Template Method Hook (`runCmd`) managing Git Smart-HTTP repository
- * metadata, Personal Access Token lifecycle, and clipboard copy state.
+ * Hook managing Git Smart-HTTP repository metadata, Personal Access Token lifecycle,
+ * and clipboard copy state across both Personal Space and Project Space.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,14 +15,6 @@ import {
 
 const DEFAULT_MAX_TOKENS = 10;
 const COPY_RESET_MS = 2_000;
-
-interface GitCommand {
-  id: string;
-  guardError?: string | null;
-  successMsg: string;
-  errorMsg: string;
-  run: () => Promise<void>;
-}
 
 function useCopyFlag() {
   const [copied, setCopied] = useState(false);
@@ -70,7 +62,7 @@ export function useGitClone({ projectId, pageId, open }: UseGitCloneParams) {
   const tokenCopy = useCopyFlag();
 
   useEffect(() => {
-    const spaceId = projectId || pageId;
+    const spaceId = projectId?.trim() || (pageId?.trim() ? 'personal' : '');
     if (!spaceId || !open) return;
 
     let cancelled = false;
@@ -93,20 +85,6 @@ export function useGitClone({ projectId, pageId, open }: UseGitCloneParams) {
     };
   }, [projectId, pageId, open]);
 
-  /** GoF Template Method executing a guarded UI mutation command. */
-  const runCmd = useCallback(async (cmd: GitCommand): Promise<void> => {
-    if (cmd.guardError) {
-      toast.error(cmd.guardError, { id: cmd.id });
-      return;
-    }
-    try {
-      await cmd.run();
-      toast.success(cmd.successMsg, { id: cmd.id });
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || cmd.errorMsg, { id: cmd.id });
-    }
-  }, []);
-
   const fallbackId = pageId || projectId || 'project';
   const cloneUrl =
     info?.cloneUrl ||
@@ -121,51 +99,47 @@ export function useGitClone({ projectId, pageId, open }: UseGitCloneParams) {
   const atLimit = tokens.length >= maxTokens;
 
   const createToken = useCallback(async () => {
+    if (atLimit) {
+      toast.error(`Maximum of ${maxTokens} active tokens reached`, { id: 'git-token-create' });
+      return;
+    }
     setCreating(true);
-    await runCmd({
-      id: 'git-token-create',
-      guardError: atLimit
-        ? `Maximum of ${maxTokens} active tokens reached`
-        : null,
-      successMsg: 'Git access token created',
-      errorMsg: 'Failed to create token',
-      run: async () => {
-        const name = label.trim() || `Token ${new Date().toLocaleDateString()}`;
-        const created = await gitApi.createToken(name);
-        setNewToken(created.token);
-        setLabel('');
-        setTokens((prev) => [
-          {
-            id: created.id,
-            label: created.label,
-            prefix: created.prefix,
-            createdAt: created.createdAt,
-            expiresAt: created.expiresAt,
-            lastUsedAt: created.lastUsedAt ?? null,
-          },
-          ...prev.filter((t) => t.id !== created.id),
-        ]);
-      },
-    });
-    setCreating(false);
-  }, [atLimit, label, maxTokens, runCmd]);
-
-  const revokeToken = useCallback(
-    async (tokenId: string) => {
-      setRevokingId(tokenId);
-      await runCmd({
-        id: 'git-token-revoke',
-        successMsg: 'Git access token revoked',
-        errorMsg: 'Failed to revoke token',
-        run: async () => {
-          await gitApi.revokeToken(tokenId);
-          setTokens((prev) => prev.filter((t) => t.id !== tokenId));
+    try {
+      const name = label.trim() || `Token ${new Date().toLocaleDateString()}`;
+      const created = await gitApi.createToken(name);
+      setNewToken(created.token);
+      setLabel('');
+      setTokens((prev) => [
+        {
+          id: created.id,
+          label: created.label,
+          prefix: created.prefix,
+          createdAt: created.createdAt,
+          expiresAt: created.expiresAt,
+          lastUsedAt: created.lastUsedAt ?? null,
         },
-      });
+        ...prev.filter((t) => t.id !== created.id),
+      ]);
+      toast.success('Git access token created', { id: 'git-token-create' });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to create token', { id: 'git-token-create' });
+    } finally {
+      setCreating(false);
+    }
+  }, [atLimit, label, maxTokens]);
+
+  const revokeToken = useCallback(async (tokenId: string) => {
+    setRevokingId(tokenId);
+    try {
+      await gitApi.revokeToken(tokenId);
+      setTokens((prev) => prev.filter((t) => t.id !== tokenId));
+      toast.success('Git access token revoked', { id: 'git-token-revoke' });
+    } catch (err: unknown) {
+      toast.error((err as Error)?.message || 'Failed to revoke token', { id: 'git-token-revoke' });
+    } finally {
       setRevokingId(null);
-    },
-    [runCmd],
-  );
+    }
+  }, []);
 
   const copyUrl = useCallback(() => {
     urlCopy.copy(

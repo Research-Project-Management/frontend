@@ -35,7 +35,7 @@ const ImagePanel = dynamic(
 );
 
 const BibVisualEditor = dynamic(
-  () => import('@/features/editor/subsystems/citation/ui/BibVisualEditor').then((m) => m.BibVisualEditor),
+  () => import('@/features/editor/subsystems/citation').then((m) => m.BibVisualEditor),
   { ssr: false }
 );
 
@@ -49,8 +49,12 @@ import {
 } from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/core/hooks/useCollaboration';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
-import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
+import {
+  extractDocumentContentString,
+  type AssetInfo,
+  type Page,
+  type PageFile,
+} from '@/features/editor/domain/types/core.types';
 
 interface EditorPaneFileItem {
   id: string;

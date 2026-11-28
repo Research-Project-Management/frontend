@@ -5,16 +5,12 @@ import { toast } from 'sonner';
 import { pagesService, historyKeys } from '@/features/editor/sdk/pages.service';
 import { exportVersionZip } from '@/features/editor/sdk/archive/zip-export';
 import {
-  clearYjsProviderPool,
-  evictYjsProviderByDocId,
-} from '@/features/editor/sdk/realtime';
-import {
-  editorCommandBus,
-  sessionCoordinator,
   documentFacade,
+  editorCommandBus,
+  lruDocumentCache,
+  sessionCoordinator,
+  usePageStore,
 } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type {
   ProjectDiffResponse,
   ProjectSnapshotDetail,
@@ -74,20 +70,18 @@ export function useHistoryActions({
     gcTime: 5 * 60_000,
   });
 
-  // Flush pending live Yjs edits into history when opening History view
+  // Flush pending local & live Yjs edits into history when opening History view
   useEffect(() => {
     if (!open || !spaceId) return;
     let cancelled = false;
-    void pagesService.history
-      .flushHistory(spaceId, scope)
-      .then((res) => {
-        if (!cancelled && res?.flushed) {
-          void refetchVersions();
-        }
-      })
-      .catch(() => {
-        // Non-fatal: history list still renders latest persisted snapshots
-      });
+    void (async () => {
+      await sessionCoordinator.syncBeforeServerRead(spaceId).catch(() => null);
+      if (cancelled) return;
+      const res = await pagesService.history.flushHistory(spaceId, scope).catch(() => null);
+      if (!cancelled && res?.flushed) {
+        void refetchVersions();
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -153,24 +147,18 @@ export function useHistoryActions({
 
   const restoreProject = useMutation({
     mutationFn: async (version: number) => {
-      for (const m of lruDocumentCache.getAllModels()) {
-        sessionCoordinator.cancelPendingAutoSave(m.fileId);
-      }
+      sessionCoordinator.cancelAllPendingAutoSaves();
       return pagesService.history.restoreProjectVersion(spaceId, version, scope);
     },
     onSuccess: (_, restoredVersion) => {
-      sessionCoordinator.resetSession();
-      clearYjsProviderPool({ skipFlush: true });
-      for (const m of lruDocumentCache.getDirtyModels()) {
-        lruDocumentCache.markClean(m.fileId);
-      }
-      if (spaceId) {
-        documentFacade.clearProjectCache(spaceId);
-      }
-      lruDocumentCache.discardAll();
-      useCompileStore.getState().clearAllDirty();
+      const storeState = usePageStore.getState();
+      sessionCoordinator.resetForExternalTreeSync([
+        spaceId,
+        pageId,
+        storeState.spaceId,
+        storeState.projectId,
+      ]);
       invalidateHistoryCaches();
-      editorCommandBus.dispatch({ type: 'filetree:updated' });
       toast.success(`Restored project to v${restoredVersion}`, { id: 'history-restore' });
       onRestoredProject();
     },
@@ -195,12 +183,12 @@ export function useHistoryActions({
         spaceId,
         version,
         activeFile,
-        undefined,
+        cached?.fileId,
         scope,
       );
       return {
         filePath: restored.path || activeFile,
-        docId: restored.docId ?? undefined,
+        docId: restored.docId ?? cached?.fileId,
         version,
         content: restored.content ?? '',
         rev: restored.rev,
@@ -212,41 +200,20 @@ export function useHistoryActions({
       });
       onRestoredFile();
 
-      const syncDocCache = (id: string) => {
-        sessionCoordinator.cancelPendingAutoSave(id);
-        evictYjsProviderByDocId(id, { skipFlush: true });
-        lruDocumentCache.clearServerRev(id);
-        if (typeof rev === 'number') {
-          lruDocumentCache.setServerRev(id, rev);
-        }
-        lruDocumentCache.updateContent(id, content, false);
-        lruDocumentCache.markClean(id);
-        useCompileStore.getState().clearDirty(id);
-      };
+      sessionCoordinator.applyServerDocSnapshot({
+        docId,
+        filePath,
+        content,
+        rev,
+      });
 
-      let updatedMountedEngine = false;
-      if (docId) {
-        syncDocCache(docId);
-        const engine = documentFacade.getEditorEngineForFile(docId);
-        if (engine) {
-          engine.setContent(content);
-          updatedMountedEngine = true;
-        }
-      }
-      const cachedByPath = lruDocumentCache.findByPath(filePath);
-      if (cachedByPath && cachedByPath.fileId !== docId) {
-        syncDocCache(cachedByPath.fileId);
+      const storeState = usePageStore.getState();
+      for (const id of [spaceId, pageId, storeState.spaceId, storeState.projectId]) {
+        if (id) documentFacade.clearProjectCache(id);
       }
 
       invalidateHistoryCaches();
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      if (!updatedMountedEngine) {
-        editorCommandBus.dispatch({
-          type: 'document:content-updated',
-          docId: docId || filePath,
-          content,
-        });
-      }
     },
     onError: (err: unknown) => {
       toast.error(`Failed to restore file: ${(err as Error)?.message || 'Unknown error'}`, {

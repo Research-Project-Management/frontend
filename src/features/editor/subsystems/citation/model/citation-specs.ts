@@ -27,8 +27,6 @@ export const CitationSpecs = {
     Boolean(item.sourceFile && item.sourceFile !== 'workspace-library'),
   isCitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
     Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
-  isUncitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
-    !Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
   matchesQuery: (rawQuery: string): CitationPredicate => {
     const query = rawQuery.trim().toLowerCase();
     if (!query) return () => true;

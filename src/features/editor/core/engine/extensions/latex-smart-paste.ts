@@ -25,7 +25,8 @@ import {
   parseHtmlToLatex,
 } from '@/features/editor/domain/latex/smart-paste';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { getDefaultFileUploader } from '@/features/editor/core/engine/adapters/editor-filestore.port';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { filestore } from '@/features/editor/sdk/pages.service';
 
 export interface LatexSmartPasteOptions {
   spaceId?: string;
@@ -35,12 +36,19 @@ export interface LatexSmartPasteOptions {
   onFileTreeUpdated?: () => void;
 }
 
+function defaultUploadFile(projectId: string, file: File, name: string): Promise<unknown> {
+  const pageState = typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
+  const resolvedSpaceId = pageState?.spaceId?.trim() || projectId;
+  const resolvedPageId = pageState?.rootPageId || pageState?.parentPageId || undefined;
+  return filestore.upload(resolvedSpaceId, file, name, resolvedPageId);
+}
+
 export function createLatexSmartPasteExtension(options: LatexSmartPasteOptions = {}) {
   const {
     spaceId,
     projectId,
     enableSmartPaste = true,
-    uploadFile = (pId, f, n) => getDefaultFileUploader()(pId, f, n),
+    uploadFile = defaultUploadFile,
     onFileTreeUpdated = () => editorCommandBus.dispatch({ type: 'filetree:updated' }),
   } = options;
   const targetSpaceId = spaceId || projectId;

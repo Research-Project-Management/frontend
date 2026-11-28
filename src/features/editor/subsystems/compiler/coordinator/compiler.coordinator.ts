@@ -18,13 +18,14 @@ import {
   resolveForward,
   resolveReverse,
   type SyncTeXMap,
-} from '@/features/editor/subsystems/compiler/synctex/synctex';
+} from '../synctex/synctex';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   diagnosticsCoordinator,
+  hasHardSyntaxErrors,
   type IndexedDiagnosticItem,
   type FileDiagnosticsSummary,
-} from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+} from '@/features/editor/subsystems/diagnostics';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   getActiveEditorContent,
@@ -33,7 +34,7 @@ import {
   getAllRegisteredEngines,
   getEditorEngineForFile,
 } from '@/features/editor/core/bus/engine-registry';
-import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { getIsOnline } from '@/shared/lib/network';
@@ -45,7 +46,6 @@ import type {
   CompileReport,
   CompileStatus,
 } from '@/features/editor/domain/types/compiler.types';
-import { hasHardSyntaxErrors } from '@/features/editor/subsystems/diagnostics/model/local-latex-linter';
 import {
   extractDocumentContentString,
   extractProjectId,
@@ -103,7 +103,6 @@ export class CompilerCoordinator {
   private compileAbortController: AbortController | null = null;
   private pendingCompileOptions: CompileOptions | undefined = undefined;
   private synctexMap: SyncTeXMap | null = null;
-  private rawSynctex: string | null = null;
   private initialized = false;
 
   /** Injected Compiler Engine (CompilePipeline by default) */
@@ -213,12 +212,8 @@ export class CompilerCoordinator {
 
     multiTabBus.subscribe((msg) => {
       if (msg.type === 'EDITOR_COMPILATION_COMPLETED') {
-        const pageStore = usePageStore.getState();
-        const activeProjectId =
-          pageStore.projectId ||
-          pageStore.spaceId ||
-          extractProjectId(pageStore.getActiveDocument());
-        if (activeProjectId && activeProjectId === msg.projectId) {
+        const activeScopeId = resolveEditorScopeFromState(usePageStore.getState()).effectiveScopeId;
+        if (activeScopeId && activeScopeId === msg.projectId) {
           if (!this.getIsCompiling() && msg.status === 'success' && msg.pdfUrl) {
             const compileStore = useCompileStore.getState();
             compileStore.setPdfUrl(msg.pdfUrl);
@@ -245,10 +240,6 @@ export class CompilerCoordinator {
     this.synctexMap = map;
   }
 
-  public getRawSynctex(): string | null {
-    return this.rawSynctex;
-  }
-
   public getDiagnostics(fileIdOrPath?: string, applyFilter = true): IndexedDiagnosticItem[] {
     if (fileIdOrPath) {
       return diagnosticsCoordinator.getDiagnosticsForFile(fileIdOrPath, applyFilter);
@@ -270,13 +261,8 @@ export class CompilerCoordinator {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    const rootPageId =
-      pageStore.rootPageId ||
-      pageStore.parentPageId ||
-      pageStore.currentPage?.id ||
-      pageStore.projectId ||
-      activeDoc?.id ||
-      null;
+    const scope = resolveEditorScopeFromState(pageStore);
+    const rootPageId = scope.rootPageId || activeDoc?.id || null;
 
     if (!rootPageId) {
       return false;
@@ -324,15 +310,13 @@ export class CompilerCoordinator {
         forceClean: options?.forceClean || this.pendingCompileOptions?.forceClean,
       };
       this.compileAbortController?.abort();
-      const cancelProjectId =
-        pageStore.rootPageId ||
-        pageStore.parentPageId ||
+      const cancelTargetId =
+        scope.rootPageId ||
         (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
         extractProjectId(activeDoc) ||
-        pageStore.projectId ||
-        pageStore.spaceId ||
+        scope.effectiveScopeId ||
         undefined;
-      this.compilerEngine.cancelInFlightCompile(cancelProjectId);
+      this.compilerEngine.cancelInFlightCompile(cancelTargetId);
       return false;
     }
 
@@ -396,17 +380,15 @@ export class CompilerCoordinator {
     const effectiveProjectId =
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
       extractProjectId(activeDoc) ||
-      pageStore.projectId ||
-      pageStore.spaceId ||
-      '';
+      scope.spaceId ||
+      (scope.rootPageId ? scope.routeSpaceParam : '');
 
     const isBibFile = activeTitle.toLowerCase().endsWith('.bib');
     const safeRootFileId =
       rootFileId ||
-      pageStore.parentPageId ||
-      pageStore.currentPage?.id ||
+      scope.rootPageId ||
       (!isBibFile ? activeDoc?.id : undefined) ||
-      pageStore.projectId;
+      scope.projectId;
 
     const snapshot = SnapshotProvider.createSnapshot({
       rootFileId: safeRootFileId,
@@ -468,7 +450,6 @@ export class CompilerCoordinator {
       if (res.success) {
         compileStore.setPdfUrl(res.pdfUrl ?? null);
         this.synctexMap = res.synctexMap ?? null;
-        this.rawSynctex = res.rawSynctex ?? res.synctexData ?? null;
 
         const rawLog = res.logs ?? res.rawLog ?? '';
         const backendDiags = res.diagnostics || [];
@@ -531,15 +512,15 @@ export class CompilerCoordinator {
         }
 
         editorCommandBus.dispatch({ type: 'compiler:finished', success: true });
-        const activeProjectId =
-          effectiveProjectId ||
-          usePageStore.getState().spaceId ||
-          usePageStore.getState().projectId ||
-          extractProjectId(usePageStore.getState().getActiveDocument());
-        if (activeProjectId) {
+        const latestScope = resolveEditorScopeFromState(usePageStore.getState());
+        const activeScopeId =
+          (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
+          latestScope.effectiveScopeId ||
+          effectiveProjectId;
+        if (activeScopeId) {
           multiTabBus.broadcast({
             type: 'EDITOR_COMPILATION_COMPLETED',
-            projectId: activeProjectId,
+            projectId: activeScopeId,
             pdfUrl: res.pdfUrl ?? null,
             status: 'success',
             timestamp: Date.now(),
@@ -579,7 +560,6 @@ export class CompilerCoordinator {
       if (res.pdfUrl) {
         compileStore.setPdfUrl(res.pdfUrl);
         this.synctexMap = res.synctexMap ?? null;
-        this.rawSynctex = res.rawSynctex ?? res.synctexData ?? null;
         if (res.synctexPromise) {
           res.synctexPromise
             .then((map: SyncTeXMap | null) => {
@@ -722,12 +702,12 @@ export class CompilerCoordinator {
   }
 
   public async forceSync(projectId?: string): Promise<{ synced: string[] }> {
+    const scope = resolveEditorScopeFromState(usePageStore.getState());
     const targetId =
       projectId ||
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
-      usePageStore.getState().spaceId ||
-      usePageStore.getState().projectId ||
-      '';
+      scope.spaceId ||
+      (scope.rootPageId ? scope.routeSpaceParam : '');
     if (!targetId) return { synced: [] };
 
     const compileStore = useCompileStore.getState();
@@ -753,14 +733,12 @@ export class CompilerCoordinator {
     const pageStore = usePageStore.getState();
     const compileStore = useCompileStore.getState();
     const activeDoc = pageStore.getActiveDocument();
-    const targetProjectId =
-      pageStore.rootPageId ||
-      pageStore.parentPageId ||
+    const scope = resolveEditorScopeFromState(pageStore);
+    const targetCancelId =
+      scope.rootPageId ||
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
       extractProjectId(activeDoc) ||
-      pageStore.projectId ||
-      pageStore.currentPage?.id ||
-      pageStore.spaceId ||
+      scope.effectiveScopeId ||
       undefined;
     const activeTitle = pageStore.getActiveDocumentTitle();
     const mainFile =
@@ -772,8 +750,8 @@ export class CompilerCoordinator {
     this.compileAbortController = null;
     this.activeRunId = null;
 
-    if (targetProjectId) {
-      this.compilerEngine.cancelInFlightCompile(targetProjectId);
+    if (targetCancelId) {
+      this.compilerEngine.cancelInFlightCompile(targetCancelId);
     }
 
     compileStore.dispatchCompileEvent({
@@ -852,7 +830,6 @@ export class CompilerCoordinator {
   public dispose(): void {
     this.stop();
     this.synctexMap = null;
-    this.rawSynctex = null;
     this.pendingCompileOptions = undefined;
   }
 }

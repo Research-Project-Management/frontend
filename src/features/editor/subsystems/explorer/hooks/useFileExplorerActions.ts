@@ -26,7 +26,7 @@ import {
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 import { downloadFileAuthorized } from '@/shared/lib/file-client';
 
-import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator, resolveEditorScope } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface UseFileExplorerActionsOptions {
@@ -124,11 +124,12 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
       }
       setIsRenamePending(true);
       try {
+        const scope = resolveEditorScope({ pageId: parentPageId, projectId });
         return await workspaceCoordinator.renameItem({
           itemId: fileId,
           oldName: oldName || trimmed,
           newName: trimmed,
-          projectId: parentPageId || projectId || undefined,
+          projectId: parentPageId || scope.rootPageId || projectId || undefined,
         });
       } finally {
         setIsRenamePending(false);

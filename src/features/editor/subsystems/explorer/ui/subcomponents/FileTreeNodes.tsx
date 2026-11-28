@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import React, { useState, useCallback } from 'react';
-import { useStorageItemActions } from '@/features/editor/subsystems/explorer/hooks/useFileExplorerActions';
+import React, { useCallback } from 'react';
+import { useStorageItemActions } from '../../hooks/useFileExplorerActions';
 import {
   BookText,
   Braces,
@@ -31,7 +31,6 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorageMutations } from '@/features/editor/subsystems/explorer/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import {
   RASTER_AND_VECTOR_IMAGE_EXTENSIONS,
@@ -69,12 +68,6 @@ function getStorageIcon(item: StorageItem) {
   return ICON_ATTACHMENT;
 }
 
-export {
-  IndentGuides,
-  InlineInput,
-  RenameInput,
-  RowActions,
-} from './FileTreePrimitives';
 import {
   IndentGuides,
   RenameInput,
@@ -94,7 +87,6 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   onRenameChange,
   onCommitRename,
   onCancelRename,
-  projectId,
 }: {
   item: StorageItem;
   depth: number;
@@ -108,7 +100,6 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   onRenameChange?: (val: string) => void;
   onCommitRename?: (id: string) => void;
   onCancelRename?: () => void;
-  projectId?: string | null;
 }) {
   const isImage = item.mimeType?.startsWith('image/');
   const { icon: Icon, color } = getStorageIcon(item);

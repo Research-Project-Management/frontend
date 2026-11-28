@@ -10,7 +10,6 @@ import type {
   CompilerDiagnostic,
   DiagnosticItemDto,
   DiagnosticsSummary,
-  ErrorExplanationDto,
 } from '@/features/editor/domain/types/compiler.types';
 
 export type {
@@ -20,33 +19,7 @@ export type {
   CompilerDiagnostic,
   DiagnosticItemDto,
   DiagnosticsSummary,
-  ErrorExplanationDto,
 };
-
-export interface DiagnosticReportDto {
-  id?: string;
-  items: DiagnosticItemDto[];
-  errorCount?: number;
-  errorsCount?: number;
-  warningCount?: number;
-  warningsCount?: number;
-  badboxCount?: number;
-  badboxesCount?: number;
-  infoCount?: number;
-  totalCount?: number;
-  isSuccess: boolean;
-  rawLog?: string;
-}
-
-export interface AutoFixResultDto {
-  isFixed: boolean;
-  fixedSource: string;
-  appliedFixes: Array<{
-    line: number;
-    rule: string;
-    description: string;
-  }>;
-}
 
 export interface CompileLatexPayload {
   spaceId?: string | null;

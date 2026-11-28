@@ -252,33 +252,6 @@ class YjsProviderPool {
     return entries.length;
   }
 
-  public evictByProject(
-    projectId: string,
-    options: { skipFlush?: boolean } = { skipFlush: true },
-  ): number {
-    const entries = Array.from(this.byKey.values()).filter(
-      (entry) => entry.projectId === projectId,
-    );
-    const skipFlush = options.skipFlush ?? true;
-    for (const entry of entries) {
-      this.unindexEntry(entry);
-      if (!entry.provider.isDestroyed) {
-        entry.provider.destroy({ skipFlush });
-      }
-    }
-    if (entries.length > 0) {
-      this.poolEpoch++;
-      for (const listener of this.clearedListeners) {
-        try {
-          listener();
-        } catch {
-          // Ignore listener error
-        }
-      }
-    }
-    return entries.length;
-  }
-
   public clear(options?: { skipFlush?: boolean }): void {
     for (const item of this.byKey.values()) {
       item.provider.destroy(options);
@@ -397,16 +370,6 @@ export function evictYjsProviderByDocId(
   options: { skipFlush?: boolean } = { skipFlush: true },
 ): number {
   return yjsProviderPool.evictByPage(docId, options);
-}
-
-/**
- * Evicts and destroys all pooled providers scoped to a specific project/space ID.
- */
-export function evictYjsProvidersByProject(
-  projectId: string,
-  options: { skipFlush?: boolean } = { skipFlush: true },
-): number {
-  return yjsProviderPool.evictByProject(projectId, options);
 }
 
 /**

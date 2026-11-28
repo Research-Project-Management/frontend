@@ -14,13 +14,13 @@ import {
   clearErrorLensDiagnosticsEffect,
   errorLensField,
   ErrorLensWidget,
-} from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
+  diagnosticsCoordinator,
+} from '@/features/editor/subsystems/diagnostics';
 import {
   createCodeMirrorPreset,
   reconfigureErrorLens,
   editorCompartments,
 } from '@/features/editor/core/engine/codemirror/codemirror-preset';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';

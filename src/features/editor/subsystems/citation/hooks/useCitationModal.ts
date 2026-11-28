@@ -1,16 +1,22 @@
 /**
- * useCitationPickerState.ts
+ * useCitationModal.ts
  *
- * Stateful cockpit hook and Specification predicates for CitationPickerModal.
+ * Deep cockpit hook for CitationModal:
+ * - Resolves Personal Space ('user' library, 'personal' / userId space) vs Project Space via useEditorScope.
+ * - Unifies .bib mutations (Add to .bib, Sync Collection, DOI/arXiv Resolve, Inline Cite) with
+ *   local LRU cache, mounted CodeMirror engine, latexSymbolsIndex, and file tree invalidation.
  */
 
 import type React from 'react';
 import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from 'react';
-import { useParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { filesQuery, pageKeys } from '@/features/editor/core/queries/document.queries';
+import {
+  filesQuery,
+  invalidateFileTreeQueries,
+  pageKeys,
+} from '@/features/editor/core/queries/document.queries';
 import { useEditorCitations } from './useCitation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
@@ -33,28 +39,30 @@ import {
   type RetractedItemInfo,
 } from '../model/retraction';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { pagesService } from '@/features/editor/sdk/pages.service';
+import { pagesService, type BibMutationResponse } from '@/features/editor/sdk/pages.service';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useRetractedItems } from '@/features/library/sdk/queries/ingestion.queries';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { getActiveEditorEngine } from '@/features/editor/core/bus/engine-registry';
-import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
-import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { useCitationPickerActions } from './useCitationActions';
 import {
-  resolveCitationScope,
-  PERSONAL_LIBRARY_SCOPE,
-} from '../model/scope';
+  documentFacade,
+  editorCommandBus,
+  getActiveEditorEngine,
+  getEditorEngineForFile,
+  lruDocumentCache,
+  sessionCoordinator,
+  useEditorScope,
+  usePageStore,
+  useSettingsStore,
+  workspaceCoordinator,
+} from '@/features/editor/core';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { resolveCitationScope } from '../model/scope';
 import {
   buildCollectionTree,
   indexCollectionNodes,
   entryMatchesCollection,
   type CollectionNode,
 } from '../model/collection-tree';
+
 export type { CollectionNode, CitationStyle, CitationPredicate };
 export { CitationSpecs };
 
@@ -68,6 +76,15 @@ export interface UseCitationPickerStateOptions {
   initialQuery?: string;
   initialKey?: string;
   citedKeys?: string[];
+  targetBibFile?: string;
+}
+
+function resolvePreferredBibFile(explicitBibFile?: string): string {
+  const cleanExplicit = explicitBibFile?.trim();
+  if (cleanExplicit && cleanExplicit !== 'auto') return cleanExplicit;
+  const storeBib = useSettingsStore.getState().mainBibFile?.trim();
+  if (storeBib && storeBib !== 'auto') return storeBib;
+  return 'references.bib';
 }
 
 export function useCitationPickerState({
@@ -80,30 +97,29 @@ export function useCitationPickerState({
   initialQuery = '',
   initialKey = '',
   citedKeys: propsCitedKeys,
+  targetBibFile,
 }: UseCitationPickerStateOptions) {
   const queryClient = useQueryClient();
-  const params = useParams<{ pageId?: string; projectId?: string }>();
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const currentPageProjectId = usePageStore((s) => {
-    const p = s.currentPage?.projectId;
-    return typeof p === 'string' ? p : p?.id || '';
-  });
-  const storeRootPageId = usePageStore((s) => s.rootPageId);
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const storeProjectId = usePageStore((s) => s.projectId);
-  const storeSpaceId = usePageStore((s) => s.spaceId);
-  const spaceType = usePageStore((s) => s.spaceType);
+  const editorScope = useEditorScope({ projectId: propsProjectId });
 
-  const rootId = params?.pageId || storeRootPageId || storeParentPageId || currentPageId || '';
-  const { spaceId: effectiveProjectId, libraryScope } = resolveCitationScope({
-    spaceType,
-    propProjectId: propsProjectId,
-    routeProjectId: params?.projectId,
-    storeProjectId: storeProjectId || undefined,
-    pageProjectId: currentPageProjectId || undefined,
-    storeSpaceId: storeSpaceId || undefined,
-    pageId: rootId,
-  });
+  const rootId = editorScope.rootPageId;
+  const { spaceId: effectiveProjectId, libraryScope } = useMemo(
+    () =>
+      resolveCitationScope({
+        spaceType: editorScope.spaceKind,
+        propProjectId: propsProjectId,
+        storeProjectId: editorScope.projectId || undefined,
+        storeSpaceId: editorScope.spaceId || undefined,
+        pageId: rootId || undefined,
+      }),
+    [
+      editorScope.spaceKind,
+      editorScope.projectId,
+      editorScope.spaceId,
+      propsProjectId,
+      rootId,
+    ],
+  );
 
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>(defaultStyle);
   const [search, setSearch] = useState('');
@@ -111,18 +127,11 @@ export function useCitationPickerState({
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'default' | 'year-desc' | 'year-asc' | 'title-asc' | 'author-asc'>('default');
   const [selectedNav, setSelectedNav] = useState<string>('library');
-  const [activeView, setActiveView] = useState<'tree' | 'list' | 'detail'>('list');
   const [serverItems, setServerItems] = useState<BibEntry[]>([]);
   const [isSearchingServer, setIsSearchingServer] = useState(false);
-
-  const {
-    isResolving,
-    copyCitationSnippet,
-    copyBibtex,
-    copyKey,
-    copyDoi,
-    resolveAcademicIdentifier,
-  } = useCitationPickerActions();
+  const [isResolving, setIsResolving] = useState(false);
+  const [isAddingToBib, setIsAddingToBib] = useState(false);
+  const [isSyncingCollection, setIsSyncingCollection] = useState(false);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -133,7 +142,7 @@ export function useCitationPickerState({
   });
 
   const { libraryItems = [] } = useEditorCitations({
-    projectId: libraryScope,
+    projectId: propsProjectId,
     pageId: rootId || undefined,
     enabled: open,
   });
@@ -148,7 +157,10 @@ export function useCitationPickerState({
     if (!open) return [];
     const engineContent = getActiveEditorEngine()?.getContent();
     if (engineContent) return extractCitationKeys(engineContent);
-    const activeContent = extractDocumentContentString(usePageStore.getState().currentPage?.content);
+    const activeContent = extractDocumentContentString(
+      usePageStore.getState().activeFilePage?.content ??
+        usePageStore.getState().currentPage?.content,
+    );
     return extractCitationKeys(activeContent);
   }, [propsCitedKeys, open]);
 
@@ -167,8 +179,8 @@ export function useCitationPickerState({
     if (open) {
       setSearch(initialQuery || '');
       setSelectedKey(initialKey || null);
+      setSelectedKeys(new Set());
       setSelectedNav('library');
-      setActiveView(initialKey ? 'detail' : 'list');
       setServerItems([]);
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -214,10 +226,7 @@ export function useCitationPickerState({
     [localBaseItems, serverItems],
   );
 
-  const { data: retractedItems } = useRetractedItems(
-    libraryScope === PERSONAL_LIBRARY_SCOPE ? '' : libraryScope,
-    open,
-  );
+  const { data: retractedItems } = useRetractedItems(libraryScope, open);
   const retractedMap = useMemo(
     () => buildRetractedCitationMap(allMergedItems, retractedItems),
     [allMergedItems, retractedItems],
@@ -248,7 +257,7 @@ export function useCitationPickerState({
       specs[id] = (entry) => entryMatchesCollection(entry, node);
     }
     return specs;
-  }, [citedKeysSet, collectionNodeMap, entryMatchesCollection]);
+  }, [citedKeysSet, collectionNodeMap]);
 
   const navCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -321,13 +330,71 @@ export function useCitationPickerState({
 
   const isIdentifier = useMemo(() => validateIdentifier(search).isIdentifier, [search]);
 
+  const reconcileServerBibMutation = useCallback(
+    (res: BibMutationResponse, preferredBib: string, sourceEntries?: BibEntry[]) => {
+      const mapped = mapServerBibDtos(res.entries || []);
+      const entriesToSync = sourceEntries && sourceEntries.length > 0 ? sourceEntries : mapped;
+      const resolvedPath = res.filePath || preferredBib;
+      const cachedByPath = lruDocumentCache.findByPath(resolvedPath);
+      const targetDocId = res.docId || cachedByPath?.fileId;
+
+      if (entriesToSync.length > 0) {
+        const existingText =
+          (targetDocId ? lruDocumentCache.get(targetDocId)?.content : undefined) ?? '';
+        const blocksToAppend: string[] = [];
+        for (const item of entriesToSync) {
+          if (!item.key || existingText.includes(`{${item.key},`)) continue;
+          const matchedLib = libraryItems.find(
+            (it) => (it.citationKey || it.id)?.toLowerCase() === item.key.toLowerCase(),
+          );
+          const snippet = matchedLib
+            ? formatItemToBibtex(matchedLib)
+            : formatBibEntryToBibtex(item);
+          if (snippet) blocksToAppend.push(snippet);
+        }
+
+        const updatedContent =
+          blocksToAppend.length > 0
+            ? existingText.trim()
+              ? `${existingText.trim()}\n\n${blocksToAppend.join('\n\n')}\n`
+              : `${blocksToAppend.join('\n\n')}\n`
+            : existingText;
+
+        if (targetDocId && updatedContent) {
+          sessionCoordinator.cancelPendingAutoSave(targetDocId);
+          lruDocumentCache.updateContent(targetDocId, updatedContent, false);
+          lruDocumentCache.markClean(targetDocId);
+          getEditorEngineForFile(targetDocId)?.setContent(updatedContent);
+        }
+        if (updatedContent) {
+          latexSymbolsIndex.indexFile(targetDocId || resolvedPath, resolvedPath, updatedContent);
+        }
+      }
+
+      for (const scopeKey of [effectiveProjectId, rootId]) {
+        if (scopeKey) documentFacade.clearProjectCache(scopeKey);
+      }
+      invalidateFileTreeQueries(queryClient, {
+        parentPageId: rootId || undefined,
+        pageId: rootId || undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
+      queryClient.invalidateQueries({
+        queryKey: ['project-citation-validation', effectiveProjectId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['project-citations', effectiveProjectId] });
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
+      return mapped;
+    },
+    [effectiveProjectId, libraryItems, queryClient, rootId],
+  );
+
   const ensureBibtexInProject = useCallback(
     async (entry: BibEntry) => {
       if (!effectiveProjectId) return;
 
-      const storeBib = useSettingsStore.getState().mainBibFile;
-      const preferredBib = storeBib && storeBib !== 'auto' ? storeBib : 'references.bib';
-
+      const preferredBib = resolvePreferredBibFile(targetBibFile);
       const matchedLibItem = libraryItems.find(
         (it) => (it.citationKey || it.id)?.toLowerCase() === entry.key.toLowerCase(),
       );
@@ -341,55 +408,40 @@ export function useCitationPickerState({
         projectFiles.find((f) => getBibFileName(f).toLowerCase() === preferredBib.toLowerCase()) ||
         projectFiles.find((f) => getBibFileName(f).toLowerCase().endsWith('.bib'));
 
-      if (existingBibFile && bibCode) {
-        const cached = lruDocumentCache.get(existingBibFile.id);
-        const existingText =
-          cached?.content ?? extractDocumentContentString(existingBibFile.content) ?? '';
-        if (!existingText.includes(`{${entry.key},`)) {
-          const nextContent = existingText.trim()
-            ? `${existingText.trim()}\n\n${bibCode}\n`
-            : `${bibCode}\n`;
-          lruDocumentCache.updateContent(existingBibFile.id, nextContent, true);
-          sessionCoordinator.notifyContentChange(existingBibFile.id, nextContent);
-          latexSymbolsIndex.indexFile(
-            existingBibFile.id,
-            getBibFileName(existingBibFile) || preferredBib,
-            nextContent,
-          );
-          toast.success(`Synced @${entry.key} to ${getBibFileName(existingBibFile) || preferredBib}`, {
-            id: `sync-bib-${entry.key}`,
-          });
-        }
-      }
-
       try {
         const res = await pagesService.citations.upsertEntries(effectiveProjectId, {
           entries: [matchedLibItem ?? entry],
           targetBibFile: preferredBib,
           ...(rootId ? { pageId: rootId } : {}),
         });
-
+        reconcileServerBibMutation(res, preferredBib, [entry]);
         if (res.entries.length > 0) {
-          const formattedBibtex = formatBibEntryToBibtex(entry);
-          const targetDocId = res.docId || res.filePath || preferredBib;
-          const existingCached = res.docId ? lruDocumentCache.get(res.docId) : undefined;
-          const alreadyPresent = existingCached?.content?.includes(`{${entry.key},`);
-          const updatedContent =
-            alreadyPresent && existingCached?.content
-              ? existingCached.content
-              : existingCached?.content
-                ? `${existingCached.content.trim()}\n\n${formattedBibtex}\n`
-                : `${formattedBibtex}\n`;
-          if (res.docId && !alreadyPresent) {
-            lruDocumentCache.updateContent(res.docId, updatedContent, false);
-          }
-          latexSymbolsIndex.indexFile(targetDocId, res.filePath || preferredBib, updatedContent);
           toast.success(`Synced @${entry.key} to ${res.filePath || preferredBib}`, {
             id: `sync-bib-${entry.key}`,
           });
         }
       } catch {
-        if (!existingBibFile && bibCode) {
+        if (existingBibFile && bibCode) {
+          const cached = lruDocumentCache.get(existingBibFile.id);
+          const existingText =
+            cached?.content ?? extractDocumentContentString(existingBibFile.content) ?? '';
+          if (!existingText.includes(`{${entry.key},`)) {
+            const nextContent = existingText.trim()
+              ? `${existingText.trim()}\n\n${bibCode}\n`
+              : `${bibCode}\n`;
+            lruDocumentCache.updateContent(existingBibFile.id, nextContent, true);
+            sessionCoordinator.notifyContentChange(existingBibFile.id, nextContent);
+            latexSymbolsIndex.indexFile(
+              existingBibFile.id,
+              getBibFileName(existingBibFile) || preferredBib,
+              nextContent,
+            );
+            toast.success(
+              `Synced @${entry.key} to ${getBibFileName(existingBibFile) || preferredBib}`,
+              { id: `sync-bib-${entry.key}` },
+            );
+          }
+        } else if (!existingBibFile && bibCode) {
           const created = await workspaceCoordinator.createFile({
             name: preferredBib,
             content: `${bibCode}\n`,
@@ -403,17 +455,15 @@ export function useCitationPickerState({
           });
         }
       }
-
-      if (rootId) {
-        queryClient.invalidateQueries({ queryKey: filesQuery(rootId).queryKey });
-      }
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['project-citation-validation', effectiveProjectId] });
-      queryClient.invalidateQueries({ queryKey: ['project-citations', effectiveProjectId] });
-      editorCommandBus.dispatch({ type: 'filetree:updated' });
     },
-    [effectiveProjectId, libraryItems, projectFiles, rootId, queryClient],
+    [
+      effectiveProjectId,
+      libraryItems,
+      projectFiles,
+      reconcileServerBibMutation,
+      rootId,
+      targetBibFile,
+    ],
   );
 
   const toggleSelectKey = useCallback((key: string) => {
@@ -429,10 +479,6 @@ export function useCitationPickerState({
     });
     setSelectedKey(key);
   }, []);
-
-  const selectAllFiltered = useCallback(() => {
-    setSelectedKeys(new Set(filteredItems.map((it) => it.key.toLowerCase())));
-  }, [filteredItems]);
 
   const insertCitation = useCallback(
     (entriesToInsert: BibEntry | BibEntry[]) => {
@@ -478,31 +524,16 @@ export function useCitationPickerState({
     [retractedMap, insertCitation],
   );
 
-  const handleInsertSelected = useCallback(() => {
-    if (selectedKeys.size > 1) {
-      const entries = allMergedItems.filter((e) => selectedKeys.has(e.key.toLowerCase()));
-      const retracted = entries.find((e) => retractedMap.has(e.key));
-      if (retracted) {
-        const info = retractedMap.get(retracted.key)!;
-        setPendingRetracted({ entry: retracted, info });
+  const handleSelectCard = useCallback(
+    (entry: BibEntry, e?: React.MouseEvent) => {
+      if (e && (e.metaKey || e.ctrlKey)) {
+        toggleSelectKey(entry.key);
         return;
       }
-      insertCitation(entries);
-    } else if (selectedEntry) {
-      handleSelectItem(selectedEntry);
-    }
-  }, [selectedKeys, allMergedItems, selectedEntry, retractedMap, insertCitation, handleSelectItem]);
-
-  const handleSelectCard = useCallback((entry: BibEntry, e?: React.MouseEvent) => {
-    if (e && (e.metaKey || e.ctrlKey)) {
-      toggleSelectKey(entry.key);
-      return;
-    }
-    setSelectedKey(entry.key);
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setActiveView('detail');
-    }
-  }, [toggleSelectKey]);
+      setSelectedKey(entry.key);
+    },
+    [toggleSelectKey],
+  );
 
   const isLargeCardsList = filteredItems.length >= 25;
   const cardsVirtualizer = useVirtualizer({
@@ -550,19 +581,131 @@ export function useCitationPickerState({
     }
   };
 
-  const handleResolveIdentifier = async () => {
-    if (!effectiveProjectId || !search.trim()) return;
-    const newEntry = await resolveAcademicIdentifier(
-      effectiveProjectId,
-      search.trim(),
-      undefined,
-      rootId || undefined,
-    );
-    if (newEntry) {
-      setServerItems((prev) => [newEntry, ...prev]);
-      setSelectedKey(newEntry.key);
+  const handleResolveIdentifier = useCallback(async () => {
+    const trimmed = search.trim();
+    if (!effectiveProjectId || !trimmed || isResolving) return;
+    const preferredBib = resolvePreferredBibFile(targetBibFile);
+
+    setIsResolving(true);
+    try {
+      const res = await pagesService.citations.resolve(
+        effectiveProjectId,
+        trimmed,
+        preferredBib,
+        rootId || undefined,
+      );
+      const mapped = reconcileServerBibMutation(res, preferredBib);
+      const newEntry = mapped[0];
+      if (newEntry?.key) {
+        toast.success(`Resolved BibTeX for ${newEntry.key}`);
+        setServerItems((prev) => mergeUniqueBibEntries([newEntry], prev));
+        setSelectedKey(newEntry.key);
+      } else {
+        toast.error('Identifier could not be resolved');
+      }
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to resolve academic identifier',
+      );
+    } finally {
+      setIsResolving(false);
     }
-  };
+  }, [effectiveProjectId, isResolving, reconcileServerBibMutation, rootId, search, targetBibFile]);
+
+  const selectedEntries = useMemo<BibEntry[]>(() => {
+    if (selectedKeys.size > 0) {
+      return filteredItems.filter((item) => selectedKeys.has(item.key.toLowerCase()));
+    }
+    return selectedEntry ? [selectedEntry] : [];
+  }, [selectedKeys, filteredItems, selectedEntry]);
+
+  const commitAddEntriesToBib = useCallback(
+    async (entriesToAdd: BibEntry[]) => {
+      if (entriesToAdd.length === 0 || isAddingToBib || !effectiveProjectId) return;
+      const preferredBib = resolvePreferredBibFile(targetBibFile);
+      setIsAddingToBib(true);
+      try {
+        const payloadEntries = entriesToAdd.map((entry) => ({
+          key: entry.key,
+          entryType: entry.type || 'article',
+          title: entry.title,
+          authors: entry.authors,
+          year: entry.year,
+          journal: entry.journal,
+          booktitle: entry.booktitle,
+          publisher: entry.publisher,
+          doi: entry.doi,
+          url: entry.url,
+          abstract: entry.abstract,
+        }));
+
+        const res = await pagesService.citations.upsertEntries(effectiveProjectId, {
+          entries: payloadEntries,
+          targetBibFile: preferredBib,
+          ...(rootId ? { pageId: rootId } : {}),
+        });
+
+        reconcileServerBibMutation(res, preferredBib, entriesToAdd);
+        const count = res.entries.length;
+        toast.success(count === 1 ? 'Added 1 reference' : `Added ${count} references`);
+        onOpenChange(false);
+      } catch (err: unknown) {
+        toast.error(
+          err instanceof Error ? err.message : 'Failed to add references to .bib',
+        );
+      } finally {
+        setIsAddingToBib(false);
+      }
+    },
+    [effectiveProjectId, isAddingToBib, onOpenChange, reconcileServerBibMutation, rootId, targetBibFile],
+  );
+
+  const handleAddToBib = useCallback(() => {
+    if (selectedEntries.length === 0 || isAddingToBib || !effectiveProjectId) return;
+    const retracted = selectedEntries.find((e) => retractedMap.has(e.key));
+    if (retracted) {
+      setPendingRetracted({ entry: retracted, info: retractedMap.get(retracted.key)! });
+      return;
+    }
+    void commitAddEntriesToBib(selectedEntries);
+  }, [commitAddEntriesToBib, effectiveProjectId, isAddingToBib, retractedMap, selectedEntries]);
+
+  const handleSyncCollection = useCallback(
+    async (collectionId: string) => {
+      if (!collectionId || !effectiveProjectId || isSyncingCollection) return;
+      const preferredBib = resolvePreferredBibFile(targetBibFile);
+      setIsSyncingCollection(true);
+      try {
+        const res = await pagesService.citations.syncLibrary(effectiveProjectId, {
+          collectionId,
+          targetBibFile: preferredBib,
+          ...(rootId ? { pageId: rootId } : {}),
+        });
+        reconcileServerBibMutation(res, preferredBib);
+        const count = res.entries.length;
+        if (res.conflicts && res.conflicts.length > 0) {
+          toast.warning(
+            `Synced ${count} references (${res.conflicts.length} conflicting citekey(s) skipped: ${res.conflicts.slice(0, 3).join(', ')})`,
+          );
+        } else {
+          toast.success(count === 1 ? 'Synced 1 reference' : `Synced ${count} references`);
+        }
+        onOpenChange(false);
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Failed to sync collection');
+      } finally {
+        setIsSyncingCollection(false);
+      }
+    },
+    [
+      effectiveProjectId,
+      isSyncingCollection,
+      onOpenChange,
+      reconcileServerBibMutation,
+      rootId,
+      targetBibFile,
+    ],
+  );
 
   return {
     effectiveProjectId,
@@ -573,17 +716,16 @@ export function useCitationPickerState({
     setSearch,
     selectedKey,
     selectedKeys,
+    selectedEntries,
     toggleSelectKey,
-    selectAllFiltered,
-    handleInsertSelected,
     sortBy,
     setSortBy,
     selectedNav,
     setSelectedNav,
-    activeView,
-    setActiveView,
     isSearchingServer,
     isResolving,
+    isAddingToBib,
+    isSyncingCollection,
     searchInputRef,
     listRef,
     citedKeysSet,
@@ -600,10 +742,9 @@ export function useCitationPickerState({
     handleSelectCard,
     handleKeyDown,
     handleResolveIdentifier,
+    handleAddToBib,
+    commitAddEntriesToBib,
+    handleSyncCollection,
     insertCitation,
-    copyCitationSnippet,
-    copyBibtex,
-    copyKey,
-    copyDoi,
   };
 }

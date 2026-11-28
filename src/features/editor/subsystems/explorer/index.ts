@@ -14,9 +14,12 @@
 export {
   buildFileTree,
   filterFileTree,
+  flattenVisibleTree,
   findAncestorFolderPaths,
   getRootFilePriority,
+  type BuildFileTreeParams,
   type FileTreeNode,
+  type FileTreeFileNode,
   type FileTreeFolderNode,
   type FlattenedTreeNode,
 } from './model/document-tree';
@@ -31,9 +34,19 @@ export {
   normalizeVirtualPath,
 } from '@/features/editor/domain/document/document-naming';
 
-// 2. UI Presentation Layer
+// 2. Hooks
+export {
+  useEditorStorage,
+  type UseEditorStorageFilesOptions,
+} from './hooks/useStorage';
+
+// 3. UI Presentation Layer & Modals
 export { default as FilesTab } from './ui/FilesTab';
-export { FileTreeContainer } from './ui/FileTreeContainer';
+export {
+  TemplateGalleryModal,
+  type TemplateGalleryModalProps,
+} from './ui/modals/TemplateGalleryModal';
+export { getFileIcon } from './ui/subcomponents/file-icon';
 export { TexFileRow } from './ui/subcomponents/TexFileRow';
 export { IndentGuides, InlineInput, RenameInput, RowActions } from './ui/subcomponents/FileTreePrimitives';
 export { FileTreeFolderRow } from './ui/subcomponents/FileTreeFolderRow';

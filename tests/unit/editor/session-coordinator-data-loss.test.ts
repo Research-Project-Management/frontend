@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import {
   sessionCoordinator,
   shouldUseRealtimePersistence,
   type DocumentConflict,
 } from '@/features/editor/core';
-import { useConnectivityStore } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
 let seq = 0;
@@ -14,7 +12,7 @@ const nextId = (p: string) => `${p}-${Date.now()}-${seq++}`;
 
 describe('Session coordinator data-loss guards', () => {
   beforeEach(() => {
-    useConnectivityStore.getState().recordOnline?.();
+    lruDocumentCache.clear();
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -42,7 +40,7 @@ describe('Session coordinator data-loss guards', () => {
       sessionCoordinator.setRealtimeConnected(id, false);
       await vi.advanceTimersByTimeAsync(2500);
       expect(spy).toHaveBeenCalledWith(id, 'typed while connected');
-      sessionCoordinator.clearRealtimeStatus(id);
+      sessionCoordinator.closeTab(id);
     });
   });
 
@@ -150,35 +148,6 @@ describe('Session coordinator data-loss guards', () => {
       releases.forEach((release) => release());
       await p;
       expect(lruDocumentCache.getModel(id)?.isDirty).toBe(true);
-    });
-  });
-
-  describe('#1 unsynced edit recovery decision gate', () => {
-    it('does not overwrite or clear the stored unsynced edit while a decision is pending', async () => {
-      const id = nextId('draft');
-      await unsyncedEditsStore.save(id, 'precious offline edit', 'proj');
-      sessionCoordinator.beginRecoveryDecision(id);
-      sessionCoordinator.saveUnsyncedEdit(id, 'stale server content', 'proj');
-      sessionCoordinator.clearUnsyncedEdit(id);
-      sessionCoordinator.flushPendingUnsyncedEdits();
-      const check = await sessionCoordinator.checkUnsyncedEditRecoveryAsync(id, 'stale server content');
-      expect(check.hasRecoverableEdit).toBe(true);
-      expect(check.edit?.content).toBe('precious offline edit');
-
-      sessionCoordinator.restoreUnsyncedEdit(id, check.edit!.content);
-      expect(sessionCoordinator.isRecoveryDecisionPending(id)).toBe(false);
-      expect(lruDocumentCache.getModel(id)?.content).toBe('precious offline edit');
-      expect(lruDocumentCache.getModel(id)?.isDirty).toBe(true);
-    });
-
-    it('discardUnsyncedEdit removes the unsynced edit and keeps server version', async () => {
-      const id = nextId('discard');
-      await unsyncedEditsStore.save(id, 'old unsynced edit', 'proj');
-      sessionCoordinator.beginRecoveryDecision(id);
-      sessionCoordinator.discardUnsyncedEdit(id);
-      await new Promise((r) => setTimeout(r, 10));
-      const check = await sessionCoordinator.checkUnsyncedEditRecoveryAsync(id, 'server');
-      expect(check.hasRecoverableEdit).toBe(false);
     });
   });
 });

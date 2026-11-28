@@ -1,65 +1,62 @@
 'use client';
 
 /**
- * use-citation.ts
+ * useCitation.ts
  *
- * Frontend hooks for editor citations and reference lookups:
- *  - useEditorCitations (library items, cited items, format snippet, search)
+ * Hydrates Digital Library items (`'user'` in Personal Space, `projectId` in Project Space)
+ * and workspace `.bib` files into `latexSymbolsIndex`.
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/types/core.types';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { lruDocumentCache, useEditorScope, workspaceCoordinator } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import {
-  extractCitationKeys,
-  formatCitationSnippet,
-  formatItemAuthorSummary,
-} from '../model/formatter';
-import { PERSONAL_LIBRARY_SCOPE } from '../model/scope';
+import { resolveCitationScope } from '../model/scope';
 
 export interface UseEditorCitationsOptions {
   projectId?: string;
   pageId?: string;
-  content?: string;
   enabled?: boolean;
 }
 
 export interface UseEditorCitationsResult {
   libraryItems: Item[];
-  citedItems: Item[];
-  missingKeys: string[];
-  documentKeys: string[];
   isLoading: boolean;
   isError: boolean;
-  formatSnippet: (
-    key: string,
-    style?: 'latex-cite' | 'latex-citep' | 'latex-citet' | 'markdown-bracket' | 'markdown-inline',
-  ) => string;
-  getAuthorSummary: (item: Item) => string;
-  searchLibrary: (query: string) => Item[];
 }
 
 export function useEditorCitations({
   projectId,
   pageId: propPageId,
-  content = '',
   enabled = true,
 }: UseEditorCitationsOptions): UseEditorCitationsResult {
-  const spaceType = usePageStore((s) => s.spaceType);
-  const storeSpaceId = usePageStore((s) => s.spaceId);
-  const activePageId = usePageStore(
-    (s) => propPageId || s.rootPageId || s.parentPageId || s.currentPage?.id || '',
+  const editorScope = useEditorScope({
+    projectId,
+    pageId: propPageId,
+  });
+  const { spaceId: targetSpaceId, libraryScope, pageId: activePageId } = useMemo(
+    () =>
+      resolveCitationScope({
+        spaceType: editorScope.spaceKind,
+        propProjectId: projectId,
+        storeProjectId: editorScope.projectId || undefined,
+        storeSpaceId: editorScope.spaceId || undefined,
+        pageId: propPageId || editorScope.rootPageId || undefined,
+      }),
+    [
+      editorScope.spaceKind,
+      editorScope.projectId,
+      editorScope.spaceId,
+      editorScope.rootPageId,
+      projectId,
+      propPageId,
+    ],
   );
-  const effectiveLibraryScope =
-    spaceType === 'personal' || !projectId || projectId === 'personal'
-      ? PERSONAL_LIBRARY_SCOPE
-      : projectId;
-  const { data, isLoading, isError } = useViewItems(effectiveLibraryScope, 'all');
+
+  const { data, isLoading, isError } = useViewItems(libraryScope, 'all', { enabled });
   const libraryItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
   useEffect(() => {
@@ -70,8 +67,6 @@ export function useEditorCitations({
 
   useEffect(() => {
     if (!enabled) return;
-    const targetSpaceId =
-      (projectId && projectId !== PERSONAL_LIBRARY_SCOPE ? projectId : '') || storeSpaceId;
     if (targetSpaceId && activePageId) {
       void pagesService.citations
         .list(targetSpaceId, '', 500, activePageId)
@@ -99,71 +94,12 @@ export function useEditorCitations({
         latexSymbolsIndex.indexFile(model.fileId, fileName, model.content, true);
       }
     }
-  }, [projectId, storeSpaceId, activePageId, enabled]);
-
-  const documentKeys = useMemo(() => {
-    if (!content || !enabled) return [];
-    return extractCitationKeys(content);
-  }, [content, enabled]);
-
-  const itemKeyMap = useMemo(() => {
-    const map = new Map<string, Item>();
-    for (const item of libraryItems) {
-      if (item.citationKey) {
-        map.set(item.citationKey.toLowerCase(), item);
-      }
-    }
-    return map;
-  }, [libraryItems]);
-
-  const { citedItems, missingKeys } = useMemo(() => {
-    const cited: Item[] = [];
-    const missing: string[] = [];
-    const seenItemIds = new Set<string>();
-
-    for (const key of documentKeys) {
-      const matched = itemKeyMap.get(key.toLowerCase());
-      if (matched) {
-        if (matched.id && !seenItemIds.has(matched.id)) {
-          seenItemIds.add(matched.id);
-          cited.push(matched);
-        }
-      } else {
-        missing.push(key);
-      }
-    }
-
-    return { citedItems: cited, missingKeys: missing };
-  }, [documentKeys, itemKeyMap]);
-
-  const searchLibrary = useCallback(
-    (query: string): Item[] => {
-      const q = query.trim().toLowerCase();
-      if (!q) return libraryItems;
-
-      return libraryItems.filter((item) => {
-        if (item.citationKey?.toLowerCase().includes(q)) return true;
-        if (item.title?.toLowerCase().includes(q)) return true;
-        if (item.authors?.some((a) => a.toLowerCase().includes(q))) return true;
-        if (item.year && String(item.year).includes(q)) return true;
-        if (item.publicationTitle?.toLowerCase().includes(q)) return true;
-        if (item.doi?.toLowerCase().includes(q)) return true;
-        return false;
-      });
-    },
-    [libraryItems],
-  );
+  }, [targetSpaceId, activePageId, enabled]);
 
   return {
     libraryItems,
-    citedItems,
-    missingKeys,
-    documentKeys,
     isLoading,
     isError,
-    formatSnippet: formatCitationSnippet,
-    getAuthorSummary: formatItemAuthorSummary,
-    searchLibrary,
   };
 }
 

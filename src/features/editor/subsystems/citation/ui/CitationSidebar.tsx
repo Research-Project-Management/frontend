@@ -1,10 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Folder, Library, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
-import { citations } from '@/features/editor/sdk/pages/citations.client';
 import type { CollectionNode } from '../hooks/useCitationModal';
 
 export interface CitationSidebarProps {
@@ -13,10 +11,9 @@ export interface CitationSidebarProps {
   libraryCount: number;
   byCollectionCounts?: Record<string, number>;
   collections: CollectionNode[];
-  spaceId: string;
-  pageId?: string;
-  targetBibFile: string;
-  onSynced?: () => void;
+  canSyncCollection: boolean;
+  isSyncingCollection: boolean;
+  onSyncCollection: (collectionId: string) => void;
 }
 
 export function CitationSidebar({
@@ -25,37 +22,12 @@ export function CitationSidebar({
   libraryCount,
   byCollectionCounts,
   collections,
-  spaceId,
-  pageId,
-  targetBibFile,
-  onSynced,
+  canSyncCollection,
+  isSyncingCollection,
+  onSyncCollection,
 }: CitationSidebarProps) {
-  const [isSyncing, setIsSyncing] = useState(false);
   const selectedCollectionId =
     selectedNav && selectedNav !== 'library' ? selectedNav : null;
-
-  const handleSyncCollection = async () => {
-    if (!selectedCollectionId || !spaceId || isSyncing) return;
-    setIsSyncing(true);
-    try {
-      const res = await citations.syncLibrary(spaceId, {
-        collectionId: selectedCollectionId,
-        targetBibFile,
-        ...(pageId ? { pageId } : {}),
-      });
-      const count = res.entries.length;
-      toast.success(
-        count === 1 ? 'Synced 1 reference' : `Synced ${count} references`,
-      );
-      onSynced?.();
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : 'Failed to sync collection',
-      );
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const renderNode = (node: CollectionNode, depth = 0) => {
     const isActive = selectedNav === node.id;
@@ -126,18 +98,18 @@ export function CitationSidebar({
         )}
       </div>
 
-      {selectedCollectionId && spaceId && (
+      {selectedCollectionId && canSyncCollection && (
         <div className="p-2 border-t border-border">
           <button
             type="button"
-            disabled={isSyncing}
-            onClick={handleSyncCollection}
+            disabled={isSyncingCollection}
+            onClick={() => onSyncCollection(selectedCollectionId)}
             className="w-full h-7 px-2 flex items-center justify-center gap-1.5 rounded-md border border-border bg-background text-11 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw
-              className={cn('size-3 shrink-0', isSyncing && 'animate-spin')}
+              className={cn('size-3 shrink-0', isSyncingCollection && 'animate-spin')}
             />
-            <span>{isSyncing ? 'Syncing...' : 'Sync collection'}</span>
+            <span>{isSyncingCollection ? 'Syncing...' : 'Sync collection'}</span>
           </button>
         </div>
       )}

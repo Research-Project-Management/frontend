@@ -51,48 +51,15 @@ export function useCollaborationPresence(
 ) {
   const storeCollaborators = useDocumentCollaborationStore((s) => s.collaborators);
   const setCollaborators = useDocumentCollaborationStore((s) => s.setCollaborators);
-  const updateCollaborator = useDocumentCollaborationStore((s) => s.updateCollaborator);
-  const removeCollaborator = useDocumentCollaborationStore((s) => s.removeCollaborator);
 
   // Subscribe to realtime presence events from command bus
   useEffect(() => {
-    const unsubPresence = editorCommandBus.subscribe('collab:presence-update', (cmd) => {
+    return editorCommandBus.subscribe('collab:presence-update', (cmd) => {
       if (Array.isArray(cmd.collaborators)) {
         setCollaborators(cmd.collaborators);
       }
     });
-
-    const unsubJoined = editorCommandBus.subscribe('collab:user-joined', (cmd) => {
-      if (cmd.collaborator && cmd.collaborator.id) {
-        updateCollaborator(cmd.collaborator);
-      }
-    });
-
-    const unsubLeft = editorCommandBus.subscribe('collab:user-left', (cmd) => {
-      if (cmd.userId) {
-        removeCollaborator(cmd.userId);
-      }
-    });
-
-    const unsubCursor = editorCommandBus.subscribe('collab:cursor', (cmd) => {
-      if (cmd.userId) {
-        updateCollaborator({
-          id: cmd.userId,
-          activeFileId: cmd.activeFileId,
-          activeFile: cmd.activeFile,
-          cursor: cmd.cursor,
-          lastActiveAt: Date.now(),
-        });
-      }
-    });
-
-    return () => {
-      unsubPresence();
-      unsubJoined();
-      unsubLeft();
-      unsubCursor();
-    };
-  }, [setCollaborators, updateCollaborator, removeCollaborator]);
+  }, [setCollaborators]);
 
   // Safely resolve query client (context client or fallback if rendered outside provider)
   const effectiveQueryClient = useSafeQueryClient();

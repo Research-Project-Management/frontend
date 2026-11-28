@@ -10,8 +10,8 @@ import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.c
 import {
   MAX_PERSISTED_EDITOR_PAGES,
   enforceMaxEditorTabs,
+  type WorkspaceTab,
 } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
-import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 
 export type PersistedSplitMode = 'none' | 'vertical' | 'horizontal';
 

@@ -31,8 +31,6 @@ import { MentionRenderer, ResolvedCommentsIcon } from './Badges';
 // ── Review Header ───────────────────────────────────────────────────────────
 
 export interface ReviewHeaderProps {
-  showResolved: boolean;
-  onToggleResolved: () => void;
   activeResolvedCount: number;
   resolvedComments?: PageComment[];
   hasMoreResolved?: boolean;

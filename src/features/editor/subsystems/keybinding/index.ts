@@ -11,4 +11,13 @@
 export {
   keybindingCoordinator,
   KeybindingCoordinator,
+  type KeybindingScope,
+  type ShortcutDefinition,
 } from './coordinator/keybinding.coordinator';
+export {
+  KeyboardShortcutsModal,
+  SHORTCUT_LIST,
+  type KeyboardShortcutsModalProps,
+  type ShortcutItem,
+  type ShortcutCategory,
+} from './ui/KeyboardShortcutsModal';

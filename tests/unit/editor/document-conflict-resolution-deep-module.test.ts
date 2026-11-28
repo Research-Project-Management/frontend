@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import {
   sessionCoordinator,
   editorCommandBus,
@@ -101,10 +100,6 @@ describe('Document Conflict Resolution & 3-Way Merge Deep Module', () => {
       content: 'authoritative remote text',
     }));
 
-    // Previous local version preserved in unsynced edits storage
-    const savedEdit = await unsyncedEditsStore.get(id);
-    expect(savedEdit?.content).toBe('my local ideas');
-
     unsubBus();
   });
 
@@ -139,10 +134,6 @@ describe('Document Conflict Resolution & 3-Way Merge Deep Module', () => {
       type: 'editor:set-content',
       content: mergedContent,
     }));
-
-    // Overwritten local version preserved in unsynced edits storage
-    const savedEdit = await unsyncedEditsStore.get(id);
-    expect(savedEdit?.content).toBe('Section 1 (Local)');
 
     // Autosave scheduled and saves merged content
     await vi.advanceTimersByTimeAsync(1200);

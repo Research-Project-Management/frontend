@@ -4,14 +4,7 @@
  */
 
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
-import type { PageSuggestion, SuggestionType } from '@/features/editor/domain/types/suggestion.types';
-
-export interface TextRangeDto {
-  startLine: number;
-  startCol: number;
-  endLine: number;
-  endCol: number;
-}
+import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
 export type ReviewStatus =
   | 'draft'
@@ -80,19 +73,6 @@ export interface CollaborationPresence {
   };
   lastHeartbeat?: number;
   lastActiveAt?: number;
-}
-
-export interface CollaborationEvent {
-  pageId: string;
-  type: string;
-  suggestion?: PageSuggestion;
-  comment?: PageComment;
-  user?: CollaborationPresence;
-  users?: CollaborationPresence[];
-  userId?: string;
-  isLocked?: boolean;
-  lockedBy?: string;
-  timestamp: number;
 }
 
 export interface ProjectReviewFileOverviewDto {

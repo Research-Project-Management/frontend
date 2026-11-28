@@ -13,17 +13,15 @@
 import {
   getActiveEditorEngine,
   getEditorEngineForFile,
-  getActiveEditorContent,
   documentFacade,
   editorCommandBus,
   usePageStore,
   sessionCoordinator,
 } from '@/features/editor/core';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { EditorPatchItem } from '@/features/ai';
 import type { DiffProposal, IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import {
   computePreambleInsertion,
   isPreambleOnlySnippet,
@@ -36,14 +34,6 @@ import {
 
 export type { ResolvedAnchorRange };
 export { resolveAnchorInContent };
-
-export interface AiContextPayload {
-  activeFile: string;
-  fileContent: string;
-  selectedText?: string;
-  cursorLine?: number;
-  recentErrors?: Array<{ line: number; message: string; context?: string }>;
-}
 
 export class AiCoordinator {
   private initialized = false;
@@ -105,11 +95,7 @@ export class AiCoordinator {
   } {
     const pageStore = usePageStore.getState();
     const activeDoc = pageStore.activeFilePage || pageStore.getActiveDocument?.();
-    const activeFileId =
-      pageStore.activeFilePage?.id ||
-      pageStore.activeDocId ||
-      pageStore.currentPage?.id ||
-      '';
+    const activeFileId = resolveEditorScopeFromState(pageStore).activeFileId || '';
     const activePath = (activeDoc?.path || activeDoc?.title || '').replace(/^\/+/, '');
     const cleanPatchPath = (patch.filePath || '').replace(/^\/+/, '');
 
@@ -305,38 +291,6 @@ export class AiCoordinator {
   }
 
   /**
-   * Collects full IDE context for LLM prompts (active file, selection, errors)
-   */
-  public gatherContext(): AiContextPayload {
-    const pageStore = usePageStore.getState();
-    const activeDoc = pageStore.getActiveDocument();
-    const fileName = activeDoc?.title || 'main.tex';
-    const content = getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
-
-    const engine = getActiveEditorEngine();
-    const selectedText = engine?.getSelectedText() || undefined;
-    const cursor = engine?.getCursorPosition();
-
-    // Get recent compiler diagnostics for this file
-    const diagnostics = diagnosticsCoordinator
-      .getDiagnosticsForFile(fileName)
-      .slice(0, 5)
-      .map((d) => ({
-        line: d.line,
-        message: d.message,
-        context: d.context,
-      }));
-
-    return {
-      activeFile: fileName,
-      fileContent: content,
-      selectedText,
-      cursorLine: cursor?.line,
-      recentErrors: diagnostics,
-    };
-  }
-
-  /**
    * Proposes an AI code diff interactively with Accept/Reject overlay
    */
   public proposeDiff(
@@ -347,11 +301,7 @@ export class AiCoordinator {
     if (!replacement) return false;
 
     const pageStore = usePageStore.getState();
-    const activeFileId =
-      pageStore.activeFilePage?.id ||
-      pageStore.activeDocId ||
-      pageStore.currentPage?.id ||
-      '';
+    const activeFileId = resolveEditorScopeFromState(pageStore).activeFileId || '';
     const exactEngine = fileId ? getEditorEngineForFile(fileId) : null;
     const isTargetingActive = !fileId || fileId === activeFileId;
     const engine = exactEngine || (isTargetingActive ? getActiveEditorEngine() : null);
@@ -524,11 +474,11 @@ export class AiCoordinator {
   /**
    * Direct fallback insertion when interactive diff is bypassed
    */
-  public applyDirect(fileId: string, line?: number, replacement?: string): boolean {
+  private applyDirect(fileId: string, line?: number, replacement?: string): boolean {
     if (!replacement) return false;
 
     const engine =
-      documentFacade.getEditorEngineForFile(fileId) ?? getActiveEditorEngine();
+      getEditorEngineForFile(fileId) ?? getActiveEditorEngine();
 
     // If active document or split-pane is open in CodeMirror, apply via engine
     if (engine) {

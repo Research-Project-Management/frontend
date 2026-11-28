@@ -35,7 +35,7 @@ import { citations } from './pages/citations.client';
 import { spelling } from './pages/spelling.client';
 import { templatesApi } from './pages/templates.client';
 import { gitApi } from './pages/git.client';
-import { ai, suggestLatexFix } from './pages/ai.client';
+import { ai } from './pages/ai.client';
 
 export * from './pages/base';
 export * from './pages/types';
@@ -78,8 +78,6 @@ export const pagesService = {
   templates: templatesApi,
   git: gitApi,
   ai,
-  suggestLatexFix,
-  restoreProjectVersionFile: history.restoreProjectVersionFile,
 };
 
 latexSymbolsIndex.setSymbolsFetcher((id) => pagesService.structure.getSymbols(id));

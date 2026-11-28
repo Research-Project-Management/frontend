@@ -1,11 +1,11 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import {
   editorCommandBus,
   useDocumentCollaborationStore,
+  useEditorScope,
   usePageStore,
   useSettingsStore,
 } from '@/features/editor/core';
@@ -15,7 +15,6 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { reviewCoordinator } from '../coordinator/review.coordinator';
 import type { ReviewScope } from '../ui/subcomponents/Nav';
@@ -28,7 +27,6 @@ import {
   useRejectSuggestion,
 } from './useSuggestions';
 
-export { useReviewPendingCount } from './usePendingCount';
 export type { ReviewScope };
 
 const EMPTY_ARRAY: never[] = [];
@@ -69,16 +67,15 @@ interface ProjectMemberItem {
 }
 
 export function useReviewState() {
-  const { pageId: routePageId, projectId: routeProjectId } = useParams<{ pageId: string; projectId?: string }>();
+  const editorScope = useEditorScope();
   const storeActivePageId = usePageStore((s) => s.activePageId);
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
-  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
-  const rootPageId = routePageId || storeParentPageId || currentPageId;
-  const pageId = storeActivePageId || currentPageId || rootPageId;
-  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
-  const projectId = routeProjectId || storeProjectId || currentPageProjectId || '';
+
+  const rootPageId = editorScope.rootPageId || undefined;
+  const pageId = storeActivePageId || editorScope.activeFileId || rootPageId;
+  const projectId = editorScope.projectId;
+  const isProjectSpace = editorScope.spaceKind === 'project' && Boolean(projectId);
 
   const { user } = useAuth();
   const { selectFile } = useActiveDocument();
@@ -89,7 +86,6 @@ export function useReviewState() {
   const [overviewResolvedCount, setOverviewResolvedCount] = useState(0);
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [pendingQuote, setPendingQuote] = useState<string | null>(null);
   const [commentLine, setCommentLine] = useState<number | null>(null);
   const [commentLineEnd, setCommentLineEnd] = useState<number | null>(null);
 
@@ -100,7 +96,7 @@ export function useReviewState() {
   const { data: projectMembersData } = useQuery({
     queryKey: ['project-members', projectId],
     queryFn: async () => {
-      if (!projectId || projectId === 'personal') return [];
+      if (!isProjectSpace) return [];
       try {
         const res = (await ProjectService.getMembers(projectId)) as {
           members?: ProjectMemberItem[];
@@ -113,7 +109,7 @@ export function useReviewState() {
     },
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
-    enabled: Boolean(projectId && projectId !== 'personal' && projectId !== pageId),
+    enabled: isProjectSpace,
   });
 
   const mentionMembers = useMemo<MentionMember[]>(() => {
@@ -189,7 +185,6 @@ export function useReviewState() {
     if (!pendingComment) return;
     setCommentLine(pendingComment.startLine ?? null);
     setCommentLineEnd(pendingComment.endLine ?? null);
-    setPendingQuote(pendingComment.selectedText || null);
     setShowAddForm(true);
     clearPendingComment();
   }, [pendingComment, clearPendingComment]);
@@ -299,10 +294,6 @@ export function useReviewState() {
   const totalVisibleItems = visibleComments.length + visibleSuggestions.length;
   const totalAllItems = comments.length + suggestions.length;
 
-  const handleToggleResolved = useCallback(() => {
-    setShowResolved((prev) => !prev);
-  }, []);
-
   const handleNavigateToLine = useCallback((line: number) => {
     jumpToEditorLine(line);
   }, []);
@@ -324,11 +315,6 @@ export function useReviewState() {
   const handleAcceptSuggestion = useCallback(
     (suggestionId: string) => {
       if (pageId) {
-        if (suggestionId.startsWith('sug-local-')) {
-          void reviewCoordinator.acceptSuggestion(pageId, suggestionId);
-          setLocalRev((r) => r + 1);
-          return;
-        }
         acceptMutation.mutate({ pageId, suggestionId });
       }
     },
@@ -338,11 +324,6 @@ export function useReviewState() {
   const handleRejectSuggestion = useCallback(
     (suggestionId: string) => {
       if (pageId) {
-        if (suggestionId.startsWith('sug-local-')) {
-          void reviewCoordinator.rejectSuggestion(pageId, suggestionId);
-          setLocalRev((r) => r + 1);
-          return;
-        }
         rejectMutation.mutate({ pageId, suggestionId });
       }
     },
@@ -352,19 +333,16 @@ export function useReviewState() {
   return {
     pageId,
     projectId,
-    currentFileName: currentPageTitle || 'document.tex',
+    currentFileName: activeFileTitle || currentPageTitle || 'document.tex',
     user,
     scope,
     setScope,
     showResolved,
     setShowResolved,
-    handleToggleResolved,
     activeResolvedCount,
-    currentFileResolvedCount,
     highlightId,
     showAddForm,
     setShowAddForm,
-    pendingQuote,
     commentLine,
     commentLineEnd,
     mentionMembers,

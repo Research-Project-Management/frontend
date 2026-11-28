@@ -16,7 +16,7 @@ import {
   filterFileTree,
   type FileTreeNode,
   type BuildFileTreeParams,
-} from '@/features/editor/subsystems/explorer/model/document-tree';
+} from '../model/document-tree';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
@@ -52,7 +52,9 @@ function loadExpandedFolders(key: string): Set<string> {
           return new Set(parsed);
         }
       }
-    } catch {}
+    } catch {
+      // Ignore storage access or malformed JSON errors
+    }
   }
   return new Set<string>();
 }
@@ -90,7 +92,9 @@ export function useFileTree({
     }
     try {
       localStorage.setItem(storageKey, JSON.stringify(Array.from(expandedFolders)));
-    } catch {}
+    } catch {
+      // Ignore storage quota or privacy-mode errors
+    }
   }, [storageKey, expandedFolders]);
 
   // Keep expanded folder paths in sync when a folder is renamed or moved (locally or via remote Socket.IO)
@@ -188,28 +192,6 @@ export function useFileTree({
     });
   }, []);
 
-  const expandAll = useCallback((keys?: string[]) => {
-    if (keys && keys.length > 0) {
-      setExpandedFolders(new Set(keys));
-    } else {
-      const allFolders = new Set<string>();
-      const walk = (nodes: FileTreeNode[]) => {
-        for (const n of nodes) {
-          if (n.type === 'folder') {
-            allFolders.add(n.fullPath || n.name);
-            if (n.children) walk(n.children);
-          }
-        }
-      };
-      walk(treeItems);
-      setExpandedFolders(allFolders);
-    }
-  }, [treeItems]);
-
-  const collapseAll = useCallback(() => {
-    setExpandedFolders(new Set());
-  }, []);
-
   const expandPaths = useCallback((folderPaths: string[]) => {
     if (!folderPaths || folderPaths.length === 0) return;
     setExpandedFolders((prev) => {
@@ -248,10 +230,7 @@ export function useFileTree({
   return {
     treeItems,
     displayTree,
-    expandedFolders,
     toggleFolder,
-    expandAll,
-    collapseAll,
     expandPaths,
     isFolderExpanded,
   };

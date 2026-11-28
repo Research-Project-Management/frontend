@@ -22,14 +22,12 @@ import {
   syncShallowFileUrlParam,
 } from '@/features/editor/core';
 import { editorBootstrapQuery, pageQuery, filesQuery } from './document.queries';
-import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
+import { extractProjectId, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
-
-import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
-import type { PageFile } from '@/features/editor/domain/types/core.types';
+import type { WorkspaceTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 
 const EMPTY_PAGE_ARRAY: Page[] = [];
 const EMPTY_FILE_ARRAY: PageFile[] = [];
@@ -331,8 +329,8 @@ export function useActiveDocument() {
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
-  const setActivePageId = usePageStore((s) => s.setActivePageId);
-  const setParentPageId = usePageStore((s) => s.setParentPageId);
+  const setActiveDocId = usePageStore((s) => s.setActiveDocId);
+  const setRootPageId = usePageStore((s) => s.setRootPageId);
   const setMainDocument = usePageStore((s) => s.setMainDocument);
   const setSpaceId = usePageStore((s) => s.setSpaceId);
   const setProjectId = usePageStore((s) => s.setProjectId);
@@ -349,7 +347,7 @@ export function useActiveDocument() {
     if (resolvedSpaceId) setSpaceId(resolvedSpaceId);
     if (effectiveProjectId) setProjectId(effectiveProjectId);
     const canonicalPageId = bootstrapData?.workspace?.pageId || pageId;
-    if (canonicalPageId) setParentPageId(canonicalPageId);
+    if (canonicalPageId) setRootPageId(canonicalPageId);
     if (bootstrapData?.workspace) {
       const ws = bootstrapData.workspace;
       const normalizedWsMain = normalizeVirtualPath(ws.mainFilePath || '') || null;
@@ -381,7 +379,7 @@ export function useActiveDocument() {
     mainId,
     setSpaceId,
     setProjectId,
-    setParentPageId,
+    setRootPageId,
     setMainDocument,
   ]);
 
@@ -434,16 +432,16 @@ export function useActiveDocument() {
     if (pageStore.currentPage !== parentPage) {
       setCurrentPage?.(parentPage);
     }
-    if (pageId && pageStore.parentPageId !== pageId) {
-      setParentPageId?.(pageId);
+    if (pageId && pageStore.rootPageId !== pageId) {
+      setRootPageId?.(pageId);
     }
 
     if (isResolvedMain) {
       if (pageStore.activeFilePage !== parentPage) {
         setActiveFilePage?.(parentPage);
       }
-      if (pageStore.activePageId !== parentPage.id) {
-        setActivePageId?.(parentPage.id);
+      if (pageStore.activeDocId !== parentPage.id) {
+        setActiveDocId?.(parentPage.id);
       }
 
       const configuredMain = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
@@ -459,8 +457,8 @@ export function useActiveDocument() {
       if (pageStore.activeFilePage !== activeFile) {
         setActiveFilePage?.(activeFile);
       }
-      if (pageStore.activePageId !== activeFile.id) {
-        setActivePageId?.(activeFile.id);
+      if (pageStore.activeDocId !== activeFile.id) {
+        setActiveDocId?.(activeFile.id);
       }
 
       syncWorkspaceTabs(
@@ -478,8 +476,8 @@ export function useActiveDocument() {
     activeFile,
     setCurrentPage,
     setActiveFilePage,
-    setActivePageId,
-    setParentPageId,
+    setActiveDocId,
+    setRootPageId,
     openTab,
     setActive,
   ]);

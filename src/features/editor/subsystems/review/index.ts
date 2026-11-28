@@ -4,16 +4,13 @@
  * Review & Track Changes Subsystem Public Seam.
  */
 
-// 1. Coordinator & Ports
+// 1. Coordinator & Owned Service Port
 export {
   reviewCoordinator,
   ReviewCoordinator,
+  type ReviewCoordinatorOptions,
+  type ReviewServicePort,
 } from './coordinator/review.coordinator';
-export type {
-  ReviewServicePort,
-  ReviewNotificationPort,
-  ReviewStorePort,
-} from './model/ports';
 
 // 2. CodeMirror Extensions
 export {
@@ -28,30 +25,14 @@ export {
   setViewModeEffect,
   setReviewModeEffect,
   setReviewDataEffect,
-  setYDocEffect,
   getSafeOffset,
-  resolveCommentRange,
-  resolveSuggestionRange,
-  encodeYjsAnchor,
   type RawSuggestion,
   type RawComment,
 } from './extensions/review.extension';
 
 // 3. UI Presentation Layer
 export { ReviewTab } from './ui/ReviewTab';
-export {
-  CommentCard,
-} from './ui/subcomponents/Comments';
-export {
-  SuggestionCard,
-  SuggestionBulkActions,
-} from './ui/subcomponents/Suggestions';
-export {
-  ReviewIcon,
-} from './ui/subcomponents/Badges';
+export { ReviewIcon } from './ui/subcomponents/Badges';
 
 // 4. Hooks
 export { useReviewSync } from './hooks/useReviewSync';
-export {
-  useReviewPendingCount,
-} from './hooks/usePendingCount';

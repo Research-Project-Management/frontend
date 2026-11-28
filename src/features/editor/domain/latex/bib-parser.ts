@@ -48,10 +48,6 @@ export interface BibEntry {
   retractionNoticeUrl?: string;
 }
 
-export interface BibParseResult {
-  entries: BibEntry[];
-}
-
 export interface BibFormEntry {
   id: string;
   type: string;

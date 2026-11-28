@@ -26,7 +26,6 @@ import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { CitationPickerCard } from './CitationCard';
 
 export interface CitationPickerListPaneProps {
-  activeView: 'tree' | 'list' | 'detail';
   search: string;
   onSearchChange: (val: string) => void;
   onKeyDown: (e: React.KeyboardEvent) => void;
@@ -52,7 +51,6 @@ export interface CitationPickerListPaneProps {
 }
 
 export function CitationPickerListPane({
-  activeView: _activeView,
   search,
   onSearchChange,
   onKeyDown,
@@ -76,8 +74,6 @@ export function CitationPickerListPane({
   onSelectCard,
   onSelectItem,
 }: CitationPickerListPaneProps) {
-  const isSorted = sortBy !== 'default';
-
   return (
     <div className="w-full flex-1 flex flex-col min-h-0 bg-background h-full overflow-hidden">
       {/* Search Header with Unified Filter/Sort Icon Button */}

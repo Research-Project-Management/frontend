@@ -7,7 +7,7 @@
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type { FileTreeNode } from './document-tree';
 
-export const FILE_EXTENSION_REGEX = /\.[a-z]+$/i;
+const FILE_EXTENSION_REGEX = /\.[a-z]+$/i;
 export const VALID_MAIN_TEX_EXT_REGEX = /\.(tex|ltx|rtex|rnw)$/i;
 const TRAILING_DOT_REGEX = /\.$/;
 

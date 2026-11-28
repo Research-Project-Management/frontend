@@ -60,15 +60,6 @@ export const renameItemSchema = z.object({
     .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in names'),
 });
 
-declare const brand: unique symbol;
-type Brand<T, B> = T & { readonly [brand]: B };
-
-export type SpaceId = Brand<string, 'SpaceId'>;
-export type DocId = Brand<string, 'DocId'>;
-export type PageId = Brand<string, 'PageId'>;
-export type ProjectId = Brand<string, 'ProjectId'>;
-export type FileId = Brand<string, 'FileId'>;
-
 export type DocumentContent =
   | string
   | {
@@ -86,9 +77,33 @@ interface PageAuthor {
   email?: string;
 }
 
-export interface PageProjectContext {
+interface PageProjectContext {
   id: string;
   name: string;
+}
+
+export interface AssetInfo {
+  id?: string;
+  url?: string;
+  filename: string;
+  size?: number;
+  mimeType?: string;
+}
+
+export interface NodeTreeItem {
+  id: string;
+  title: string;
+  slug?: string | null;
+  icon?: string | null;
+  rank: number;
+  status: string;
+  isLocked: boolean;
+  parentPageId: string | null;
+  mainFileId: string | null;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
+  children?: NodeTreeItem[];
 }
 
 export interface Page {
@@ -132,22 +147,6 @@ export interface PageFile {
   updatedAt?: string;
   deletedAt?: string | null;
   url?: string;
-}
-
-// ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────
-
-export interface TextDocument {
-  id: string;
-  projectId: string;
-  spaceId?: string;
-  pageId?: string;
-  path: string;
-  title: string;
-  content: string;
-  rev?: number;
-  version?: number;
-  isRootDoc?: boolean;
-  updatedAt?: string;
 }
 
 /**
@@ -222,20 +221,16 @@ export function extractDocumentContentString(content?: DocumentContent | unknown
 export {
   newFileModalSchema,
   type NewFileModalFormValues,
-  type UrlImportModalFormValues,
   libraryBibtexModalSchema,
   type LibraryBibtexModalFormValues,
   figureWizardSchema,
   type FigureWizardFormValues,
-  type TableWizardFormValues,
   pushChangesSchema,
   type PushChangesFormValues,
   linkRepoSchema,
   type LinkRepoFormValues,
   createRepoSchema,
   type CreateRepoFormValues,
-  type LearnedWordFormValues,
   projectRenameSchema,
   type ProjectRenameInput,
-  type ProjectCopyInput,
 } from './forms.types';

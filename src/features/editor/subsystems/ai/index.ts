@@ -11,7 +11,11 @@
 export {
   aiCoordinator,
   AiCoordinator,
-  type AiContextPayload,
+  resolveAnchorInContent,
+  type ResolvedAnchorRange,
 } from './coordinator/ai.coordinator';
-
+export {
+  useAiChatActions,
+  type UseAiChatActionsOptions,
+} from './hooks/useAiChatActions';
 export { default as AiTab, default } from './ui/AiTab';

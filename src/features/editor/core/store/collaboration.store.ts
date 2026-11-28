@@ -2,7 +2,7 @@
  * collaboration.store.ts
  *
  * Store for editor-level collaboration UI interactions (pending inline comments,
- * active collaborator presence list, cursor broadcasts, and unread chats).
+ * active collaborator presence list, and cursor broadcasts).
  */
 
 import { create } from 'zustand';
@@ -23,9 +23,6 @@ export interface DocumentCollaborationState {
   clearPendingComment: () => void;
   activeDraftComment: { startLine: number; endLine: number } | null;
   setActiveDraftComment: (data: { startLine: number; endLine: number } | null) => void;
-  unreadChatCount: number;
-  incrementUnreadChatCount: () => void;
-  resetUnreadChatCount: () => void;
 
   // Collaborator Presence
   collaborators: CollaboratorPresenceInfo[];
@@ -41,9 +38,6 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
   clearPendingComment: () => set({ pendingComment: null }),
   activeDraftComment: null,
   setActiveDraftComment: (data) => set({ activeDraftComment: data }),
-  unreadChatCount: 0,
-  incrementUnreadChatCount: () => set((state) => ({ unreadChatCount: state.unreadChatCount + 1 })),
-  resetUnreadChatCount: () => set({ unreadChatCount: 0 }),
 
   collaborators: [],
   setCollaborators: (collaborators) => set({ collaborators }),

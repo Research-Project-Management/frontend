@@ -47,7 +47,6 @@ import {
 import {
   emitMergedUpdatesBatch,
   executeInitiateYjsSync,
-  executeRebuildFromServer,
   swapDocAndAwarenessAfterRebuild,
   type ServerRebuildContext,
 } from './server-rebuild';
@@ -110,6 +109,9 @@ export class YjsSocketIOProvider {
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
   private syncedListeners = new Set<() => void>();
   private localDocUpdateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null;
+  private localAwarenessHandler:
+    | ((changes: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => void)
+    | null = null;
   private httpSavedWhileDisconnected = false;
   private resyncInFlight = false;
   private readonly docReplacedListeners = new Set<(provider: YjsSocketIOProvider) => void>();
@@ -479,6 +481,14 @@ export class YjsSocketIOProvider {
         const oldDoc = this.doc;
         const oldAwareness = this.awareness;
         const oldHandler = this.localDocUpdateHandler;
+        if (this.localAwarenessHandler) {
+          oldAwareness.off('change', this.localAwarenessHandler);
+          this.localAwarenessHandler = null;
+        }
+        if (this.indexeddbPersistence) {
+          void this.indexeddbPersistence.destroy().catch(() => {});
+          this.indexeddbPersistence = null;
+        }
         this.pendingUpdates = [];
         if (this.updateBatchTimer) {
           clearTimeout(this.updateBatchTimer);
@@ -503,6 +513,7 @@ export class YjsSocketIOProvider {
             if (this.options.user) this.setLocalUser(this.options.user);
             this.setupLocalAwarenessListener();
             this.setupLocalDocListener();
+            this.attachIndexeddbPersistence();
           },
           notifyDocReplaced: () => {
             this.isSynced = true;
@@ -525,10 +536,6 @@ export class YjsSocketIOProvider {
         this.emitSynced();
       },
     };
-  }
-
-  private rebuildFromServer(): void {
-    executeRebuildFromServer(this.getServerRebuildContext());
   }
 
   public flushPendingUpdates(): boolean {
@@ -606,15 +613,20 @@ export class YjsSocketIOProvider {
   }
 
   private setupLocalAwarenessListener(): void {
-    this.awareness.on(
-      'change',
-      ({ added, updated }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
-        if (origin === 'socket.io') return;
-        if (added.includes(this.awareness.clientID) || updated.includes(this.awareness.clientID)) {
-          this.scheduleEmitLocalCursor();
-        }
-      },
-    );
+    const awareness = this.awareness;
+    if (this.localAwarenessHandler) {
+      awareness.off('change', this.localAwarenessHandler);
+    }
+    this.localAwarenessHandler = (
+      { added, updated }: { added: number[]; updated: number[]; removed: number[] },
+      origin: unknown,
+    ) => {
+      if (awareness !== this.awareness || origin === 'socket.io') return;
+      if (added.includes(awareness.clientID) || updated.includes(awareness.clientID)) {
+        this.scheduleEmitLocalCursor();
+      }
+    };
+    awareness.on('change', this.localAwarenessHandler);
   }
 
   private scheduleEmitLocalCursor(): void {
@@ -647,10 +659,6 @@ export class YjsSocketIOProvider {
       color: user.color || getAuthorColor(user.id || user.name || 'Anonymous Researcher'),
       role: user.role || 'contributor',
     });
-  }
-
-  public triggerCheckpoint(): void {
-    this.flushPendingUpdates();
   }
 
   public destroy(options?: { skipFlush?: boolean }): void {
@@ -699,6 +707,10 @@ export class YjsSocketIOProvider {
       this.indexeddbPersistence = null;
     }
 
+    if (this.localAwarenessHandler) {
+      this.awareness.off('change', this.localAwarenessHandler);
+      this.localAwarenessHandler = null;
+    }
     if (this.localDocUpdateHandler) {
       this.doc.off('update', this.localDocUpdateHandler);
       this.localDocUpdateHandler = null;

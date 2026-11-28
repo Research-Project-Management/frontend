@@ -173,7 +173,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                   <span>Name</span>
                   {sortBy === 'name' && (
                     <span className="text-xs text-muted-foreground font-sans">
-                      {sortDirection === 'asc' ? 'â†‘' : 'â†“'}
+                      {sortDirection === 'asc' ? '↑' : '↓'}
                     </span>
                   )}
                 </DropdownMenuItem>
@@ -185,7 +185,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                   <span>File type</span>
                   {sortBy === 'type' && (
                     <span className="text-xs text-muted-foreground font-sans">
-                      {sortDirection === 'asc' ? 'â†‘' : 'â†“'}
+                      {sortDirection === 'asc' ? '↑' : '↓'}
                     </span>
                   )}
                 </DropdownMenuItem>
@@ -197,5 +197,3 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
     </div>
   );
 });
-
-export default FileTreeToolbar;

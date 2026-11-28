@@ -11,8 +11,6 @@ import {
 } from '@/features/editor/domain/latex/bib-parser';
 import { stripLatexComments } from '@/features/editor/domain/latex/dependency-graph';
 
-export { stripLatexComments };
-
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:
  * \cite{...}, \citep{...}, \citet{...}, \autocite{...}, \nocite{...}, \parencite{...}, \citeauthor{...}, \citeyear{...}, etc.
@@ -40,9 +38,7 @@ const VIETNAMESE_SURNAME_REGEX =
   /^(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|dinh|doan|lam|trinh|mai|dao|cao|ha|luu|luong|thai|ta|phung|to|vuong|chu)(\s|$)/i;
 const AUTHOR_DELIMITER_REGEX = /\s+and\s+|;\s*/i;
 const WHITESPACE_SPLIT_REGEX = /\s+/;
-const WHITESPACE_COLLAPSE_REGEX = /\s+/g;
 const COMMA_SPACING_REGEX = /,\s*/g;
-const ABSTRACT_PREFIX_REGEX = /^(?:(?:abstract|background)\s*[:\-\u2013\u2014]\s*)+/i;
 
 /**
  * Strips fenced markdown code blocks (```...```) to avoid scanning citation examples in code snippets.
@@ -282,27 +278,6 @@ export function formatInTextCitationPreview(entry: { author?: string; authors?: 
   const authorShort = formatShortAuthor(resolveRawAuthorString(entry));
   const yearStr = entry.year || 'n.d.';
   return authorShort ? `(${authorShort}, ${yearStr})` : `(${yearStr})`;
-}
-
-/**
- * Formats a single line bibliography preview entry
- */
-export function formatBibliographyPreview(entry: {
-  author?: string;
-  authors?: string[];
-  title?: string;
-  journal?: string;
-  booktitle?: string;
-  year?: string;
-  doi?: string;
-}): string {
-  const authorShort = formatShortAuthor(resolveRawAuthorString(entry)) || 'Anonymous';
-  const yearStr = entry.year ? `(${entry.year})` : '(n.d.)';
-  const titleStr = entry.title ? `"${entry.title}"` : 'Untitled document';
-  const pub = entry.journal || entry.booktitle || '';
-  const pubPart = pub ? `. ${pub}` : '';
-  const doiPart = entry.doi ? `. DOI: ${entry.doi}` : '';
-  return `${authorShort} ${yearStr}. ${titleStr}${pubPart}${doiPart}`;
 }
 
 /**
@@ -554,17 +529,4 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
     preambleBlocks: [],
     entries: [{ id: entry.key, type, key: entry.key, fields }],
   }).trim();
-}
-
-/**
- * Cleans raw abstract text:
- * - Strips leading 'Abstract:', 'Abstract — ', 'BACKGROUND:' or redundant labels
- * - Cleans excessive whitespace and trims
- */
-export function cleanAbstractText(rawAbstract?: string): string {
-  if (!rawAbstract || typeof rawAbstract !== 'string') return '';
-  return rawAbstract
-    .replace(ABSTRACT_PREFIX_REGEX, '')
-    .replace(WHITESPACE_COLLAPSE_REGEX, ' ')
-    .trim();
 }

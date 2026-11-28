@@ -3,7 +3,6 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
-import { invariantMonitor } from '@/features/editor/core/coordinator/invariant.monitor';
 
 describe('Frontend Single Source of Truth & Clean Hierarchy', () => {
   const projectId = 'proj-ssot-1';
@@ -201,18 +200,6 @@ describe('Frontend Single Source of Truth & Clean Hierarchy', () => {
       expect(ws.getActiveDocId(projectId, page2)).toBe('doc-p2-paper');
       expect(ws.getTabsForHierarchy(projectId, page1).map((t) => t.id)).toEqual(['doc-p1-main']);
       expect(ws.getTabsForHierarchy(projectId, page2).map((t) => t.id)).toEqual(['doc-p2-paper']);
-    });
-  });
-
-  describe('5. InvariantMonitor no-op pass-through', () => {
-    it('always reports valid and no violations since single source of truth eliminates drift', () => {
-      const report = invariantMonitor.checkInvariants();
-      expect(report.valid).toBe(true);
-      expect(report.violations).toEqual([]);
-
-      const reconcileReport = invariantMonitor.reconcileInvariants();
-      expect(reconcileReport.valid).toBe(true);
-      expect(reconcileReport.violations).toEqual([]);
     });
   });
 });

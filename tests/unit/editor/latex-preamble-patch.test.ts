@@ -14,8 +14,10 @@ import {
   isPreambleOnlySnippet,
   computePreambleInsertion,
 } from '@/features/editor/domain/latex/latex-preamble-patch';
-import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
-import { useAiChatActions } from '@/features/editor/subsystems/ai/ui/useAiChatActions';
+import {
+  aiCoordinator,
+  useAiChatActions,
+} from '@/features/editor/subsystems/ai';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 describe('latex-preamble-patch & structural preamble insertion', () => {

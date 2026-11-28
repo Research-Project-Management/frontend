@@ -17,7 +17,6 @@ import {
   getActiveEditorEngine,
   getEditorEngineForFile,
 } from '../bus/command-bus';
-import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -38,16 +37,6 @@ export interface ProjectFileReadModel {
   isCurrent: boolean;
   isDirty: boolean;
   projectId: string;
-}
-
-export interface ActiveDocumentDescriptor {
-  fileId: string | null;
-  title: string;
-  path: string;
-  content: string;
-  projectId: string;
-  parentPageId: string | null;
-  isDirty: boolean;
 }
 
 export class DocumentFacade {
@@ -86,23 +75,9 @@ export class DocumentFacade {
   }
 
   /**
-   * Retrieves the mounted CodeMirror engine for a specific fileId (handles split-panes).
-   */
-  public getEditorEngineForFile(fileId: string): IEditorEngine | null {
-    return getEditorEngineForFile(fileId);
-  }
-
-  /**
-   * Retrieves the currently active CodeMirror engine.
-   */
-  public getActiveEditorEngine(): IEditorEngine | null {
-    return getActiveEditorEngine();
-  }
-
-  /**
    * Resolves the canonical project ID and root page ID from store state and optional route params.
    */
-  public resolveProjectContext(params?: {
+  private resolveProjectContext(params?: {
     projectId?: string | null;
     pageId?: string | null;
   }): { projectId: string; rootPageId: string; activeFileId: string | null } {
@@ -144,7 +119,7 @@ export class DocumentFacade {
     }
 
     // 1. Per-file mounted CodeMirror instance (handles both primary & secondary split panes)
-    const targetEngine = this.getEditorEngineForFile(targetId);
+    const targetEngine = getEditorEngineForFile(targetId);
     if (targetEngine) {
       const liveText = targetEngine.getContent();
       if (typeof liveText === 'string') {
@@ -176,28 +151,6 @@ export class DocumentFacade {
     }
 
     return '';
-  }
-
-  /**
-   * Returns a complete snapshot of the currently active document.
-   */
-  public getActiveDocumentSnapshot(): ActiveDocumentDescriptor {
-    const { projectId, rootPageId, activeFileId } = this.resolveProjectContext();
-    const pageState = usePageStore.getState();
-    const docObj = pageState.activeFilePage || pageState.currentPage;
-    const cached = activeFileId ? lruDocumentCache.getModel(activeFileId) : undefined;
-    const title = cached?.filePath || docObj?.title || 'main.tex';
-    const content = this.getDocumentContent(activeFileId);
-
-    return {
-      fileId: activeFileId,
-      title,
-      path: cached?.filePath || title,
-      content,
-      projectId,
-      parentPageId: rootPageId || null,
-      isDirty: Boolean(cached?.isDirty),
-    };
   }
 
   /**
@@ -322,7 +275,7 @@ export class DocumentFacade {
     return baseList.map((file) => {
       const isCurrent = file.id === activeFileId;
       const cached = lruDocumentCache.getModel(file.id);
-      const fileEngine = this.getEditorEngineForFile(file.id);
+      const fileEngine = getEditorEngineForFile(file.id);
       const liveContent =
         fileEngine?.getContent() ??
         cached?.content ??

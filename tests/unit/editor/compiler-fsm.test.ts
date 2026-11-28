@@ -15,7 +15,6 @@ import {
 } from '@/features/editor/subsystems/compiler';
 import {
   editorCommandBus,
-  useConnectivityStore,
   usePageStore,
   useSettingsStore,
 } from '@/features/editor/core';
@@ -215,7 +214,6 @@ describe('CompilerCoordinator & useCompileStore FSM Integration', () => {
     compilerCoordinator.stop();
     compilerCoordinator.setCompilerEngine(originalEngine);
     useCompileStore.getState().resetCompiler();
-    useConnectivityStore.setState({ isOnline: true, offlinePendingCompile: false });
     useSettingsStore.setState({
       engine: 'pdflatex',
       compileMode: 'full',

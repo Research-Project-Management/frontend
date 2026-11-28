@@ -39,7 +39,7 @@ import {
   useTemplateGallery,
   type GalleryCategoryFilter,
   type GalleryScopeFilter,
-} from '@/features/editor/subsystems/explorer/hooks/useTemplateGallery';
+} from '../../hooks/useTemplateGallery';
 
 export interface TemplateGalleryModalProps {
   open?: boolean;

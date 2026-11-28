@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { readEntriesRecursively } from './directory-reader';
+import { extractDroppedFileItems } from './directory-reader';
 
 export interface UploadTabPaneProps {
   onPickItems?: (items: { file: File; name: string }[]) => void;
@@ -51,34 +51,7 @@ export function UploadTabPane({
   const handleModalDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDraggingOver(false);
-    const dtItems = e.dataTransfer.items;
-    const allItems: { file: File; name: string }[] = [];
-    const folderEntries: FileSystemDirectoryEntry[] = [];
-    const plainFiles: File[] = [];
-
-    if (dtItems?.length) {
-      for (let i = 0; i < dtItems.length; i++) {
-        const entry = dtItems[i].webkitGetAsEntry?.();
-        if (entry?.isDirectory) {
-          folderEntries.push(entry as FileSystemDirectoryEntry);
-        } else if (entry?.isFile) {
-          const file = e.dataTransfer.files[i];
-          if (file) plainFiles.push(file);
-        }
-      }
-    } else {
-      plainFiles.push(...Array.from(e.dataTransfer.files));
-    }
-
-    plainFiles.forEach((f) => allItems.push({ file: f, name: f.name }));
-
-    for (const dir of folderEntries) {
-      const folderFiles = await readEntriesRecursively(dir, dir.name);
-      for (const { file, relativePath } of folderFiles) {
-        allItems.push({ file, name: relativePath });
-      }
-    }
-
+    const allItems = await extractDroppedFileItems(e.dataTransfer);
     if (allItems.length > 0) {
       onClose();
       onPickItems?.(allItems);

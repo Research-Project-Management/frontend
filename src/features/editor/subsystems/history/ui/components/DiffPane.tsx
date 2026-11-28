@@ -13,7 +13,6 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState, type PlaneErrorStateProps } from '@/shared/components/ui/PlaneErrorState';
 import { cn } from '@/shared/lib/utils';
 import type { ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
-import { SplitDiffView } from './SplitDiffView';
 import { UnifiedDiffView } from './UnifiedDiffView';
 
 export interface DiffPaneProps {
@@ -22,7 +21,6 @@ export interface DiffPaneProps {
   error?: unknown;
   onRetry?: () => void;
   activeFilePath: string | null;
-  viewMode: 'split' | 'unified';
   selectedBaseVersion: number | null;
   selectedTargetVersion: number | null;
   onRestoreSingleFile: () => void;
@@ -55,7 +53,6 @@ export function DiffPane({
   error,
   onRetry,
   activeFilePath,
-  viewMode,
   selectedBaseVersion,
   selectedTargetVersion,
   onRestoreSingleFile,
@@ -227,18 +224,8 @@ export function DiffPane({
               title="No file selected"
               description="Select a file from the left tree to view changes."
             />
-          ) : viewMode === 'split' ? (
-            <SplitDiffView
-              fileDiff={activeFileDiff}
-              baseVersion={selectedBaseVersion || 1}
-              targetVersion={selectedTargetVersion || 2}
-            />
           ) : (
-            <UnifiedDiffView
-              fileDiff={activeFileDiff}
-              baseVersion={selectedBaseVersion || 1}
-              targetVersion={selectedTargetVersion || 2}
-            />
+            <UnifiedDiffView fileDiff={activeFileDiff} />
           )}
         </div>
       </div>

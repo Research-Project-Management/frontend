@@ -5,10 +5,12 @@
  * and cross-window storage rehydration.
  */
 
-import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import { isMainTexTabOrFile } from '@/features/editor/domain/constants/editor.constants';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { isProtectedRootTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
+import {
+  isProtectedRootTab,
+  type WorkspaceTab,
+} from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import {
   loadEditorTabsForPage,
   saveEditorTabsForPage,

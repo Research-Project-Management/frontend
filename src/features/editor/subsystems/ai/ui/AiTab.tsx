@@ -32,6 +32,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { useAiChatActions } from '../hooks/useAiChatActions';
 
@@ -53,32 +54,23 @@ export default function AiTab() {
   }>();
 
   const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const rootPageId = usePageStore((s) => s.rootPageId);
-  const parentPageId = usePageStore((s) => s.parentPageId);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const storeSpaceId = usePageStore((s) => s.spaceId);
-  const storeProjectId = usePageStore((s) => s.projectId);
-  const currentPageProjectId = usePageStore((s) => {
-    const p = s.currentPage?.projectId;
-    return typeof p === 'string' ? p : p?.id || null;
-  });
+  const currentProjectId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        projectId: params?.projectId,
+        pageId: params?.pageId ?? params?.draftId,
+      }).spaceId || null,
+  );
+  const activePageId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        projectId: params?.projectId,
+        pageId: params?.pageId ?? params?.draftId,
+      }).rootPageId || null,
+  );
   const { engine, getContent } = useEditorInstance();
-
-  const currentProjectId =
-    storeSpaceId ||
-    storeProjectId ||
-    params?.projectId ||
-    currentPageProjectId ||
-    null;
-
-  const activePageId =
-    rootPageId ||
-    parentPageId ||
-    params?.pageId ||
-    params?.draftId ||
-    currentPageId ||
-    null;
 
   const activeFilename =
     activeFilePage?.title || currentPageTitle || 'document.tex';
@@ -169,10 +161,7 @@ export default function AiTab() {
   useEffect(() => {
     return editorCommandBus.subscribe('sidebar:open-ai-panel', (cmd) => {
       setHistoryView(false);
-      const currentFileId =
-        usePageStore.getState().activeFilePage?.id ||
-        usePageStore.getState().currentPage?.id ||
-        null;
+      const currentFileId = resolveEditorScopeFromState(usePageStore.getState()).activeFileId;
 
       const resolvedSelectedText = cmd?.selectedText?.trim()
         ? cmd.selectedText

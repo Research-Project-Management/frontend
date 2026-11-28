@@ -298,8 +298,8 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
 
     it('useUpdateComment omits status when only content is edited', async () => {
       const { useUpdateComment } = await vi.importActual<
-        typeof import('@/features/editor/subsystems/review/ui/hooks/useComments')
-      >('@/features/editor/subsystems/review/ui/hooks/useComments');
+        typeof import('@/features/editor/subsystems/review/hooks/useComments')
+      >('@/features/editor/subsystems/review/hooks/useComments');
 
       const updateSpy = vi.spyOn(pagesService.comments, 'updateComment').mockResolvedValue({
         id: 'cmt-1',
@@ -347,8 +347,8 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       expect(createReplySchema.safeParse({ content: overStr }).success).toBe(false);
 
       const { useUpdateReply } = await vi.importActual<
-        typeof import('@/features/editor/subsystems/review/ui/hooks/useComments')
-      >('@/features/editor/subsystems/review/ui/hooks/useComments');
+        typeof import('@/features/editor/subsystems/review/hooks/useComments')
+      >('@/features/editor/subsystems/review/hooks/useComments');
 
       const replyUpdateSpy = vi.spyOn(pagesService.comments, 'updateReply').mockResolvedValue({
         id: 'cmt-2',

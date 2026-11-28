@@ -24,14 +24,15 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorage } from '@/features/editor/subsystems/explorer/hooks/useStorage';
+import { useEditorStorage } from '@/features/editor/subsystems/explorer';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { useAuthorizedImageSrc } from '@/features/editor/core/hooks/useAuthorizedImageSrc';
 import {
   figureWizardSchema,
   type FigureWizardFormValues,
 } from '@/features/editor/domain/types/core.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { IMAGE_EXTENSIONS } from '@/features/editor/core';
+import { IMAGE_EXTENSIONS, usePageStore } from '@/features/editor/core';
 
 function FigureThumb({ url, alt }: { url?: string | null; alt: string }) {
   const src = useAuthorizedImageSrc(url);
@@ -65,6 +66,7 @@ export interface FigureModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentPageId: string | null;
+  spaceId?: string | null;
   onInsert: (latexCode: string) => void;
 }
 
@@ -79,12 +81,24 @@ export function FigureModal({
   open,
   onOpenChange,
   parentPageId,
+  spaceId,
   onInsert,
 }: FigureModalProps) {
+  const canonicalPageId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, { pageId: parentPageId, spaceId }).rootPageId ||
+      parentPageId ||
+      '',
+  );
+  const canonicalSpaceId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s, { pageId: parentPageId, spaceId });
+    return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
+  });
+
   const { items: files, isLoading, uploadFile } = useEditorStorage(
-    parentPageId,
+    canonicalPageId || null,
     undefined,
-    undefined,
+    canonicalSpaceId || undefined,
     { enabled: open },
   );
 
@@ -201,7 +215,7 @@ export function FigureModal({
         );
         return;
       }
-      if (!parentPageId) return;
+      if (!canonicalPageId) return;
 
       const targetParentId = folderId || null;
       const targetFolder = targetParentId ? folderMap.get(targetParentId) : undefined;
@@ -211,7 +225,8 @@ export function FigureModal({
         for (const file of validImages) {
           await uploadFile.mutateAsync({
             file,
-            pageId: parentPageId,
+            pageId: canonicalPageId,
+            projectId: canonicalSpaceId || undefined,
             parentId: targetParentId,
           });
         }
@@ -224,7 +239,7 @@ export function FigureModal({
         // Handled by uploadFile
       }
     },
-    [parentPageId, folderId, folderMap, uploadFile, handleSelect],
+    [canonicalPageId, canonicalSpaceId, folderId, folderMap, uploadFile, handleSelect],
   );
 
   const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {

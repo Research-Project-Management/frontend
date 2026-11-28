@@ -63,7 +63,7 @@ function decodeBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-export async function exportDoc(
+async function exportDoc(
   format: DocumentExportFormat,
   { docId, title, includeChildren = true }: ExportDocOptions,
 ): Promise<string> {

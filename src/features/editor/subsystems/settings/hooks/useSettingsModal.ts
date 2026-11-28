@@ -7,12 +7,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { filesQuery, pageQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 
 export type SettingsView = 'compiler' | 'editor' | 'github' | 'dictionary';
@@ -20,14 +20,27 @@ export type SettingsView = 'compiler' | 'editor' | 'github' | 'dictionary';
 export function useSettingsModal() {
   const params = useParams<{ pageId?: string; projectId?: string }>();
   const currentPage = usePageStore((s) => s.currentPage);
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const storeProjectId = usePageStore((s) => s.projectId);
-  const spaceId = usePageStore((s) => s.spaceId);
-
-  const pageId = params?.pageId || storeParentPageId || currentPage?.id;
-  const rawProjectId =
-    params?.projectId || spaceId || params?.pageId || storeProjectId || currentPage?.id;
-  const projectId = extractProjectId(currentPage) || rawProjectId || '';
+  const pageId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        projectId: params?.projectId,
+        pageId: params?.pageId,
+      }).rootPageId,
+  );
+  const projectId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        projectId: params?.projectId,
+        pageId: params?.pageId,
+      }).projectId,
+  );
+  const spaceId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s, {
+      projectId: params?.projectId,
+      pageId: params?.pageId,
+    });
+    return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
+  });
   const projectTitle = currentPage?.title || 'manuscript';
 
   const open = useSettingsStore((s) => s.settingsPanelOpen);
@@ -130,7 +143,7 @@ export function useSettingsModal() {
         {
           pageId: pageId || projectId,
           fileId: targetFile.docId || targetFile.id,
-          projectId,
+          projectId: projectId || undefined,
         },
         { onError },
       );
@@ -144,7 +157,7 @@ export function useSettingsModal() {
         {
           pageId: pageId || projectId,
           fileId: parentPage.id,
-          projectId,
+          projectId: projectId || undefined,
         },
         { onError },
       );
@@ -188,6 +201,7 @@ export function useSettingsModal() {
   return {
     pageId: pageId || projectId,
     projectId,
+    spaceId,
     pageTitle: projectTitle,
     open,
     setOpen,

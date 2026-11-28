@@ -11,7 +11,6 @@
  * - CodeMirror focus and selection restoration.
  */
 
-import { logger } from '@/shared/lib/logger';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   getActiveEditorEngine,
@@ -27,7 +26,6 @@ import { syncShallowFileUrlParam } from '@/features/editor/domain/constants/edit
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { DetachedPreviewBridge } from './detached-preview.bridge';
-import { toast } from 'sonner';
 import {
   executeCloseDocument,
   executeCloseOtherDocuments,
@@ -41,22 +39,6 @@ import {
   resolveJumpTargetByFilePath,
   computeDiagnosticStep,
 } from './diagnostic-stepper';
-
-interface NavigationNotificationPort {
-  info(message: string, options?: { id?: string }): void;
-}
-
-const defaultNavigationNotifier: NavigationNotificationPort = {
-  info(message, options) {
-    if (typeof window !== 'undefined') {
-      try {
-        toast.info(message, options);
-      } catch (err) {
-        logger.warn('[NavigationCoordinator] Notification toast failed', { error: err });
-      }
-    }
-  },
-};
 
 interface OpenDocumentOptions {
   fileId: string;
@@ -79,17 +61,14 @@ interface PendingLineJump {
 
 export class NavigationCoordinator {
   private initialized = false;
-  private lastDiagnosticIndex: number = -1;
   private lastDiagnosticLine: number | null = null;
   private lastDiagnosticFile: string | null = null;
-  private notifier: NavigationNotificationPort;
   private pendingLineJump: PendingLineJump | null = null;
   private inFlightPrefetches = new Map<string, Promise<void>>();
   private readonly detachedPreviewBridge: DetachedPreviewBridge;
   private readonly busUnsubscribers: Array<() => void> = [];
 
-  constructor(options: { notifier?: NavigationNotificationPort } = {}) {
-    this.notifier = options.notifier || defaultNavigationNotifier;
+  constructor() {
     this.detachedPreviewBridge = new DetachedPreviewBridge({
       onJumpToCode: (payload) => {
         if (payload.fileId || payload.filePath) {
@@ -179,7 +158,6 @@ export class NavigationCoordinator {
   }
 
   public resetDiagnosticState(): void {
-    this.lastDiagnosticIndex = -1;
     this.lastDiagnosticLine = null;
     this.lastDiagnosticFile = null;
   }
@@ -408,10 +386,6 @@ export class NavigationCoordinator {
       return '';
     };
 
-    const wasAlreadyAuthoritative = Boolean(
-      existingModel && existingModel.isAuthoritative !== false,
-    );
-
     if (!existingModel) {
       lruDocumentCache.registerModel(fileId, {
         content: resolveFallbackContent(),
@@ -427,9 +401,6 @@ export class NavigationCoordinator {
         existingModel = lruDocumentCache.getModel(fileId);
       }
     }
-
-    void wasAlreadyAuthoritative;
-    void hasAuthoritativeFallback;
 
     const rootPageId = pageStore.currentPage?.id || tabGroupId || fileId;
     pageStore.setActiveFilePage({
@@ -586,7 +557,6 @@ export class NavigationCoordinator {
     if (!result) return;
 
     const { targetIndex, target } = result;
-    this.lastDiagnosticIndex = targetIndex;
     this.lastDiagnosticLine = target.line;
     this.lastDiagnosticFile = target.file;
 

@@ -16,7 +16,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { GithubTab } from './GithubTab';
-import { SpellingTab } from '@/features/editor/subsystems/spelling/ui/SpellingTab';
+import { SpellingTab } from '@/features/editor/subsystems/spelling';
 import { CompilerEditorSection } from './CompilerEditorSection';
 import { GitCloneCard } from './GitCloneCard';
 import { useSettingsModal, type SettingsView } from '../hooks/useSettingsModal';
@@ -85,7 +85,7 @@ export function SettingsModal() {
           </nav>
 
           {s.activeView === 'dictionary' ? (
-            <SpellingTab projectId={s.projectId} />
+            <SpellingTab projectId={s.spaceId} />
           ) : (
             <div className="flex-1 min-h-0 overflow-y-scroll p-5">
               {s.activeView === 'compiler' && (
@@ -108,7 +108,7 @@ export function SettingsModal() {
                 <div className="space-y-4">
                   <GithubTab pageId={s.pageId} pageTitle={s.pageTitle} />
                   <GitCloneCard
-                    projectId={s.projectId || s.pageId}
+                    projectId={s.spaceId}
                     pageId={s.pageId}
                     open={s.open}
                   />

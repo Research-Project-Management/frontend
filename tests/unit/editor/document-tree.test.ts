@@ -6,7 +6,7 @@ import {
   flattenVisibleTree,
   findAncestorFolderPaths,
   type FileTreeFileNode,
-} from '@/features/editor/subsystems/explorer/model/document-tree';
+} from '@/features/editor/subsystems/explorer';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { newFileModalSchema } from '@/features/editor/domain/types/forms.types';
 

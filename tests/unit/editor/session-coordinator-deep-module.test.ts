@@ -4,12 +4,10 @@ import {
   type DocumentPersistencePort,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { useConnectivityStore } from '@/features/editor/core';
 
 describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    useConnectivityStore.setState({ isOnline: true, syncStatus: 'synced', pendingSaveCount: 0 });
     lruDocumentCache.clear();
   });
 

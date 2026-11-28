@@ -76,6 +76,7 @@ export {
 // 4. Presentation Layer (Thin Views & Controls)
 export { default as PdfViewer } from './ui/pdf/PdfViewer';
 export { default as DetachedPdfPlaceholder } from './ui/pdf/DetachedPlaceholder';
+export { DetachedPdfViewer } from './ui/pdf/DetachedViewer';
 export {
   default as PdfSurface,
   PdfSyncTeXHighlightBox,
@@ -85,6 +86,7 @@ export { default as CompilerLogs } from './ui/logs/LogsPanel';
 export { CompileOutcomeCard } from './ui/logs/OutcomeCard';
 export { CompileButton } from './ui/CompileButton';
 export { default as CompilationErrorBanner } from './ui/ErrorBanner';
+export { WordCountModal, default as WordCountDialog } from './ui/WordCountModal';
 export {
   resolveProjectFileByLogPath,
 } from './hooks/useLogActions';
@@ -106,8 +108,7 @@ import {
   SnapshotProvider,
 } from './coordinator/compiler.coordinator';
 import { useCompileStore } from './store/compiler.store';
-import { editorCommandBus, usePageStore } from '@/features/editor/core';
-import { extractProjectId, extractSpaceId } from '@/features/editor/domain/types/core.types';
+import { editorCommandBus, resolveEditorScope } from '@/features/editor/core';
 import type { ProjectCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
 
 export interface CompileIntent {
@@ -178,14 +179,11 @@ export const compilerSubsystem: CompilerSubsystemPort = {
     return false;
   },
   async jumpToSource(page: number, x: number, y: number): Promise<{ file: string; line: number } | null> {
-    const activeDoc = usePageStore.getState().getActiveDocument();
-    const projectId =
-      extractSpaceId(activeDoc) ||
-      usePageStore.getState().spaceId ||
-      usePageStore.getState().projectId ||
-      '';
-    if (projectId) {
-      const res = await compilerCoordinator.resolveReverseRemote(projectId, page, x, y);
+    const scope = resolveEditorScope();
+    const spaceId = scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
+    const pageId = scope.rootPageId || undefined;
+    if (spaceId) {
+      const res = await compilerCoordinator.resolveReverseRemote(spaceId, page, x, y, pageId);
       if (res && res.sourcePath) {
         return { file: res.sourcePath, line: res.line };
       }

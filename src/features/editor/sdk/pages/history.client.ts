@@ -209,11 +209,3 @@ export const history = {
     return apiPost(buildHistoryUrl(spaceId, '/flush', options?.pageId), {});
   },
 };
-
-export const restoreProjectVersionFile = (
-  spaceId: string,
-  version: number,
-  pathname: string,
-  fileId?: string,
-  options?: { pageId?: string },
-) => history.restoreProjectVersionFile(spaceId, version, pathname, fileId, options);

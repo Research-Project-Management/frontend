@@ -29,7 +29,7 @@ import {
 } from './subsystems/compiler';
 import { diagnosticsCoordinator } from './subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { reviewCoordinator } from './subsystems/review';
-import { navigationCoordinator } from './subsystems/navigation/coordinator/navigation.coordinator';
+import { navigationCoordinator } from './subsystems/navigation';
 
 export interface ResetEditorWorkspaceOptions {
   /**
@@ -68,7 +68,6 @@ export function resetEditorWorkspace(options: ResetEditorWorkspaceOptions = {}):
   const collabStore = useDocumentCollaborationStore.getState();
   collabStore.clearCollaborators();
   collabStore.clearPendingComment();
-  collabStore.resetUnreadChatCount();
 }
 
 if (typeof window !== 'undefined') {

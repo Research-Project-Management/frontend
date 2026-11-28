@@ -31,6 +31,7 @@ import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/
 export interface UseSynchronizedScrollProps {
   enabled: boolean;
   projectId?: string;
+  pageId?: string | null;
   pdfSurfaceRef: React.RefObject<PdfSurfaceHandle | null>;
   synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
   numPages: number;
@@ -44,6 +45,7 @@ export interface UseSynchronizedScrollProps {
 export function useSynchronizedScroll({
   enabled,
   projectId,
+  pageId,
   pdfSurfaceRef,
   synctexMapRef,
   numPages,
@@ -104,11 +106,13 @@ export function useSynchronizedScroll({
             : 1;
 
       void (async () => {
-        if (projectId) {
+        if (projectId || pageId) {
           const remoteDetail = await compilerCoordinator.resolveForwardRemote(
-            projectId,
+            projectId || 'personal',
             activeFilePath || DEFAULT_MAIN_FILE,
             cmd.line,
+            0,
+            pageId || undefined,
           );
           if (remoteDetail && remoteDetail.page) {
             const y = remoteDetail.y !== undefined ? remoteDetail.y * effectiveScale : 0;
@@ -159,6 +163,7 @@ export function useSynchronizedScroll({
   }, [
     enabled,
     projectId,
+    pageId,
     synctexMapRef,
     activeFilePath,
     numPages,
@@ -183,12 +188,13 @@ export function useSynchronizedScroll({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
         void (async () => {
-          if (projectId) {
+          if (projectId || pageId) {
             const remoteResolved = await compilerCoordinator.resolveReverseRemote(
-              projectId,
+              projectId || 'personal',
               info.page,
               72,
               info.y,
+              pageId || undefined,
             );
             if (remoteResolved?.line) {
               editorCommandBus.dispatch({
@@ -239,7 +245,7 @@ export function useSynchronizedScroll({
         })();
       });
     },
-    [enabled, projectId, synctexMapRef, numPages, heightPt, setDriverWithTimeout],
+    [enabled, projectId, pageId, synctexMapRef, numPages, heightPt, setDriverWithTimeout],
   );
 
   return {

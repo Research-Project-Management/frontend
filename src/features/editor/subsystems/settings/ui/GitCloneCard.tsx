@@ -4,7 +4,7 @@
  * GitCloneCard.tsx
  *
  * Presentational view for Git Smart-HTTP clone URL & Personal Access Token management.
- * State & GoF Command orchestration live in `useGitClone`.
+ * State & token lifecycle live in `useGitClone`.
  */
 
 import React from 'react';

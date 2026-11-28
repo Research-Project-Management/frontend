@@ -46,7 +46,9 @@ export function resolveCitationScope(input: CitationScopeInput): CitationScope {
   const spaceId =
     (pageScope.spaceKind === 'project'
       ? pageScope.projectId
-      : input.storeSpaceId || input.propProjectId || '') || '';
+      : input.storeSpaceId ||
+        input.propProjectId ||
+        (pageScope.pageId ? pageScope.spaceId : '')) || '';
   const libraryScope =
     pageScope.spaceKind === 'personal' ? PERSONAL_LIBRARY_SCOPE : pageScope.libraryScope;
   const pageId = pageScope.pageId;

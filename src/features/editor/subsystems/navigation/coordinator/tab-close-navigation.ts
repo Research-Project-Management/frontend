@@ -12,7 +12,6 @@ import {
 } from '@/features/editor/core/store/workspace.store';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { syncShallowFileUrlParam } from '@/features/editor/domain/constants/editor.constants';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { isProtectedRootTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 
 export interface TabNavigationHost {
@@ -29,6 +28,13 @@ export interface TabNavigationHost {
   }) => void;
 }
 
+function isRootTabId(
+  tabId: string | null | undefined,
+  rootPageId: string | null | undefined,
+): boolean {
+  return !tabId || Boolean(rootPageId && (tabId === rootPageId || tabId === `${rootPageId}-main`));
+}
+
 function openOrRestoreTabEntry(
   host: TabNavigationHost,
   nextActiveId: string | undefined,
@@ -37,8 +43,7 @@ function openOrRestoreTabEntry(
   tabs: readonly EditorTab[],
 ): void {
   const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
-  const isNextRoot = !nextActiveId || nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`;
-  if (isNextRoot && pageStore.currentPage) {
+  if (isRootTabId(nextActiveId, rootPageId) && pageStore.currentPage) {
     pageStore.setActiveFilePage(pageStore.currentPage);
     syncShallowFileUrlParam(undefined);
     return;
@@ -63,9 +68,8 @@ export function executeCloseDocument(host: TabNavigationHost, fileId: string): v
 
   tabsStore.closeTab(tabGroupId, fileId, (nextId) => {
     const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
-    const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
-    if (!isNextRoot && nextId) {
+    if (!isRootTabId(nextId, rootPageId) && nextId) {
       tabsStore.setActiveTab(tabGroupId, nextId);
       const tabs = useWorkspaceStore.getState().tabsByProject[tabGroupId] || [];
       const nextActiveTab = tabs.find((t) => t.id === nextId);
@@ -135,12 +139,12 @@ export function executeCloseSavedDocuments(host: TabNavigationHost): void {
   const nextActiveId = nextState.activeByProject[tabGroupId];
   const currentActiveId = pageStore.getActiveDocumentId();
   const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
-  if (!nextActiveId || nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`) {
+  if (isRootTabId(nextActiveId, rootPageId)) {
     if (pageStore.currentPage && currentActiveId !== pageStore.currentPage.id) {
       pageStore.setActiveFilePage(pageStore.currentPage);
       syncShallowFileUrlParam(undefined);
     }
-  } else if (nextActiveId !== currentActiveId) {
+  } else if (nextActiveId && nextActiveId !== currentActiveId) {
     openOrRestoreTabEntry(host, nextActiveId, tabGroupId, pageStore, nextState.tabsByProject[tabGroupId] ?? []);
   }
 }

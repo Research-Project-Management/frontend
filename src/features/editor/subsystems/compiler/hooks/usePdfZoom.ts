@@ -37,7 +37,6 @@ export function usePdfZoom({
   const setFitMode = useViewerStore((s: DocumentViewerState) => s.setFitMode);
   const zoomIn = useViewerStore((s: DocumentViewerState) => s.zoomIn);
   const zoomOut = useViewerStore((s: DocumentViewerState) => s.zoomOut);
-  const resetZoom = useViewerStore((s: DocumentViewerState) => s.resetZoom);
   const [containerWidth, setContainerWidth] = useState(600);
   const [containerHeight, setContainerHeight] = useState(800);
 
@@ -162,18 +161,6 @@ export function usePdfZoom({
     }
   }, [autoFit, fittedScale, setScale]);
 
-  const handleZoomIn = useCallback(() => {
-    zoomIn();
-  }, [zoomIn]);
-
-  const handleZoomOut = useCallback(() => {
-    zoomOut();
-  }, [zoomOut]);
-
-  const handleResetZoom = useCallback(() => {
-    resetZoom();
-  }, [resetZoom]);
-
   const handleToggleAutoFit = useCallback(() => {
     const next = !autoFit;
     setAutoFit(next);
@@ -188,17 +175,10 @@ export function usePdfZoom({
     [setFitMode, setAutoFit],
   );
 
-  const handleSetScale = useCallback(
-    (s: number) => {
-      setScale(s);
-    },
-    [setScale],
-  );
-
   // Listen to global zoom shortcut events
   useEffect(() => {
-    const unsubZoomIn = editorCommandBus.subscribe('viewer:zoom-in', handleZoomIn);
-    const unsubZoomOut = editorCommandBus.subscribe('viewer:zoom-out', handleZoomOut);
+    const unsubZoomIn = editorCommandBus.subscribe('viewer:zoom-in', zoomIn);
+    const unsubZoomOut = editorCommandBus.subscribe('viewer:zoom-out', zoomOut);
     const unsubFitWidth = editorCommandBus.subscribe('viewer:fit-width', () => {
       handleSetFitMode('width');
     });
@@ -211,28 +191,18 @@ export function usePdfZoom({
       unsubFitWidth();
       unsubFitHeight();
     };
-  }, [handleZoomIn, handleZoomOut, handleSetFitMode]);
-
-  const showZoomGroup = containerWidth >= 500;
-  const showUtilityGroup = containerWidth >= 720;
+  }, [zoomIn, zoomOut, handleSetFitMode]);
 
   return {
     scale,
-    setScale,
     autoFit,
-    setAutoFit,
     fitMode,
-    setFitMode,
     fittedScale,
     containerWidth,
-    containerHeight,
-    showZoomGroup,
-    showUtilityGroup,
-    handleZoomIn,
-    handleZoomOut,
-    handleResetZoom,
+    handleZoomIn: zoomIn,
+    handleZoomOut: zoomOut,
     handleToggleAutoFit,
     handleSetFitMode,
-    handleSetScale,
+    handleSetScale: setScale,
   };
 }

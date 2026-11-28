@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { RotateCcw, Loader2, ArrowLeft } from 'lucide-react';
 
@@ -16,7 +16,12 @@ import { Badge } from '@/shared/components/ui/badge';
 
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { usePageStore } from '@/features/editor/core';
+import {
+  buildPageScopeHref,
+  PERSONAL_SPACE_PARAM,
+  useEditorScope,
+  usePageStore,
+} from '@/features/editor/core';
 
 import { useHistoryState, useHistoryAutoSelect } from '../hooks/useHistoryState';
 import { useHistoryActions } from '../hooks/useHistoryActions';
@@ -37,20 +42,16 @@ export function HistoryPage({
   initialVersion,
 }: HistoryPageProps) {
   const router = useRouter();
-  const params = useParams<{ projectId?: string; pageId?: string }>();
+  const editorScope = useEditorScope({
+    projectId: propProjectId,
+    pageId: propPageId,
+  });
 
   const currentPageId = usePageStore((s) => s.currentPage?.id ?? '');
   const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? '');
-  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? '');
-  const storeSpaceId = usePageStore((s) => s.spaceId);
-  const storeSpaceType = usePageStore((s) => s.spaceType);
   const storePermissions = usePageStore((s) => s.permissions);
-  const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || '');
 
-  const isPersonalSpace =
-    (!params?.projectId || params.projectId === 'personal') &&
-    (!propProjectId || propProjectId === 'personal') &&
-    storeSpaceType !== 'project';
+  const isPersonalSpace = editorScope.spaceKind === 'personal';
   const normalizedRole = storePermissions?.role?.toLowerCase() ?? null;
   const canEditHistory =
     isPersonalSpace ||
@@ -72,33 +73,39 @@ export function HistoryPage({
       : 'View-only reviewers cannot restore versions'
     : undefined;
 
-  const pageId = propPageId || params?.pageId || storeRootPageId || currentPageId || '';
-  const knownSpaceId =
-    storeSpaceId || propProjectId || params?.projectId || currentPageProjectId || '';
+  const pageId = editorScope.rootPageId || currentPageId || '';
+  const knownSpaceId = isPersonalSpace
+    ? editorScope.spaceId
+    : editorScope.projectId || editorScope.spaceId;
 
   const { data: resolvedPage } = useQuery({
     queryKey: ['history-page-meta', pageId],
     queryFn: () => pagesService.docs.getById(pageId),
-    enabled: !knownSpaceId && !!pageId,
+    enabled: (!knownSpaceId || !currentPageTitle) && !!pageId,
     staleTime: 5 * 60_000,
   });
 
-  const spaceId =
-    knownSpaceId ||
-    resolvedPage?.spaceId ||
-    extractProjectId(resolvedPage) ||
-    '';
+  const spaceId = isPersonalSpace
+    ? knownSpaceId || resolvedPage?.spaceId || (pageId ? PERSONAL_SPACE_PARAM : '')
+    : knownSpaceId || extractProjectId(resolvedPage) || resolvedPage?.spaceId || '';
+  const effectiveTitle = currentPageTitle || resolvedPage?.title || '';
 
   const handleBackToEditor = useCallback(() => {
-    const isPersonal = !params?.projectId || params.projectId === 'personal';
-    if (isPersonal) {
-      router.push(pageId ? `/pages/${pageId}` : '/pages');
-    } else {
+    if (pageId) {
       router.push(
-        pageId ? `/projects/${params.projectId}/pages/${pageId}` : `/projects/${params.projectId}/pages`,
+        buildPageScopeHref(pageId, {
+          spaceKind: editorScope.spaceKind,
+          projectId: editorScope.projectId,
+        }),
       );
+      return;
     }
-  }, [params?.projectId, pageId, router]);
+    router.push(
+      !isPersonalSpace && editorScope.projectId
+        ? `/projects/${encodeURIComponent(editorScope.projectId)}`
+        : '/pages',
+    );
+  }, [editorScope.spaceKind, editorScope.projectId, isPersonalSpace, pageId, router]);
 
   const state = useHistoryState(initialVersion);
 
@@ -106,7 +113,7 @@ export function HistoryPage({
     open: true,
     spaceId,
     pageId,
-    projectTitle: currentPageTitle,
+    projectTitle: effectiveTitle,
     mode: state.mode,
     targetVersion: state.targetVersion,
     baseVersion: state.baseVersion,
@@ -137,9 +144,9 @@ export function HistoryPage({
   useHistoryAutoSelect(actions.versions, sidebarFiles, state);
 
   useEffect(() => {
-    const t = currentPageTitle.trim();
+    const t = effectiveTitle.trim();
     document.title = t ? `History · ${t} · Flux` : 'History · Flux';
-  }, [currentPageTitle]);
+  }, [effectiveTitle]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -259,7 +266,6 @@ export function HistoryPage({
             error={actions.diffError}
             onRetry={() => void actions.refetchDiff()}
             activeFilePath={state.activeFile}
-            viewMode={state.diffView}
             selectedBaseVersion={state.baseVersion}
             selectedTargetVersion={state.targetVersion}
             onRestoreSingleFile={() => actions.restoreFile.mutate(undefined)}
@@ -276,7 +282,6 @@ export function HistoryPage({
           error={actions.versionsError}
           onRetry={() => void actions.refetchVersions()}
           historyMode={state.mode}
-          onHistoryModeChange={state.setMode}
           filter={state.filter}
           setFilter={state.setFilter}
           selectedTargetVersion={state.targetVersion}

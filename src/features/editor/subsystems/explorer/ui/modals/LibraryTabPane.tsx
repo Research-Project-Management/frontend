@@ -17,8 +17,12 @@ import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/types/core.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore } from '@/features/editor/core';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import {
+  usePageStore,
+  useSettingsStore,
+  resolveEditorScope,
+  resolveEditorScopeFromState,
+} from '@/features/editor/core';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 export interface LibraryTabPaneProps {
@@ -55,10 +59,11 @@ export function LibraryTabPane({
     defaultValues: { fileName: useSettingsStore.getState().mainBibFile || DEFAULT_BIB_FILE },
   });
 
-  const storeProjectId = usePageStore((s) => s.projectId);
-  const spaceType = usePageStore((s) => s.spaceType);
+  const libraryScope = usePageStore((s) =>
+    resolveEditorScopeFromState(s, { pageId: parentPageId }).libraryScope,
+  );
   const { data: libraryData, isLoading: isLoadingLibrary } = useViewItems(
-    spaceType === 'personal' ? 'user' : storeProjectId || 'user',
+    libraryScope,
     'all',
     librarySearch,
   );
@@ -95,11 +100,9 @@ export function LibraryTabPane({
 
     setIsExportingBib(true);
     try {
-      const storeState = usePageStore.getState();
-      const activePageId =
-        parentPageId || storeState.rootPageId || storeState.currentPage?.id || undefined;
-      const targetSpaceId =
-        storeState.spaceId || storeState.projectId || parentPageId;
+      const scope = resolveEditorScope({ pageId: parentPageId });
+      const activePageId = scope.rootPageId || parentPageId || undefined;
+      const targetSpaceId = scope.effectiveScopeId || parentPageId;
       const res = await pagesService.citations.upsertEntries(targetSpaceId, {
         entries: chosenItems,
         targetBibFile: targetName,

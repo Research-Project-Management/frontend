@@ -382,7 +382,7 @@ export function createCrossTabBridgeForProvider(host: CrossTabBridgeHost): YjsCr
     onFollowerHello: (followerId) => {
       if (host.isDestroyed() || host.getRole() !== 'leader') return;
       host.broadcastLeaderPresence();
-      bridge.sendFullSyncToFollower(followerId);
+      bridge.sendFullSync(followerId);
     },
     onLeaderStatus: (nextStatus, nextIsSynced, collaborators) => {
       if (host.isDestroyed() || host.getRole() !== 'follower') return;

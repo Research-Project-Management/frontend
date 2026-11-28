@@ -13,7 +13,7 @@ import {
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { documentFacade } from '@/features/editor/core/coordinator/document.facade';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import {
   assembleCompilationSnapshot,
   type ProjectCompilationSnapshot,
@@ -22,8 +22,12 @@ import {
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
-import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
-import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
+import {
+  extractDocumentContentString,
+  type NodeTreeItem,
+  type Page,
+  type PageFile,
+} from '@/features/editor/domain/types/core.types';
 import { useCompileStore } from '../store/compiler.store';
 
 const EM_EN_DASH_REGEX = /[\u2014\u2013]/g;

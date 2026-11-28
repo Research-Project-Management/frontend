@@ -23,7 +23,7 @@ import {
 } from '@codemirror/view';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { diagnosticsCoordinator } from '../coordinator/diagnostics.coordinator';
 
 export interface DiagnosticsGutterOptions {
   filePath?: string;
@@ -383,7 +383,7 @@ export function createDiagnosticsGutter(options: DiagnosticsGutterOptions = {}):
   const {
     filePath,
     enabled = true,
-    getDiagnostics = (fp: string) => diagnosticsCoordinator.getFileDiagnostics(fp),
+    getDiagnostics = (fp: string) => diagnosticsCoordinator.getDiagnosticsForFile(fp),
   } = options;
 
   if (!enabled || !filePath) {

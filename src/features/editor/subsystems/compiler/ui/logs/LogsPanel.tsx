@@ -17,7 +17,6 @@ import type {
   LogEntry,
   ParsedLog,
   CompilerLogsProps,
-  ErrorExplanationDto,
 } from '@/features/editor/domain/types/compiler.types';
 import { parseLatexLog } from '@/features/editor/domain/latex/compiler-logs-parser';
 import { CompilerLogEntryRow } from './LogEntryRow';
@@ -32,7 +31,7 @@ import {
 } from '@/features/editor/subsystems/compiler/hooks/useLogsState';
 
 export { parseLatexLog };
-export type { LogEntry, ParsedLog, CompilerLogsProps, ErrorExplanationDto };
+export type { LogEntry, ParsedLog, CompilerLogsProps };
 
 export function CompilerLogs({
   log,
@@ -59,8 +58,6 @@ export function CompilerLogs({
 
   const renderDiagnosticRow = (row: CompilerLogVisibleRow) => {
     const { entry, categoryIndex, type, rowKey, domId } = row;
-    const explainKey = s.getExplainKey(type, entry, categoryIndex);
-    const expState = s.explainState[explainKey];
 
     if (type === 'error') {
       const aiKey = s.getEntryKey(entry, categoryIndex);
@@ -80,10 +77,6 @@ export function CompilerLogs({
           isFixApplied={aiState?.applied}
           onApplyFix={s.handleApplyFixRow}
           onApplyQuickFix={s.handleApplyQuickFix}
-          isExplainOpen={Boolean(expState?.open)}
-          fetchedExplanation={expState?.explanation ?? null}
-          isExplaining={Boolean(expState?.loading)}
-          onToggleExplain={s.handleToggleExplainRow}
         />
       );
     }
@@ -97,10 +90,6 @@ export function CompilerLogs({
         entry={entry}
         onClick={s.handleEntryClick}
         onApplyQuickFix={s.handleApplyQuickFix}
-        isExplainOpen={Boolean(expState?.open)}
-        fetchedExplanation={expState?.explanation ?? null}
-        isExplaining={Boolean(expState?.loading)}
-        onToggleExplain={s.handleToggleExplainRow}
       />
     );
   };

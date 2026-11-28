@@ -156,7 +156,7 @@ export function findModelByNormalizedPath<T extends { fileId: string; filePath: 
   return bareFallback;
 }
 
-export interface SpillableModelRecord {
+interface SpillableModelRecord {
   fileId: string;
   content: string;
   filePath: string;

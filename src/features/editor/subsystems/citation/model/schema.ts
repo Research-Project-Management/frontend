@@ -1,24 +1,8 @@
-﻿import { z } from 'zod';
-
-/**
+﻿/**
  * Regex for standard academic identifiers
  */
 const DOI_REGEX = /^10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+$/i;
 const ARXIV_REGEX = /^(?:arxiv:)?\d{4}\.\d{4,5}(?:v\d+)?$/i;
-export const CITEKEY_REGEX = /^[a-zA-Z0-9_:-]+$/;
-
-/**
- * Schema for looking up academic citations by DOI, arXiv ID, or title
- */
-const citationLookupSchema = z.object({
-  query: z
-    .string()
-    .trim()
-    .min(1, 'Please enter a DOI, arXiv ID, or title')
-    .max(500, 'Query is too long'),
-});
-
-export type CitationLookupInput = z.infer<typeof citationLookupSchema>;
 
 /**
  * Validates whether an input query is a structured academic identifier (DOI or arXiv)

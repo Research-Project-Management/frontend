@@ -7,10 +7,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fetchLogEntryExplanation } from '@/features/editor/subsystems/compiler/hooks/useLogActions';
-import { LogExplanationPanel } from './ExplanationPanel';
 import { LogAiFixPanel } from './AiFixPanel';
-import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
+import type { LogEntry } from '@/features/editor/domain/types/compiler.types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 export interface CompilerLogEntryRowProps {
@@ -26,10 +24,6 @@ export interface CompilerLogEntryRowProps {
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult, categoryIndex?: number) => void;
   onApplyQuickFix?: (entry: LogEntry, fix: { description: string; replacementText: string }) => void;
-  isExplainOpen?: boolean;
-  fetchedExplanation?: ErrorExplanationDto | null;
-  isExplaining?: boolean;
-  onToggleExplain?: (entry: LogEntry, type?: 'error' | 'warning' | 'badbox', categoryIndex?: number) => void;
 }
 
 export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
@@ -45,21 +39,9 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   isFixApplied,
   onApplyFix,
   onApplyQuickFix,
-  isExplainOpen,
-  fetchedExplanation,
-  isExplaining,
-  onToggleExplain,
 }: CompilerLogEntryRowProps) {
   const isClickable = Boolean(entry.line);
-  const [internalExplainOpen, setInternalExplainOpen] = useState(false);
-  const [internalFetchedExplanation, setInternalFetchedExplanation] = useState<ErrorExplanationDto | null>(null);
-  const [internalIsExplaining, setInternalIsExplaining] = useState(false);
-
-  const effectiveExplainOpen = isExplainOpen ?? internalExplainOpen;
-  const effectiveFetchedExplanation =
-    fetchedExplanation !== undefined ? fetchedExplanation : internalFetchedExplanation;
-  const effectiveIsExplaining = isExplaining ?? internalIsExplaining;
-  const activeExplanation = entry.explanation || effectiveFetchedExplanation;
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleRowClick = useCallback(() => {
     if (isClickable) {
@@ -74,45 +56,33 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
     [onApplyFix, categoryIndex],
   );
 
-  const handleToggleExplain = async () => {
-    if (onToggleExplain) {
-      onToggleExplain(entry, type, categoryIndex);
+  const trimmedMessage = entry.message.trim();
+  const excerptText =
+    entry.rawExcerpt && entry.rawExcerpt.trim() !== trimmedMessage
+      ? entry.rawExcerpt
+      : null;
+  const detailText =
+    !excerptText &&
+    entry.detail &&
+    !/^[@^~.?!\s]+$/.test(entry.detail) &&
+    entry.detail.length > 1 &&
+    entry.detail.trim() !== trimmedMessage
+      ? entry.detail
+      : null;
+
+  const hasDetailContent = Boolean(excerptText || detailText);
+  const hasExpandableContent = Boolean(hasDetailContent || fixResult || isFixLoading);
+  const isExpanded = isDetailOpen || Boolean(fixResult || isFixLoading);
+
+  const handleToggleDetails = () => {
+    if (hasDetailContent) {
+      setIsDetailOpen((prev) => !prev);
       return;
     }
-    if (internalExplainOpen) {
-      setInternalExplainOpen(false);
-      return;
-    }
-    // Close AI fix if open
     if (fixResult && onSuggestFix) {
       onSuggestFix(entry, categoryIndex);
     }
-    if (activeExplanation) {
-      setInternalExplainOpen(true);
-      return;
-    }
-    setInternalIsExplaining(true);
-    try {
-      const exp = await fetchLogEntryExplanation(entry);
-      if (exp) {
-        setInternalFetchedExplanation(exp);
-        setInternalExplainOpen(true);
-      }
-    } finally {
-      setInternalIsExplaining(false);
-    }
   };
-
-  const hasExpandableContent = Boolean(
-    activeExplanation ||
-    entry.explanation ||
-    entry.code ||
-    entry.rawExcerpt ||
-    (entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1) ||
-    fixResult ||
-    isFixLoading
-  );
-  const isExpanded = effectiveExplainOpen || Boolean(fixResult || isFixLoading);
 
   return (
     <div
@@ -129,7 +99,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
           aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
           onClick={(e) => {
             e.stopPropagation();
-            handleToggleExplain();
+            handleToggleDetails();
           }}
           className={cn(
             'size-5 -ml-1 mt-0.5 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-transform cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0',
@@ -192,28 +162,6 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   <span>{fixResult ? 'Hide fix' : 'Fix with AI'}</span>
                 </button>
               ) : null}
-
-              {(entry.explanation || entry.code) && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleExplain();
-                  }}
-                  className={cn(
-                    'min-h-[26px] flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
-                    effectiveExplainOpen
-                      ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
-                      : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
-                  )}
-                  title="View LaTeX error explanation"
-                >
-                  {effectiveIsExplaining && (
-                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-primary" />
-                  )}
-                  <span>{effectiveExplainOpen ? 'Hide guide' : 'Guide'}</span>
-                </button>
-              )}
             </div>
           </div>
           {(entry.file || entry.line !== undefined) && (
@@ -237,22 +185,15 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
               )}
             </p>
           )}
-          {entry.rawExcerpt ? (
+          {isDetailOpen && excerptText ? (
             <pre className="mt-1.5 px-2.5 py-1 border border-border/60 rounded-sm bg-muted/20 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto max-w-[70ch]">
-              {entry.rawExcerpt}
+              {excerptText}
             </pre>
-          ) : (
-            entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
-              <p className="text-muted-foreground text-xs mt-0.5 truncate font-mono max-w-[70ch]">{entry.detail}</p>
-            )
-          )}
+          ) : isDetailOpen && detailText ? (
+            <p className="text-muted-foreground text-xs mt-0.5 truncate font-mono max-w-[70ch]">{detailText}</p>
+          ) : null}
         </div>
       </div>
-
-      {/* LaTeX Error Guide Expansion Panel (Only if no AI fix active) */}
-      {effectiveExplainOpen && activeExplanation && !fixResult && !isFixLoading && (
-        <LogExplanationPanel explanation={activeExplanation} />
-      )}
 
       {/* AI Error Assist Expansion Panel */}
       {(isFixLoading || fixResult) && (

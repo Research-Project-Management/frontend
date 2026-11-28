@@ -151,15 +151,8 @@ export {
   documentFacade,
   DocumentFacade,
   type ProjectFileReadModel,
-  type ActiveDocumentDescriptor,
 } from './coordinator/document.facade';
 
-export {
-  invariantMonitor,
-  InvariantMonitor,
-  type InvariantViolation,
-  type InvariantReport,
-} from './coordinator/invariant.monitor';
 export { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 // 5. Pages Backend Services & API Contracts

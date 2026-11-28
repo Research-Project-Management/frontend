@@ -4,35 +4,10 @@ import React from 'react';
 import { ExternalLink } from 'lucide-react';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
+import { formatCitationTypeBadge } from '../model/formatter';
 
 export interface CitationDetailPaneProps {
   entry: BibEntry | null;
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  article: 'Journal article',
-  journalarticle: 'Journal article',
-  inproceedings: 'Conference paper',
-  conferencepaper: 'Conference paper',
-  book: 'Book',
-  incollection: 'Book chapter',
-  booksection: 'Book chapter',
-  phdthesis: 'Thesis',
-  mastersthesis: 'Thesis',
-  thesis: 'Thesis',
-  techreport: 'Report',
-  report: 'Report',
-  preprint: 'Preprint',
-  misc: 'Preprint',
-};
-
-function formatEntryType(raw?: string): string {
-  if (!raw) return '';
-  const norm = raw.replace(/[\s_-]+/g, '').toLowerCase();
-  if (TYPE_LABELS[norm]) return TYPE_LABELS[norm];
-  return raw
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/^./, (c) => c.toUpperCase());
 }
 
 export function CitationDetailPane({ entry }: CitationDetailPaneProps) {
@@ -50,7 +25,7 @@ export function CitationDetailPane({ entry }: CitationDetailPaneProps) {
   }
 
   const venue = entry.journal || entry.booktitle || entry.publisher;
-  const typeLabel = formatEntryType(entry.type);
+  const typeLabel = entry.type ? formatCitationTypeBadge(entry.type) : '';
   const authors =
     entry.authors && entry.authors.length > 0
       ? entry.authors.join(', ')

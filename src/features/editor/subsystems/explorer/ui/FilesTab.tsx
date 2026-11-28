@@ -23,14 +23,14 @@ import { FileTreeFolderRow } from './subcomponents/FileTreeFolderRow';
 import {
   type FileTreeNode,
   type FlattenedTreeNode,
-} from '@/features/editor/subsystems/explorer/model/document-tree';
+} from '../model/document-tree';
 import { DeleteFileDialog } from './modals/DeleteFileDialog';
 import { FileTreeContainer } from './FileTreeContainer';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
 import { useFilesTabController } from '../hooks/useFilesTabController';
 
 const AddFilesModal = dynamic(
-  () => import('@/features/editor/subsystems/explorer/ui/modals/AddFilesModal'),
+  () => import('./modals/AddFilesModal'),
   { ssr: false },
 );
 
@@ -106,7 +106,6 @@ const FilesTab = React.memo(function FilesTab(_props: { onClose?: () => void }) 
             onRenameChange={c.setRenameValue}
             onCommitRename={c.handleCommitRename}
             onCancelRename={() => c.setRenamingId(null)}
-            projectId={c.projectId}
           />
         );
       }

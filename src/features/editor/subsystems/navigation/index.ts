@@ -15,3 +15,7 @@ export {
   NavigationCoordinator,
   jumpToEditorLine,
 } from './coordinator/navigation.coordinator';
+export {
+  default as QuickOpenModal,
+  type QuickOpenModalProps,
+} from './ui/QuickOpenModal';

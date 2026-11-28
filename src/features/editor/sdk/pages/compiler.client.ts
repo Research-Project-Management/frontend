@@ -248,29 +248,6 @@ export const compiler = {
     }
   },
 
-  fetchArtifactArrayBuffer: async (
-    artifactUrlOrPath: string,
-    signal?: AbortSignal,
-  ): Promise<ArrayBuffer | null> => {
-    if (!artifactUrlOrPath?.trim()) return null;
-    try {
-      const res = await rawFetch(
-        resolveArtifactRequestUrl(artifactUrlOrPath),
-        'GET',
-        undefined,
-        { silent: true, signal },
-      );
-      if (!res.ok) return null;
-      const buf = await res.arrayBuffer();
-      return buf.byteLength > 0 ? buf : null;
-    } catch (err: unknown) {
-      if (signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
-        throw err;
-      }
-      return null;
-    }
-  },
-
   fetchArtifactBlobUrl: async (
     pageId: string,
     filename = 'output.pdf',

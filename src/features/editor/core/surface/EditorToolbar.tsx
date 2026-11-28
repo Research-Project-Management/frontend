@@ -43,7 +43,7 @@ import { cn } from '@/shared/lib/utils';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { STYLE_OPTIONS, useEditorToolbarActions } from '../hooks/useEditorToolbarActions';
 import { EditorToolbarOverflowMenu, OmegaIcon } from './EditorToolbarOverflowMenu';
-import { TablePopover } from '@/features/editor/subsystems/insert/ui/table/TablePopover';
+import { TablePopover } from '@/features/editor/subsystems/insert';
 
 export interface EditorToolbarProps {
   className?: string;

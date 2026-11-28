@@ -7,35 +7,6 @@ import type { CompilerDiagnostic } from '@/features/editor/domain/types/compiler
 import type { ProjectSymbolsResponseDto } from '@/features/editor/domain/types/symbols.types';
 import type { StructureNodeDto } from './structure.types';
 
-export interface QueueUpdatePayload {
-  lines?: string[];
-  splice?: {
-    startLine: number;
-    deleteCount: number;
-    newLines: string[];
-  };
-  userId?: string;
-  clientRev?: number;
-  debounceMs?: number;
-  pathname?: string;
-  docLines?: string[];
-  docOps?: unknown[];
-  version?: number;
-}
-
-export interface DocstoreDocDto {
-  _id: string;
-  spaceId?: string | null;
-  projectId: string;
-  path: string;
-  lines: string[];
-  version: number;
-  rev: number;
-  deleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface FlushResultDto {
   spaceId?: string | null;
   projectId?: string;

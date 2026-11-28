@@ -51,7 +51,6 @@ export class DiagnosticsCoordinator {
   private static readonly MAX_ALIAS_MAP_SIZE = 500;
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
   private linterIndex = new Map<string, IndexedDiagnosticItem[]>();
-  private unmappedDiagnostics: IndexedDiagnosticItem[] = [];
   private aliasMap = new Map<string, string>();
   private filterOptions: WarningFilterOptions = {};
   private listeners = new Set<(fileKey?: string, source?: DiagnosticsChangeSource) => void>();
@@ -71,21 +70,13 @@ export class DiagnosticsCoordinator {
   };
 
   public clear(): void {
-    const wasEmpty =
-      this.fileIndex.size === 0 &&
-      this.linterIndex.size === 0 &&
-      this.unmappedDiagnostics.length === 0;
+    const wasEmpty = this.fileIndex.size === 0 && this.linterIndex.size === 0;
     this.fileIndex.clear();
     this.linterIndex.clear();
-    this.unmappedDiagnostics = [];
     this.aliasMap.clear();
     if (!wasEmpty) {
       this.notify(undefined, 'clear');
     }
-  }
-
-  public clearDiagnostics(): void {
-    this.clear();
   }
 
   public setFilterOptions(
@@ -115,10 +106,6 @@ export class DiagnosticsCoordinator {
 
     this.filterOptions = { ...this.filterOptions, ...options };
     this.notify(undefined, 'filter');
-  }
-
-  public getFilterOptions(): WarningFilterOptions {
-    return { ...this.filterOptions };
   }
 
   public ingestLinterDiagnostics(fileIdOrPath: string, diagnostics: IndexedDiagnosticItem[]): void {
@@ -369,7 +356,6 @@ export class DiagnosticsCoordinator {
 
   public ingestCompilerErrors(errors: CompileError[], defaultFile = 'main.tex'): void {
     this.fileIndex.clear();
-    this.unmappedDiagnostics = [];
     this.telemetry.totalIngested += errors.length;
 
     const normDefault = normalizeLatexPath(defaultFile);
@@ -411,10 +397,6 @@ export class DiagnosticsCoordinator {
     }
 
     return applyFilter ? filterDiagnostics(combined, this.filterOptions) : combined;
-  }
-
-  public getFileDiagnostics(fileIdOrPath: string, applyFilter = true): IndexedDiagnosticItem[] {
-    return this.getDiagnosticsForFile(fileIdOrPath, applyFilter);
   }
 
   public findDiagnosticsAtLine(fileIdOrPath: string, targetLine: number): IndexedDiagnosticItem[] {
@@ -542,11 +524,6 @@ export class DiagnosticsCoordinator {
     for (const key of allKeys) {
       all.push(...this.getDiagnosticsForFile(key, applyFilter));
     }
-    for (const unmapped of this.unmappedDiagnostics) {
-      if (!applyFilter || filterDiagnostics([unmapped], this.filterOptions).length > 0) {
-        all.push(unmapped);
-      }
-    }
 
     return all.sort((a, b) => {
       const fileA = a.file || a.normalizedPath || '';
@@ -592,7 +569,7 @@ export class DiagnosticsCoordinator {
     }
     return {
       fileCount: allKeys.size,
-      totalDiagnostics: total + this.unmappedDiagnostics.length,
+      totalDiagnostics: total,
       summary: this.getProjectSummary(false),
     };
   }
@@ -627,7 +604,7 @@ syncFilterOptions(useSettingsStore.getState());
 useSettingsStore.subscribe(syncFilterOptions);
 
 editorCommandBus.subscribe('diagnostics:clear', () => {
-  diagnosticsCoordinator.clearDiagnostics();
+  diagnosticsCoordinator.clear();
 });
 editorCommandBus.subscribe('diagnostics:rename-path', (cmd) => {
   diagnosticsCoordinator.renamePath(cmd.oldPath, cmd.newPath);

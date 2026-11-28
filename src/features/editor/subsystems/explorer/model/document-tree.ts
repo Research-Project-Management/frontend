@@ -168,13 +168,7 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
 
   const resolvedPageId = parentPageId || parentPage?.id || projectId || null;
   const resolvedProjectId =
-    projectId ||
-    (parentPage?.projectId && typeof parentPage.projectId === 'string'
-      ? parentPage.projectId
-      : parentPage?.projectId && typeof parentPage.projectId === 'object' && 'id' in parentPage.projectId
-        ? String((parentPage.projectId as { id?: unknown }).id ?? '')
-        : null) ||
-    resolvedPageId;
+    projectId || extractProjectId(parentPage?.projectId) || resolvedPageId;
 
   const isWorkspaceRootId = (id?: string | null): boolean => {
     if (!id) return true;
@@ -455,54 +449,6 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   sortedFolders.forEach(sortFolderRecursively);
 
   return [...rootFiles, ...sortedFolders];
-}
-
-/**
- * Flattens a hierarchical file tree into a depth-first ordered list of nodes.
- */
-export function flattenFileTree(nodes: FileTreeNode[]): FileTreeNode[] {
-  const flat: FileTreeNode[] = [];
-  const walk = (items: FileTreeNode[]) => {
-    for (const node of items) {
-      flat.push(node);
-      if (node.type === 'folder' && node.children.length > 0) {
-        walk(node.children);
-      }
-    }
-  };
-  walk(nodes);
-  return flat;
-}
-
-/**
- * Finds a file or folder node in the tree by its virtual path or ID.
- */
-function findNodeByPath(nodes: FileTreeNode[], targetPathOrId: string): FileTreeNode | undefined {
-  const cleanTarget = normalizeVirtualPath(targetPathOrId).toLowerCase();
-  if (!cleanTarget) return undefined;
-
-  for (const node of nodes) {
-    if (node.type === 'file') {
-      const nodePath = normalizeVirtualPath(node.title || node.displayLabel).toLowerCase();
-      if (
-        node.id === targetPathOrId ||
-        node.nodeId === targetPathOrId ||
-        node.docId === targetPathOrId ||
-        nodePath === cleanTarget ||
-        (!cleanTarget.includes('/') && node.displayLabel.toLowerCase() === cleanTarget)
-      ) {
-        return node;
-      }
-    } else {
-      const folderPath = normalizeVirtualPath(node.fullPath || node.path || node.name).toLowerCase();
-      if (node.id === targetPathOrId || folderPath === cleanTarget) {
-        return node;
-      }
-      const foundInChildren = findNodeByPath(node.children, targetPathOrId);
-      if (foundInChildren) return foundInChildren;
-    }
-  }
-  return undefined;
 }
 
 /**

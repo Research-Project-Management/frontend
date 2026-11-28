@@ -19,22 +19,27 @@ import {
   CommandItem,
 } from '@/shared/components/ui/command';
 import { cn } from '@/shared/lib/utils';
-import { usePageStore } from '@/features/editor/core';
-import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { usePageStore, resolveEditorScopeFromState } from '@/features/editor/core';
+import { navigationCoordinator } from '../coordinator/navigation.coordinator';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
-import { getFileIcon } from '@/features/editor/subsystems/explorer/ui/subcomponents/file-icon';
+import { getFileIcon } from '@/features/editor/subsystems/explorer';
 
-interface QuickOpenModalProps {
+export interface QuickOpenModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function QuickOpenModal({ open, onOpenChange }: QuickOpenModalProps) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
+  const rootId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        pageId: params?.pageId,
+        projectId: params?.projectId,
+      }).rootPageId,
+  );
   const activeFileId = usePageStore((s) => s.activeFilePage?.id);
-  const rootId = currentPageId || params?.pageId;
 
   const { data: pageFiles = [] } = useQuery({
     ...filesQuery(rootId || ''),

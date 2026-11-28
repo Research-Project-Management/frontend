@@ -12,7 +12,6 @@
  */
 
 import { logger } from '@/shared/lib/logger';
-import { editorCommandBus } from '../bus/command-bus';
 
 type VisibilityLifecycleState = 'active' | 'hibernated';
 
@@ -93,35 +92,15 @@ class VisibilityCoordinator {
 
     if (nextState === 'hibernated') {
       this.hiddenTimestamp = Date.now();
-      this.onTabHibernated();
+      void this.flushHandler?.();
+      this.awarenessCallback?.(false);
     } else {
-      const duration = this.hiddenTimestamp ? Date.now() - this.hiddenTimestamp : 0;
       this.hiddenTimestamp = null;
-      this.onTabAwakened(duration);
+      this.awarenessCallback?.(true);
     }
 
     this.notify();
   };
-
-  private onTabHibernated(): void {
-    void this.flushHandler?.();
-    this.awarenessCallback?.(false);
-
-    editorCommandBus.dispatch({
-      type: 'lifecycle:state-change',
-      state: 'hibernated',
-    });
-  }
-
-  private onTabAwakened(durationMs: number): void {
-    this.awarenessCallback?.(true);
-
-    editorCommandBus.dispatch({
-      type: 'lifecycle:state-change',
-      state: 'active',
-      durationMs,
-    });
-  }
 
   private notify(): void {
     for (const listener of this.listeners) {

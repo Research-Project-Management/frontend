@@ -125,7 +125,6 @@ export function swapDocAndAwarenessAfterRebuild(params: {
   flushPendingUpdates: () => boolean;
   rebindListenersAndUser: (newDoc: Y.Doc, newAwareness: Awareness) => void;
   notifyDocReplaced: () => void;
-  onFullSync?: () => void;
   crossTabBridge: YjsCrossTabBridge | null;
   role: string;
 }): void {

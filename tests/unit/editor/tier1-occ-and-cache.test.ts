@@ -5,13 +5,7 @@ import {
   measureUtf8Bytes,
 } from '@/features/editor/domain/document/lru-document-cache';
 import {
-  pendingOutboxStore,
-  clearAllOfflineMemory,
-} from '@/features/editor/domain/offline-storage';
-import {
   SessionCoordinator,
-  sessionCoordinator,
-  useConnectivityStore,
   usePageStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
@@ -20,14 +14,11 @@ import { hydrateEditorBootstrap } from '@/features/editor/core/queries/document.
 import { PageFileMapper } from '@/features/editor/sdk/pages/doc-mapper';
 import type { EditorBootstrapResponseDto } from '@/features/editor/sdk/pages/types';
 
-describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', () => {
-  beforeEach(async () => {
+describe('Khối 2 / Tầng 1 — OCC & UTF-8 LRU Cache', () => {
+  beforeEach(() => {
     vi.useFakeTimers();
     lruDocumentCache.clear();
     useCompileStore.getState().clearAllDirty();
-    useConnectivityStore.getState().reset?.();
-    clearAllOfflineMemory();
-    await pendingOutboxStore.clearAll().catch(() => {});
   });
 
   afterEach(() => {
@@ -241,41 +232,6 @@ describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', ()
     expect(lruDocumentCache.getModel('doc-guard')?.content).toBe(
       'precious local draft',
     );
-  });
-
-  it('preserves baseline expectedRev when coalescing multiple offline edits in outbox', async () => {
-    const docId = `doc-offline-${Date.now()}`;
-
-    lruDocumentCache.registerModel(docId, {
-      content: 'base',
-      filePath: 'chapters/ch1.tex',
-      projectId: 'space-off',
-      spaceId: 'space-off',
-      pageId: 'page-off',
-      serverRev: 5,
-    });
-
-    useConnectivityStore.getState().recordOffline();
-    lruDocumentCache.updateContent(docId, 'offline v1', true);
-    await sessionCoordinator.flushFile(docId);
-
-    // Simulate a subsequent queued mutation whose payload omitted expectedRev (e.g. partial caller)
-    await pendingOutboxStore.enqueue({
-      fileId: docId,
-      projectId: 'space-off',
-      type: 'update_content',
-      payload: { content: 'offline v2', expectedRev: undefined },
-    });
-
-    await vi.runAllTimersAsync();
-    const pending = await pendingOutboxStore.getPending();
-    const match = pending.find((m) => m.fileId === docId);
-
-    expect(match).toBeDefined();
-    expect(match?.payload.content).toBe('offline v2');
-    expect(match?.payload.expectedRev).toBe(5);
-    expect(match?.spaceId).toBe('space-off');
-    expect(match?.pageId).toBe('page-off');
   });
 
   it('propagates rev, version, and spaceId in PageFileMapper without adding undefined keys', () => {

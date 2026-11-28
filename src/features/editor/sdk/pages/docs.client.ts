@@ -13,18 +13,15 @@ import {
 } from '@/shared/lib/api';
 import type { BffEnvelope } from '@/shared/types/bff.types';
 import { PAGES_API_BASE } from './base';
-import { structure } from './structure.client';
 import { flushYjsProviders } from '../realtime/provider-pool';
 import { PageFileMapper, type RawPageFileRecord } from './doc-mapper';
 import type {
-  DocstoreDocDto,
-  QueueUpdatePayload,
   FlushResultDto,
   EditorBootstrapResponseDto,
 } from './types/docs.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
-export interface UpdatePageMetadataPayload {
+interface UpdatePageMetadataPayload {
   title?: string;
   description?: string;
   status?: string;
@@ -75,25 +72,6 @@ export const docs = {
   updateTitle: async (docId: string, title: string): Promise<Page> => {
     if (!docId) throw new Error('docId is required');
     const res = await apiPut<{ page: Page }>(`${PAGES_API_BASE}/docs/${docId}`, { title });
-    return res.page;
-  },
-
-  create: async ({
-    projectId,
-    title,
-    content,
-    status = 'draft',
-  }: {
-    projectId: string;
-    title: string;
-    content?: string;
-    status?: string;
-  }): Promise<Page> => {
-    const res = await apiPost<{ page: Page }>(`${PAGES_API_BASE}/spaces/${projectId}/docs`, {
-      title,
-      content,
-      status,
-    });
     return res.page;
   },
 
@@ -226,23 +204,6 @@ export const docs = {
     }
   },
 
-  getDeletedFiles: async (pageId: string): Promise<PageFile[]> => {
-    if (!pageId) return [];
-    try {
-      const res = await apiGet<{ files: RawPageFileRecord[] }>(
-        `${PAGES_API_BASE}/docs/${pageId}/deleted-files`,
-        { silent: true },
-      );
-      return PageFileMapper.toDomainList(res?.files, {
-        defaultPageId: pageId,
-        defaultTitle: 'deleted.tex',
-        includePath: false,
-      });
-    } catch {
-      return [];
-    }
-  },
-
   createChildFile: async ({
     parentPageId,
     title,
@@ -261,27 +222,6 @@ export const docs = {
       defaultTitle: title,
       fallbackContent: content || '',
     });
-  },
-
-  setMain: async (
-    params: string | { pageId: string; fileId: string; projectId?: string },
-  ): Promise<{ id: string; mainFileId: string }> => {
-    let effectiveProjectId: string;
-    let fileId: string;
-    let pageId: string;
-
-    if (typeof params === 'string') {
-      fileId = params;
-      pageId = params;
-      effectiveProjectId = params;
-    } else {
-      fileId = params.fileId;
-      pageId = params.pageId;
-      effectiveProjectId = params.projectId || params.pageId;
-    }
-
-    await structure.setRootDoc(effectiveProjectId, fileId);
-    return { id: pageId, mainFileId: fileId };
   },
 
   syncIncremental: async (
@@ -306,54 +246,9 @@ export const docs = {
       return [];
     }
   },
-
-  updateDocLines: async (
-    projectId: string,
-    docId: string,
-    lines: string[],
-    rev?: number,
-  ): Promise<{ modified: boolean; rev: number }> => {
-    return await apiPost<{ modified: boolean; rev: number }>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/doc/${docId}`,
-      { lines, rev, ...(rev !== undefined ? { expectedRev: rev } : {}) },
-    );
-  },
-
-  patchDoc: async (
-    projectId: string,
-    docId: string,
-    dto: { path?: string; name?: string; deleted?: boolean; deletedAt?: string },
-  ): Promise<DocstoreDocDto | Record<string, unknown>> => {
-    const payload = {
-      ...dto,
-      ...(dto.path && !dto.name ? { name: dto.path } : {}),
-    };
-    return await apiPatch<DocstoreDocDto | Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/docs/doc/${docId}`,
-      payload,
-    );
-  },
 };
 
 export const updater = {
-  queueUpdate: async (
-    projectId: string,
-    docId: string,
-    dto: QueueUpdatePayload,
-  ): Promise<Record<string, unknown>> => {
-    const lines = dto.lines ?? dto.docLines ?? [];
-    const clientRev = dto.clientRev ?? dto.version;
-    return await apiPost<Record<string, unknown>>(
-      `${PAGES_API_BASE}/spaces/${projectId}/updater/doc/${docId}/update`,
-      {
-        ...dto,
-        docLines: dto.docLines ?? lines,
-        lines,
-        ...(clientRev !== undefined ? { version: dto.version ?? clientRev, clientRev } : {}),
-      },
-    );
-  },
-
   flushProject: async (
     projectId: string,
     force = false,

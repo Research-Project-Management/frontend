@@ -13,12 +13,12 @@ import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
 import { usePageStore } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { usePageComments } from '@/features/editor/subsystems/review/hooks/useComments';
+import { usePageComments } from '../../hooks/useComments';
 import {
   usePageSuggestions,
   useAcceptSuggestion,
   useRejectSuggestion,
-} from '@/features/editor/subsystems/review/hooks/useSuggestions';
+} from '../../hooks/useSuggestions';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
@@ -238,7 +238,7 @@ export function OverviewView({
             onCountReport={handleCountReport}
             preloadedComments={overviewByDocId ? (preloaded?.comments ?? []) : undefined}
             preloadedSuggestions={overviewByDocId ? (preloaded?.suggestions ?? []) : undefined}
-            isPreloadedLoading={Boolean(projectId) && isOverviewLoading}
+            isPreloadedLoading={Boolean(overviewTargetId) && isOverviewLoading}
           />
         );
       })}

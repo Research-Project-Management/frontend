@@ -10,26 +10,6 @@ import { type Extension } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 
-export interface EditorThemeDefinition {
-  id: string;
-  name: string;
-  type: 'light' | 'dark';
-}
-
-export const EDITOR_THEMES: EditorThemeDefinition[] = [
-  { id: 'auto', name: 'Auto (Follow Workspace)', type: 'light' },
-  { id: 'latex-light', name: 'Overleaf Light', type: 'light' },
-  { id: 'latex-dark', name: 'Overleaf Dark', type: 'dark' },
-  { id: 'dracula', name: 'Dracula', type: 'dark' },
-  { id: 'monokai', name: 'Monokai', type: 'dark' },
-  { id: 'solarized-light', name: 'Solarized Light', type: 'light' },
-  { id: 'solarized-dark', name: 'Solarized Dark', type: 'dark' },
-  { id: 'github-light', name: 'GitHub Light', type: 'light' },
-  { id: 'github-dark', name: 'GitHub Dark', type: 'dark' },
-  { id: 'cobalt', name: 'Cobalt', type: 'dark' },
-  { id: 'eclipse', name: 'Eclipse', type: 'light' },
-];
-
 // ── 1. Auto (Adapts to Workspace CSS Variables) ──────────────────────────────
 const autoThemeStyle = EditorView.theme({
   '&': {

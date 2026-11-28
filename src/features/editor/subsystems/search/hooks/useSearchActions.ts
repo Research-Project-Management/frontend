@@ -13,10 +13,11 @@ import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
+  getEditorEngineForFile,
   sessionCoordinator,
-  documentFacade,
   lruDocumentCache,
 } from '@/features/editor/core';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 function buildSearchRegex(
@@ -37,6 +38,15 @@ function buildSearchRegex(
   } catch {
     return null;
   }
+}
+
+function applySearchReplace(
+  content: string,
+  re: RegExp,
+  replaceText: string,
+  useRegex: boolean,
+): string {
+  return useRegex ? content.replace(re, replaceText) : content.replace(re, () => replaceText);
 }
 
 interface UseSearchActionsParams {
@@ -71,9 +81,7 @@ export function useSearchActions({
     if (!re) return;
 
     const content = engine.getContent();
-    const replaced = useRegex
-      ? content.replace(re, replaceText)
-      : content.replace(re, () => replaceText);
+    const replaced = applySearchReplace(content, re, replaceText, useRegex);
     if (replaced !== content) {
       engine.setContent(replaced);
       engine.focus();
@@ -96,7 +104,7 @@ export function useSearchActions({
           caseSensitive,
           wholeWord,
           useRegex,
-          ...(rootPageId && rootPageId !== rootProjectId ? { pageId: rootPageId } : {}),
+          ...(rootPageId ? { pageId: rootPageId } : {}),
         },
       );
       toast.success(
@@ -118,7 +126,7 @@ export function useSearchActions({
       // 2. Evict stale non-mounted models and refresh mounted non-realtime engines from server in parallel
       await Promise.all(
         res.affectedFileIds.map(async (affectedId) => {
-          const mountedEngine = documentFacade.getEditorEngineForFile(affectedId);
+          const mountedEngine = getEditorEngineForFile(affectedId);
           if (!mountedEngine) {
             lruDocumentCache.evictModel(affectedId);
             return;
@@ -127,27 +135,26 @@ export function useSearchActions({
             const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
             if (re) {
               const currentText = mountedEngine.getContent();
-              const nextText = currentText.replace(re, replaceText);
+              const nextText = applySearchReplace(currentText, re, replaceText, useRegex);
               if (nextText !== currentText) {
-                mountedEngine.setContent(nextText);
-                lruDocumentCache.updateContent(affectedId, nextText, false);
-                lruDocumentCache.markClean(affectedId);
+                sessionCoordinator.applyServerDocSnapshot({
+                  docId: affectedId,
+                  content: nextText,
+                  evictYjs: false,
+                });
                 return;
               }
             }
             try {
               const freshPage = await pagesService.docs.getById(affectedId);
-              const raw = freshPage?.content;
-              const freshText =
-                typeof raw === 'string'
-                  ? raw
-                  : raw && typeof raw === 'object'
-                    ? String((raw as Record<string, unknown>).text || (raw as Record<string, unknown>).content || '')
-                    : '';
+              const freshText = extractDocumentContentString(freshPage?.content);
               if (freshText) {
-                mountedEngine.setContent(freshText);
-                lruDocumentCache.updateContent(affectedId, freshText, false);
-                lruDocumentCache.markClean(affectedId);
+                sessionCoordinator.applyServerDocSnapshot({
+                  docId: affectedId,
+                  content: freshText,
+                  rev: freshPage?.rev,
+                  evictYjs: false,
+                });
               }
             } catch {
               // Yjs or next query refetch will reconcile

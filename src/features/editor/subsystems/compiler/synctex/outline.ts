@@ -5,6 +5,7 @@
  */
 
 import type { LatexOutlineEntryDto } from '@/features/editor/sdk/pages/types';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
 export interface OutlineEntry {
   level: number;
@@ -131,28 +132,6 @@ export function cacheBackendOutline(entries: LatexOutlineEntryDto[] | OutlineEnt
   cachedOutlineEntries = dtoToOutlineEntries(entries);
 }
 
-export function clearOutlineMemoCache(): void {
-  cachedOutlineEntries = [];
-}
-
-function extractDocumentContentString(content: unknown): string {
-  if (typeof content === 'string') return content;
-  if (!content || typeof content !== 'object') return '';
-  const rec = content as {
-    source?: unknown;
-    content?: unknown;
-    text?: unknown;
-    lines?: unknown;
-  };
-  if (typeof rec.source === 'string') return rec.source;
-  if (typeof rec.content === 'string') return rec.content;
-  if (typeof rec.text === 'string') return rec.text;
-  if (Array.isArray(rec.lines)) {
-    return rec.lines.filter((l): l is string => typeof l === 'string').join('\n');
-  }
-  return '';
-}
-
 const MAX_MULTILINE_SCAN_LINES = 12;
 
 function extractMultiLineBalancedBraces(
@@ -194,7 +173,7 @@ function extractMultiLineBalancedBraces(
   return null;
 }
 
-function parseLatexHeadings(
+export function parseDocumentOutline(
   content: unknown,
   sourceFile?: string,
   backendEntries?: LatexOutlineEntryDto[],
@@ -377,12 +356,4 @@ function parseLatexHeadings(
 
   cachedOutlineEntries = entries;
   return entries;
-}
-
-export function parseDocumentOutline(
-  _content: unknown,
-  _sourceFile?: string,
-  backendEntries?: LatexOutlineEntryDto[],
-): OutlineEntry[] {
-  return parseLatexHeadings(_content, _sourceFile, backendEntries);
 }

@@ -10,4 +10,3 @@
  */
 
 export { default as SearchTab, default } from './ui/SearchTab';
-export { useSearchActions } from './hooks/useSearchActions';

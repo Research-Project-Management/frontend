@@ -148,14 +148,3 @@ export const filesQuery = (pageId: string) =>
     staleTime: DOCUMENT_QUERY_STALE_TIME,
     gcTime: DOCUMENT_QUERY_GC_TIME,
   });
-
-export const deletedFilesQuery = (pageId: string) =>
-  queryOptions({
-    queryKey: pageKeys.deletedFiles(pageId),
-    queryFn: async () => {
-      if (!pageId) return [];
-      return await pagesService.docs.getDeletedFiles(pageId);
-    },
-    staleTime: DOCUMENT_QUERY_STALE_TIME,
-    gcTime: DOCUMENT_QUERY_GC_TIME,
-  });

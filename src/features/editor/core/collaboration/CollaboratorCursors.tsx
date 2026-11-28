@@ -16,14 +16,6 @@ import {
   getHashColor,
 } from '@/features/editor/domain/collaboration/author-display';
 
-export interface CollaboratorInfo {
-  id: string;
-  name: string;
-  color: string;
-  avatar?: string;
-  isOnline: boolean;
-}
-
 export const COLLABORATOR_PALETTE = AUTHOR_COLORS;
 export const getCollaboratorColor = getHashColor;
 

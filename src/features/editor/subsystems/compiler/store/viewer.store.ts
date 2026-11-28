@@ -21,7 +21,6 @@ export interface DocumentViewerState {
 
   // ── Presentation & Visuals ──────────────────────────────────────────────
   invertColors: boolean;
-  isSpreadView: boolean;
 
   // ── Actions ─────────────────────────────────────────────────────────────
   setPageNumber: (page: number | ((prev: number) => number)) => void;
@@ -36,10 +35,7 @@ export interface DocumentViewerState {
   setAutoFit: (autoFit: boolean) => void;
   setFitMode: (fitMode: PdfFitMode) => void;
 
-  toggleInvertColors: () => void;
   setInvertColors: (invert: boolean) => void;
-  toggleSpreadView: () => void;
-  setSpreadView: (spread: boolean) => void;
 
   resetViewerState: () => void;
 }
@@ -53,7 +49,6 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
   fitMode: 'width',
 
   invertColors: false,
-  isSpreadView: false,
 
   setPageNumber: (pageOrFn) =>
     set((s) => {
@@ -138,13 +133,8 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
   setFitMode: (fitMode) =>
     set((s) => (s.fitMode === fitMode && s.autoFit ? s : { fitMode, autoFit: true })),
 
-  toggleInvertColors: () => set((s) => ({ invertColors: !s.invertColors })),
   setInvertColors: (invertColors) =>
     set((s) => (s.invertColors === invertColors ? s : { invertColors })),
-
-  toggleSpreadView: () => set((s) => ({ isSpreadView: !s.isSpreadView })),
-  setSpreadView: (isSpreadView) =>
-    set((s) => (s.isSpreadView === isSpreadView ? s : { isSpreadView })),
 
   resetViewerState: () =>
     set({
@@ -154,6 +144,5 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
       autoFit: true,
       fitMode: 'width',
       invertColors: false,
-      isSpreadView: false,
     }),
 }));

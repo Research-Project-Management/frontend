@@ -316,10 +316,6 @@ export class YjsCrossTabBridge {
     });
   }
 
-  public sendFullSyncToFollower(targetId: string): void {
-    this.sendFullSync(targetId);
-  }
-
   public broadcastLeaderStatus(
     status: ConnectionStatus,
     isSynced: boolean,

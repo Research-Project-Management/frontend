@@ -14,10 +14,10 @@
 
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
+import type { LogEntry } from '@/features/editor/domain/types/compiler.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
-import { pagesService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
+import { downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
@@ -136,27 +136,17 @@ export function copySnippetToClipboard(snippet?: string): void {
   toast.success('Copied', { id: 'copy-snippet' });
 }
 
-export async function fetchLogEntryExplanation(_entry: LogEntry): Promise<ErrorExplanationDto | null> {
-  return null;
-}
-
 export interface UseLogViewerActionsOptions {
   engine?: (Pick<IEditorEngine, 'jumpToLine'> & Partial<Pick<IEditorEngine, 'getContent' | 'setContent' | 'insertText'>>) | null;
   projectId?: string;
-  isPageScoped?: boolean;
   onCompile?: () => void;
-  onClearCacheAndCompile?: () => void;
 }
 
 export function useLogViewerActions({
   engine,
   projectId,
-  isPageScoped,
   onCompile,
-  onClearCacheAndCompile,
 }: UseLogViewerActionsOptions = {}) {
-  const copySnippet = copySnippetToClipboard;
-  const fetchErrorExplanation = fetchLogEntryExplanation;
 
   const applyQuickFix = useCallback(
     (
@@ -255,17 +245,11 @@ export function useLogViewerActions({
       let targetFileName = pageStore.activeFilePage?.title || configuredMainFile;
 
       if (entry.file) {
-        const cleanEntryFile = entry.file.replace(/^\/+/, '');
-        const projectFiles = workspaceCoordinator.getProjectFiles() || [];
-        const found = projectFiles.find(
-          (f: { id: string; title?: string; name?: string; path?: string }) =>
-            f.title === cleanEntryFile ||
-            f.name === cleanEntryFile ||
-            (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile),
-        );
+        const projectFiles = (workspaceCoordinator.getProjectFiles() || []) as ProjectFileCandidate[];
+        const found = resolveProjectFileByLogPath(entry.file, configuredMainFile, projectFiles);
         if (found) {
           targetFileId = found.id;
-          targetFileName = found.title || cleanEntryFile;
+          targetFileName = found.title || found.name || entry.file.replace(/^\/+/, '');
         }
       }
 
@@ -311,42 +295,31 @@ export function useLogViewerActions({
     [engine],
   );
 
-  const downloadAuxFile = useCallback(
+  const downloadFile = useCallback(
     (filename: string) => {
       if (!projectId) {
         toast.error('Project ID not found', { id: 'download-aux' });
         return;
       }
-      const url = downloadAuxFileUrl(
-        projectId,
-        filename,
-        isPageScoped ? { isPageScoped: true } : undefined,
-      );
+      const url = downloadAuxFileUrl(projectId, filename);
       window.open(url, '_blank');
     },
-    [projectId, isPageScoped],
+    [projectId],
   );
 
-  const downloadAllAux = useCallback(() => {
+  const downloadAllArtifacts = useCallback(() => {
     if (!projectId) {
       toast.error('Project ID not found', { id: 'download-all-aux' });
       return;
     }
-    const url = downloadAllArtifactsZipUrl(
-      projectId,
-      isPageScoped ? { isPageScoped: true } : undefined,
-    );
+    const url = downloadAllArtifactsZipUrl(projectId);
     window.open(url, '_blank');
-  }, [projectId, isPageScoped]);
+  }, [projectId]);
 
   return {
-    copySnippet,
-    fetchErrorExplanation,
     applyQuickFix,
     applyAiFix,
-    downloadAuxFile,
-    downloadAllAux,
-    downloadFile: downloadAuxFile,
-    downloadAllArtifacts: downloadAllAux,
+    downloadFile,
+    downloadAllArtifacts,
   };
 }

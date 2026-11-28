@@ -14,7 +14,7 @@ import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-
 import {
   aiCoordinator,
   resolveAnchorInContent,
-} from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
+} from '@/features/editor/subsystems/ai';
 
 describe('resolveAnchorInContent & AiCoordinator anchor-verified patching', () => {
   let container: HTMLDivElement;

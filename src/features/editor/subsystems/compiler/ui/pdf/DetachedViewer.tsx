@@ -19,8 +19,8 @@ import {
   useWorkspaceStore,
   getSyncTexChannelName,
 } from '@/features/editor/core';
-import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
+import { compilerCoordinator } from '../../coordinator/compiler.coordinator';
+import { useCompileStore } from '../../store/compiler.store';
 
 const PdfViewer = dynamic(
   () => import('./PdfViewer'),

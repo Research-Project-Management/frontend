@@ -1,43 +1,27 @@
 /**
  * src/features/editor/subsystems/citation/index.ts
- * Citation Subsystem Public API.
+ *
+ * Citation Subsystem Public Seam.
  */
 
-// Model
-export {
-  parseBibContent,
-  parseMultipleBibContents,
-  type BibEntry,
-} from '@/features/editor/domain/latex/bib-parser';
-export {
-  isLatexDocument,
-  detectDocumentCitationStyle,
-  buildBibliographySection,
-  injectBibliographyIntoDocument,
-} from './model/bibliography';
+// 1. Domain Model & Scope
 export {
   resolveCitationScope,
-  PERSONAL_LIBRARY_SCOPE,
   type CitationScope,
+  type CitationScopeInput,
 } from './model/scope';
-export { buildRetractedCitationMap } from './model/retraction';
 export {
-  extractCitationKeys,
-  formatInTextCitationPreview,
-  formatBibliographyPreview,
+  buildRetractedCitationMap,
+  type RetractedItemInfo,
+} from './model/retraction';
+export {
   formatShortAuthor,
-  isVietnameseAuthorName,
-  stripLatexComments,
-  formatCitationSnippet,
-  formatItemAuthorSummary,
   formatItemToBibtex,
 } from './model/formatter';
 
-// UI
-export { default as CitationModal } from './ui/CitationModal';
+// 2. UI Presentation Layer
+export { CitationModal, type CitationModalProps } from './ui/CitationModal';
+export { BibVisualEditor, type BibVisualEditorProps } from './ui/BibVisualEditor';
 
-// Extensions
-export {
-  citationHoverSource,
-  latexCitationHoverTooltip,
-} from './extensions/citation-hover';
+// 3. CodeMirror Extensions
+export { latexCitationHoverTooltip } from './extensions/citation-hover';

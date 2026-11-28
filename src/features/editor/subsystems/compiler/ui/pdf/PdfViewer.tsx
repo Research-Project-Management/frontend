@@ -20,23 +20,27 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import dynamic from 'next/dynamic';
 
-import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
+import {
+  usePageStore,
+  useSettingsStore,
+  resolveEditorScopeFromState,
+  editorCommandBus,
+  setActivePdfViewer,
+} from '@/features/editor/core';
 import {
   useCompileStore,
   useFilteredCompileDiagnostics,
-} from '@/features/editor/subsystems/compiler/store/compiler.store';
-import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/store/viewer.store';
+} from '../../store/compiler.store';
+import { useViewerStore, type DocumentViewerState } from '../../store/viewer.store';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
-} from '@/features/editor/subsystems/compiler/synctex/synctex';
+} from '../../synctex/synctex';
 import type { CompilerLogFocusTarget } from '@/features/editor/domain/types/compiler.types';
-import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
@@ -44,11 +48,11 @@ import { CompilationErrorBanner } from '../ErrorBanner';
 import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from '../logs/LogsPanel';
 
-import { usePdfZoom } from '@/features/editor/subsystems/compiler/hooks/usePdfZoom';
-import { usePdfCompiler } from '@/features/editor/subsystems/compiler/hooks/useCompiler';
-import { useViewerSyncTeX, type ViewerPageFileEntry } from '@/features/editor/subsystems/compiler/hooks/useSyncTeX';
-import { useSynchronizedScroll } from '@/features/editor/subsystems/compiler/hooks/useSyncScroll';
-import { usePdfSearch, type PdfDocumentProxyLike } from '@/features/editor/subsystems/compiler/hooks/usePdfSearch';
+import { usePdfZoom } from '../../hooks/usePdfZoom';
+import { usePdfCompiler } from '../../hooks/useCompiler';
+import { useViewerSyncTeX, type ViewerPageFileEntry } from '../../hooks/useSyncTeX';
+import { useSynchronizedScroll } from '../../hooks/useSyncScroll';
+import { usePdfSearch, type PdfDocumentProxyLike } from '../../hooks/usePdfSearch';
 
 const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 
@@ -69,11 +73,21 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     draftId?: string;
   }>();
 
-  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const rawProj = rawProjectId || storeProjectId;
-  const projectId = rawProj || undefined;
-  const rootPageId = urlPageId ?? urlId ?? draftId ?? currentPageId ?? null;
+  const routePageId = urlPageId ?? urlId ?? draftId ?? null;
+  const projectId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s, {
+      projectId: rawProjectId,
+      pageId: routePageId,
+    });
+    return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : undefined);
+  });
+  const rootPageId = usePageStore(
+    (s) =>
+      resolveEditorScopeFromState(s, {
+        projectId: rawProjectId,
+        pageId: routePageId,
+      }).rootPageId || null,
+  );
 
   const documentTitle = usePageStore((s) => s.currentPage?.title);
   const pdfDocRef = useRef<PdfDocumentProxyLike | null>(null);
@@ -147,7 +161,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     handleClearCacheAndCompile,
     handleStopCompilation,
   } = usePdfCompiler({
-    projectId,
     pageId: rootPageId,
     saveThumbnailMutation,
   });
@@ -206,7 +219,8 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   // 3b. Dual-Window Synchronized Dual Scrolling Controller
   const { handleViewerScroll } = useSynchronizedScroll({
     enabled: Boolean(syncScroll && pdfViewer !== 'browser'),
-    projectId: projectId || rootPageId || undefined,
+    projectId,
+    pageId: rootPageId,
     pdfSurfaceRef,
     synctexMapRef,
     numPages,

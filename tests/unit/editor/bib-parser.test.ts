@@ -5,7 +5,7 @@ import {
   serializeBibDocument,
   parseBibContent,
 } from '@/features/editor/domain/latex/bib-parser';
-import { formatItemToBibtex } from '@/features/editor/subsystems/citation/model/formatter';
+import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
 import type { Item } from '@/features/library/types/core.types';
 
 describe('bib-parser (bibtex-tidy standardized)', () => {

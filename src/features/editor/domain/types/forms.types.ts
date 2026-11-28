@@ -31,17 +31,6 @@ export const newFileModalSchema = z.object({
 
 export type NewFileModalFormValues = z.infer<typeof newFileModalSchema>;
 
-const urlImportModalSchema = z.object({
-  url: z.string().trim().url('Please enter a valid HTTP/HTTPS URL'),
-  fileName: z
-    .string()
-    .trim()
-    .min(1, 'File name is required')
-    .max(128, 'File name is too long'),
-});
-
-export type UrlImportModalFormValues = z.infer<typeof urlImportModalSchema>;
-
 export const libraryBibtexModalSchema = z.object({
   fileName: z
     .string()
@@ -66,20 +55,6 @@ export const figureWizardSchema = z.object({
 });
 
 export type FigureWizardFormValues = z.infer<typeof figureWizardSchema>;
-
-// ── Table Matrix Wizard ─────────────────────────────────────────────────────
-
-const tableWizardSchema = z.object({
-  tableStyle: z.enum(['booktabs', 'bordered', 'minimal']).default('booktabs'),
-  defaultAlign: z.enum(['l', 'c', 'r']).default('c'),
-  caption: z.string().default('Summary of results'),
-  label: z.string().default('tab:results'),
-  placement: z.string().default('htbp'),
-  centering: z.boolean().default(true),
-  firstRowIsHeader: z.boolean().default(true),
-});
-
-export type TableWizardFormValues = z.infer<typeof tableWizardSchema>;
 
 // ── GitHub & Git Sync ───────────────────────────────────────────────────────
 
@@ -108,19 +83,6 @@ export const createRepoSchema = z.object({
 
 export type CreateRepoFormValues = z.infer<typeof createRepoSchema>;
 
-// ── Project Settings & Spelling ─────────────────────────────────────────────
-
-const learnedWordSchema = z.object({
-  word: z
-    .string()
-    .trim()
-    .min(1, 'Word cannot be empty')
-    .max(64, 'Word is too long')
-    .regex(/^[\p{L}\p{N}_\-']+$/u, 'Invalid word characters'),
-});
-
-export type LearnedWordFormValues = z.infer<typeof learnedWordSchema>;
-
 // ── Topbar / Project Identity ───────────────────────────────────────────────
 
 export const projectRenameSchema = z.object({
@@ -128,9 +90,3 @@ export const projectRenameSchema = z.object({
 });
 
 export type ProjectRenameInput = z.infer<typeof projectRenameSchema>;
-
-const projectCopySchema = z.object({
-  name: z.string().trim().min(1, 'Copy name cannot be empty').max(150, 'Copy name is too long'),
-});
-
-export type ProjectCopyInput = z.infer<typeof projectCopySchema>;

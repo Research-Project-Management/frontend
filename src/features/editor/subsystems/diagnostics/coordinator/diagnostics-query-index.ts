@@ -54,7 +54,6 @@ export interface DiagnosticsSnapshot {
   totalDiagnostics: number;
   summary: FileDiagnosticsSummary;
   fileIndex?: Map<string, IndexedDiagnosticItem[]>;
-  unmappedDiagnostics?: IndexedDiagnosticItem[];
   projectSummary?: FileDiagnosticsSummary;
   telemetry?: DiagnosticsTelemetry;
 }

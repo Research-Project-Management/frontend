@@ -24,27 +24,11 @@ import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { logger } from '@/shared/lib/utils';
 import { DEFAULT_COMPILER_ENGINE } from '@/features/editor/domain/types/compiler.types';
-import {
-  type SyncTeXNode,
-  type SyncTeXMap,
-  resolveForwardDetail,
-  resolveForward,
-  resolveReverse,
-} from '@/features/editor/subsystems/compiler/synctex/synctex';
+import { type SyncTeXMap } from '../synctex/synctex';
 import {
   createPdfBlobAndUrl,
   type PdfBlobResult,
-} from '@/features/editor/subsystems/compiler/synctex/resolver';
-
-export {
-  type SyncTeXNode,
-  type SyncTeXMap,
-  resolveForwardDetail,
-  resolveForward,
-  resolveReverse,
-  createPdfBlobAndUrl,
-  type PdfBlobResult,
-};
+} from '../synctex/resolver';
 
 // ── Thumbnail Generator ───────────────────────────────────────────────────────
 
@@ -101,12 +85,6 @@ export interface DirtyFileItem {
   content: string;
 }
 
-export interface FlushBarrierDeps {
-  dirtyFiles: DirtyFileItem[];
-  projectId?: string;
-  pageId?: string;
-}
-
 export interface CompileExecutionOptions {
   projectId: string;
   pageId?: string;
@@ -145,7 +123,6 @@ export interface CompileExecutionResult {
   diagnostics?: CompilerDiagnostic[];
   diagnosticsSummary?: DiagnosticsSummary;
   validationIssues?: CompileValidationIssue[];
-  rawSynctex?: string | null;
   synctexData?: string | null;
   synctexPath?: string | null;
   synctexMap?: SyncTeXMap | null;
@@ -457,7 +434,6 @@ export const CompilePipeline = {
             pdfBlob: blob || undefined,
             synctexMap: initialSyncMap,
             synctexPromise,
-            rawSynctex: data.synctex || null,
             error: data?.error || 'LaTeX compilation completed with errors',
             errorCode: data?.errorCode,
             statusCode: data?.statusCode,
@@ -480,7 +456,6 @@ export const CompilePipeline = {
           pdfBlob: blob || undefined,
           synctexMap: initialSyncMap,
           synctexPromise,
-          rawSynctex: data.synctex || null,
           logs: data.logs || '',
           logMeta: data.logMeta,
           compiledAt: new Date(),
@@ -622,22 +597,4 @@ export const CompilePipeline = {
       return null;
     }
   },
-
-  /**
-   * SyncTeX forward resolution with coordinate detail
-   */
-  resolveForwardDetail,
-
-  /**
-   * SyncTeX forward resolution (Editor line -> PDF page number)
-   */
-  resolveForward,
-
-  /**
-   * SyncTeX reverse resolution (PDF double-click -> LaTeX source line and file)
-   * Employs O(log N) binary search on y-sorted nodes with branch-and-bound geometric pruning.
-   */
-  resolveReverse,
 };
-
-export { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/resolver';

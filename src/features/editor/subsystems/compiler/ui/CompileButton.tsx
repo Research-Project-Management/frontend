@@ -17,15 +17,14 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
+import { useCompileStore } from '../store/compiler.store';
 import { useSettingsStore } from '@/features/editor/core';
-import { compilerSubsystem } from '@/features/editor/subsystems/compiler';
+import { compilerCoordinator } from '../coordinator/compiler.coordinator';
 
 export interface CompileButtonProps {
   onCompile?: () => void;
@@ -63,7 +62,7 @@ export const CompileButton = React.memo(function CompileButton({
     if (onCompile) {
       onCompile();
     } else {
-      void compilerSubsystem.compile({ reason: 'manual-button' });
+      void compilerCoordinator.compile({ reason: 'manual-button' });
     }
   }, [onCompile]);
 
@@ -71,7 +70,7 @@ export const CompileButton = React.memo(function CompileButton({
     if (onClearCacheAndCompile) {
       onClearCacheAndCompile();
     } else {
-      void compilerSubsystem.compile({ forceClean: true, reason: 'manual-button' });
+      void compilerCoordinator.compile({ forceClean: true, reason: 'manual-button' });
     }
   }, [onClearCacheAndCompile]);
 
@@ -79,7 +78,7 @@ export const CompileButton = React.memo(function CompileButton({
     if (onStopCompilation) {
       onStopCompilation();
     } else {
-      compilerSubsystem.abort();
+      compilerCoordinator.stop();
     }
   }, [onStopCompilation]);
 

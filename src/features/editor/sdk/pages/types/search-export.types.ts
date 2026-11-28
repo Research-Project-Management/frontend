@@ -21,25 +21,6 @@ export interface BibEntryDto {
   rawBibtex?: string;
 }
 
-export interface CitationValidationDto {
-  valid?: boolean;
-  isValid: boolean;
-  totalFiles?: number;
-  duplicateKeys: string[];
-  warnings?: string[];
-  missingFieldWarnings: Array<{ key: string; missingFields: string[] }>;
-  totalEntries: number;
-}
-
-export interface TemplateSummaryDto {
-  id: string;
-  name: string;
-  category: string;
-  publisher?: string;
-  description?: string;
-  badge?: string;
-}
-
 interface SearchMatchEntry {
   line: number;
   text: string;

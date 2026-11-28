@@ -51,7 +51,6 @@ export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex'; column?: number; length?: number }
   | { type: 'editor:set-content'; content: string; fileId?: string }
   | { type: 'editor:insert-text'; text: string }
-  | { type: 'editor:wrap-selection'; prefix: string; suffix: string; placeholder?: string }
   | { type: 'editor:format'; format: LatexFormatType }
   | { type: 'editor:undo' }
   | { type: 'editor:redo' }
@@ -69,30 +68,10 @@ export type EditorCommand =
   | { type: 'editor:swap-panes' }
   | { type: 'editor:lint-project'; projectId?: string }
   | { type: 'editor:insert-citation'; bibKey: string; textInserted?: boolean; entry?: Record<string, unknown> }
-  | { type: 'editor:rename-citekey'; oldKey: string; newKey: string }
-  | { type: 'editor:open-suggestion-widget'; suggestionId: string; x?: number; y?: number }
   | { type: 'editor:error-stepped'; errorIndex?: number; file?: string; line?: number; message?: string }
   | { type: 'editor:visual-command'; command: string; level?: 0 | 1 | 2 | 3; rows?: number; cols?: number; withHeaderRow?: boolean; contentHtml?: string }
   | { type: 'editor:review-event'; pageId: string; event: string; payload?: unknown }
   | { type: 'collab:presence-update'; collaborators: import('@/features/editor/core/store/collaboration.store').CollaboratorPresenceInfo[] }
-  | { type: 'collab:user-joined'; collaborator: Partial<import('@/features/editor/core/store/collaboration.store').CollaboratorPresenceInfo> & { id: string } }
-  | { type: 'collab:user-left'; userId: string }
-  | {
-      type: 'collab:cursor';
-      userId: string;
-      activeFileId?: string;
-      activeFile?: string;
-      cursor?: {
-        line: number;
-        column: number;
-        selection?: {
-          startLineNumber: number;
-          startColumn?: number;
-          endLineNumber: number;
-          endColumn?: number;
-        };
-      };
-    }
   | { type: 'compiler:trigger'; forceSync?: boolean; draft?: boolean; forceClean?: boolean; reason?: string }
   | { type: 'compiler:started' }
   | { type: 'compiler:progress'; status?: string; logs?: string[] }
@@ -106,10 +85,8 @@ export type EditorCommand =
     }
   | { type: 'viewer:goto-page'; page: number }
   | { type: 'viewer:jump-to-line'; line: number }
-  | { type: 'viewer:scroll-to-coords'; page: number; y: number; x?: number; behavior?: ScrollBehavior }
   | { type: 'editor:scroll-to-line'; line: number; smooth?: boolean }
   | { type: 'sync:editor-scrolled'; line: number; totalLines?: number; fraction?: number }
-  | { type: 'sync:viewer-scrolled'; page: number; y: number; fraction?: number }
   | { type: 'viewer:zoom-in' }
   | { type: 'viewer:zoom-out' }
   | { type: 'viewer:fit-width' }
@@ -141,18 +118,15 @@ export type EditorCommand =
   | { type: 'dialog:close'; dialog?: DialogName }
   | { type: 'synctex:forward'; line?: number; column?: number; filePath?: string; fileId?: string }
   | { type: 'synctex:backward'; page?: number; x?: number; y?: number }
-  | { type: 'synctex:map-updated'; map: import('@/features/editor/subsystems/compiler/synctex/synctex').SyncTeXMap | null }
+  | { type: 'synctex:map-updated'; map: import('@/features/editor/subsystems/compiler').SyncTeXMap | null }
   | { type: 'document:content-updated'; docId: string; content: string }
   | { type: 'document:persisted'; docId: string; rev?: number; version?: number; savedAt?: string }
-  | { type: 'document:conflict'; docId: string; remoteContent: string; localContent: string }
   | { type: 'filetree:updated'; payload?: unknown }
   | { type: 'workspace:open-file'; fileId: string; filePath?: string; preview?: boolean }
   | { type: 'workspace:create-file'; name: string; folderId?: string | null; content?: string }
   | { type: 'workspace:rename-file'; fileId: string; oldPath: string; newPath: string }
   | { type: 'workspace:delete-file'; fileId: string; filePath?: string }
-  | { type: 'workspace:restore-file'; fileId: string; projectId?: string }
   | { type: 'workspace:set-main-file'; fileId: string; projectId?: string }
-  | { type: 'workspace:move-file'; fileId: string; targetFolderId: string | null }
   | { type: 'workspace:reset'; scopeId?: string }
   | { type: 'navigation:open-tab'; fileId: string; title: string; path?: string; preview?: boolean }
   | { type: 'navigation:pin-tab'; fileId: string }
@@ -163,7 +137,6 @@ export type EditorCommand =
   | { type: 'navigation:jump-to-line'; fileId?: string; filePath?: string; line: number; column?: number; highlight?: 'error' | 'synctex' }
   | { type: 'navigation:next-error' }
   | { type: 'navigation:prev-error' }
-  | { type: 'ai:request-completion'; prompt: string; context?: Record<string, unknown> }
   | { type: 'ai:apply-fix'; fileId: string; line?: number; replacement: string }
   | { type: 'ai:propose-diff'; proposal: DiffProposal }
   | { type: 'ai:accept-diff'; diffId?: string }
@@ -174,7 +147,6 @@ export type EditorCommand =
       proposalId?: string;
       proposal?: DiffProposal;
     }
-  | { type: 'lifecycle:state-change'; state: 'hibernated' | 'active'; durationMs?: number }
   | { type: 'review:navigate-to-comment'; commentId: string; line?: number }
   | { type: 'review:navigate-to-change'; suggestionId: string; line?: number }
   | { type: 'review:accept-suggestion'; suggestionId: string }
@@ -182,15 +154,9 @@ export type EditorCommand =
   | { type: 'review:create-comment'; line?: number; endLine?: number; selectedText?: string }
   | { type: 'history:open'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number }
   | { type: 'history:open-modal'; initialVersion?: number; projectId?: string; baseVersion?: number; targetVersion?: number }
-  | { type: 'citation:open-picker'; initialQuery?: string }
-  | { type: 'citation:insert'; bibKey: string; entry?: Record<string, unknown> }
-  | { type: 'citation:validate'; bibKey?: string }
-  | { type: 'diagnostics:run-linter'; documentId?: string; content?: string }
   | { type: 'diagnostics:clear'; documentId?: string }
   | { type: 'diagnostics:rename-path'; oldPath: string; newPath: string }
-  | { type: 'diagnostics:remove-path'; filePath: string }
-  | { type: 'diagnostics:set-items'; items: EditorDiagnosticItem[] }
-  | { type: 'compiler:compile-draft'; reason?: string };
+  | { type: 'diagnostics:remove-path'; filePath: string };
 
 export type CommandHandler<T extends EditorCommand = EditorCommand, R = unknown> = (command: T) => R | Promise<R>;
 

@@ -10,16 +10,6 @@
  * 3. Zustand Store singletons (`useWorkspaceStore`, `usePageStore`)
  */
 
-interface WorkspaceFileNodeDto {
-  id: string;
-  title?: string | null;
-  name?: string | null;
-  path?: string | null;
-  content?: string | null;
-  projectId?: string | { id: string; name: string } | null;
-  type?: 'DOC' | 'FOLDER' | 'FILE' | string;
-}
-
 export interface WorkspaceServicePort {
   createNode(
     projectId: string,
@@ -30,7 +20,7 @@ export interface WorkspaceServicePort {
       type: 'DOC' | 'FOLDER' | 'FILE';
       path?: string;
     }
-  ): Promise< unknown >;
+  ): Promise<unknown>;
   renameNode(projectId: string, itemId: string, data: { name: string }): Promise<unknown>;
   deleteNode(projectId: string, fileId: string): Promise<unknown>;
   moveNode(
@@ -40,14 +30,11 @@ export interface WorkspaceServicePort {
   ): Promise<unknown>;
   restoreFile(fileId: string, projectId?: string): Promise<unknown>;
   setRootDoc(projectId: string, fileId: string): Promise<unknown>;
-  getFilesByProjectId(projectId: string): Promise<WorkspaceFileNodeDto[]>;
-  updateFileContent(fileId: string, content: string): Promise<unknown>;
 }
 
 export interface WorkspaceNotificationPort {
   notifySuccess(message: string, id?: string): void;
   notifyError(message: string, id?: string): void;
-  notifyInfo(message: string, id?: string): void;
 }
 
 export interface WorkspaceStorePort {
@@ -55,7 +42,6 @@ export interface WorkspaceStorePort {
   closeTab(fileId: string): void;
   updateTabTitle(projectId: string, itemId: string, newTitle: string): void;
   setMainFile(filePath: string, rootDocId?: string | null): void;
-  getActiveDocumentId(): string | null;
 }
 
 export interface WorkspaceCoordinatorPorts {

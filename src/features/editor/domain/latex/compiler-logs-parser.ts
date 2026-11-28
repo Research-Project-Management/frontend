@@ -27,29 +27,8 @@ export const DEFAULT_OUTPUT_FILES = [
   'output.toc',
 ];
 
-const LOG_WRAP_LIMIT = 79;
 const PARSED_LOG_CACHE_MAX = 5;
 const parsedLogCache = new Map<string, ParsedLog>();
-
-function unwrapLatexLogLines(raw: string): string[] {
-  const rawLines = raw.replace(/\r\n|\r/g, '\n').split('\n');
-  if (rawLines.length === 0) return [];
-  const wrappedLines: string[] = [rawLines[0]];
-  for (let i = 1; i < rawLines.length; i++) {
-    const prevLine = rawLines[i - 1];
-    const currentLine = rawLines[i];
-    if (
-      prevLine.length === LOG_WRAP_LIMIT &&
-      prevLine.slice(-3) !== '...' &&
-      currentLine.charAt(0) !== '!'
-    ) {
-      wrappedLines[wrappedLines.length - 1] += currentLine;
-    } else {
-      wrappedLines.push(currentLine);
-    }
-  }
-  return wrappedLines;
-}
 
 function normalizeCompilerLogPath(rawPath: string): string {
   if (!rawPath) return '';
@@ -96,25 +75,6 @@ export function diagnosticsToParsedLog(
       ...(item.highlightCommand ? { highlightCommand: item.highlightCommand } : {}),
       rawExcerpt: rawExcerpt ? rawExcerpt.replace(/—/g, '-') : undefined,
       quickFix: item.quickFix,
-      explanation: item.explanation
-        ? (() => {
-            const exp = item.explanation as {
-              code?: string;
-              title: string;
-              whyItHappened?: string;
-              explanation?: string;
-              summary?: string;
-              howToFix?: string;
-              suggestedFix?: string;
-            };
-            return {
-              code: exp.code,
-              title: exp.title,
-              whyItHappened: exp.whyItHappened ?? exp.explanation ?? exp.summary ?? '',
-              howToFix: exp.howToFix ?? exp.suggestedFix ?? '',
-            };
-          })()
-        : undefined,
     };
 
     const category = item.category || item.severity;

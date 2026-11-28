@@ -12,7 +12,7 @@ import {
 import { normalizeSpellCheckLanguage } from '@/features/editor/core/store/settings.store';
 import { hydrateEditorBootstrap } from '@/features/editor/core/queries/bootstrap.queries';
 import { buildPageEditorHref } from '@/features/pages/utils/page-url';
-import { resolveCitationScope } from '@/features/editor/subsystems/citation/model/scope';
+import { resolveCitationScope } from '@/features/editor/subsystems/citation';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import * as providerPool from '@/features/editor/sdk/realtime/provider-pool';
 import type { EditorBootstrapResponseDto } from '@/features/editor/sdk/pages/types';
@@ -178,6 +178,16 @@ describe('Slice F1: Envelope-Safe SDK, PageScope, Citations Scope & SessionCoord
       expect(citationScope.libraryScope).toBe('user');
       expect(citationScope.spaceId).toBe(userUuid);
       expect(citationScope.pageId).toBe('page-personal-1');
+
+      const coldPersonalScope = resolveCitationScope({
+        spaceType: 'personal',
+        pageId: 'page-personal-1',
+      });
+      expect(coldPersonalScope).toEqual({
+        spaceId: 'personal',
+        libraryScope: 'user',
+        pageId: 'page-personal-1',
+      });
 
       expect(buildPageEditorHref('page-personal-1', { spaceKind: 'personal' })).toBe(
         '/pages/page-personal-1',

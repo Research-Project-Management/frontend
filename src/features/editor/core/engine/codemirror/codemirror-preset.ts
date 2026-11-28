@@ -39,7 +39,7 @@ import { latexMathHoverTooltip } from '@/features/editor/core/engine/extensions/
 import { latexCitationHoverTooltip } from '@/features/editor/subsystems/citation';
 import { createInlineDiffExtension } from '@/features/editor/core/engine/extensions/inline-diff';
 import { createLatexFoldExtension } from '@/features/editor/core/engine/extensions/latex-folding';
-import { createSpellingExtension } from '@/features/editor/subsystems/spelling/extensions/extension';
+import { createSpellingExtension } from '@/features/editor/subsystems/spelling';
 import { createSelectionGutterActionsExtension } from '@/features/editor/core/engine/extensions/selection-gutter-actions';
 import { getThemeExtension } from './editor-themes';
 import {

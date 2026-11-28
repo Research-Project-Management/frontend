@@ -27,12 +27,10 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/hooks/useFileExplorerActions';
+import { copyTexCommandToClipboard } from '../../hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import { getFileIcon } from './file-icon';
-
-import { displayName, cleanBasename } from '@/features/editor/domain/document/document-naming';
-export { displayName, cleanBasename };
+import { displayName } from '@/features/editor/domain/document/document-naming';
 
 export interface TexFileRowProps {
   file: { id: string; title: string; updatedAt?: string };

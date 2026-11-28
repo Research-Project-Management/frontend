@@ -23,7 +23,6 @@ import {
   SuggestionBulkActions,
 } from './subcomponents/Suggestions';
 import { OverviewView } from './subcomponents/Overview';
-import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 
 export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
   const {
@@ -34,14 +33,10 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     scope,
     setScope,
     showResolved,
-    setShowResolved,
-    handleToggleResolved,
     activeResolvedCount,
-    currentFileResolvedCount,
     highlightId,
     showAddForm,
     setShowAddForm,
-    pendingQuote,
     commentLine,
     commentLineEnd,
     mentionMembers,
@@ -91,8 +86,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     <div className="flex h-full w-full flex-col overflow-hidden text-foreground select-none">
       {/* ── Top Header ── */}
       <ReviewHeader
-        showResolved={showResolved}
-        onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
         resolvedComments={resolvedComments}
         hasMoreResolved={Boolean(resolvedInfiniteQuery.hasNextPage)}
@@ -137,22 +130,12 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             count={pendingSuggestions.length}
             onRejectAll={() => {
               if (pageId) {
-                const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
-                if (hasServerPending) {
-                  rejectAllMutation.mutate({ pageId });
-                } else {
-                  void reviewCoordinator.rejectAll(pageId);
-                }
+                rejectAllMutation.mutate({ pageId });
               }
             }}
             onAcceptAll={() => {
               if (pageId) {
-                const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
-                if (hasServerPending) {
-                  acceptAllMutation.mutate({ pageId });
-                } else {
-                  void reviewCoordinator.acceptAll(pageId);
-                }
+                acceptAllMutation.mutate({ pageId });
               }
             }}
             isRejecting={rejectAllMutation.isPending}
@@ -164,7 +147,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
             <NewCommentForm
               pageId={pageId}
               projectId={projectId}
-              pendingQuote={pendingQuote}
               initialLine={commentLine}
               initialLineEnd={commentLineEnd}
               members={mentionMembers}

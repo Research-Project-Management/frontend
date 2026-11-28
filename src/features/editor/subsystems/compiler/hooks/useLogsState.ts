@@ -10,30 +10,33 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
-import { fetchLogEntryExplanation, useLogViewerActions } from './useLogActions';
+import {
+  resolveProjectFileByLogPath,
+  useLogViewerActions,
+  type ProjectFileCandidate,
+} from './useLogActions';
 import {
   useCompileStore,
   selectFilteredCompileDiagnostics,
-} from '@/features/editor/subsystems/compiler/store/compiler.store';
+} from '../store/compiler.store';
 import { useEditorInstance } from '@/features/editor/core/hooks/useEditorInstance';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { listAuxFiles, suggestLatexFix, pagesService } from '@/features/editor/sdk/pages.service';
+import { listAuxFiles, suggestLatexFix } from '@/features/editor/sdk/pages.service';
 import { type AuxFileItem } from '@/features/editor/sdk/pages/types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 import type {
   LogEntry,
   ParsedLog,
-  ErrorExplanationDto,
   CompilerLogFocusTarget,
 } from '@/features/editor/domain/types/compiler.types';
 import {
   parseLatexLog,
   diagnosticsToParsedLog,
-  cacheBackendParsedLog,
   DEFAULT_OUTPUT_FILES,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
 import {
@@ -71,12 +74,10 @@ export function useCompilerLogsState({
   focusTarget,
   onFocusTargetHandled,
 }: UseCompilerLogsStateOptions) {
-  const scratchTargetId = usePageStore(
-    (s) => s.rootPageId || s.parentPageId || s.currentPage?.id || s.spaceId || s.projectId,
-  );
-  const scratchIsPageScoped = usePageStore((s) =>
-    Boolean(s.rootPageId || s.parentPageId || (s.currentPage?.id && !s.projectId && !s.spaceId)),
-  );
+  const scratchTargetId = usePageStore((s) => {
+    const scope = resolveEditorScopeFromState(s);
+    return scope.rootPageId || scope.effectiveScopeId || null;
+  });
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const compileOutcome = useCompileStore((s) => s.compileOutcome);
   const compileReport = useCompileStore((s) => s.compileReport);
@@ -154,33 +155,21 @@ export function useCompilerLogsState({
   }, [onClearCacheAndCompile]);
 
   const {
-    applyQuickFix,
+    applyQuickFix: handleApplyQuickFix,
     applyAiFix,
     downloadFile,
     downloadAllArtifacts,
   } = useLogViewerActions({
     engine,
-    projectId: scratchTargetId,
-    isPageScoped: scratchIsPageScoped,
+    projectId: scratchTargetId ?? undefined,
     onCompile,
-    onClearCacheAndCompile: handleClearCacheAndCompile,
   });
-
-  const handleApplyQuickFix = useCallback(
-    (entry: LogEntry, quickFix: { description: string; replacementText: string }) => {
-      applyQuickFix(entry, quickFix);
-    },
-    [applyQuickFix],
-  );
 
   const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
   useEffect(() => {
     if (scratchTargetId) {
       let isMounted = true;
-      listAuxFiles(
-        scratchTargetId,
-        scratchIsPageScoped ? { isPageScoped: true } : undefined,
-      )
+      listAuxFiles(scratchTargetId)
         .then((files) => {
           if (isMounted) setAuxFiles(files);
         })
@@ -194,7 +183,7 @@ export function useCompilerLogsState({
         isMounted = false;
       };
     }
-  }, [scratchTargetId, scratchIsPageScoped]);
+  }, [scratchTargetId]);
 
   const outputFiles = useMemo(() => {
     const bibLogs = compileReport?.logMeta?.bibLogFiles ?? [];
@@ -309,16 +298,12 @@ export function useCompilerLogsState({
       }));
 
       const pageStore = usePageStore.getState();
+      const scope = resolveEditorScopeFromState(pageStore);
+      const configuredMainFile = pageStore.mainFilePath || DEFAULT_MAIN_FILE;
       let targetContent = '';
       if (entry.file) {
-        const cleanEntryFile = entry.file.replace(/^\/+/, '');
-        const projectFiles = workspaceCoordinator.getProjectFiles?.() || [];
-        const found = projectFiles.find(
-          (f: { id: string; title?: string; name?: string; path?: string }) =>
-            f.title === cleanEntryFile ||
-            f.name === cleanEntryFile ||
-            (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile),
-        );
+        const projectFiles = (workspaceCoordinator.getProjectFiles?.() || []) as ProjectFileCandidate[];
+        const found = resolveProjectFileByLogPath(entry.file, configuredMainFile, projectFiles);
         if (found?.id) {
           const cached = lruDocumentCache.getModel(found.id);
           if (cached?.content) {
@@ -347,9 +332,8 @@ export function useCompilerLogsState({
           errorFile: entry.file,
           detail: entry.detail,
           surroundingCode,
-          spaceId: pageStore.spaceId || pageStore.projectId || undefined,
-          pageId:
-            pageStore.rootPageId || pageStore.parentPageId || pageStore.currentPage?.id || undefined,
+          spaceId: scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : undefined),
+          pageId: scope.rootPageId || undefined,
         });
 
         setFixState((prev) => ({
@@ -385,73 +369,6 @@ export function useCompilerLogsState({
     [applyAiFix, getEntryKey],
   );
 
-  const [explainState, setExplainState] = useState<
-    Record<string, { open: boolean; loading: boolean; explanation?: ErrorExplanationDto | null }>
-  >({});
-  const explainStateRef = useRef(explainState);
-  useEffect(() => {
-    explainStateRef.current = explainState;
-  }, [explainState]);
-
-  const getExplainKey = useCallback(
-    (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) =>
-      `${type}-${getEntryKey(entry, index)}`,
-    [getEntryKey],
-  );
-
-  const handleToggleExplain = useCallback(
-    async (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) => {
-      const explainKey = getExplainKey(type, entry, index);
-      const current = explainStateRef.current[explainKey];
-      if (current?.open) {
-        setExplainState((prev) => ({
-          ...prev,
-          [explainKey]: { ...prev[explainKey], open: false, loading: false },
-        }));
-        return;
-      }
-
-      if (type === 'error') {
-        const aiKey = getEntryKey(entry, index);
-        if (fixStateRef.current[aiKey]?.result) {
-          void handleSuggestFix(entry, index);
-        }
-      }
-
-      const cachedExp = entry.explanation || current?.explanation;
-      if (cachedExp) {
-        setExplainState((prev) => ({
-          ...prev,
-          [explainKey]: { open: true, loading: false, explanation: cachedExp },
-        }));
-        return;
-      }
-
-      setExplainState((prev) => ({
-        ...prev,
-        [explainKey]: { ...prev[explainKey], open: false, loading: true },
-      }));
-
-      try {
-        const exp = await fetchLogEntryExplanation(entry);
-        setExplainState((prev) => ({
-          ...prev,
-          [explainKey]: {
-            open: Boolean(exp),
-            loading: false,
-            explanation: exp ?? null,
-          },
-        }));
-      } catch {
-        setExplainState((prev) => ({
-          ...prev,
-          [explainKey]: { ...prev[explainKey], open: false, loading: false },
-        }));
-      }
-    },
-    [getEntryKey, getExplainKey, handleSuggestFix],
-  );
-
   const handleSuggestFixRow = useCallback(
     (entry: LogEntry, index = 0) => {
       void handleSuggestFix(entry, index);
@@ -464,13 +381,6 @@ export function useCompilerLogsState({
       handleApplyFix(entry, fix, index);
     },
     [handleApplyFix],
-  );
-
-  const handleToggleExplainRow = useCallback(
-    (entry: LogEntry, type: 'error' | 'warning' | 'badbox' = 'error', index = 0) => {
-      void handleToggleExplain(type, entry, index);
-    },
-    [handleToggleExplain],
   );
 
   const visibleRows = useMemo<CompilerLogVisibleRow[]>(() => {
@@ -707,18 +617,12 @@ export function useCompilerLogsState({
     rowVirtualizer,
     currentErrorIdx,
     fixState,
-    explainState,
     outputFiles,
     getEntryKey,
-    getExplainKey,
     handleEntryClick,
-    handleSuggestFix,
-    handleApplyFix,
     handleApplyQuickFix,
-    handleToggleExplain,
     handleSuggestFixRow,
     handleApplyFixRow,
-    handleToggleExplainRow,
     handleNextError,
     handlePrevError,
     handleClearCacheAndCompile,

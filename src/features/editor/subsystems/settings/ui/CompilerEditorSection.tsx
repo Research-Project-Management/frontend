@@ -16,6 +16,7 @@ import {
 } from '@/shared/components/ui/select';
 import {
   pagesService,
+  resolveEditorScopeFromState,
   usePageStore,
   useSettingsStore,
   type CompilerEngine,
@@ -32,20 +33,20 @@ import {
 export interface CompilerEditorSectionProps {
   texFiles: string[];
   onMainFileChange: (newMainFileName: string) => void;
-  section?: 'compiler' | 'editor' | 'all';
+  section: 'compiler' | 'editor';
 }
 
 export function CompilerEditorSection({
   texFiles,
   onMainFileChange,
-  section = 'all',
+  section,
 }: CompilerEditorSectionProps) {
   const engine = useSettingsStore((s) => s.engine);
   const setEngine = useSettingsStore((s) => s.setEngine);
   const texLiveVersion = useSettingsStore((s) => s.texLiveVersion || '2025');
   const setTexLiveVersion = useSettingsStore((s) => s.setTexLiveVersion);
   const mainFilePath = usePageStore((s) => s.mainFilePath);
-  const rootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || s.currentPage?.id || '');
+  const rootPageId = usePageStore((s) => resolveEditorScopeFromState(s).rootPageId);
   const canEdit = usePageStore((s) => s.permissions?.canEdit ?? true);
   const isLocked = useSettingsStore((s) => s.isLocked);
   const setPageBuildConfig = usePageStore((s) => s.setPageBuildConfig);
@@ -85,8 +86,8 @@ export function CompilerEditorSection({
   const pdfViewer = useSettingsStore((s) => s.pdfViewer);
   const setPdfViewer = useSettingsStore((s) => s.setPdfViewer);
 
-  const showCompiler = section === 'all' || section === 'compiler';
-  const showEditor = section === 'all' || section === 'editor';
+  const showCompiler = section === 'compiler';
+  const showEditor = section === 'editor';
 
   return (
     <div className="space-y-1">

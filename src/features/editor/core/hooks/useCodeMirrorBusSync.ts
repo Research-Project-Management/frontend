@@ -20,7 +20,7 @@ import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { visibilityCoordinator } from '@/features/editor/core/coordinator/visibility.coordinator';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {

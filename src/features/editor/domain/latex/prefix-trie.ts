@@ -13,7 +13,7 @@
  * - Vietnamese diacritic-insensitive normalization mapping for seamless international search.
  */
 
-export class TrieNode<T> {
+class TrieNode<T> {
   public children = new Map<string, TrieNode<T>>();
   public values: T[] = [];
   public isTerminal = false;

@@ -13,11 +13,12 @@ import {
 } from '@/features/editor/core/store/workspace.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
 import { documentFacade } from '@/features/editor/core/coordinator/document.facade';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 
-export interface ProjectDiagnosticEntry {
+interface ProjectDiagnosticEntry {
   file: string;
   line: number;
   message: string;
@@ -31,10 +32,10 @@ export function resolveJumpTargetByFilePath(
   let resolvedTitle = filePath || fileId || 'main.tex';
 
   if (!resolvedFileId && filePath) {
-    const normalizedTarget = filePath.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+    const normalizedTarget = normalizeVirtualPath(filePath).toLowerCase();
     const matchesTargetPath = (candidate?: string): boolean => {
       if (!candidate) return false;
-      const norm = candidate.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+      const norm = normalizeVirtualPath(candidate).toLowerCase();
       return Boolean(
         norm &&
           (norm === normalizedTarget ||

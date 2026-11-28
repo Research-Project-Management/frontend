@@ -11,7 +11,7 @@ import React from 'react';
 import { FileImage, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { formatBytes } from '@/shared/lib/utils';
-import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
+import type { AssetInfo } from '@/features/editor/domain/types/core.types';
 import { useAuthorizedImageSrc } from '@/features/editor/core/hooks/useAuthorizedImageSrc';
 
 export interface ImagePanelProps {

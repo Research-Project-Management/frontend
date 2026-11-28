@@ -16,12 +16,17 @@ import {
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { getActiveYjsProvider } from '@/features/editor/sdk/realtime';
+import {
+  clearYjsProviderPool,
+  evictYjsProviderByDocId,
+  getActiveYjsProvider,
+} from '@/features/editor/sdk/realtime';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { getIsOnline } from '@/shared/lib/network';
-import { editorCommandBus } from '../bus/command-bus';
+import { editorCommandBus, getEditorEngineForFile } from '../bus/command-bus';
+import { documentFacade } from './document.facade';
 import { visibilityCoordinator } from './visibility.coordinator';
 import {
   DocumentConflictCoordinator,
@@ -52,13 +57,13 @@ export type {
   DocumentPersistencePort,
 };
 
-export interface FlushResult {
+interface FlushResult {
   fileId: string;
   success: boolean;
   error?: unknown;
 }
 
-export interface FlushAllResult {
+interface FlushAllResult {
   total: number;
   succeeded: number;
   failed: number;
@@ -354,10 +359,6 @@ export class SessionCoordinator {
     return lruDocumentCache.getDirtyFileIds().length > 0;
   }
 
-  public async flushDocument(fileId: string): Promise<boolean> {
-    return this.flushFile(fileId);
-  }
-
   public async flushAllPending(): Promise<FlushAllResult> {
     if (this.isFlushingAll) return { total: 0, succeeded: 0, failed: 0, results: [] };
     this.isFlushingAll = true;
@@ -410,6 +411,91 @@ export class SessionCoordinator {
       return true;
     }
     return false;
+  }
+
+  public cancelAllPendingAutoSaves(): void {
+    for (const timer of this.saveTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.saveTimers.clear();
+  }
+
+  /**
+   * Atomically resets local session timers, Yjs CRDT providers (without flushing stale
+   * buffers over newly restored/pulled server state), overlay read-model caches, and
+   * in-memory LRU models after an external whole-tree mutation (History restore, GitHub pull).
+   */
+  public resetForExternalTreeSync(
+    scopeIds?: string | ReadonlyArray<string | null | undefined>,
+  ): void {
+    this.resetSession();
+    clearYjsProviderPool({ skipFlush: true });
+    const scopes =
+      typeof scopeIds === 'string'
+        ? [scopeIds]
+        : Array.isArray(scopeIds)
+          ? scopeIds
+          : [];
+    for (const scopeId of scopes) {
+      if (scopeId) {
+        documentFacade.clearProjectCache(scopeId);
+      }
+    }
+    lruDocumentCache.discardAll();
+    editorCommandBus.dispatch({ type: 'filetree:updated' });
+  }
+
+  /**
+   * Atomically reconciles a single authoritative server document snapshot across
+   * pending autosave timers, Yjs provider pool, LRU cache, FSM, symbols/DAG index,
+   * and any mounted CodeMirror engine(s).
+   */
+  public applyServerDocSnapshot(params: {
+    docId?: string | null;
+    filePath?: string | null;
+    content: string;
+    rev?: number;
+    evictYjs?: boolean;
+  }): void {
+    const { docId, filePath, content, rev, evictYjs = true } = params;
+    const targetIds = new Set<string>();
+    if (docId) targetIds.add(docId);
+    if (filePath) {
+      const cachedByPath = lruDocumentCache.findByPath(filePath);
+      if (cachedByPath) targetIds.add(cachedByPath.fileId);
+    }
+
+    let updatedMountedEngine = false;
+    for (const id of targetIds) {
+      this.cancelPendingAutoSave(id);
+      this.conflicts.clearConflict(id);
+      if (evictYjs) {
+        evictYjsProviderByDocId(id, { skipFlush: true });
+      }
+      lruDocumentCache.clearServerRev(id);
+      if (typeof rev === 'number') {
+        lruDocumentCache.setServerRev(id, rev);
+      }
+      lruDocumentCache.updateContent(id, content, false);
+      lruDocumentCache.markClean(id);
+      const version = lruDocumentCache.getContentVersion(id) || 0;
+      this.transitionFsm(id, { type: 'REMOTE_EDIT', version });
+      this.reindex(id, content);
+
+      const engine = getEditorEngineForFile(id);
+      if (engine) {
+        engine.setContent(content);
+        updatedMountedEngine = true;
+      }
+    }
+
+    if (!updatedMountedEngine && (docId || filePath)) {
+      editorCommandBus.dispatch({
+        type: 'document:content-updated',
+        docId: (docId || filePath)!,
+        content,
+      });
+    }
   }
 
   public resumeAutoSaveIfDirty(fileId: string): void {

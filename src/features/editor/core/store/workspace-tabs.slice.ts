@@ -5,11 +5,11 @@
  */
 
 import type { StateCreator } from 'zustand';
-import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   isProtectedRootTab,
   resolveNextActiveEditorTabOnClose,
+  type WorkspaceTab,
 } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import {
   saveEditorTabsForPage,

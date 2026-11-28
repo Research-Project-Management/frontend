@@ -167,7 +167,6 @@ export interface DocumentCompilerState {
   /** fileId → unix ms timestamp of last successful sync to the compiler */
   lastSyncedAt: Map<string, number>;
   markSynced: (fileId: string) => void;
-  clearSyncTracker: () => void;
 
   // ── Compile state (FSM-backed single source of truth) ─────────────────
   compilerFsm: CompilerFsmContext;
@@ -189,20 +188,14 @@ export interface DocumentCompilerState {
 
   dispatchCompileEvent: (event: CompilerFsmEvent) => CompilerFsmContext;
   setCompileStatus: (status: CompileStatus) => void;
-  setCompilePhase: (phase: CompilePhase) => void;
-  setCompileOutcome: (outcome: CompileOutcome | null) => void;
   applyCompileResult: (report: CompileReport) => void;
   setCompileLog: (log: string | null) => void;
   appendCompileLog: (chunk: string) => void;
-  setCompileErrors: (errors: CompileError[]) => void;
   setCompileDiagnostics: (diagnostics: CompilerDiagnostic[]) => void;
-  setParsedLog: (parsedLog: ParsedLog | null) => void;
   /** Sets the PDF blob URL, revoking the previous blob URL to prevent leaks */
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
-  clearLogs: () => void;
   resetCompiler: () => void;
-  setPendingCompile: (pending: boolean) => void;
   setIsViewerPoppedOut: (poppedOut: boolean) => void;
 }
 
@@ -245,10 +238,6 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     });
   },
 
-  clearSyncTracker() {
-    set({ lastSyncedAt: new Map() });
-  },
-
   // ── Compile state (FSM-backed SSOT) ──────────────────────────────────
   compilerFsm: createInitialCompilerFsmContext(),
   compileStatus: 'idle',
@@ -278,20 +267,6 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     get().dispatchCompileEvent({ type: 'FORCE_STATUS', status });
   },
 
-  setCompilePhase(phase) {
-    set((s) => ({
-      compilerFsm: { ...s.compilerFsm, phase },
-      compilePhase: phase,
-    }));
-  },
-
-  setCompileOutcome(outcome) {
-    set((s) => ({
-      compilerFsm: { ...s.compilerFsm, outcome },
-      compileOutcome: outcome,
-    }));
-  },
-
   applyCompileResult(report) {
     get().dispatchCompileEvent({ type: 'RUN_SETTLED', report });
   },
@@ -319,16 +294,8 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     set({ compileLog: trimmed });
   },
 
-  setCompileErrors(errors) {
-    set({ compileErrors: errors });
-  },
-
   setCompileDiagnostics(diagnostics) {
     set({ compileDiagnostics: diagnostics });
-  },
-
-  setParsedLog(parsedLog) {
-    set({ parsedLog });
   },
 
   setPdfUrl(url) {
@@ -347,10 +314,6 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   setLastCompiledAt(date) {
     set({ lastCompiledAt: date });
-  },
-
-  clearLogs() {
-    get().dispatchCompileEvent({ type: 'CLEAR_LOGS' });
   },
 
   resetCompiler() {
@@ -373,12 +336,6 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
       lastCompiledAt: null,
       lastSyncedAt: new Map(),
       pdfUrl: null,
-    });
-  },
-
-  setPendingCompile(pending) {
-    get().dispatchCompileEvent({
-      type: pending ? 'QUEUE_SUPERSEDE' : 'CONSUME_PENDING',
     });
   },
 

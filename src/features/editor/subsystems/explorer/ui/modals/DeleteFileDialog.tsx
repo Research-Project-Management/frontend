@@ -4,7 +4,7 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
-import { displayName } from '@/features/editor/subsystems/explorer/ui/subcomponents/TexFileRow';
+import { displayName } from '@/features/editor/domain/document/document-naming';
 
 export interface DeleteFileDialogProps {
   fileToDelete: { id: string; title: string; isFolder?: boolean } | null;

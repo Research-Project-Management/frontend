@@ -29,8 +29,6 @@ function formatHunkRange(hunk: DiffHunk): string {
 
 export interface DiffHunkHeaderProps {
   hunk: DiffHunk;
-  baseVersion?: number;
-  targetVersion?: number;
   className?: string;
 }
 
@@ -55,8 +53,6 @@ export const DiffHunkHeader = React.memo(function DiffHunkHeader({
 
 export interface UnifiedDiffViewProps {
   fileDiff: ProjectFileDiff;
-  baseVersion?: number;
-  targetVersion?: number;
 }
 
 export const UnifiedDiffView = React.memo(function UnifiedDiffView({

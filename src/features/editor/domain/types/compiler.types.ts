@@ -5,10 +5,7 @@
  * Matches backend document/compiler module.
  */
 
-import { z } from 'zod';
-
-const compilerEngineSchema = z.enum(['pdflatex', 'xelatex', 'lualatex', 'latex']);
-export type CompilerEngine = z.infer<typeof compilerEngineSchema>;
+export type CompilerEngine = 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
 export const DEFAULT_COMPILER_ENGINE: CompilerEngine = 'pdflatex';
 
 export type CompileMode = 'full' | 'draft';
@@ -90,36 +87,7 @@ export interface CompileError {
   originalSnippet?: string;
 }
 
-export interface CompileResult {
-  pdfUrl: string | null;
-  status: CompileStatus;
-  log?: string | null;
-  errors?: CompileError[];
-  compiledAt?: Date;
-}
-
-export interface WordCountResult {
-  words: number;
-  characters: number;
-  headers?: number;
-  mathFormulas?: number;
-}
-
 // ── Compiler Diagnostics & Log Viewer ────────────────────────────────────────
-
-export interface ErrorExplanationDto {
-  code?: string;
-  title: string;
-  summary?: string;
-  explanation?: string;
-  whyItHappened?: string;
-  howToFix?: string;
-  commonCauses?: string[];
-  suggestedFix?: string;
-  exampleSnippet?: string;
-  documentationUrl?: string;
-  latexSnippet?: string;
-}
 
 export interface DiagnosticItemDto {
   id?: string;
@@ -184,7 +152,6 @@ export interface LogEntry {
   source?: 'tex' | 'bibtex' | 'biber' | 'system';
   highlightCommand?: string;
   rawExcerpt?: string;
-  explanation?: ErrorExplanationDto;
   quickFix?: {
     description: string;
     replacementText: string;

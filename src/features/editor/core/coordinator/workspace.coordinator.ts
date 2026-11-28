@@ -118,14 +118,8 @@ export class WorkspaceCoordinator {
     editorCommandBus.registerExecutor('workspace:delete-file', async (cmd) =>
       this.deleteFile(cmd.fileId),
     );
-    editorCommandBus.registerExecutor('workspace:restore-file', async (cmd) =>
-      this.restoreFile(cmd.fileId, cmd.projectId),
-    );
     editorCommandBus.registerExecutor('workspace:set-main-file', async (cmd) =>
       this.setMainFile(cmd.fileId, cmd.projectId),
-    );
-    editorCommandBus.registerExecutor('workspace:move-file', async (cmd) =>
-      this.moveItem({ itemId: cmd.fileId, targetFolderId: cmd.targetFolderId }),
     );
 
     editorCommandBus.subscribe('workspace:open-file', (cmd) => {
@@ -144,22 +138,6 @@ export class WorkspaceCoordinator {
       useSettingsStore.getState().setIsHistoryOpen(true);
     });
 
-    editorCommandBus.subscribe('citation:open-picker', (cmd) => {
-      editorCommandBus.dispatch({
-        type: 'dialog:open',
-        dialog: 'citation-picker',
-        payload: cmd.initialQuery ? { initialQuery: cmd.initialQuery } : undefined,
-      });
-    });
-
-    editorCommandBus.subscribe('citation:insert', (cmd) => {
-      editorCommandBus.dispatch({
-        type: 'editor:insert-citation',
-        bibKey: cmd.bibKey,
-        entry: cmd.entry,
-      });
-    });
-
     editorCommandBus.subscribe('filetree:updated', (cmd) => {
       this.reconcileRemoteFileTreeEvent(
         cmd.payload && typeof cmd.payload === 'object'
@@ -167,10 +145,6 @@ export class WorkspaceCoordinator {
           : undefined,
       );
     });
-
-    editorCommandBus.registerExecutor('editor:rename-citekey', async (cmd) =>
-      this.refactorCitekey(cmd.oldKey, cmd.newKey),
-    );
   }
 
   public reconcileRemoteFileTreeEvent(payload?: Record<string, unknown>): void {
@@ -628,14 +602,6 @@ export class WorkspaceCoordinator {
       return this.projectFilesByScope.get(workspaceId)!;
     }
     return this.projectFiles;
-  }
-
-  public async refactorCitekey(
-    _oldKey: string,
-    _newKey: string,
-    _optProjectId?: string,
-  ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
-    return { success: false, modifiedCount: 0, replacedCount: 0 };
   }
 
   public resetAllState(options: { skipFlush?: boolean; scopeId?: string } = {}): void {

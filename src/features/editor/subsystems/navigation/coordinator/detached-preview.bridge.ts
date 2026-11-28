@@ -6,7 +6,10 @@
  */
 
 import { logger } from '@/shared/lib/logger';
-import { buildPageScopeHref } from '@/features/editor/core/coordinator/editor-scope';
+import {
+  buildPageScopeHref,
+  resolveEditorScopeFromState,
+} from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import {
@@ -14,9 +17,11 @@ import {
   getActiveEditorEngine,
 } from '@/features/editor/core/bus/command-bus';
 import { getSyncTexChannelName } from '@/features/editor/domain/constants/editor.constants';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
+import {
+  compilerCoordinator,
+  useCompileStore,
+  type SyncTeXMap,
+} from '@/features/editor/subsystems/compiler';
 
 export interface DetachedPreviewNavigationCallbacks {
   onJumpToCode: (payload: {
@@ -52,13 +57,11 @@ export class DetachedPreviewBridge {
 
   public resolveActiveTargetId(): string | null {
     const pageStore = usePageStore.getState();
+    const scope = resolveEditorScopeFromState(pageStore);
     return (
       pageStore.parentPageId ||
-      pageStore.rootPageId ||
-      pageStore.projectId ||
-      pageStore.spaceId ||
-      extractProjectId(pageStore.currentPage) ||
-      pageStore.currentPage?.id ||
+      scope.rootPageId ||
+      scope.effectiveScopeId ||
       null
     );
   }
@@ -123,6 +126,25 @@ export class DetachedPreviewBridge {
     this.broadcastChannel?.postMessage(message);
   }
 
+  private postCompilerSyncState(synctexOverride?: SyncTeXMap | null, coerceIdleToDone = false): void {
+    const compileState = useCompileStore.getState();
+    const synctexMap = synctexOverride ?? compilerCoordinator.getSynctexMap();
+    const compileStatus =
+      coerceIdleToDone && compileState.compileStatus === 'idle'
+        ? 'done'
+        : compileState.compileStatus;
+    this.postMessage({
+      type: 'compiler:sync-state',
+      payload: {
+        pdfUrl: compileState.pdfUrl,
+        compileStatus,
+        lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
+        logs: compileState.compileLog,
+        synctexMap,
+      },
+    });
+  }
+
   public attachChannelListeners(): void {
     if (!this.broadcastChannel) return;
     this.broadcastChannel.onmessage = (event) => {
@@ -146,17 +168,7 @@ export class DetachedPreviewBridge {
         const compileState = useCompileStore.getState();
         const synctexMap = compilerCoordinator.getSynctexMap();
         if (compileState.pdfUrl || synctexMap) {
-          this.postMessage({
-            type: 'compiler:sync-state',
-            payload: {
-              pdfUrl: compileState.pdfUrl,
-              compileStatus: compileState.compileStatus,
-              lastCompiledAt:
-                compileState.lastCompiledAt?.toISOString() || null,
-              logs: compileState.compileLog,
-              synctexMap,
-            },
-          });
+          this.postCompilerSyncState(synctexMap, false);
         }
       } else if (type === 'editor:scroll-to-line' && payload?.line) {
         editorCommandBus.dispatch({
@@ -222,38 +234,12 @@ export class DetachedPreviewBridge {
       }),
       editorCommandBus.subscribe('compiler:finished', (cmd) => {
         if (cmd.success) {
-          const compileState = useCompileStore.getState();
-          this.postMessage({
-            type: 'compiler:sync-state',
-            payload: {
-              pdfUrl: compileState.pdfUrl,
-              compileStatus:
-                compileState.compileStatus === 'idle'
-                  ? 'done'
-                  : compileState.compileStatus,
-              lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
-              logs: compileState.compileLog,
-              synctexMap: compilerCoordinator.getSynctexMap(),
-            },
-          });
+          this.postCompilerSyncState(undefined, true);
         }
       }),
       editorCommandBus.subscribe('synctex:map-updated', (cmd) => {
         if (!this.isDetachedPreviewWindow() && cmd.map) {
-          const compileState = useCompileStore.getState();
-          this.postMessage({
-            type: 'compiler:sync-state',
-            payload: {
-              pdfUrl: compileState.pdfUrl,
-              compileStatus:
-                compileState.compileStatus === 'idle'
-                  ? 'done'
-                  : compileState.compileStatus,
-              lastCompiledAt: compileState.lastCompiledAt?.toISOString() || null,
-              logs: compileState.compileLog,
-              synctexMap: cmd.map,
-            },
-          });
+          this.postCompilerSyncState(cmd.map, true);
         }
       }),
       editorCommandBus.subscribe('preview:detach', (cmd) => {
@@ -268,25 +254,13 @@ export class DetachedPreviewBridge {
           typeof window !== 'undefined'
             ? window.location.pathname.match(/\/pages\/([^/]+)/)?.[1] ?? null
             : null;
-        const pageId =
-          pageStore.parentPageId ||
-          pageStore.rootPageId ||
-          pageStore.currentPage?.id ||
-          routePageMatch ||
-          null;
-        const projectId =
-          cmd.projectId ||
-          routeProjectMatch ||
-          (pageStore.spaceType === 'personal'
-            ? null
-            : pageStore.projectId ||
-              extractProjectId(pageStore.currentPage) ||
-              pageStore.spaceId ||
-              null);
-        const isPersonal =
-          !cmd.projectId &&
-          !routeProjectMatch &&
-          (pageStore.spaceType === 'personal' || !projectId || projectId === 'personal');
+        const scope = resolveEditorScopeFromState(pageStore, {
+          projectId: cmd.projectId || routeProjectMatch,
+          pageId: routePageMatch,
+        });
+        const pageId = pageStore.parentPageId || scope.rootPageId || routePageMatch || null;
+        const projectId = scope.projectId || null;
+        const isPersonal = scope.spaceKind === 'personal';
         if (!this.isCustomChannel) {
           this.syncScopedChannel();
         }

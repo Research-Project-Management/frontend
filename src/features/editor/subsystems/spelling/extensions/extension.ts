@@ -11,6 +11,7 @@ import { type EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { toast } from 'sonner';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import type { SpellingReport } from '@/features/editor/sdk/pages/spelling.client';
+import { resolveEditorScopeFromState } from '@/features/editor/core/coordinator/editor-scope';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { extractLatexWords } from '../model/word-extractor';
 import {
@@ -30,6 +31,12 @@ import { createSpellingContextMenu } from './context-menu';
 
 const MAX_WORDS_PER_CHECK = 5000;
 
+export function normalizeSpellLanguage(language?: string | null): string {
+  const trimmed = language?.trim();
+  if (!trimmed) return 'en-US';
+  return trimmed.replace(/_/g, '-');
+}
+
 export interface SpellingExtensionOptions {
   projectId?: string;
   language?: string;
@@ -40,9 +47,12 @@ export interface SpellingExtensionOptions {
   learnWord?: (projectId: string, word: string) => Promise<unknown>;
 }
 
-function defaultGetProjectId(explicitProjectId?: string): string {
-  const state = usePageStore.getState();
-  return explicitProjectId || state.projectId || state.spaceId || '';
+function defaultGetSpaceId(explicitSpaceId?: string): string {
+  if (explicitSpaceId?.trim()) {
+    return explicitSpaceId.trim();
+  }
+  const scope = resolveEditorScopeFromState(usePageStore.getState());
+  return scope.spaceId || (scope.rootPageId ? scope.routeSpaceParam : '');
 }
 
 function createSpellingPlugin(config: {
@@ -185,12 +195,16 @@ export function createSpellingExtension(options: SpellingExtensionOptions = {}):
     return [];
   }
 
-  const language = options.language ?? 'en-US';
+  const language = normalizeSpellLanguage(options.language);
   const cache = options.cache ?? spellingCache;
-  const getProjectId = options.getProjectId ?? (() => defaultGetProjectId(options.projectId));
+  const getProjectId = options.getProjectId ?? (() => defaultGetSpaceId(options.projectId));
   const checkWords =
     options.checkWords ??
-    ((projId, words, lang) => pagesService.spelling.check(projId, { words, language: lang }));
+    ((projId, words, lang) =>
+      pagesService.spelling.check(projId, {
+        words,
+        language: normalizeSpellLanguage(lang),
+      }));
   const learnWord =
     options.learnWord ?? ((projId, word) => pagesService.spelling.learnWord(projId, word));
 

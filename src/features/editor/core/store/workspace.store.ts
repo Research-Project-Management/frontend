@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
-import type { WorkspaceTab, EditorTab } from '@/features/editor/domain/types/workspace.types';
+import type { WorkspaceTab, EditorTab } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import {

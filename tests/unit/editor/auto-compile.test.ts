@@ -6,7 +6,6 @@ import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
 describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
   let unsubscribeCompile: (() => void) | null = null;
@@ -15,9 +14,6 @@ describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
     vi.restoreAllMocks();
     vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({ success: true } as any);
     vi.spyOn(pagesService.updater, 'flushProject').mockResolvedValue({ success: true } as any);
-    vi.spyOn(unsyncedEditsStore, 'save').mockResolvedValue(undefined);
-    vi.spyOn(unsyncedEditsStore, 'clear').mockResolvedValue(undefined);
-    vi.spyOn(unsyncedEditsStore, 'saveMemory').mockReturnValue({} as any);
 
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     useSettingsStore.setState({ autoCompile: true });

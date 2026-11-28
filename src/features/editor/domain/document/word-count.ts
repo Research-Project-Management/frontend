@@ -48,13 +48,6 @@ export interface TeXcountStats {
   rawOutput?: string;
 }
 
-
-export interface ProjectTeXcountStats extends TeXcountStats {
-  rootFile: string;
-  includedFiles: string[];
-  byFile: Record<string, TeXcountStats>;
-}
-
 export const EMPTY_TEXCOUNT_STATS: TeXcountStats = {
   wordsInText: 0,
   wordsInHeaders: 0,

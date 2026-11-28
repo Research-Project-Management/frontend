@@ -38,10 +38,7 @@ export interface TableGrid {
   wrapInTableEnv?: boolean;
 }
 
-/**
- * Escapes unescaped LaTeX special characters in table text, preserving math segments.
- */
-export function sanitizeTableCell(text: string): string {
+function sanitizeTableCell(text: string): string {
   if (!text) return '';
   const trimmed = text.trim();
   if (trimmed.startsWith('$') && trimmed.endsWith('$')) {
@@ -56,10 +53,7 @@ export function sanitizeTableCell(text: string): string {
     });
 }
 
-/**
- * Unescapes LaTeX characters from parsed cell text back to plain text.
- */
-export function unescapeTableCell(text: string): string {
+function unescapeTableCell(text: string): string {
   if (!text) return '';
   return text
     .replace(/\\textbackslash\{\}/g, '\\')

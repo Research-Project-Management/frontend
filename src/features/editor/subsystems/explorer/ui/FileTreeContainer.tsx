@@ -16,10 +16,7 @@ import type {
   FileTreeNode,
   FileTreeFolderNode,
   FlattenedTreeNode,
-} from '@/features/editor/subsystems/explorer/model/document-tree';
-import { isFolderOpen } from '../hooks/useFileTree';
-
-export { isFolderOpen };
+} from '../model/document-tree';
 
 const INTERNAL_DRAG_TYPES = ['application/flux-file-id', 'application/x-asset-id'] as const;
 

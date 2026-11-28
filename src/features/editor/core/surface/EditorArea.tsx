@@ -37,7 +37,7 @@ const DocumentConflictDialog = dynamic(
 );
 
 const SymbolPalette = dynamic(
-  () => import('@/features/editor/subsystems/insert/ui/SymbolPalette'),
+  () => import('@/features/editor/subsystems/insert').then((m) => m.SymbolPalette),
   { ssr: false },
 );
 

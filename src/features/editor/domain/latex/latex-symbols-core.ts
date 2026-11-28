@@ -133,22 +133,6 @@ export interface SymbolSnapshot {
   version: number;
 }
 
-export type SymbolsWorkerMessageIn =
-  | { type: 'indexFile'; fileId: string; filePath: string; content: string; id: number }
-  | {
-      type: 'indexBatch';
-      files: Array<{ fileId: string; filePath: string; content: string }>;
-      id: number;
-    }
-  | { type: 'removeFile'; fileId: string; filePath?: string; id: number }
-  | { type: 'clear'; id: number }
-  | { type: 'getSnapshot'; id: number };
-
-export interface SymbolsWorkerMessageOut {
-  id: number;
-  snapshot: SymbolSnapshot;
-}
-
 const IMAGE_FILE_REGEX = /\.(png|jpe?g|pdf|eps|svg|gif|webp)$/i;
 
 export class LatexSymbolsIndexCore {

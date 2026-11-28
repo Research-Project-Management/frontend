@@ -5,15 +5,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
 import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus, resolveEditorScope } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
+import { TEX_EXTS, type PendingUploadItem as PendingItem } from '../ui/modals/UploadConflictDialog';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
-import { readEntriesRecursively } from '../ui/modals/directory-reader';
+import { extractDroppedFileItems } from '../ui/modals/directory-reader';
 
 export interface UseFileUploadOptions {
   parentPageId: string | null;
@@ -182,34 +182,7 @@ export function useFileUpload({
       setIsDragging(false);
       if (!parentPageId) return;
 
-      const dtItems = e.dataTransfer.items;
-      const allItems: { file: File; name: string }[] = [];
-      const folderEntries: FileSystemDirectoryEntry[] = [];
-      const plainFiles: File[] = [];
-
-      if (dtItems?.length) {
-        for (let i = 0; i < dtItems.length; i++) {
-          const entry = dtItems[i].webkitGetAsEntry?.();
-          if (entry?.isDirectory) {
-            folderEntries.push(entry as FileSystemDirectoryEntry);
-          } else if (entry?.isFile) {
-            const file = e.dataTransfer.files[i];
-            if (file) plainFiles.push(file);
-          }
-        }
-      } else {
-        plainFiles.push(...Array.from(e.dataTransfer.files));
-      }
-
-      plainFiles.forEach((f) => allItems.push({ file: f, name: f.name }));
-
-      for (const dir of folderEntries) {
-        const folderFiles = await readEntriesRecursively(dir, dir.name);
-        for (const { file, relativePath } of folderFiles) {
-          allItems.push({ file, name: relativePath });
-        }
-      }
-
+      const allItems = await extractDroppedFileItems(e.dataTransfer);
       if (allItems.length > 0) {
         setPendingUploads(markDuplicates(allItems));
         setUploadDialogOpen(true);
@@ -274,7 +247,11 @@ export function useFileUpload({
         return;
       }
 
-      const tabProjectId = extractProjectId(parentPage) || projectId || '';
+      const scope = resolveEditorScope({
+        projectId: extractProjectId(parentPage) || projectId,
+        pageId: parentPageId,
+      });
+      const tabProjectId = scope.spaceId || extractProjectId(parentPage) || projectId || '';
       setUploadingCount((prev) => prev + droppedFiles.length);
 
       let batchRemaining = droppedFiles.length;
@@ -297,6 +274,11 @@ export function useFileUpload({
               { parentPageId, title: fullTitle, content: reader.result as string, skipInvalidation: true },
               { onSettled: settle },
             );
+          };
+          reader.onerror = () => {
+            logger.error('[useFileUpload] Failed to read dropped TeX file', reader.error);
+            toast.error(`Failed to read "${file.name}"`, { id: `read-error-${file.name}` });
+            settle();
           };
           reader.readAsText(file);
         } else {
@@ -345,9 +327,15 @@ export function useFileUpload({
       (p: PendingItem) => !p.name.toLowerCase().endsWith('.zip') || p.unpackZip === false,
     );
 
+    const resolvedScope = resolveEditorScope({
+      projectId: projectId || extractProjectId(parentPage),
+      pageId: parentPageId,
+    });
+    const effectiveUploadSpaceId = resolvedScope.effectiveScopeId || projectId || parentPageId || '';
+
     if (zipUnpackItems.length > 0 && parentPageId) {
       void (async () => {
-        const targetZipId = projectId || parentPageId;
+        const targetZipId = effectiveUploadSpaceId || parentPageId;
 
         for (const zipItem of zipUnpackItems) {
           try {
@@ -488,7 +476,7 @@ export function useFileUpload({
       }
     }
 
-    const uploadTargetProjectId = projectId || parentPageId || '';
+    const uploadTargetProjectId = effectiveUploadSpaceId;
 
     if (assetFlat.length && uploadTargetProjectId) {
       await Promise.all(

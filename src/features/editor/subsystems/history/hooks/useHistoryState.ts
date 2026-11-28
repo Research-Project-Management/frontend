@@ -3,12 +3,10 @@ import type { ProjectVersionListItem } from '@/features/editor/domain/types/hist
 
 export type HistoryMode = 'single' | 'compare';
 export type HistoryFilter = 'all' | 'labelled';
-export type DiffViewMode = 'split' | 'unified';
 
 export function useHistoryState(initialVersion?: number) {
   const [mode, setMode] = useState<HistoryMode>('compare');
   const [filter, setFilter] = useState<HistoryFilter>('all');
-  const [diffView, setDiffView] = useState<DiffViewMode>('unified');
   const [targetVersion, setTargetVersion] = useState<number | null>(initialVersion ?? null);
   const [baseVersion, setBaseVersion] = useState<number | null>(null);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -78,8 +76,6 @@ export function useHistoryState(initialVersion?: number) {
     setMode,
     filter,
     setFilter,
-    diffView,
-    setDiffView,
     targetVersion,
     setTargetVersion,
     baseVersion,

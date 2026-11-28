@@ -35,7 +35,7 @@ import {
   useAddReply,
   useCreateComment,
   useUpdateComment,
-} from '@/features/editor/subsystems/review/hooks/useComments';
+} from '../../hooks/useComments';
 import type { PageComment, CommentReply, CreateReplyInput, CreateCommentInput } from '@/features/editor/domain/types/comment.types';
 import { createReplySchema, createCommentSchema } from '@/features/editor/domain/types/comment.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
@@ -452,7 +452,6 @@ export const CommentCard = React.memo(function CommentCard({
 export interface NewCommentFormProps {
   pageId: string;
   projectId?: string;
-  pendingQuote?: string | null;
   initialLine?: number | null;
   initialLineEnd?: number | null;
   members: MentionMember[];
@@ -463,7 +462,6 @@ export interface NewCommentFormProps {
 export function NewCommentForm({
   pageId,
   projectId,
-  pendingQuote,
   initialLine,
   initialLineEnd,
   members,

@@ -11,6 +11,7 @@ import { invalidateFileTreeQueries } from '@/features/editor/core/queries/docume
 import {
   editorCommandBus,
   usePageStore,
+  resolveEditorScopeFromState,
 } from '@/features/editor/core';
 
 export interface UrlTabPaneProps {
@@ -25,7 +26,9 @@ export function UrlTabPane({
   onClose,
 }: UrlTabPaneProps) {
   const queryClient = useQueryClient();
-  const storeSpaceId = usePageStore((s) => s.spaceId || s.projectId);
+  const resolvedSpaceId = usePageStore(
+    (s) => resolveEditorScopeFromState(s, { pageId: parentPageId, projectId }).effectiveScopeId,
+  );
   const [url, setUrl] = useState('');
   const [filename, setFilename] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -35,7 +38,7 @@ export function UrlTabPane({
     const trimmedUrl = url.trim();
     if (!trimmedUrl) return;
 
-    const targetSpaceId = projectId || storeSpaceId || parentPageId || '';
+    const targetSpaceId = resolvedSpaceId || projectId || parentPageId || '';
     if (!targetSpaceId) {
       toast.error('Unable to resolve target workspace for URL import.');
       return;

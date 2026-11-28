@@ -33,7 +33,7 @@ import {
 } from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
-import type { FileTreeFolderNode } from '@/features/editor/subsystems/explorer/model/document-tree';
+import type { FileTreeFolderNode } from '../../model/document-tree';
 
 export interface FileTreeFolderRowProps {
   node: FileTreeFolderNode;

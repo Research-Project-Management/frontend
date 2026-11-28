@@ -4,74 +4,10 @@
  * Types for version history, snapshot comparisons, and change timelines.
  */
 
-type VersionEventType =
-  | 'manual_save'
-  | 'auto_save'
-  | 'collaborative_checkpoint'
-  | 'restore'
-  | 'file_created'
-  | 'file_deleted'
-  | 'asset_uploaded'
-  | 'asset_deleted';
-
 interface VersionAuthor {
   id: string;
   name: string;
   avatar?: string;
-}
-
-export interface PageVersion {
-  id: string;
-  title: string;
-  label: string;
-  fileName: string;
-  savedBy: VersionAuthor;
-  createdAt: string;
-  content?: string;
-}
-
-export interface PageVersionWithContent extends PageVersion {
-  content: string;
-}
-
-interface PageEvent {
-  id: string;
-  versionNumber?: number;
-  eventType: VersionEventType;
-  title: string;
-  label: string;
-  fileName: string;
-  savedBy: VersionAuthor;
-  createdAt: string;
-  /** The specific page that was modified (for content events). */
-  page: string;
-  sizeBytes?: number;
-}
-
-
-interface DiffChunk {
-  type: 'added' | 'deleted' | 'removed' | 'unchanged' | 'change';
-  value?: string;
-  content?: string;
-  linesCount?: number;
-  lines?: string[];
-  oldStart?: number;
-  oldLines?: number;
-  newStart?: number;
-  newLines?: number;
-}
-
-export interface VersionDiffResult {
-  fromVersionId: string;
-  toVersionId: string;
-  fromLabel?: string;
-  toLabel?: string;
-  chunks: DiffChunk[];
-  stats: {
-    addedLines: number;
-    deletedLines: number;
-    unchangedLines: number;
-  };
 }
 
 export interface VersionLabelItem {

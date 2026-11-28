@@ -45,7 +45,6 @@ export interface TimelineSidebarProps {
   error?: unknown;
   onRetry?: () => void;
   historyMode: 'single' | 'compare';
-  onHistoryModeChange: (mode: 'single' | 'compare') => void;
   filter: 'all' | 'labelled';
   setFilter: (filter: 'all' | 'labelled') => void;
   selectedTargetVersion: number | null;
@@ -68,7 +67,6 @@ export function TimelineSidebar({
   error,
   onRetry,
   historyMode,
-  onHistoryModeChange,
   filter,
   setFilter,
   selectedTargetVersion,

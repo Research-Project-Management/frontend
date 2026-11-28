@@ -38,17 +38,19 @@ import {
   CodeMirrorEngineAdapter,
   programmaticSyncAnnotation,
 } from '@/features/editor/core/engine/adapters/codemirror.adapter';
-import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
+import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import {
   reviewCoordinator,
   setReviewModeEffect,
   setViewModeEffect,
   useReviewSync,
 } from '@/features/editor/subsystems/review';
-import { setErrorLensDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
-import { setCompilerDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/diagnostics-gutter';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
-import { navigationCoordinator } from '@/features/editor/subsystems/navigation/coordinator/navigation.coordinator';
+import {
+  setErrorLensDiagnosticsEffect,
+  setCompilerDiagnosticsEffect,
+  diagnosticsCoordinator,
+} from '@/features/editor/subsystems/diagnostics';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
 import { shouldUseRealtimePersistence } from '@/features/editor/core/coordinator/session-persistence.strategy';
 import {

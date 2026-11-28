@@ -6,7 +6,7 @@
  * GitHub repository sync tab inside SettingsModal.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   GitCommit,
   GitPullRequest,
@@ -19,7 +19,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useIntegrations } from '@/features/settings/hooks/use-integrations';
-import { useGithubSync } from '@/features/editor/subsystems/settings/hooks/useGithubSync';
+import { useGithubSync } from '../hooks/useGithubSync';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -89,6 +89,7 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
   const {
     register: registerPush,
     handleSubmit: handleSubmitPush,
+    setValue: setPushValue,
     formState: { errors: pushErrors },
   } = useForm<PushChangesFormValues>({
     resolver: zodResolver(pushChangesSchema),
@@ -97,6 +98,12 @@ export function GithubTab({ pageId, pageTitle }: GithubTabProps) {
       targetBranch: linkedRepo?.branch || 'main',
     },
   });
+
+  useEffect(() => {
+    if (linkedRepo?.branch) {
+      setPushValue('targetBranch', linkedRepo.branch);
+    }
+  }, [linkedRepo?.branch, setPushValue]);
 
   const {
     register: registerLink,

@@ -16,10 +16,7 @@ import type {
   CommandDispatchMiddleware,
   CommandExecuteMiddleware,
 } from '@/features/editor/core/bus/command-bus.port';
-import type {
-  LatexFormatType,
-  IEditorEngine,
-} from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import {
   subscribeEditorEngineChanges,
   registerEditorEngine,
@@ -334,7 +331,7 @@ export {
 /**
  * Strategy Lookup Table Pattern: Visual Command -> Engine Execution Strategy
  */
-export const VISUAL_COMMAND_STRATEGIES: Readonly<
+const VISUAL_COMMAND_STRATEGIES: Readonly<
   Record<
     string,
     (
@@ -448,13 +445,6 @@ export function registerDefaultBridges(): void {
       const engine = getEditorEngineOrNoop();
       engine.insertText('');
       engine.focus();
-    }),
-    editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
-      getEditorEngineOrNoop().wrapSelection(
-        cmd.prefix,
-        cmd.suffix,
-        cmd.placeholder,
-      );
     }),
     editorCommandBus.subscribe('editor:format', (cmd) => {
       getEditorEngineOrNoop().format(cmd.format);

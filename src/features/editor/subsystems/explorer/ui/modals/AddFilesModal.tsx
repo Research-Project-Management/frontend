@@ -14,20 +14,22 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
-import { usePageStore, syncShallowUrlParams } from '@/features/editor/core';
+import {
+  usePageStore,
+  syncShallowUrlParams,
+  resolveEditorScopeFromState,
+} from '@/features/editor/core';
 
 import type {
   AddFilesTab,
   AddFilesModalProps,
   AddFilesTabItem,
-} from '@/features/editor/subsystems/explorer/model/add-files.types';
+} from '../../model/add-files.types';
 import { AddFilesSidebar } from './AddFilesSidebar';
 import { NewFileTabPane } from './NewFileTabPane';
 import { UploadTabPane } from './UploadTabPane';
 import { UrlTabPane } from './UrlTabPane';
 import { LibraryTabPane } from './LibraryTabPane';
-
-export type { AddFilesTab, AddFilesModalProps };
 
 const TABS: AddFilesTabItem[] = [
   { id: 'new-file', label: 'New file', icon: FileText },
@@ -44,9 +46,9 @@ export default function AddFilesModal({
   projectId,
   onPickItems,
 }: AddFilesModalProps) {
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const parentPageId = propParentPageId || storeParentPageId || currentPageId || null;
+  const parentPageId = usePageStore(
+    (s) => resolveEditorScopeFromState(s, { pageId: propParentPageId, projectId }).rootPageId || null,
+  );
 
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {

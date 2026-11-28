@@ -10,7 +10,7 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { useCompileStore, useViewerStore } from '@/features/editor/subsystems/compiler';
-import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { resetEditorWorkspace } from '@/features/editor/editor-workspace-lifecycle';
 
 const EDITOR_ROOT = path.resolve(__dirname, '../../../src/features/editor');
@@ -142,6 +142,29 @@ describe('Editor Architecture Layer Boundaries & Workspace Teardown', () => {
 
       expect(violations).toEqual([]);
     });
+
+    it('enforces subsystem entry-point boundaries (zero external deep imports past subsystems/<name>/index.ts)', () => {
+      const srcRoot = path.resolve(EDITOR_ROOT, '../..');
+      const allSrcFiles = collectTsFiles(srcRoot);
+      const violations: string[] = [];
+
+      for (const file of allSrcFiles) {
+        const posixFile = file.replace(/\\/g, '/');
+        const { staticSpecifiers, dynamicSpecifiers } = extractModuleSpecifiers(
+          fs.readFileSync(file, 'utf8'),
+        );
+        for (const spec of [...staticSpecifiers, ...dynamicSpecifiers]) {
+          const match = /^@\/features\/editor\/subsystems\/([^/]+)\/(.+)$/.exec(spec);
+          if (!match) continue;
+          const targetSub = match[1];
+          if (!posixFile.includes(`/features/editor/subsystems/${targetSub}/`)) {
+            violations.push(`${path.relative(srcRoot, file).replace(/\\/g, '/')} -> ${spec}`);
+          }
+        }
+      }
+
+      expect(violations).toEqual([]);
+    });
   });
 
   describe('2. Runtime Command Bus Decoupling & Centralized Workspace Reset', () => {
@@ -251,7 +274,6 @@ describe('Editor Architecture Layer Boundaries & Workspace Teardown', () => {
           isOnline: true,
         },
       ]);
-      collab.incrementUnreadChatCount();
 
       diagnosticsCoordinator.ingestCompilerErrors(
         [
@@ -274,7 +296,6 @@ describe('Editor Architecture Layer Boundaries & Workspace Teardown', () => {
       expect(useCompileStore.getState().compileDiagnostics).toHaveLength(1);
       expect(useSearchStore.getState().query).toBe('\\section');
       expect(useDocumentCollaborationStore.getState().collaborators).toHaveLength(1);
-      expect(useDocumentCollaborationStore.getState().unreadChatCount).toBe(1);
       expect(diagnosticsCoordinator.getAllDiagnostics(false)).toHaveLength(1);
       expect(warmEditorStatePool.size).toBe(1);
 
@@ -318,7 +339,6 @@ describe('Editor Architecture Layer Boundaries & Workspace Teardown', () => {
       expect(usePageStore.getState().projectId).toBe('');
       expect(useSearchStore.getState().query).toBe('');
       expect(useDocumentCollaborationStore.getState().collaborators).toEqual([]);
-      expect(useDocumentCollaborationStore.getState().unreadChatCount).toBe(0);
       expect(diagnosticsCoordinator.getAllDiagnostics(false)).toEqual([]);
       expect(latexSymbolsIndex.getLabels('sec:old')).toEqual([]);
       expect(latexDependencyGraph.analyze().nodes.size).toBe(0);

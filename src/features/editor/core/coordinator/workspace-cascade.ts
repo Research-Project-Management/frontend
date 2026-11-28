@@ -24,12 +24,6 @@ import {
   type WorkspaceProjectItem,
 } from './workspace-file-index';
 
-export interface WorkspaceCascadeCallbacks {
-  updateTabTitleInStore: (projectId: string, itemId: string, newTitle: string) => void;
-  closeTabInStore: (fileId: string) => void;
-  getActiveProjectId: () => string | null;
-}
-
 export function executeCascadePathChange(params: {
   effectiveProjectId: string;
   itemId: string;

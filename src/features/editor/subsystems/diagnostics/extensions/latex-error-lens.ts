@@ -26,14 +26,12 @@ import {
 } from '@codemirror/view';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 
-export type IndexedDiagnosticItem = EditorDiagnosticItem;
-
 export interface ErrorLensPayload {
-  diagnostics: IndexedDiagnosticItem[];
+  diagnostics: EditorDiagnosticItem[];
   filePath?: string;
 }
 
-export const setErrorLensDiagnosticsEffect = StateEffect.define<IndexedDiagnosticItem[] | ErrorLensPayload>();
+export const setErrorLensDiagnosticsEffect = StateEffect.define<EditorDiagnosticItem[] | ErrorLensPayload>();
 export const clearErrorLensDiagnosticsEffect = StateEffect.define<void>();
 
 // ── Error Lens Widget ─────────────────────────────────────────────────────────
@@ -42,7 +40,7 @@ export class ErrorLensWidget extends WidgetType {
   public readonly line: number;
 
   constructor(
-    public readonly diagnostic: IndexedDiagnosticItem,
+    public readonly diagnostic: EditorDiagnosticItem,
     public readonly filePath: string,
   ) {
     super();
@@ -132,7 +130,7 @@ const DECO_LINE_BY_SEVERITY: Record<string, Decoration> = {
 };
 
 function buildDecorations(
-  diagnostics: IndexedDiagnosticItem[],
+  diagnostics: EditorDiagnosticItem[],
   doc: { lines: number; line: (n: number) => { from: number; to: number } },
   filePath: string,
 ): DecorationSet {
@@ -143,7 +141,7 @@ function buildDecorations(
   const builder = new RangeSetBuilder<Decoration>();
 
   // Group diagnostics by line to avoid multiple widgets cluttering one line
-  const lineMap = new Map<number, IndexedDiagnosticItem>();
+  const lineMap = new Map<number, EditorDiagnosticItem>();
   for (const d of diagnostics) {
     // Skip diagnostics without a valid source line (e.g. global compile warnings like "Reference undefined on page 2")
     // These belong in the Compiler Logs panel, not forced onto Line 1

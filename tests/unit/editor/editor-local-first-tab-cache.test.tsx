@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { pagesService, type EditorBootstrapResponseDto } from '@/features/editor/sdk/pages.service';
-import {
-  unsyncedEditsStore,
-  syncedDocCacheStore,
-} from '@/features/editor/domain/offline-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { sessionCoordinator, useConnectivityStore } from '@/features/editor/core';
+import { sessionCoordinator } from '@/features/editor/core';
 import {
   pageQuery,
   hydrateEditorBootstrap,
@@ -129,46 +125,20 @@ function makeBootstrapDto(overrides?: Partial<EditorBootstrapResponseDto>): Edit
   };
 }
 
-const TEST_DOC_IDS = [
-  'doc-main',
-  'ch1',
-  'ch2',
-  'file-1',
-  'file-2',
-  'file-3',
-  'file-4',
-  'file-5',
-  'd1',
-  'd2',
-  'd3',
-];
-
-async function clearTestDraftStorage(): Promise<void> {
-  await Promise.all(
-    TEST_DOC_IDS.flatMap((id) => [
-      unsyncedEditsStore.clear(id).catch(() => {}),
-      syncedDocCacheStore.delete(id).catch(() => {}),
-    ]),
-  );
-}
-
-describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) Dirty Subscription', () => {
-  beforeEach(async () => {
+describe('Hot RAM LRU Tab Cache (RAM -> Server) & O(1) Dirty Subscription', () => {
+  beforeEach(() => {
     vi.restoreAllMocks();
     lruDocumentCache.resetLimits();
     lruDocumentCache.clear();
     sessionCoordinator.resetSession();
-    useConnectivityStore.getState().setIsOnline(true);
-    await clearTestDraftStorage();
   });
 
-  afterEach(async () => {
+  afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     lruDocumentCache.resetLimits();
     lruDocumentCache.clear();
     sessionCoordinator.resetSession();
-    await clearTestDraftStorage();
   });
 
   it('hits RAM with staleTime=Infinity and triggers 0 extra GET /docs/:id calls when switching tabs even after >60s', async () => {
@@ -212,7 +182,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     queryClient.clear();
   });
 
-  it('hydrates clean spilled tabs (>40 tabs / LRU eviction) from OfflineDB with 0 HTTP calls', async () => {
+  it('evicts oldest clean tabs beyond LRU capacity and re-hydrates from authoritative server on revisit', async () => {
     lruDocumentCache.setCapacity(3);
     const getByIdSpy = vi
       .spyOn(pagesService.docs, 'getById')
@@ -234,82 +204,18 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     expect(lruDocumentCache.hasModel('file-1')).toBe(false);
     expect(lruDocumentCache.hasModel('file-2')).toBe(false);
 
-    // Switch back to spilled file-1 & file-2: resolved strictly from OfflineDB (0 HTTP)
     getByIdSpy.mockClear();
     const restored1 = await resolveDocumentLocalFirst('file-1');
     const restored2 = await resolveDocumentLocalFirst('file-2');
 
     expect(restored1.content).toBe('content-for-file-1');
     expect(restored2.content).toBe('content-for-file-2');
-    expect(getByIdSpy).toHaveBeenCalledTimes(0);
+    expect(getByIdSpy).toHaveBeenCalledTimes(2);
     expect(lruDocumentCache.hasModel('file-1')).toBe(true);
     expect(lruDocumentCache.hasModel('file-2')).toBe(true);
   });
 
-  it('validates OfflineDB snapshots after F5 reload via tree (hash, rev) manifest: 0 HTTP on match, 1 HTTP on mismatch', async () => {
-    // Seed OfflineDB synced doc cache before simulated reload
-    await syncedDocCacheStore.put({
-      id: 'ch1',
-      projectId: 'space-lf-1',
-      title: 'ch1.tex',
-      filePath: '/chapters/ch1.tex',
-      content: 'ch1-from-idb-v1',
-      rev: 1,
-      hash: 'sha-ch1-v1',
-      updatedAt: Date.now() - 10_000,
-    });
-    await syncedDocCacheStore.put({
-      id: 'ch2',
-      projectId: 'space-lf-1',
-      title: 'ch2.tex',
-      filePath: '/chapters/ch2.tex',
-      content: 'ch2-stale-v1',
-      rev: 1,
-      hash: 'sha-ch2-v1',
-      updatedAt: Date.now() - 10_000,
-    });
-
-    // F5 wipe of RAM cache followed by bootstrap carrying authoritative manifest (ch1=v1, ch2=v2)
-    lruDocumentCache.clear();
-    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    hydrateEditorBootstrap(queryClient, makeBootstrapDto());
-
-    const getByIdSpy = vi
-      .spyOn(pagesService.docs, 'getById')
-      .mockResolvedValue({
-        id: 'ch2',
-        title: 'ch2.tex',
-        path: '/chapters/ch2.tex',
-        content: 'ch2-fresh-server-v2',
-        projectId: 'space-lf-1',
-        rev: 2,
-        hash: 'sha-ch2-v2',
-        updatedAt: '2026-01-01T00:01:00.000Z',
-      } as Page);
-
-    // ch1 matches manifest (sha-ch1-v1, rev 1) -> served from OfflineDB with 0 HTTP calls
-    const resolvedCh1 = await resolveDocumentLocalFirst('ch1');
-    expect(resolvedCh1.content).toBe('ch1-from-idb-v1');
-    expect(getByIdSpy).toHaveBeenCalledTimes(0);
-
-    // ch2 mismatches manifest (idb v1 vs tree v2) -> fetches server once and updates RAM + OfflineDB
-    const resolvedCh2 = await resolveDocumentLocalFirst('ch2');
-    expect(resolvedCh2.content).toBe('ch2-fresh-server-v2');
-    expect(getByIdSpy).toHaveBeenCalledTimes(1);
-
-    // Subsequent resolution hits RAM with 0 further HTTP calls
-    const resolvedCh2Again = await resolveDocumentLocalFirst('ch2');
-    expect(resolvedCh2Again.content).toBe('ch2-fresh-server-v2');
-    expect(getByIdSpy).toHaveBeenCalledTimes(1);
-
-    const updatedSnap = await syncedDocCacheStore.get('ch2');
-    expect(updatedSnap?.rev).toBe(2);
-    expect(updatedSnap?.hash).toBe('sha-ch2-v2');
-    expect(updatedSnap?.content).toBe('ch2-fresh-server-v2');
-    queryClient.clear();
-  });
-
-  it('closes autosave write-through loop ({ rev, hash } -> RAM + Manifest + OfflineDB) and detects stale offline draft OCC conflict', async () => {
+  it('closes autosave write-through loop ({ rev, hash } -> RAM + Manifest)', async () => {
     lruDocumentCache.registerModel('ch1', {
       content: 'initial v1',
       filePath: '/chapters/ch1.tex',
@@ -339,36 +245,6 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     expect(lruDocumentCache.getModel('ch1')?.serverRev).toBe(2);
     expect(lruDocumentCache.getModel('ch1')?.hash).toBe('sha-ch1-v2');
     expect(lruDocumentCache.getManifestEntry('ch1')).toMatchObject({ rev: 2, hash: 'sha-ch1-v2' });
-
-    const persistedSnap = await syncedDocCacheStore.get('ch1');
-    expect(persistedSnap?.content).toBe('edited v2');
-    expect(persistedSnap?.rev).toBe(2);
-    expect(persistedSnap?.hash).toBe('sha-ch1-v2');
-
-    // Simulate reload where user had uncommitted edit at expectedRev=1 while server moved to rev=3
-    lruDocumentCache.clear();
-    await unsyncedEditsStore.save('ch1', 'offline edit based on v1', 'space-lf-1', 'ch1.tex', 1);
-    lruDocumentCache.setManifestEntry('ch1', { rev: 3, hash: 'sha-ch1-v3', sessionValidated: true });
-
-    vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
-      id: 'ch1',
-      title: 'ch1.tex',
-      path: '/chapters/ch1.tex',
-      content: 'remote collaborator v3',
-      projectId: 'space-lf-1',
-      rev: 3,
-      hash: 'sha-ch1-v3',
-    } as Page);
-
-    const resolvedOnConflict = await resolveDocumentLocalFirst('ch1');
-    expect(resolvedOnConflict.content).toBe('offline edit based on v1');
-    expect(lruDocumentCache.isDirty('ch1')).toBe(true);
-
-    const conflict = sessionCoordinator.getConflict('ch1');
-    expect(conflict).toBeDefined();
-    expect(conflict?.localContent).toBe('offline edit based on v1');
-    expect(conflict?.remoteContent).toBe('remote collaborator v3');
-    expect(conflict?.currentRev).toBe(3);
   });
 
   it('notifies subscribers in O(1) via subscribeFile and preserves dirty state across >capacity RAM eviction', () => {

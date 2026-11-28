@@ -120,10 +120,10 @@ describe('3. Diagnostics Coordinator (Interval Partitioning)', () => {
     coordinator.ingestCompilerErrors(mockErrors);
 
     // Verify file partition isolation (No leakage from intro.tex to main.tex)
-    const mainDiagnostics = coordinator.getFileDiagnostics('main.tex');
+    const mainDiagnostics = coordinator.getDiagnosticsForFile('main.tex');
     expect(mainDiagnostics).toHaveLength(3);
 
-    const introDiagnostics = coordinator.getFileDiagnostics('chapters/intro.tex');
+    const introDiagnostics = coordinator.getDiagnosticsForFile('chapters/intro.tex');
     expect(introDiagnostics).toHaveLength(1);
     expect(introDiagnostics[0].line).toBe(15);
 

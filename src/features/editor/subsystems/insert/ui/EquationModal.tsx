@@ -11,6 +11,7 @@ import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import { Check, Loader2, Upload, X } from 'lucide-react';
 import katex from 'katex';
 import { toast } from 'sonner';
+import { resolveEditorScope } from '@/features/editor/core/coordinator/editor-scope';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
   Dialog,
@@ -26,7 +27,8 @@ export interface EquationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onInsert: (latexCode: string) => void;
-  initialPrompt?: string;
+  pageId?: string | null;
+  spaceId?: string | null;
 }
 
 function stripEquationEnv(latex: string): string {
@@ -38,9 +40,10 @@ export function EquationModal({
   open,
   onOpenChange,
   onInsert,
-  initialPrompt = '',
+  pageId,
+  spaceId,
 }: EquationModalProps) {
-  const [prompt, setPrompt] = useState(initialPrompt);
+  const [prompt, setPrompt] = useState('');
   const [latex, setLatex] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [image, setImage] = useState<{ file: File; previewUrl: string } | null>(null);
@@ -81,7 +84,10 @@ export function EquationModal({
     if ((!prompt.trim() && !image) || isGenerating) return;
     setIsGenerating(true);
     try {
+      const scope = resolveEditorScope({ pageId, spaceId });
       const equation = await pagesService.ai.generateLatexEquation(prompt.trim(), {
+        spaceId: scope.spaceId || scope.routeSpaceParam,
+        pageId: scope.rootPageId || undefined,
         image: image?.file ?? null,
       });
       if (!equation) {
@@ -98,7 +104,7 @@ export function EquationModal({
     } finally {
       setIsGenerating(false);
     }
-  }, [prompt, image, isGenerating]);
+  }, [prompt, image, isGenerating, pageId, spaceId]);
 
   const previewHtml = useMemo(() => {
     if (!latex.trim()) return '';

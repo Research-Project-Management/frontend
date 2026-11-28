@@ -24,12 +24,15 @@ import {
   displayName,
 } from '@/features/editor/domain/document/document-naming';
 import { syncShallowUrlParams } from '@/features/editor/domain/constants/editor.constants';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { navigationCoordinator } from '@/features/editor/subsystems/navigation/coordinator/navigation.coordinator';
-import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
+import {
+  usePageStore,
+  useSettingsStore,
+  useWorkspaceStore,
+  editorCommandBus,
+  resolveEditorScopeFromState,
+} from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import type { AssetInfo } from '@/features/editor/domain/types/core.types';
 import {
   pageQuery,
   filesQuery,
@@ -42,7 +45,7 @@ import { useFileTree } from './useFileTree';
 import {
   flattenVisibleTree,
   findAncestorFolderPaths,
-} from '@/features/editor/subsystems/explorer/model/document-tree';
+} from '../model/document-tree';
 import {
   VALID_MAIN_TEX_EXT_REGEX,
   sanitizeTitle,
@@ -50,9 +53,9 @@ import {
   sortTreeNodes,
   type FileSortBy,
   type FileSortDirection,
-} from '@/features/editor/subsystems/explorer/model/explorer-tree.utils';
+} from '../model/explorer-tree.utils';
 import { useFileExplorerActions } from './useFileExplorerActions';
-import type { AddFilesTab } from '@/features/editor/subsystems/explorer/model/add-files.types';
+import type { AddFilesTab } from '../model/add-files.types';
 
 export type { FileSortBy, FileSortDirection };
 
@@ -65,10 +68,13 @@ export function useFilesTabController() {
   }, []);
 
   const storeCurrentPage = usePageStore((s) => s.currentPage);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
-  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
+  const storeRootPageId = usePageStore(
+    (s) => resolveEditorScopeFromState(s, { pageId, projectId: routeProjectId }).rootPageId,
+  );
+  const storeProjectId = usePageStore(
+    (s) => resolveEditorScopeFromState(s, { pageId, projectId: routeProjectId }).projectId,
+  );
   const activeFileId = usePageStore((s) => s.activeFilePage?.id);
   const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
   const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
@@ -77,7 +83,7 @@ export function useFilesTabController() {
   const storeRootDocId = usePageStore((s) => s.rootDocId);
   const openTab = useWorkspaceStore((s) => s.openTab);
 
-  const parentPageId: string | null = pageId || storeParentPageId || currentPageId || null;
+  const parentPageId: string | null = pageId || storeRootPageId || null;
 
   const { data: queriedParentPage } = useQuery({
     ...pageQuery(parentPageId ?? ''),
@@ -88,7 +94,7 @@ export function useFilesTabController() {
   const projectId =
     routeProjectId ||
     extractProjectId(parentPage) ||
-    currentPageProjectId ||
+    storeProjectId ||
     '';
 
   const activeTabId = useWorkspaceStore(

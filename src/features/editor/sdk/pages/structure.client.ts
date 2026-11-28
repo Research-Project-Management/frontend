@@ -104,10 +104,6 @@ export function mapStructureNodesToPageFiles(
 }
 
 export const structure = {
-  getTree: async (pageId: string) => {
-    return await apiGet(`${PAGES_API_BASE}/pages/${pageId}/structure/tree`);
-  },
-
   getSymbols: async (pageId: string): Promise<ProjectSymbolsResponseDto | null> => {
     if (!pageId) return null;
     try {
@@ -146,15 +142,6 @@ export const structure = {
       );
     } catch {
       return { rootDocPath: null, entries: [], tree: [] };
-    }
-  },
-
-  getAllNodes: async (pageId: string): Promise<StructureNodeDto[]> => {
-    if (!pageId) return [];
-    try {
-      return await apiGet<StructureNodeDto[]>(`${PAGES_API_BASE}/pages/${pageId}/structure/nodes`, { silent: true });
-    } catch {
-      return [];
     }
   },
 

@@ -4,13 +4,10 @@
  * CitationModal.tsx
  *
  * Add-from-Library Modal for the Flux Editor (Overleaf <-> Zotero flow).
- * Selects references or collections from Library and writes them to `references.bib`.
+ * Selects references or collections from Library and writes them to the configured `.bib` file.
  */
 
-import React, { useCallback, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
+import React, { useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,19 +17,14 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { X } from 'lucide-react';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { citations } from '@/features/editor/sdk/pages/citations.client';
 import { CitationRetractionAlertDialog } from './RetractionDialog';
 import {
-  CitationSpecs,
   useCitationPickerState,
   type CitationStyle,
-  type CitationPredicate,
 } from '../hooks/useCitationModal';
 import { CitationPickerListPane } from './CitationList';
 import { CitationSidebar } from './CitationSidebar';
 import { CitationDetailPane } from './CitationDetail';
-
-export { CitationSpecs, type CitationStyle, type CitationPredicate };
 
 export interface CitationModalProps {
   open: boolean;
@@ -57,11 +49,8 @@ export function CitationModal({
   initialQuery = '',
   initialKey = '',
   citedKeys: propsCitedKeys,
-  targetBibFile = 'references.bib',
+  targetBibFile,
 }: CitationModalProps) {
-  const queryClient = useQueryClient();
-  const [isAdding, setIsAdding] = useState(false);
-
   const state = useCitationPickerState({
     open,
     onOpenChange,
@@ -72,63 +61,14 @@ export function CitationModal({
     initialQuery,
     initialKey,
     citedKeys: propsCitedKeys,
+    targetBibFile,
   });
 
   const handleNoopSelectItem = useCallback(() => {}, []);
 
-  const selectedEntries: BibEntry[] =
-    state.selectedKeys.size > 0
-      ? state.filteredItems.filter((item) =>
-          state.selectedKeys.has(item.key.toLowerCase()),
-        )
-      : state.selectedEntry
-        ? [state.selectedEntry]
-        : [];
-
-  const selectionCount = selectedEntries.length;
-  const isAddDisabled = selectionCount === 0 || isAdding || !state.effectiveProjectId;
-
-  const handleAddToBib = async () => {
-    if (isAddDisabled) return;
-    setIsAdding(true);
-    try {
-      const payloadEntries = selectedEntries.map((entry) => ({
-        key: entry.key,
-        entryType: entry.type || 'article',
-        title: entry.title,
-        authors: entry.authors,
-        year: entry.year,
-        journal: entry.journal,
-        booktitle: entry.booktitle,
-        publisher: entry.publisher,
-        doi: entry.doi,
-        url: entry.url,
-        abstract: entry.abstract,
-      }));
-
-      const res = await citations.upsertEntries(state.effectiveProjectId, {
-        entries: payloadEntries,
-        targetBibFile,
-        ...(state.rootId ? { pageId: state.rootId } : {}),
-      });
-
-      invalidateFileTreeQueries(queryClient, {
-        parentPageId: state.rootId || undefined,
-        pageId: state.rootId || undefined,
-      });
-      const count = res.entries.length;
-      toast.success(
-        count === 1 ? 'Added 1 reference' : `Added ${count} references`,
-      );
-      onOpenChange(false);
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : 'Failed to add references to .bib',
-      );
-    } finally {
-      setIsAdding(false);
-    }
-  };
+  const selectionCount = state.selectedEntries.length;
+  const isAddDisabled =
+    selectionCount === 0 || state.isAddingToBib || !state.effectiveProjectId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,22 +97,17 @@ export function CitationModal({
             selectedNav={state.selectedNav}
             onSelectNav={state.setSelectedNav}
             libraryCount={state.navCounts.library}
+            byCollectionCounts={state.navCounts}
             collections={state.collectionTree}
-            spaceId={state.effectiveProjectId}
-            pageId={state.rootId}
-            targetBibFile={targetBibFile}
-            onSynced={() => {
-              invalidateFileTreeQueries(queryClient, {
-                parentPageId: state.rootId || undefined,
-                pageId: state.rootId || undefined,
-              });
-              onOpenChange(false);
+            canSyncCollection={Boolean(state.effectiveProjectId)}
+            isSyncingCollection={state.isSyncingCollection}
+            onSyncCollection={(collectionId) => {
+              void state.handleSyncCollection(collectionId);
             }}
           />
 
           <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden bg-background">
             <CitationPickerListPane
-              activeView="list"
               search={state.search}
               onSearchChange={state.setSearch}
               onKeyDown={state.handleKeyDown}
@@ -203,30 +138,30 @@ export function CitationModal({
 
         <div className="px-5 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
           <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              disabled={isAddDisabled}
-              onClick={handleAddToBib}
-              className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
-            >
-              <span>
-                {isAdding
-                  ? 'Adding...'
-                  : selectionCount > 1
-                    ? `Add ${selectionCount} to .bib`
-                    : 'Add to .bib'}
-              </span>
-            </Button>
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="h-8 px-3 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={isAddDisabled}
+            onClick={state.handleAddToBib}
+            className="h-8 px-4 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer disabled:opacity-50"
+          >
+            <span>
+              {state.isAddingToBib
+                ? 'Adding...'
+                : selectionCount > 1
+                  ? `Add ${selectionCount} to .bib`
+                  : 'Add to .bib'}
+            </span>
+          </Button>
         </div>
       </DialogContent>
 
@@ -234,7 +169,15 @@ export function CitationModal({
         <CitationRetractionAlertDialog
           pendingRetracted={state.pendingRetracted}
           onDismiss={() => state.setPendingRetracted(null)}
-          onConfirmCiteAnyway={(entry) => state.insertCitation(entry)}
+          onConfirmCiteAnyway={(entry) => {
+            if (onSelectCitation) {
+              state.insertCitation(entry);
+            } else {
+              void state.commitAddEntriesToBib(
+                state.selectedEntries.length > 0 ? state.selectedEntries : [entry],
+              );
+            }
+          }}
         />
       )}
     </Dialog>

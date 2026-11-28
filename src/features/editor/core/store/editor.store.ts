@@ -7,8 +7,7 @@
 
 import { create } from 'zustand';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
-import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
-import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
+import type { AssetInfo, Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 interface EditorGithubLinkInfo {
   id: string;
@@ -57,9 +56,7 @@ export interface DocumentEditorState {
   setRootDocId: (id: string | null) => void;
   setMainFilePath: (path: string | null) => void;
   setMainDocument: (doc: { rootDocId?: string | null; mainFilePath: string | null }) => void;
-  setParentPageId: (id: string | null) => void;
   setActiveDocId: (id: string | null) => void;
-  setActivePageId: (id: string | null) => void;
   setHierarchy: (hierarchy: {
     spaceId?: string;
     projectId?: string;
@@ -88,7 +85,6 @@ export interface DocumentEditorState {
   getSpaceId: () => string;
   getProjectId: () => string;
   getRootPageId: () => string | null;
-  getMainFilePath: () => string | null;
   getActiveDocId: () => string | null;
 }
 
@@ -198,23 +194,11 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
         rootDocId: nextRootDocId,
       };
     }),
-  setParentPageId: (parentPageId) =>
-    set((state) =>
-      state.rootPageId === parentPageId && state.parentPageId === parentPageId
-        ? state
-        : { rootPageId: parentPageId, parentPageId },
-    ),
   setActiveDocId: (activeDocId) =>
     set((state) =>
       state.activeDocId === activeDocId && state.activePageId === activeDocId
         ? state
         : { activeDocId, activePageId: activeDocId },
-    ),
-  setActivePageId: (activePageId) =>
-    set((state) =>
-      state.activeDocId === activePageId && state.activePageId === activePageId
-        ? state
-        : { activeDocId: activePageId, activePageId },
     ),
   setHierarchy: ({ spaceId, projectId, rootPageId, pageId, activeDocId }) =>
     set((state) => {
@@ -311,7 +295,6 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
   getSpaceId: () => get().spaceId || get().projectId,
   getProjectId: () => get().projectId || get().spaceId,
   getRootPageId: () => get().rootPageId || get().parentPageId,
-  getMainFilePath: () => get().mainFilePath,
   getActiveDocId: () => get().activeDocId || get().activePageId,
 }));
 

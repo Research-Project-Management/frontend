@@ -2,28 +2,34 @@
  * review-coordinator-deep-module.test.ts
  *
  * Verification suite for ReviewCoordinator as a Deep Module (Matt Pocock design pattern):
- * - Injected ReviewServicePort & ReviewNotificationPort test stand-ins.
+ * - Injected ReviewServicePort test stand-in at the owned HTTP boundary.
  * - Single-click accept & reject with optimistic updates and event dispatching.
  * - Network failure graceful rollback handling and error notification.
- * - Bulk operations (acceptAll, rejectAll, acceptSelected, rejectSelected).
+ * - Bulk operations (acceptAll, rejectAll, acceptSelected, rejectSelected) with buffer rollback.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
+import { toast } from 'sonner';
 import {
   ReviewCoordinator,
   reviewCoordinator,
+  createReviewExtension,
   type ReviewServicePort,
-  type ReviewNotificationPort,
-  type ReviewStorePort,
 } from '@/features/editor/subsystems/review';
-import { editorCommandBus } from '@/features/editor/core';
+import {
+  editorCommandBus,
+  useDocumentCollaborationStore,
+  useWorkspaceStore,
+} from '@/features/editor/core';
 
 describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   let mockService: ReviewServicePort;
-  let mockNotification: ReviewNotificationPort;
   let coordinator: ReviewCoordinator;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockService = {
       acceptSuggestion: vi.fn().mockResolvedValue({ success: true }),
       rejectSuggestion: vi.fn().mockResolvedValue({ success: true }),
@@ -33,14 +39,8 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
       rejectSelectedSuggestions: vi.fn().mockResolvedValue({ success: true }),
     };
 
-    mockNotification = {
-      notifySuccess: vi.fn(),
-      notifyError: vi.fn(),
-    };
-
     coordinator = new ReviewCoordinator({
       service: mockService,
-      notification: mockNotification,
     });
   });
 
@@ -50,7 +50,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   });
 
   it('acceptSuggestion calls servicePort and dispatches suggestion:accepted on success', async () => {
-    const busEvents: any[] = [];
+    const busEvents: unknown[] = [];
     const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
       busEvents.push(cmd);
     });
@@ -59,7 +59,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
 
     expect(result).toBe(true);
     expect(mockService.acceptSuggestion).toHaveBeenCalledWith('page-1', 'sug-123');
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('Change accepted', 'sug-sug-123');
+    expect(toast.success).toHaveBeenCalledWith('Change accepted', { id: 'sug-sug-123' });
     expect(busEvents).toHaveLength(1);
     expect(busEvents[0]).toMatchObject({
       type: 'editor:review-event',
@@ -74,7 +74,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   it('acceptSuggestion dispatches rollback and notifies error on service failure', async () => {
     mockService.acceptSuggestion = vi.fn().mockRejectedValue(new Error('Network error'));
 
-    const busEvents: any[] = [];
+    const busEvents: unknown[] = [];
     const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
       busEvents.push(cmd);
     });
@@ -82,7 +82,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
     const result = await coordinator.acceptSuggestion('page-1', 'sug-123');
 
     expect(result).toBe(false);
-    expect(mockNotification.notifyError).toHaveBeenCalledWith('Network error', 'sug-sug-123');
+    expect(toast.error).toHaveBeenCalledWith('Network error', { id: 'sug-sug-123' });
     expect(busEvents).toHaveLength(1);
     expect(busEvents[0]).toMatchObject({
       type: 'editor:review-event',
@@ -95,7 +95,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   });
 
   it('rejectSuggestion calls servicePort and dispatches suggestion:rejected on success', async () => {
-    const busEvents: any[] = [];
+    const busEvents: unknown[] = [];
     const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
       busEvents.push(cmd);
     });
@@ -104,7 +104,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
 
     expect(result).toBe(true);
     expect(mockService.rejectSuggestion).toHaveBeenCalledWith('page-1', 'sug-456');
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('Change rejected', 'sug-sug-456');
+    expect(toast.success).toHaveBeenCalledWith('Change rejected', { id: 'sug-sug-456' });
     expect(busEvents).toHaveLength(1);
     expect(busEvents[0]).toMatchObject({
       type: 'editor:review-event',
@@ -119,49 +119,96 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   it('bulk operations (acceptAll, rejectAll, acceptSelected, rejectSelected) delegate to servicePort', async () => {
     await coordinator.acceptAll('page-1');
     expect(mockService.acceptAllSuggestions).toHaveBeenCalledWith('page-1');
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('All changes accepted', 'sug-bulk');
+    expect(toast.success).toHaveBeenCalledWith('All changes accepted', { id: 'sug-bulk' });
 
     await coordinator.rejectAll('page-1');
     expect(mockService.rejectAllSuggestions).toHaveBeenCalledWith('page-1');
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('All changes rejected', 'sug-bulk');
+    expect(toast.success).toHaveBeenCalledWith('All changes rejected', { id: 'sug-bulk' });
 
     await coordinator.acceptSelected('page-1', ['sug-1', 'sug-2']);
     expect(mockService.acceptSelectedSuggestions).toHaveBeenCalledWith('page-1', ['sug-1', 'sug-2']);
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('2 changes accepted', 'sug-bulk');
+    expect(toast.success).toHaveBeenCalledWith('2 changes accepted', { id: 'sug-bulk' });
 
     await coordinator.rejectSelected('page-1', ['sug-3']);
     expect(mockService.rejectSelectedSuggestions).toHaveBeenCalledWith('page-1', ['sug-3']);
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('1 changes rejected', 'sug-bulk');
+    expect(toast.success).toHaveBeenCalledWith('1 changes rejected', { id: 'sug-bulk' });
   });
 
-  it('singleton reviewCoordinator can update ports dynamically via setPorts', async () => {
+  it('acceptAll restores optimistic CodeMirror buffer snapshot when servicePort fails', async () => {
+    mockService.acceptAllSuggestions = vi.fn().mockRejectedValue(new Error('Bulk failure'));
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const view = new EditorView({
+      state: EditorState.create({
+        doc: 'We propose an inefficient algorithm.',
+        extensions: [createReviewExtension()],
+      }),
+      parent: container,
+    });
+
+    try {
+      coordinator.bindEditorView(view, 'page-bulk-err');
+      coordinator.syncEditorDecorations(
+        view,
+        [
+          {
+            id: 'sug-del-err',
+            pageId: 'page-bulk-err',
+            type: 'delete',
+            originalText: 'inefficient ',
+            suggestedText: '',
+            fromLine: 1,
+            fromColumn: 15,
+            toLine: 1,
+            toColumn: 27,
+            status: 'pending',
+            authorId: 'u-1',
+            author: { id: 'u-1', name: 'Alice' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        [],
+        'changes',
+        false,
+        'page-bulk-err',
+      );
+
+      const ok = await coordinator.acceptAll('page-bulk-err');
+      expect(ok).toBe(false);
+      expect(view.state.doc.toString()).toBe('We propose an inefficient algorithm.');
+    } finally {
+      view.destroy();
+      container.remove();
+    }
+  });
+
+  it('singleton reviewCoordinator can update service port dynamically via setPorts', async () => {
     reviewCoordinator.setPorts({
       service: mockService,
-      notification: mockNotification,
     });
 
     await reviewCoordinator.acceptSuggestion('page-live', 'sug-live');
     expect(mockService.acceptSuggestion).toHaveBeenCalledWith('page-live', 'sug-live');
-    expect(mockNotification.notifySuccess).toHaveBeenCalledWith('Change accepted', 'sug-sug-live');
+    expect(toast.success).toHaveBeenCalledWith('Change accepted', { id: 'sug-sug-live' });
 
     reviewCoordinator.resetPorts();
   });
 
-  it('initiateComment delegates to storePort and opens review sidebar', () => {
-    const mockStore: ReviewStorePort = {
-      setPendingComment: vi.fn(),
-      openReviewSidebar: vi.fn(),
-    };
+  it('initiateComment populates collaboration store pendingComment and opens review sidebar', () => {
+    useDocumentCollaborationStore.getState().clearPendingComment();
+    useWorkspaceStore.getState().setActiveSidebarTab('files');
+    useWorkspaceStore.getState().setSidebarLeftOpen(false);
 
-    coordinator.setPorts({ store: mockStore });
     coordinator.initiateComment(15, 'sample selected text');
 
-    expect(mockStore.setPendingComment).toHaveBeenCalledWith({
+    expect(useDocumentCollaborationStore.getState().pendingComment).toEqual({
       startLine: 15,
       endLine: 15,
       selectedText: 'sample selected text',
     });
-    expect(mockStore.openReviewSidebar).toHaveBeenCalled();
+    expect(useWorkspaceStore.getState().activeSidebarTab).toBe('review');
+    expect(useWorkspaceStore.getState().sidebarLeftOpen).toBe(true);
   });
 
   it('scheduleLocalCreate converts 1-based UI columns to 0-based backend wire coordinates and preserves 1-based UI columns on merge', async () => {
@@ -191,7 +238,6 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
         createSuggestion,
         acceptSuggestion,
       },
-      notification: mockNotification,
     });
 
     try {
@@ -253,7 +299,6 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
         ...mockService,
         batchResolve,
       },
-      notification: mockNotification,
     });
 
     coordinator.syncEditorDecorations(

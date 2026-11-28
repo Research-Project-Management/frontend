@@ -22,7 +22,7 @@ import {
   type CompilerEngine,
 } from '@/features/editor/core/store/settings.store';
 import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/store/compiler.store';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import {
   extractDocumentContentString,
   type Page,

@@ -2,12 +2,7 @@
  * latex-linter-core.ts
  *
  * Types, cache invalidation hooks, and retracted-citation scanner for LaTeX Linting.
- * Authoritative AST/state-machine linting (`FastSyntaxLinter`) runs on the backend in
- * `backend/src/modules/manuscripts/diagnostics/domain/fast-syntax.linter.ts`
- * via `POST /api/v1/manuscripts/diagnostics/projects/:projectId/lint-doc` and `/diagnostics/lint`.
  */
-
-import type { DiagnosticItemDto } from '@/features/editor/sdk/pages/types';
 
 export interface RetractedItemInfo {
   title?: string;
@@ -51,64 +46,6 @@ export function clearLatexLinterCache(): void {
       // Ignore callback error
     }
   }
-}
-
-/**
- * Converts backend `DiagnosticItemDto[]` (1-indexed line/column) into character-offset
- * `LinterDiagnostic[]` for CodeMirror 6.
- */
-export function mapBackendDiagnosticsToOffsets(
-  text: string,
-  items: DiagnosticItemDto[],
-): LinterDiagnostic[] {
-  if (!text || !Array.isArray(items) || items.length === 0) return [];
-
-  const lineStarts: number[] = [0];
-  for (let idx = 0; idx < text.length; idx++) {
-    if (text.charCodeAt(idx) === 10 /* '\n' */) {
-      lineStarts.push(idx + 1);
-    }
-  }
-
-  const results: LinterDiagnostic[] = [];
-  for (const item of items) {
-    const lineNum = Math.max(1, Math.min(item.line || 1, lineStarts.length));
-    const lineStart = lineStarts[lineNum - 1] ?? 0;
-    const lineEnd =
-      lineNum < lineStarts.length
-        ? Math.max(lineStart, (lineStarts[lineNum] ?? text.length) - 1)
-        : text.length;
-
-    const colOffset = item.column && item.column > 1 ? item.column - 1 : 0;
-    const from = Math.min(lineStart + colOffset, lineEnd);
-
-    // Highlight token at `from` or the non-whitespace span on that line
-    let to = from;
-    if (from < lineEnd) {
-      const restOfLine = text.slice(from, lineEnd);
-      const tokenMatch = restOfLine.match(/^(\\[a-zA-Z*]+(?:\{[^}]*\})?|\$\$?|\{[^{}\n]*\}|\S+)/);
-      to = tokenMatch ? Math.min(from + tokenMatch[0].length, lineEnd) : Math.min(from + 1, lineEnd);
-    } else {
-      to = Math.min(from + 1, text.length);
-    }
-
-    const severity: 'error' | 'warning' | 'info' =
-      item.severity === 'error'
-        ? 'error'
-        : item.severity === 'info'
-          ? 'info'
-          : 'warning';
-
-    results.push({
-      from,
-      to: Math.max(from, to),
-      severity,
-      message: item.message,
-      source: 'LaTeX Linter',
-    });
-  }
-
-  return results;
 }
 
 /**

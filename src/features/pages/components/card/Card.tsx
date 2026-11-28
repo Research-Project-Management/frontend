@@ -31,9 +31,8 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { usePageActions } from '@/features/pages/hooks/use-page';
 import type { Page } from '@/features/pages/types/page.types';
-import { buildPageEditorHref } from '@/features/pages/utils/page-url';
-import { formatDate, copyToClipboard, cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { buildPageEditorHref, copyPageLink } from '@/features/pages/utils/page-url';
+import { formatDate, cn } from '@/shared/lib/utils';
 
 interface CardProps {
   page: Page;
@@ -82,22 +81,12 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
     [page.description, page.content]
   );
   const isArchived = page.status === 'archived';
-  const displayStatus = isArchived
-    ? 'Archived'
-    : page.status === 'published'
-      ? 'Published'
-      : 'Draft';
-  const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
+  const labels = page.labels ?? [];
 
   const handleCopyLink = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (typeof window !== 'undefined') {
-      const fullUrl = `${window.location.origin}${linkHref}`;
-      const ok = await copyToClipboard(fullUrl);
-      if (ok) toast.success('Copied link');
-      else toast.error('Copy failed');
-    }
+    await copyPageLink(linkHref);
   };
 
   const handleDuplicate = (e: React.MouseEvent) => {
@@ -181,7 +170,7 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
               <button
                 type="button"
                 className={cn(
-                  "relative size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden",
+                  "relative size-7 rounded-md flex items-center justify-center transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none before:absolute before:-inset-2 md:before:hidden",
                   isMenuOpen
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"

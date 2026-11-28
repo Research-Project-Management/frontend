@@ -1,23 +1,10 @@
 import {
   buildPageScopeHref,
-  resolvePageScope,
   type BuildPageEditorHrefOptions,
-  type PageEditorSubpath,
-  type PageScope,
-  type PageScopeInput,
-  type PageSpaceKind,
-} from '@/features/editor/core/coordinator/editor-scope';
+} from '@/features/editor';
+import { copyToClipboard } from '@/shared/lib/utils';
+import { toast } from 'sonner';
 import type { Page } from '../types/page.types';
-
-export {
-  resolvePageScope,
-  buildPageScopeHref,
-  type PageScope,
-  type PageScopeInput,
-  type PageSpaceKind,
-  type PageEditorSubpath,
-  type BuildPageEditorHrefOptions,
-};
 
 function extractEntityId(value?: string | { id?: string } | Record<string, unknown> | null): string | null {
   if (!value) return null;
@@ -26,6 +13,14 @@ function extractEntityId(value?: string | { id?: string } | Record<string, unkno
     return value.id || null;
   }
   return null;
+}
+
+export async function copyPageLink(relativeHref: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const fullUrl = `${window.location.origin}${relativeHref}`;
+  const ok = await copyToClipboard(fullUrl);
+  if (ok) toast.success('Copied link');
+  else toast.error('Copy failed');
 }
 
 export function buildPageEditorHref(

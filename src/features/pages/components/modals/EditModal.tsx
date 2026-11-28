@@ -15,12 +15,8 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { PageService } from '@/features/pages/services/page.service';
-import { pageKeys } from '@/features/pages/hooks/use-page';
-import type { Page, PageStatus } from '@/features/pages/types/page.types';
-import type { PageLabelItem } from './CreateModal';
+import { usePageActions } from '@/features/pages/hooks/use-page';
+import type { Page, PageLabelItem, PageStatus } from '@/features/pages/types/page.types';
 
 interface EditModalProps {
   isOpen: boolean;
@@ -30,27 +26,18 @@ interface EditModalProps {
   labels?: PageLabelItem[];
 }
 
-const STATUS_CONFIG: Record<
-  PageStatus,
-  { label: string; color: string; bg: string; border: string }
-> = {
+const STATUS_CONFIG: Record<PageStatus, { label: string; color: string }> = {
   draft: {
     label: 'Draft',
     color: 'var(--color-warning, #9A6700)',
-    bg: 'bg-warning/10 text-warning',
-    border: 'border-warning/20',
   },
   published: {
     label: 'Published',
     color: 'var(--color-success, #1A7F37)',
-    bg: 'bg-success/10 text-success',
-    border: 'border-success/20',
   },
   archived: {
     label: 'Archived',
     color: 'var(--color-muted-foreground, #6E6E6E)',
-    bg: 'bg-muted text-muted-foreground',
-    border: 'border-border',
   },
 };
 
@@ -61,7 +48,7 @@ export function EditModal({
   spaceId,
   labels = [],
 }: EditModalProps) {
-  const queryClient = useQueryClient();
+  const { savePage } = usePageActions();
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<PageStatus>('draft');
   const [description, setDescription] = useState('');
@@ -69,7 +56,8 @@ export function EditModal({
   const [labelSearch, setLabelSearch] = useState('');
   const [isLabelPopoverOpen, setIsLabelPopoverOpen] = useState(false);
   const [isStatusPopoverOpen, setIsStatusPopoverOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+
+  const isSaving = savePage.isPending;
 
   useEffect(() => {
     if (page && isOpen) {
@@ -82,7 +70,7 @@ export function EditModal({
       );
       setDescription(page.description || '');
       const existingLabelIds = (page.labels || [])
-        .map((l) => l.id)
+        .map((l) => (typeof l === 'string' ? l : l.id))
         .filter(Boolean);
       setSelectedLabelIds(existingLabelIds);
       setLabelSearch('');
@@ -110,32 +98,18 @@ export function EditModal({
   const handleSave = async () => {
     if (!page || !title.trim() || isSaving) return;
 
-    setIsSaving(true);
     try {
-      const cleanTitle = title.trim();
-
-      await PageService.update(page.id, {
-        title: cleanTitle,
+      await savePage.mutateAsync({
+        pageId: page.id,
+        spaceId: spaceId || undefined,
+        title: title.trim(),
         status,
         description: description.trim(),
+        labelIds: selectedLabelIds,
       });
-
-      if (spaceId) {
-        await PageService.replaceLabels(spaceId, page.id, selectedLabelIds);
-      }
-
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      if (spaceId) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.space(spaceId) });
-      }
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(page.id) });
-
-      toast.success('Page updated', { id: 'page-action' });
       setIsOpen(false);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update page', { id: 'page-action' });
-    } finally {
-      setIsSaving(false);
+    } catch {
+      // Error toast is handled by usePageActions.savePage
     }
   };
 

@@ -6,14 +6,14 @@ import {
   type IllustrationProps,
 } from '@/shared/components/illustrations';
 
-export const ILLUSTRATION_COLOR_TOKEN_MAP = ILLUSTRATION_TOKENS;
+const ILLUSTRATION_COLOR_TOKEN_MAP = ILLUSTRATION_TOKENS;
 
-export type TIllustrationAssetProps = IllustrationProps;
+type TIllustrationAssetProps = IllustrationProps;
 
 /**
  * Shared Isometric 3-Tier Base Slab Foundation matching Library & Storage standards
  */
-export function IsometricBaseSlabs() {
+function IsometricBaseSlabs() {
   return (
     <>
       {/* Base Slab 1 (Bottom) - opacity 0.2 */}
@@ -354,89 +354,9 @@ export function PagesLabelStackIllustration({ className }: TIllustrationAssetPro
 }
 
 /**
- * 4. PagesStarredStackIllustration
- * 3D isometric faceted Star on document platform.
- * Used for "No favorite pages" empty state.
- */
-export function PagesStarredStackIllustration({ className }: TIllustrationAssetProps) {
-  return (
-    <svg width="162" height="180" viewBox="0 0 162 180" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <IsometricBaseSlabs />
-
-      {/* Floating Accent Gem (Top Right) */}
-      <g>
-        <path
-          d="M136.0 28.0L145.0 33.0L136.0 38.0L127.0 33.0L136.0 28.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.4"
-        />
-        <circle cx="136.0" cy="33.0" r="1.5" fill={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary} />
-      </g>
-
-      {/* 3D Star Shadow */}
-      <ellipse cx="80.0" cy="106.0" rx="30.0" ry="11.0" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} opacity="0.3" />
-
-      {/* 3D Isometric Star Body */}
-      <g>
-        {/* Star Upper Spike Left */}
-        <path
-          d="M80.0 22.0L68.0 58.0L80.0 68.0V22.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Upper Spike Right */}
-        <path
-          d="M80.0 22.0L80.0 68.0L92.0 58.0L80.0 22.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Right Spike */}
-        <path
-          d="M92.0 58.0L126.0 64.0L98.0 82.0L80.0 68.0L92.0 58.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Left Spike */}
-        <path
-          d="M68.0 58.0L80.0 68.0L62.0 82.0L34.0 64.0L68.0 58.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Bottom Right Spike */}
-        <path
-          d="M80.0 68.0L98.0 82.0L110.0 106.0L80.0 92.0V68.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.tertiary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Bottom Left Spike */}
-        <path
-          d="M80.0 68.0V92.0L50.0 106.0L62.0 82.0L80.0 68.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
-          strokeWidth="0.5"
-        />
-        {/* Star Extrusion Under-facet */}
-        <path
-          d="M50.0 106.0L80.0 92.0L110.0 106.0L80.0 112.0L50.0 106.0Z"
-          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
-          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
-          strokeWidth="0.4"
-        />
-      </g>
-    </svg>
-  );
-}
-
-/**
- * 5. PagesArchivedStackIllustration
+ * 4. PagesArchivedStackIllustration
  * 3D isometric Archive Box / Document Tray.
- * Used for "No archived pages" empty state.
+ * Used for "No archived pages" and "Trash is empty" states.
  */
 export function PagesArchivedStackIllustration({ className }: TIllustrationAssetProps) {
   return (

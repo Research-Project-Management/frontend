@@ -21,21 +21,21 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { cn, formatBytes } from '@/shared/lib/utils';
 import { UPLOAD_LIMITS } from '@/config/limits';
-import { pagesService } from '@/features/editor/core';
+import { PageService } from '@/features/pages/services/page.service';
 import { pageKeys } from '@/features/pages/hooks/use-page';
 import { buildPageEditorHref } from '@/features/pages/utils/page-url';
 
 interface ImportDocumentModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  projectId: string;
+  spaceId: string;
   initialFormat?: 'docx' | 'md';
 }
 
 export function ImportDocumentModal({
   isOpen,
   setIsOpen,
-  projectId,
+  spaceId,
   initialFormat = 'docx',
 }: ImportDocumentModalProps) {
   const router = useRouter();
@@ -101,14 +101,14 @@ export function ImportDocumentModal({
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile || !projectId) return;
+    if (!selectedFile || !spaceId) return;
 
     setIsSubmitting(true);
     const toastId = toast.loading(`Converting and importing ${selectedFile.name}...`);
 
     try {
-      const result = await pagesService.export.convertDocument(
-        projectId,
+      const result = await PageService.convertDocument(
+        spaceId,
         selectedFile,
         { format },
       );
@@ -120,7 +120,13 @@ export function ImportDocumentModal({
 
       const newId = result?.pageId || result?.rootDocId;
       if (newId) {
-        router.push(buildPageEditorHref(newId, { projectId }));
+        const isPersonal = !spaceId || spaceId === 'personal';
+        router.push(
+          buildPageEditorHref(newId, {
+            spaceKind: isPersonal ? 'personal' : 'project',
+            projectId: isPersonal ? null : spaceId,
+          }),
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Conversion failed', { id: toastId });

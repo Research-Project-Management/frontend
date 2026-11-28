@@ -33,9 +33,8 @@ import {
 } from '@/shared/components/ui/alert-dialog';
 import { usePageActions } from '@/features/pages/hooks/use-page';
 import type { Page } from '@/features/pages/types/page.types';
-import { buildPageEditorHref } from '@/features/pages/utils/page-url';
-import { formatDate, copyToClipboard, cn } from '@/shared/lib/utils';
-import { toast } from 'sonner';
+import { buildPageEditorHref, copyPageLink } from '@/features/pages/utils/page-url';
+import { formatDate, cn } from '@/shared/lib/utils';
 
 interface ListViewProps {
   pages: Page[];
@@ -92,15 +91,6 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
       return 0;
     });
   }, [pages, sortColumn, sortDirection]);
-
-  const handleCopyLink = async (url: string) => {
-    if (typeof window !== 'undefined') {
-      const fullUrl = `${window.location.origin}${url}`;
-      const ok = await copyToClipboard(fullUrl);
-      if (ok) toast.success('Copied link');
-      else toast.error('Copy failed');
-    }
-  };
 
   const handleToggleArchive = (pageId: string, isArchived: boolean) => {
     updateStatus.mutate({
@@ -186,12 +176,13 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
         <tbody className="divide-y divide-border/60">
           {sortedPages.map((page) => {
             const linkHref = buildPageEditorHref(page, params?.projectId);
-            const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
+            const labels = page.labels ?? [];
             const authorName = page.author?.name;
             const isArchived = page.status === 'archived';
+            const isPublished = page.status === 'published';
             const displayStatus = isArchived
               ? 'Archived'
-              : page.status === 'published'
+              : isPublished
                 ? 'Published'
                 : 'Draft';
 
@@ -221,13 +212,19 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                       "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-11 font-mono font-medium",
                       isArchived
                         ? "bg-muted text-muted-foreground border border-border"
-                        : "bg-success/10 text-success border border-success/20"
+                        : isPublished
+                          ? "bg-success/10 text-success border border-success/20"
+                          : "bg-warning/10 text-warning border-warning/20"
                     )}
                   >
                     <span
                       className={cn(
                         "size-1.5 rounded-full shrink-0",
-                        isArchived ? "bg-muted-foreground" : "bg-success"
+                        isArchived
+                          ? "bg-muted-foreground"
+                          : isPublished
+                            ? "bg-success"
+                            : "bg-warning"
                       )}
                     />
                     <span>{displayStatus}</span>
@@ -314,7 +311,7 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          className="relative size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                          className="relative size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring cursor-pointer before:absolute before:-inset-2 md:before:hidden"
                           aria-label={`Options for ${page.title}`}
                         >
                           <MoreHorizontal className="size-3.5 shrink-0" />
@@ -340,7 +337,7 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                           <span>Edit page</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleCopyLink(linkHref)}
+                          onClick={() => copyPageLink(linkHref)}
                           className="cursor-pointer gap-2 text-12"
                         >
                           <Link2 className="size-3.5 text-muted-foreground" />

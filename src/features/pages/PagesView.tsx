@@ -4,10 +4,10 @@ import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
-import { pagesService } from '@/features/editor/core';
+import { PageService } from './services/page.service';
 import {
   pagesQueryOptions,
   trashPagesQueryOptions,
@@ -46,10 +46,7 @@ const EditModal = dynamic(
   { ssr: false }
 );
 const TemplateGalleryModal = dynamic(
-  () =>
-    import(
-      '@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal'
-    ).then((m) => m.TemplateGalleryModal),
+  () => import('@/features/editor').then((m) => m.TemplateGalleryModal),
   { ssr: false },
 );
 const ImportDocumentModal = dynamic(
@@ -144,7 +141,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
     }
     for (const page of pages) {
       for (const l of page.labels ?? []) {
-        if (l?.id && l?.name && !map.has(l.id)) {
+        if (typeof l === 'object' && l?.id && l?.name && !map.has(l.id)) {
           map.set(l.id, { id: l.id, name: l.name, color: l.color || '#0969DA' });
         }
       }
@@ -157,17 +154,34 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
     [availableLabels, selectedLabelIds]
   );
 
-  const handleToggleLabel = (labelId: string) => {
+  const handleSelectSidebarLabel = (labelId: string) => {
     setSelectedLabelIds((prev) =>
-      prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
+      prev.length === 1 && prev[0] === labelId ? [] : [labelId]
     );
   };
 
+  const handleSelectTopbarLabels = (ids: string[]) => {
+    if (ids.length > 0 && (activeFilter === 'uncategorized' || activeFilter === 'trash')) {
+      setActiveFilter('all');
+    }
+    setSelectedLabelIds(ids);
+  };
+
   const filteredPages = useMemo(() => {
+    const matchesSearch = (page: Page, q: string) => {
+      if (page.title?.toLowerCase().includes(q)) return true;
+      return (
+        page.labels?.some((label) => {
+          const name = typeof label === 'string' ? label : label?.name;
+          return name?.toLowerCase().includes(q);
+        }) ?? false
+      );
+    };
+
     if (isTrashTab) {
       if (!searchQuery.trim()) return trashPages;
-      const q = searchQuery.toLowerCase();
-      return trashPages.filter((page) => page.title?.toLowerCase().includes(q));
+      const q = searchQuery.toLowerCase().trim();
+      return trashPages.filter((page) => matchesSearch(page, q));
     }
 
     let result = pages;
@@ -187,19 +201,17 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
     // 2. Label filter
     if (selectedLabelIds.length > 0) {
       result = result.filter((page) =>
-        (page.labels as Array<{ id?: string; name?: string } | string> | undefined)?.some(
-          (label) => {
-            const lid = typeof label === 'string' ? label : label?.id || label?.name;
-            return lid ? selectedLabelIds.includes(lid) : false;
-          }
-        )
+        page.labels?.some((label) => {
+          const lid = typeof label === 'string' ? label : label?.id || label?.name;
+          return lid ? selectedLabelIds.includes(lid) : false;
+        }),
       );
     }
 
-    // 3. Search query filter
+    // 3. Search query filter (title + label name)
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((page) => page.title?.toLowerCase().includes(q));
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter((page) => matchesSearch(page, q));
     }
 
     return result;
@@ -241,7 +253,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
   const handleImportZip = async (file: File) => {
     const toastId = toast.loading(`Importing ${file.name}...`);
     try {
-      const result = await pagesService.export.importZip(effectiveSpaceId, file);
+      const result = await PageService.importZip(effectiveSpaceId, file);
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Archive imported successfully', { id: toastId });
       const newId = result?.pageId || result?.rootDocId;
@@ -289,7 +301,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
             onSelectFilter={setActiveFilter}
             labels={availableLabels}
             selectedLabelIds={selectedLabelIds}
-            onToggleLabel={handleToggleLabel}
+            onToggleLabel={handleSelectSidebarLabel}
             onClearLabels={() => setSelectedLabelIds([])}
             onCreateLabel={handleCreateSidebarLabel}
             isCreatingLabel={
@@ -323,7 +335,12 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
           <Topbar
             viewMode={viewMode}
             setViewMode={setViewMode}
-            activeViewLabel={FILTER_VIEW_LABELS[activeFilter]}
+            activeFilter={activeFilter}
+            activeViewLabel={
+              activeFilter === 'all' && !isProjectMode
+                ? 'My pages'
+                : FILTER_VIEW_LABELS[activeFilter]
+            }
             onCreateClick={(template) => {
               setTemplateType(template ?? 'blank');
               setIsCreateModalOpen(true);
@@ -342,8 +359,42 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
             onSearchChange={setSearchQuery}
             labels={availableLabels}
             selectedLabelIds={selectedLabelIds}
-            onSelectLabelIds={setSelectedLabelIds}
+            onSelectLabelIds={handleSelectTopbarLabels}
           />
+
+          {(selectedLabels.length >= 2 || (selectedLabels.length === 1 && activeFilter === 'archived')) && (
+            <div className="flex items-center flex-wrap gap-1.5 px-3 sm:px-4 py-1.5 border-b border-border bg-transparent shrink-0">
+              {selectedLabels.map((label) => (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 h-6 rounded-md bg-muted/20 hover:bg-muted/40 border border-border text-11 font-medium text-foreground shrink-0 select-none"
+                >
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: label.color || '#0969DA' }}
+                  />
+                  <span className="truncate max-w-40 font-medium">{label.name}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedLabelIds((prev) => prev.filter((id) => id !== label.id))
+                    }
+                    className="text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-md p-0.5 transition-colors"
+                    aria-label={`Remove ${label.name} filter`}
+                  >
+                    <X className="size-3 shrink-0" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSelectedLabelIds([])}
+                className="text-11 font-medium text-muted-foreground hover:text-foreground px-1.5 py-0.5 rounded-md hover:bg-muted/60 cursor-pointer transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
 
           <PageContent maxWidth="full" noPadding className="pb-8">
             {isLoading ? (
@@ -420,7 +471,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
               }}
               page={editingPage}
               spaceId={effectiveSpaceId}
-              labels={spaceLabels}
+              labels={availableLabels}
             />
           )}
 
@@ -437,7 +488,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
             <ImportDocumentModal
               isOpen={isImportDocModalOpen}
               setIsOpen={setIsImportDocModalOpen}
-              projectId={effectiveSpaceId}
+              spaceId={effectiveSpaceId}
               initialFormat={importDocFormat}
             />
           )}
@@ -446,7 +497,7 @@ export function PagesView({ spaceId: propSpaceId }: { spaceId?: string } = {}) {
             <ImportGithubModal
               isOpen={isImportGithubOpen}
               setIsOpen={setIsImportGithubOpen}
-              projectId={effectiveSpaceId}
+              spaceId={effectiveSpaceId}
             />
           )}
         </PageLayout>

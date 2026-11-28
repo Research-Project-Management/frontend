@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   GitBranch,
@@ -25,7 +25,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import { pagesService } from '@/features/editor/sdk/pages.service';
+import { PageService } from '@/features/pages/services/page.service';
 import { integrationService } from '@/features/settings/services/integration.service';
 import type { IntegrationStatusItem, RemoteCollection } from '@/features/settings/types/integration.types';
 import { pageKeys } from '@/features/pages/hooks/use-page';
@@ -34,22 +34,32 @@ import { buildPageEditorHref } from '@/features/pages/utils/page-url';
 interface ImportGithubModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  projectId: string;
+  spaceId: string;
 }
 
 export function ImportGithubModal({
   isOpen,
   setIsOpen,
-  projectId,
+  spaceId,
 }: ImportGithubModalProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const oauthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
   const [selectedBranch, setSelectedBranch] = useState<string>('main');
   const [isImporting, setIsImporting] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (oauthTimerRef.current) {
+        clearInterval(oauthTimerRef.current);
+        oauthTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // 1. Fetch connection status
   const {
@@ -117,9 +127,15 @@ export function ImportGithubModal({
         'width=600,height=750,menubar=no,toolbar=no',
       );
 
-      const timer = setInterval(() => {
+      if (oauthTimerRef.current) {
+        clearInterval(oauthTimerRef.current);
+      }
+      oauthTimerRef.current = setInterval(() => {
         if (!popup || popup.closed) {
-          clearInterval(timer);
+          if (oauthTimerRef.current) {
+            clearInterval(oauthTimerRef.current);
+            oauthTimerRef.current = null;
+          }
           setIsConnecting(false);
           refetchStatus();
           refetchRepos();
@@ -138,8 +154,8 @@ export function ImportGithubModal({
     const toastId = toast.loading(`Cloning and importing ${selectedRepo} on branch ${selectedBranch}...`);
 
     try {
-      const res = await pagesService.git.importGithubRepo({
-        spaceId: projectId || 'personal',
+      const res = await PageService.importGithubRepo({
+        spaceId: spaceId || 'personal',
         repoFullName: selectedRepo,
         branch: selectedBranch,
       });
@@ -151,13 +167,15 @@ export function ImportGithubModal({
 
       const targetPageId = res?.pageId || res?.rootDocId;
       if (targetPageId) {
-        const dest = res.isPersonal
-          ? `/pages/${targetPageId}`
-          : buildPageEditorHref(targetPageId, {
-              spaceKind: 'project',
-              projectId: res.spaceId || projectId,
-            });
-        router.push(dest);
+        const resolvedSpaceId = res.spaceId || spaceId;
+        const isPersonal =
+          res.isPersonal ?? (!resolvedSpaceId || resolvedSpaceId === 'personal');
+        router.push(
+          buildPageEditorHref(targetPageId, {
+            spaceKind: isPersonal ? 'personal' : 'project',
+            projectId: isPersonal ? null : resolvedSpaceId,
+          }),
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'GitHub import failed', { id: toastId });

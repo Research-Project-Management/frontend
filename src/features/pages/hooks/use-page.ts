@@ -42,8 +42,7 @@ export const usePageActions = () => {
 
   const createPage = useMutation({
     mutationFn: (input: CreatePageInput) => PageService.create(input),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.space(variables.spaceId) });
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Page created', { id: 'page-action' });
     },
@@ -90,10 +89,7 @@ export const usePageActions = () => {
   const updateTitle = useMutation({
     mutationFn: ({ pageId, title }: { pageId: string; title: string }) =>
       PageService.update(pageId, { title }),
-    onSuccess: (data) => {
-      if (data?.id) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Title updated', { id: 'page-action' });
     },
@@ -103,16 +99,43 @@ export const usePageActions = () => {
   const updateStatus = useMutation({
     mutationFn: ({ pageId, status }: { pageId: string; status: PageStatus }) =>
       PageService.update(pageId, { status }),
-    onSuccess: (data, variables) => {
-      if (data?.id) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });
-      }
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success(variables.status === 'archived' ? 'Page archived' : 'Page restored', {
         id: 'page-action',
       });
     },
     onError: (error: Error) => toast.error(error.message || 'Failed to update page status', { id: 'page-action' }),
+  });
+
+  const savePage = useMutation({
+    mutationFn: async ({
+      pageId,
+      spaceId,
+      title,
+      status,
+      description,
+      labelIds,
+    }: {
+      pageId: string;
+      spaceId?: string;
+      title: string;
+      status: PageStatus;
+      description: string;
+      labelIds?: string[];
+    }) => {
+      const updated = await PageService.update(pageId, { title, status, description });
+      if (spaceId && labelIds) {
+        await PageService.replaceLabels(spaceId, pageId, labelIds);
+      }
+      return updated;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      toast.success('Page updated', { id: 'page-action' });
+    },
+    onError: (error: Error) =>
+      toast.error(error.message || 'Failed to update page', { id: 'page-action' }),
   });
 
   return {
@@ -123,5 +146,6 @@ export const usePageActions = () => {
     duplicatePage,
     updateTitle,
     updateStatus,
+    savePage,
   };
 };

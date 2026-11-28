@@ -10,7 +10,6 @@ import {
   Trash2,
   Plus,
   Tag,
-  X,
   Check,
   Loader2,
 } from 'lucide-react';
@@ -131,7 +130,7 @@ export function PagesSidebar({
 
       {/* 2. Scrollable Navigation Content */}
       <div className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar flex flex-col gap-3 p-2.5 pt-2.5 pb-2">
-        {/* ── SECTION 1: Space Views (All pages / My pages & Archived) ── */}
+        {/* ── SECTION 1: Space Views (All pages / My pages, Archived & Trash) ── */}
         <div className="shrink-0">
           <nav className="flex flex-col gap-0.5" aria-label="Pages navigation">
             <button
@@ -204,27 +203,6 @@ export function PagesSidebar({
             </CollapsibleTrigger>
 
             <div className="flex items-center gap-0.5">
-              {selectedLabelIds.length > 0 && onClearLabels && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClearLabels();
-                      }}
-                      aria-label="Clear label filter"
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
-                    >
-                      <X className="size-3 shrink-0" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    Clear label filter
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
               <Tooltip>
                 <TooltipTrigger asChild>
                   <CollapsibleTrigger asChild>
@@ -335,7 +313,7 @@ export function PagesSidebar({
                     key={label.id}
                     type="button"
                     onClick={() => {
-                      if (activeFilter === 'uncategorized') {
+                      if (activeFilter !== 'all') {
                         onSelectFilter('all');
                       }
                       onToggleLabel?.(label.id);
@@ -371,7 +349,7 @@ export function PagesSidebar({
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
                 )}
               >
-                <span className="min-w-0 truncate tracking-tight pl-6">Uncategorized</span>
+                <span className="min-w-0 truncate tracking-tight pl-6 pr-1">Uncategorized</span>
               </button>
             </div>
           </CollapsibleContent>

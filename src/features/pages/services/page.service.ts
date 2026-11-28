@@ -1,4 +1,4 @@
-import { pagesService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor';
 import type {
   Page,
   PageStatus,
@@ -19,7 +19,7 @@ export const PageService = {
     pagesService.docs.getTrash<Page>(spaceId),
 
   restore: async (pageId: string) => {
-    const page = await pagesService.docs.restore(pageId) as unknown as Page;
+    const page = (await pagesService.docs.restore(pageId)) as unknown as Page;
     return { success: true, page };
   },
 
@@ -42,4 +42,19 @@ export const PageService = {
 
   replaceLabels: (spaceId: string, pageId: string, labelIds: string[]) =>
     pagesService.docs.replaceLabels(spaceId, pageId, labelIds),
+
+  importZip: (spaceId: string, file: File) =>
+    pagesService.export.importZip(spaceId, file),
+
+  convertDocument: (
+    spaceId: string,
+    file: File,
+    options: { format: 'docx' | 'md' },
+  ) => pagesService.export.convertDocument(spaceId, file, options),
+
+  importGithubRepo: (input: {
+    spaceId: string;
+    repoFullName: string;
+    branch: string;
+  }) => pagesService.git.importGithubRepo(input),
 };

@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
-import { WikiIcon } from '@/shared/components/icons';
+import {
+  Search,
+  X,
+  Columns3,
+  AlignJustify,
+  ListFilter,
+  Check,
+  Files,
+  Archive,
+  Trash2,
+  Tag,
+} from 'lucide-react';
+import type { PagesFilterTab } from './PagesSidebar';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -42,6 +53,7 @@ export interface TopbarProps {
   labels?: Array<{ id: string; name: string; color?: string }>;
   selectedLabelIds?: string[];
   onSelectLabelIds?: (labelIds: string[]) => void;
+  activeFilter?: PagesFilterTab;
   activeViewLabel?: string;
 }
 
@@ -77,6 +89,7 @@ export function Topbar({
   labels = [],
   selectedLabelIds = [],
   onSelectLabelIds,
+  activeFilter = 'all',
   activeViewLabel,
 }: TopbarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -111,18 +124,36 @@ export function Topbar({
       className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-transparent sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
-      {/* Left: Module Icon & Title */}
+      {/* Left: Active Page / View Icon & Title */}
       <div className="flex items-center gap-2 min-w-0 shrink-0">
-        <WikiIcon className="size-4 text-foreground shrink-0" />
-        <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
-          Pages
-        </h1>
-        {activeViewLabel && activeViewLabel !== 'All pages' && (
+        {activeFilter === 'all' && selectedLabel ? (
           <>
-            <span className="text-muted-foreground/40 text-13 select-none">/</span>
-            <span className="text-13 font-medium text-muted-foreground truncate">
-              {activeViewLabel}
-            </span>
+            <Tag
+              className="size-4 shrink-0"
+              style={{
+                color: selectedLabel.color || '#0969DA',
+                fill: `${selectedLabel.color || '#0969DA'}25`,
+              }}
+              strokeWidth={1.75}
+            />
+            <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
+              {selectedLabel.name}
+            </h1>
+          </>
+        ) : (
+          <>
+            {activeFilter === 'archived' ? (
+              <Archive className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            ) : activeFilter === 'trash' ? (
+              <Trash2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            ) : activeFilter === 'uncategorized' ? (
+              <Tag className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
+            ) : (
+              <Files className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            )}
+            <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
+              {activeViewLabel || 'All pages'}
+            </h1>
           </>
         )}
       </div>
@@ -204,8 +235,7 @@ export function Topbar({
                   variant="outline"
                   size="icon"
                   className={cn(
-                    'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                    activeLabelIds.length > 0 && 'bg-muted border-border font-medium text-foreground'
+                    'relative size-8 rounded-md bg-transparent border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
                   )}
                   aria-label={
                     activeLabelIds.length > 0
@@ -214,16 +244,6 @@ export function Topbar({
                   }
                 >
                   <ListFilter className="size-4 shrink-0" strokeWidth={1.75} />
-                  {activeLabelIds.length === 1 && selectedLabel ? (
-                    <span
-                      className="absolute bottom-1 right-1 size-1.5 rounded-full ring-1 ring-background shrink-0"
-                      style={{ backgroundColor: selectedLabel.color || '#0969DA' }}
-                    />
-                  ) : activeLabelIds.length > 1 ? (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-foreground px-1 text-11 font-mono font-medium text-background">
-                      {activeLabelIds.length}
-                    </span>
-                  ) : null}
                 </Button>
               </PopoverTrigger>
             </TooltipTrigger>

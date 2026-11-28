@@ -7,12 +7,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 
-export interface PageLabelItem {
-  id: string;
-  name: string;
-  color?: string;
-}
-
 export interface CreateModalProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;

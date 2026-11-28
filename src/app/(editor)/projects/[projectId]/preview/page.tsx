@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DetachedPdfViewer } from '@/features/editor/subsystems/compiler/ui/pdf/DetachedViewer';
+import { DetachedPdfViewer } from '@/features/editor/subsystems/compiler';
 
 export const metadata: Metadata = { title: 'PDF Preview' };
 

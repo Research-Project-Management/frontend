@@ -10,7 +10,7 @@ import { logger } from '@/shared/lib/logger';
 import {
   copyToClipboard,
   triggerBrowserTextDownload,
-} from '@/features/library/core/coordinator/citation-export.coordinator';
+} from '@/features/library/core/coordinator/citation.coordinator';
 import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
 import {
   fetchReaderDocumentBlob,

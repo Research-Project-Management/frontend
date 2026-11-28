@@ -130,7 +130,7 @@ function maskToPermissions(mask: number, includePurge = true): LibraryPermission
 
 const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = primeProductToPermissions(
   ROLE_PRIME_PRODUCT.owner,
-  false,
+  true,
 );
 
 const TOKEN_GRANT_MASK: Readonly<Record<string, number>> = {
@@ -139,12 +139,14 @@ const TOKEN_GRANT_MASK: Readonly<Record<string, number>> = {
   'project:*': CAP_BIT.ALL,
   'library:read': CAP_BIT.READ | CAP_BIT.EXPORT,
   'library:view': CAP_BIT.READ,
+  'library:annotate': CAP_BIT.READ,
   'project:read': CAP_BIT.READ,
+  'library:upload': CAP_BIT.CREATE | CAP_BIT.IMPORT,
   'library:create': CAP_BIT.CREATE | CAP_BIT.IMPORT,
   'library:add': CAP_BIT.CREATE,
   'library:write': CAP_BIT.CREATE | CAP_BIT.EDIT | CAP_BIT.COLLECTIONS | CAP_BIT.IMPORT,
   'library:edit': CAP_BIT.EDIT | CAP_BIT.COLLECTIONS,
-  'library:update': CAP_BIT.EDIT,
+  'library:update': CAP_BIT.EDIT | CAP_BIT.COLLECTIONS,
   'library:delete': CAP_BIT.DELETE,
   'library:remove': CAP_BIT.DELETE,
   'library:trash': CAP_BIT.DELETE,
@@ -152,16 +154,19 @@ const TOKEN_GRANT_MASK: Readonly<Record<string, number>> = {
   'library:manage_collections': CAP_BIT.COLLECTIONS,
   'library:collections': CAP_BIT.COLLECTIONS,
   'library:import': CAP_BIT.IMPORT,
+  'library:sync': CAP_BIT.IMPORT | CAP_BIT.EXPORT,
   'library:export': CAP_BIT.EXPORT,
 };
 
 const OVERRIDE_KEY_BIT: Readonly<Record<string, number>> = {
   'library:read': CAP_BIT.READ,
+  'library:view': CAP_BIT.READ,
   canread: CAP_BIT.READ,
+  'library:upload': CAP_BIT.CREATE | CAP_BIT.IMPORT,
   'library:create': CAP_BIT.CREATE,
   cancreateitem: CAP_BIT.CREATE,
   'library:edit': CAP_BIT.EDIT,
-  'library:update': CAP_BIT.EDIT,
+  'library:update': CAP_BIT.EDIT | CAP_BIT.COLLECTIONS,
   canedititem: CAP_BIT.EDIT,
   'library:delete': CAP_BIT.DELETE,
   'library:trash': CAP_BIT.DELETE,
@@ -172,6 +177,7 @@ const OVERRIDE_KEY_BIT: Readonly<Record<string, number>> = {
   'library:collections': CAP_BIT.COLLECTIONS,
   canmanagecollections: CAP_BIT.COLLECTIONS,
   'library:import': CAP_BIT.IMPORT,
+  'library:sync': CAP_BIT.IMPORT,
   canimport: CAP_BIT.IMPORT,
   'library:export': CAP_BIT.EXPORT,
   canexport: CAP_BIT.EXPORT,

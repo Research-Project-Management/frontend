@@ -12,7 +12,7 @@ import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/co
 import type { Collection, CollectionActionHandlers } from '@/features/library/types/core.types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger } from '@/shared/components/ui/context-menu';
-import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation.coordinator';
 
 export type { TreeNode, CollectionActionHandlers };
 

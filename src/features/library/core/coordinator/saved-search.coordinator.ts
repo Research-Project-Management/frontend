@@ -3,15 +3,16 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useTags, useNotes, useTrash, useDeleteLibraryItemsMutation } from '@/features/library/sdk/queries/tags-notes.queries';
+import { useTags } from '@/features/library/sdk/queries/tags.queries';
+import { useNotes } from '@/features/library/sdk/queries/notes.queries';
+import { useTrash, useDeleteLibraryItemsMutation } from '@/features/library/sdk/queries/trash.queries';
+import { useSavedSearches, useSavedSearchResults } from '@/features/library/sdk/queries/saved-searches.queries';
+import { useRelations } from '@/features/library/sdk/queries/relations.queries';
 import {
-  useSavedSearches,
-  useSavedSearchResults,
-  useRelations,
   useItemTypeConversion,
   useItemTypeConversionPreviewQuery,
   type TypeConversionPreview,
-} from '@/features/library/sdk/queries/saved-searches-relations.queries';
+} from '@/features/library/sdk/queries/type-conversion.queries';
 
 export {
   useTags,
@@ -174,13 +175,11 @@ export function useSavedSearchBuilder({
         rawSort === 'publicationTitle' ||
         rawSort === 'citationKey'
           ? rawSort
-          : rawSort === 'authors' || rawSort === 'firstAuthor'
+          : rawSort === 'authors'
             ? 'creator'
-            : rawSort === 'dateModified'
-              ? 'updatedAt'
-              : rawSort === 'publication'
-                ? 'publicationTitle'
-                : 'dateAdded';
+            : rawSort === 'publication'
+              ? 'publicationTitle'
+              : 'dateAdded';
       setSortByState(normalizedSort);
       setSortOrder(savedSearch.sortOrder || getDefaultSortDirection(normalizedSort));
 

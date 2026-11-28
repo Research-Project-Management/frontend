@@ -180,7 +180,7 @@ describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
 
   describe('4. Pixel-Accurate ScrollTop Persistence', () => {
     it('normalizes and retains scrollTop coordinate without NaN or negative values', async () => {
-      const { normalizeReaderTab } = await import('@/features/library/core/adapters/project-context.adapter');
+      const { normalizeReaderTab } = await import('@/features/library/core/adapters/local-storage.adapter');
 
       const normalized = normalizeReaderTab({
         id: 'paper-scroll-test',

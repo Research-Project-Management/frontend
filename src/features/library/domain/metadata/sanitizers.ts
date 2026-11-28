@@ -435,9 +435,6 @@ export function buildCanonicalTagsPatch(
   };
 }
 
-export const buildCanonicalLabelsPatch = buildCanonicalTagsPatch;
-
-
 /**
  * Cleans HTML tags and entities from a note string while preserving paragraph structure.
  */

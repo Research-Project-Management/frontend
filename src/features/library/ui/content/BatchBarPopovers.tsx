@@ -22,7 +22,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
-import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation.coordinator';
 import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
 import type {
   Collection,

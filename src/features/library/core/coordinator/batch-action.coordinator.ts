@@ -20,7 +20,7 @@ import { isItemRetracted } from '@/features/library/domain/system-views.policy';
 import { getAssignedCollectionIds } from '@/features/library/domain/metadata/mapper';
 import { isPersistedLibraryItem } from '@/features/library/domain/permissions.policy';
 import type { Item, CslStyle } from '@/features/library/types/core.types';
-import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
+import { isInputOrModalFocused } from './shortcuts.coordinator';
 import {
   copyWithToastHelper,
   warnIfRetractedHelper,
@@ -29,7 +29,7 @@ import {
   executeCopyInTextCite,
   executeExportAllBibtex,
   executeDownloadBibFile,
-} from './citation-export.coordinator';
+} from './citation.coordinator';
 
 export {
   copyWithToastHelper,
@@ -245,7 +245,7 @@ export function useLibraryBatchCoordinator({
     if (!enableKeydownListener || selectedCount === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
-      if (isEditableOrModalElementFocused(e.target)) return;
+      if (isInputOrModalFocused(e.target)) return;
 
       clearSelection();
     };

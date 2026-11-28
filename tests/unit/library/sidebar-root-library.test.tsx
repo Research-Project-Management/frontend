@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-vi.mock('@/features/library/core/coordinator/citation-export.coordinator', () => ({
+vi.mock('@/features/library/core/coordinator/citation.coordinator', () => ({
   executeExportScopeFormat: vi.fn(),
 }));
 
@@ -39,7 +39,7 @@ vi.mock('@/features/library/core/coordinator/collection.coordinator', () => ({
   }),
 }));
 
-vi.mock('@/features/library/core/coordinator/saved-search-builder.coordinator', () => ({
+vi.mock('@/features/library/core/coordinator/saved-search.coordinator', () => ({
   useSavedSearches: () => ({
     savedSearches: [],
     createSavedSearch: vi.fn(),

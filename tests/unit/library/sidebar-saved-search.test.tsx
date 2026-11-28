@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { SavedSearchListSection } from '@/features/library/ui/sidebar/FeedsListSection';
+import { SavedSearchListSection } from '@/features/library/ui/sidebar/SavedSearchListSection';
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
 
 describe('SavedSearchListSection — Zotero Parity Context Menu', () => {

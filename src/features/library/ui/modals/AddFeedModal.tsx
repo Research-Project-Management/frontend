@@ -14,7 +14,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
 import { useFetchFeed, useSubscribeFeedMutation, useUpdateFeedSubscriptionMutation } from '@/features/library/core/coordinator/curation.coordinator';
-import { resolveFeedTitleFromUrl, executeSubscribeFeedWithAutoTitle } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { resolveFeedTitleFromUrl, subscribeFeedAutoTitle } from '@/features/library/core/coordinator/feeds.coordinator';
 import { addFeedSchema, applyServerErrorToForm, type AddFeedFormValues, editFeedSchema, type EditFeedFormValues } from '@/features/library/types/core.types';
 import { READ_RETENTION_OPTIONS, UNREAD_RETENTION_OPTIONS, type FeedRetentionDays, type SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 
@@ -120,7 +120,7 @@ export function AddFeedModal({
 
     setInternalSubmitting(true);
     try {
-      const newFeed = await executeSubscribeFeedWithAutoTitle({
+      const newFeed = await subscribeFeedAutoTitle({
         data,
         fetchAcademicFeed,
         subscribeFeed,

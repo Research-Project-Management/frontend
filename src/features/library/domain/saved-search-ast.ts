@@ -407,8 +407,6 @@ export const READ_STATUS_OPTIONS = [
   { value: 'unread', label: 'Unread' },
   { value: 'reading', label: 'Reading' },
   { value: 'completed', label: 'Completed' },
-  { value: 'read', label: 'Read' },
-  { value: 'skimming', label: 'Skimming' },
 ];
 
 export const RATING_OPTIONS = [

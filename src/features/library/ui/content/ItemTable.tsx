@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/citation-export.coordinator";
+import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/citation.coordinator";
 import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import {
   useToggleStarItemMutation,
@@ -11,6 +11,7 @@ import {
   useDeleteLibraryItemsMutation,
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
+  useLibraryItemOperations,
 } from "@/features/library/core/coordinator/item-action.coordinator";
 import {
   useCollectionsQuery,
@@ -24,18 +25,17 @@ import {
 } from "@/features/library/core/manager/command.manager";
 import { getAssignedCollectionIds } from "@/features/library/domain/metadata/mapper";
 import { toast } from "sonner";
-import { useTags } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+import { useTags } from "@/features/library/core/coordinator/saved-search.coordinator";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   getDefaultSortDirection,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "@/features/library/types/ingestion.types";
-import { sortLibraryItems } from "@/features/library/domain/metadata/extra-mapper";
+import { sortLibraryItems } from "@/features/library/domain/item-sort";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
-import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
-import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-action.coordinator";
+import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/shortcuts.coordinator";
 import type { Item, Collection } from "@/features/library/types/core.types";
 
 interface ItemTableProps {

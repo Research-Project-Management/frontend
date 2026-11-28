@@ -24,7 +24,7 @@ import {
   ContextMenuItem,
 } from '@/shared/components/ui/context-menu';
 import { SidebarNavItem } from './CollectionTree';
-import { SavedSearchListSection } from './FeedsListSection';
+import { SavedSearchListSection } from './SavedSearchListSection';
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
 
 export { SidebarNavItem };

@@ -41,26 +41,17 @@ export type InspectorSectionId =
   | 'relations'
   | 'cite';
 
-export type ViewMode = 'table' | 'grid';
-
 export type LibraryModalType =
   | 'UPLOAD_PDF'
   | 'ADD_BY_IDENTIFIER'
   | 'CREATE_COLLECTION'
-  | 'RENAME_COLLECTION'
-  | 'DELETE_COLLECTION'
   | 'SAVED_SEARCH'
   | 'DELETE_CONFIRM'
-  | 'CONFIRM_DELETE'
-  | 'CONFIRM_RESTORE'
   | 'EMPTY_TRASH'
   | 'MERGE_DUPLICATES'
-  | 'RESOLVE_CONFLICT'
   | 'EXPORT_LIBRARY'
   | 'IMPORT_FROM_USER'
-  | 'SHORTCUTS_HELP'
   | 'TYPE_CONVERSION'
-  | 'CONVERT_ITEM_TYPE'
   | 'CSL_STYLE_MANAGER'
   | 'FEEDS_MANAGER'
   | 'ADD_FEED'
@@ -71,17 +62,14 @@ export type LibraryModalType =
 interface LibraryScopeSlice {
   activeScope: LibraryScope;
   activeCollectionId: string | null;
-  activeSavedSearchId: string | null;
   ephemeralFilters: LibraryEphemeralFilters;
   setActiveScope: (scope: LibraryScope) => void;
   setActiveCollectionId: (collectionId: string | null) => void;
-  setActiveSavedSearchId: (savedSearchId: string | null) => void;
   setEphemeralFilters: (
     updater:
       | LibraryEphemeralFilters
       | ((prev: LibraryEphemeralFilters) => LibraryEphemeralFilters),
   ) => void;
-  clearEphemeralFilters: () => void;
 }
 
 // 2. Workbench Layout & Display Slice
@@ -91,7 +79,6 @@ interface LibraryLayoutSlice {
   inspectorWidth: number;
   isInspectorOpen: boolean;
   activeInspectorTab: InspectorSectionId;
-  viewMode: ViewMode;
   displayOptions: LibraryDisplayOptions;
   setSidebarOpen: (isOpen: boolean) => void;
   toggleSidebar: () => void;
@@ -101,7 +88,6 @@ interface LibraryLayoutSlice {
   toggleInspector: () => void;
   setActiveInspectorTab: (tab: InspectorSectionId) => void;
   toggleInspectorTab: (tab: InspectorSectionId) => void;
-  setViewMode: (mode: ViewMode) => void;
   setDisplayOptions: (
     options:
       | LibraryDisplayOptions
@@ -157,7 +143,6 @@ const createScopeSlice: StateCreator<
 > = (set) => ({
   activeScope: getInitialScopeFromWorkspace(),
   activeCollectionId: null,
-  activeSavedSearchId: null,
   ephemeralFilters: EMPTY_EPHEMERAL_FILTERS,
 
   setActiveScope: (activeScope) =>
@@ -169,7 +154,10 @@ const createScopeSlice: StateCreator<
       const prevKey = resolveScopeKey(state.activeScope);
       const nextKey = resolveScopeKey(activeScope);
       if (prevKey === nextKey) {
-        if (state.activeScope.name === activeScope.name) {
+        if (
+          state.activeScope.name === activeScope.name &&
+          state.activeScope.role === activeScope.role
+        ) {
           return state;
         }
         return { activeScope };
@@ -181,7 +169,6 @@ const createScopeSlice: StateCreator<
         activeItemId: null,
         isInspectorOpen: false,
         activeCollectionId: null,
-        activeSavedSearchId: null,
         ephemeralFilters: EMPTY_EPHEMERAL_FILTERS,
         activeModal: null,
         modalProps: EMPTY_MODAL_PROPS,
@@ -190,33 +177,11 @@ const createScopeSlice: StateCreator<
 
   setActiveCollectionId: (activeCollectionId) =>
     set((state) => {
-      const nextSavedSearchId = activeCollectionId ? null : state.activeSavedSearchId;
-      if (
-        state.activeCollectionId === activeCollectionId &&
-        state.activeSavedSearchId === nextSavedSearchId
-      ) {
+      if (state.activeCollectionId === activeCollectionId) {
         return state;
       }
       return {
         activeCollectionId,
-        activeSavedSearchId: nextSavedSearchId,
-        selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
-        activeItemId: null,
-      };
-    }),
-
-  setActiveSavedSearchId: (activeSavedSearchId) =>
-    set((state) => {
-      const nextCollectionId = activeSavedSearchId ? null : state.activeCollectionId;
-      if (
-        state.activeSavedSearchId === activeSavedSearchId &&
-        state.activeCollectionId === nextCollectionId
-      ) {
-        return state;
-      }
-      return {
-        activeSavedSearchId,
-        activeCollectionId: nextCollectionId,
         selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
         activeItemId: null,
       };
@@ -232,13 +197,6 @@ const createScopeSlice: StateCreator<
         ? state
         : { ephemeralFilters: next };
     }),
-
-  clearEphemeralFilters: () =>
-    set((state) =>
-      Object.keys(state.ephemeralFilters).length === 0
-        ? state
-        : { ephemeralFilters: EMPTY_EPHEMERAL_FILTERS },
-    ),
 });
 
 const createLayoutSlice: StateCreator<
@@ -252,7 +210,6 @@ const createLayoutSlice: StateCreator<
   inspectorWidth: 320,
   isInspectorOpen: false,
   activeInspectorTab: 'info',
-  viewMode: 'table',
   displayOptions: DEFAULT_LIBRARY_DISPLAY_OPTIONS,
 
   setSidebarOpen: (isSidebarOpen) =>
@@ -288,9 +245,6 @@ const createLayoutSlice: StateCreator<
         ? { isInspectorOpen: false }
         : { activeInspectorTab: tab, isInspectorOpen: true },
     ),
-
-  setViewMode: (viewMode) =>
-    set((s) => (s.viewMode === viewMode ? s : { viewMode })),
 
   setDisplayOptions: (options) =>
     set((state) => {
@@ -474,7 +428,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
 
         return {
           ...currentState,
-          ...persisted,
           sidebarWidth,
           inspectorWidth,
           displayOptions,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation.coordinator';
 import {
   Paperclip,
   StickyNote,
@@ -25,8 +25,10 @@ import {
   useIsItemSelected,
   useIsActiveItem,
 } from '@/features/library/core/store/ui.store';
-import { ItemContextMenu } from './ItemRowActions';
-import { ItemRowActions } from './ItemRowActions';
+import {
+  ItemContextMenu,
+  ItemRowActions,
+} from './ItemRowActions';
 import type { Item, Collection } from '@/features/library/types/core.types';
 import { cleanText, formatAuthors } from '@/features/library/domain/citations';
 import {

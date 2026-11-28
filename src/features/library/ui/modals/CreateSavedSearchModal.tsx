@@ -32,7 +32,7 @@ import { ConditionRowEditor } from "./ConditionRowEditor";
 import {
   useSavedSearchBuilder,
   type SavedSearchBuilderSortBy,
-} from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+} from "@/features/library/core/coordinator/saved-search.coordinator";
 
 interface SavedSearchPreviewTableProps {
   isPreviewLoading: boolean;

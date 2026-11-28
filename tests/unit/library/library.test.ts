@@ -304,7 +304,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         '@/features/library/domain/citations'
       );
       const { CitationService } = await import(
-        '@/features/library/sdk/clients/attachments-annotations.client'
+        '@/features/library/sdk/clients/citations.client'
       );
 
       expect(CANONICAL_CSL_STYLE_IDS).toContain('apa-7th');
@@ -382,7 +382,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('standardizes Reader URL building via buildReaderPaperUrl and opens new tabs via window.open', async () => {
       const { buildReaderPaperUrl, openInNewTab } = await import(
-        '@/features/library/core/coordinator/citation-export.coordinator'
+        '@/features/library/core/coordinator/citation.coordinator'
       );
 
       expect(buildReaderPaperUrl('paper-1')).toBe('/library/papers/paper-1');
@@ -404,7 +404,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('executes Direct-to-R2 presigned PUT + progress forwarding and falls back to /upload in UploadService', async () => {
       const { UploadService } = await import(
-        '@/features/library/sdk/clients/attachments-annotations.client'
+        '@/features/library/sdk/clients/attachments.client'
       );
       const OriginalXhr = globalThis.XMLHttpRequest;
       const recordedXhrs: Array<{
@@ -644,7 +644,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         computeAdaptiveUploadConcurrency,
         bundleLightweightTextFiles,
       } = await import(
-        '@/features/library/core/coordinator/file-ingestion.strategies'
+        '@/features/library/core/coordinator/file-ingest.strategies'
       );
 
       // 1. Tiny files in KB (< 256 KB avg) -> scales up to 10 workers

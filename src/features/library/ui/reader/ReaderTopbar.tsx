@@ -51,7 +51,7 @@ export {
   ReaderLeftRail,
   type ReaderSidebarTab,
   type ReaderLeftRailProps,
-} from "./ReaderThumbnailsPanel";
+} from "./ReaderLeftRail";
 
 interface ReaderRetractionBannerProps {
   paper?: {

@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CollectionsService } from '../clients/catalog-entities.client';
+import { CollectionsService } from '../clients/collections.client';
 
 export function copyLibraryCollection(
   spaceId: string | undefined,
@@ -365,30 +365,6 @@ export function useCreateCollectionMutation(spaceId?: string) {
       toast.error('Failed to create collection', {
         description: err.message || 'Please try again.',
         id: 'collection-create',
-      });
-    },
-  });
-}
-
-export function useDetachItemFromCollectionMutation(spaceId?: string) {
-  const queryClient = useQueryClient();
-  const effectiveScope = normalizeSpaceId(spaceId);
-
-  return useMutation({
-    mutationFn: ({ collectionId, itemId }: { collectionId: string; itemId: string }) =>
-      CollectionsService.detachItem(effectiveScope, collectionId, itemId),
-    onSuccess: () => {
-      invalidateCollections(queryClient, effectiveScope);
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      toast.success('Removed item from collection', {
-        description:
-          'Item remains safely in your library (now in Unfiled Items if not in other collections).',
-        id: 'detach-item',
-      });
-    },
-    onError: (err: Error) => {
-      toast.error('Failed to remove item from collection', {
-        description: err.message || 'Please try again.',
       });
     },
   });

@@ -6,20 +6,18 @@ import { toast } from 'sonner';
 import { multiTabBus } from '@/shared/lib/multi-tab';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { ItemsService } from '../clients/items.client';
-import { AnnotationsService, normalizeAnnotationEntity } from '../clients/attachments-annotations.client';
+import { AnnotationsService, normalizeAnnotationEntity } from '../clients/annotations.client';
+import { NotesService, type ExtractNotesOptions } from '../clients/notes.client';
 import {
-  NotesService,
   StateService,
   SearchService,
-  type ExtractNotesOptions,
   type ItemStateData,
-} from '../clients/catalog-entities.client';
+} from '../clients/search-state.client';
 import {
   fetchPdfBlob,
   prefetchPdfBlob,
   invalidatePdfBlobCache,
   buildPdfBlobCacheKey,
-  resolveLibraryUrl,
 } from '../clients/http.client';
 import { uuidv7 } from '@/shared/utils/uuid.util';
 
@@ -30,26 +28,6 @@ export const READER_TOAST_IDS = {
   batch: 'reader-batch',
   exportPdf: 'reader-export-pdf',
 } as const;
-
-export type OfflineMutationEnqueuer = (
-  input: {
-    spaceId: string;
-    entityType: string;
-    entityId: string;
-    action: string;
-    endpoint: string;
-    method: string;
-    payload: unknown;
-  },
-  queryClient?: unknown,
-  options?: { flushImmediately?: boolean },
-) => Promise<unknown>;
-
-let offlineMutationEnqueuer: OfflineMutationEnqueuer | null = null;
-
-export function registerOfflineMutationEnqueuer(enqueuer: OfflineMutationEnqueuer): void {
-  offlineMutationEnqueuer = enqueuer;
-}
 
 export type { ExtractNotesOptions, ItemStateData };
 export { buildPdfBlobCacheKey };
@@ -86,7 +64,6 @@ import {
   pruneAnnotationHistoryEntry,
   runUndoAnnotationHistoryAction,
   runRedoAnnotationHistoryAction,
-  executeAnnotationHistoryEntry,
   type UndoAction,
   type HistoryEntry,
   type AnnotationHistoryEntry,
@@ -189,19 +166,19 @@ function hydrateReaderBootstrapPayload(
     );
   }
 
-  if (
-    res.permissions &&
-    !degradedBranches.includes('permissions') &&
-    queryClient.getQueryData(itemKeys.counts(targetScope)) === undefined
-  ) {
-    queryClient.setQueryData(itemKeys.counts(targetScope), {
-      total: 0,
-      unfiled: 0,
-      starred: 0,
-      trash: 0,
-      role: res.role,
-      permissions: res.permissions,
-    });
+  if (res.permissions && !degradedBranches.includes('permissions')) {
+    const existingCounts = queryClient.getQueryData<Record<string, unknown>>(
+      itemKeys.counts(targetScope),
+    );
+    // Only enrich an already-hydrated counts entry; never write fake zero counts
+    // into itemKeys.counts (which poisons Library view counts for staleTime=60s).
+    if (existingCounts) {
+      queryClient.setQueryData(itemKeys.counts(targetScope), {
+        ...existingCounts,
+        role: res.role ?? existingCounts.role,
+        permissions: res.permissions,
+      });
+    }
   }
 
   return res;
@@ -259,7 +236,7 @@ export function useReaderBootstrap(
     enabled: isEnabled,
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5,
-    gcTime: 3 * 60 * 1000,
+    gcTime: 1000 * 60 * 10,
     queryFn: ({ signal }) =>
       registerBootstrapPromise(
         queryClient,
@@ -303,7 +280,7 @@ export function useReaderItem(spaceId?: string, itemId?: string) {
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,
-    gcTime: 3 * 60 * 1000,
+    gcTime: 1000 * 60 * 10,
   });
 }
 
@@ -323,7 +300,7 @@ export function useReaderFulltext(spaceId?: string, itemId?: string) {
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 10,
-    gcTime: 3 * 60 * 1000,
+    gcTime: 1000 * 60 * 20,
   });
 }
 
@@ -358,44 +335,6 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
     mutationFn: async (dto: CreateAnnotationDto) => {
       if (!attachmentId) throw new Error('Attachment ID required to create annotation.');
       const id = dto.id || uuidv7();
-
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        const url = resolveLibraryUrl(
-          'reader',
-          `/attachments/${encodeURIComponent(attachmentId)}/annotations`,
-          spaceId,
-        );
-        await offlineMutationEnqueuer?.(
-          {
-            spaceId: targetScope,
-            entityType: 'annotation',
-            entityId: id,
-            action: 'CREATE',
-            endpoint: url,
-            method: 'POST',
-            payload: { ...dto, id },
-          },
-          queryClient,
-          { flushImmediately: false },
-        );
-        return {
-          id,
-          attachmentId,
-          type: dto.type,
-          pageIndex: dto.pageIndex,
-          pageNumber: dto.pageNumber,
-          pageLabel: dto.pageLabel ?? null,
-          color: dto.color,
-          quoteText: dto.quoteText,
-          comment: dto.comment,
-          rects: dto.rects || [],
-          boundingRect: dto.boundingRect,
-          tags: dto.tags || [],
-          version: 1,
-          createdAt: new Date().toISOString(),
-        } as ReaderAnnotation;
-      }
-
       return AnnotationsService.create(spaceId, attachmentId, { ...dto, id });
     },
     onMutate: async (dto: CreateAnnotationDto) => {
@@ -500,33 +439,6 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to update annotation.');
 
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        const url = resolveLibraryUrl(
-          'reader',
-          `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-          spaceId,
-        );
-        await offlineMutationEnqueuer?.(
-          {
-            spaceId: targetScope,
-            entityType: 'annotation',
-            entityId: annotationId,
-            action: 'UPDATE',
-            endpoint: url,
-            method: 'PATCH',
-            payload: { ...dto, expectedVersion },
-          },
-          queryClient,
-          { flushImmediately: false },
-        );
-        return {
-          id: annotationId,
-          attachmentId,
-          version: expectedVersion ? expectedVersion + 1 : 2,
-          ...dto,
-        } as unknown as ReaderAnnotation;
-      }
-
       return AnnotationsService.update(
         spaceId,
         attachmentId,
@@ -596,28 +508,6 @@ export function useAnnotations(spaceId?: string, attachmentId?: string) {
       expectedVersion?: number;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to delete annotation.');
-
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        const url = resolveLibraryUrl(
-          'reader',
-          `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-          spaceId,
-        );
-        await offlineMutationEnqueuer?.(
-          {
-            spaceId: targetScope,
-            entityType: 'annotation',
-            entityId: annotationId,
-            action: 'DELETE',
-            endpoint: url,
-            method: 'DELETE',
-            payload: { expectedVersion },
-          },
-          queryClient,
-          { flushImmediately: false },
-        );
-        return { deleted: true, success: true };
-      }
 
       return AnnotationsService.delete(
         spaceId,
@@ -851,7 +741,6 @@ export {
   pruneAnnotationHistoryEntry,
   runUndoAnnotationHistoryAction,
   runRedoAnnotationHistoryAction,
-  executeAnnotationHistoryEntry,
   type UndoAction,
   type HistoryEntry,
   type AnnotationHistoryEntry,

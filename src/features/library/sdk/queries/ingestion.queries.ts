@@ -3,12 +3,9 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  IngestionService,
-  CurationService,
-  RetractionService,
-  FeedsService,
-} from '../clients/curation.client';
+import { CurationService, RetractionService } from '../clients/curation.client';
+import { IngestionService } from '../clients/ingestion.client';
+import { FeedsService } from '../clients/feeds.client';
 import { integrationService } from '@/features/settings/services/integration.service';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/types/core.types';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser';
@@ -43,7 +40,7 @@ import {
   type TrackedIdentifierIngestionOptions,
   pollIngestionRunCompletion,
   buildIdentifierIngestionPayload,
-  executeTrackedIdentifierIngestion,
+  ingestByIdentifier,
   lookupAcademicIdentifierDirect,
 } from './ingestion-polling.queries';
 
@@ -57,7 +54,7 @@ export {
   type TrackedIdentifierIngestionOptions,
   pollIngestionRunCompletion,
   buildIdentifierIngestionPayload,
-  executeTrackedIdentifierIngestion,
+  ingestByIdentifier,
   lookupAcademicIdentifierDirect,
 };
 
@@ -85,7 +82,7 @@ export function useTrackedIdentifierIngestion(spaceId: string) {
         spaceId?: string;
       },
     ) =>
-      executeTrackedIdentifierIngestion({
+      ingestByIdentifier({
         spaceId: options.spaceId || spaceId,
         queryClient,
         ...options,

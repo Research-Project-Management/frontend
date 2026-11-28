@@ -35,9 +35,9 @@ import {
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser';
 import {
-  executeSaveFeedEntryWithFeedback,
+  saveFeedEntry,
   resolveFeedTitleFromUrl,
-} from '@/features/library/core/coordinator/ingestion.coordinator';
+} from '@/features/library/core/coordinator/feeds.coordinator';
 import {
   addFeedSchema,
   applyServerErrorToForm,
@@ -225,7 +225,7 @@ export default function FeedsManagerModal({
   };
 
   const handleSaveEntryToLibrary = async (entry: ParsedFeedEntry) => {
-    await executeSaveFeedEntryWithFeedback({
+    await saveFeedEntry({
       entry,
       spaceId,
       targetCollectionId: targetCollectionId || undefined,

@@ -9,30 +9,28 @@ import {
   type LibraryModalType,
 } from '@/features/library/core/store/ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import {
-  useResumeBatchIngestionPolling,
-  executeSubscribeFeedWithAutoTitle,
-} from '@/features/library/core/coordinator/ingestion.coordinator';
+import { useResumeBatchPolling } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { subscribeFeedAutoTitle } from '@/features/library/core/coordinator/feeds.coordinator';
 import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
+  useSetMyPublicationMutation,
 } from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   useLibraryCommandStore,
   buildPreConversionSnapshot,
   createConvertItemTypeCommand,
 } from '@/features/library/core/manager/command.manager';
-import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
-import { useItemTypeConversion } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
+  mergeDuplicatesWithUndo,
   useTrackedIdentifierIngestion,
   useMergeDuplicates,
   useDismissDuplicatesMutation,
   useFetchFeed,
   useSubscribeFeedMutation,
 } from '@/features/library/core/coordinator/curation.coordinator';
-import { useSetMyPublicationMutation } from '@/features/library/core/coordinator/item-action.coordinator';
+import { useItemTypeConversion } from '@/features/library/core/coordinator/saved-search.coordinator';
 import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 import type { AddFeedFormValues } from '@/features/library/types/core.types';
 import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers';
@@ -60,10 +58,10 @@ export {
 
 const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
 const AddLinkModal = dynamic(
-  () => import('./UploadFilesModal').then((m) => m.AddLinkModal),
+  () => import('./AddLinkModal').then((m) => m.AddLinkModal),
   { ssr: false },
 );
-const ImportFromPersonalModal = dynamic(() => import('./ImportFromPersonalModal'), { ssr: false });
+const ImportPersonalModal = dynamic(() => import('./ImportPersonalModal'), { ssr: false });
 const TypeConversionModal = dynamic(
   () => import('./TypeConversionModal').then((m) => m.TypeConversionModal),
   { ssr: false },
@@ -76,11 +74,11 @@ const EditFeedModal = dynamic(
   { ssr: false },
 );
 const CslStyleSearchModal = dynamic(
-  () => import('./CreateCollectionModal').then((m) => m.CslStyleSearchModal),
+  () => import('./CslStyleSearchModal').then((m) => m.CslStyleSearchModal),
   { ssr: false },
 );
 const MyPublicationModal = dynamic(
-  () => import('./ProcessModal').then((m) => m.MyPublicationModal),
+  () => import('./MyPublicationModal').then((m) => m.MyPublicationModal),
   { ssr: false },
 );
 
@@ -110,10 +108,8 @@ function CurationModalsHost({
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
 
-  const isConvertOpen =
-    activeModal === 'TYPE_CONVERSION' || activeModal === 'CONVERT_ITEM_TYPE';
-  const isMergeOpen =
-    activeModal === 'MERGE_DUPLICATES' || activeModal === 'RESOLVE_CONFLICT';
+  const isConvertOpen = activeModal === 'TYPE_CONVERSION';
+  const isMergeOpen = activeModal === 'MERGE_DUPLICATES';
 
   const sourceItemForConversion = React.useMemo<Item | undefined>(() => {
     const targetId = payload?.item?.id || payload?.itemId;
@@ -147,7 +143,7 @@ function CurationModalsHost({
     mergedFields: Record<string, unknown>,
     duplicateIdsToDelete: string[],
   ) => {
-    await executeDuplicateMergeWithCommand({
+    await mergeDuplicatesWithUndo({
       masterPaper,
       mergedFields,
       duplicateIdsToDelete,
@@ -285,7 +281,7 @@ function IngestionAndUtilityModalsHost({
   const handleAddFeedSubmit = async (data: AddFeedFormValues) => {
     setIsSubmittingFeed(true);
     try {
-      const newFeed = await executeSubscribeFeedWithAutoTitle({
+      const newFeed = await subscribeFeedAutoTitle({
         data,
         fetchAcademicFeed,
         subscribeFeed,
@@ -365,7 +361,7 @@ function IngestionAndUtilityModalsHost({
 
   if (isImportFromUserOpen) {
     return (
-      <ImportFromPersonalModal
+      <ImportPersonalModal
         open={true}
         onOpenChange={(open) => !open && closeModal()}
         spaceId={effectiveScope}
@@ -487,18 +483,12 @@ const ACTIVE_MODAL_REGISTRY: Partial<
   Record<LibraryModalType, React.ComponentType<ModalHostProps>>
 > = {
   CREATE_COLLECTION: CollectionModalsHost,
-  RENAME_COLLECTION: CollectionModalsHost,
-  DELETE_COLLECTION: CollectionModalsHost,
   EXPORT_LIBRARY: WorkspaceIntegrationsModalsHost,
   FEEDS_MANAGER: WorkspaceIntegrationsModalsHost,
   DELETE_CONFIRM: DestructiveItemModalsHost,
-  CONFIRM_DELETE: DestructiveItemModalsHost,
-  CONFIRM_RESTORE: DestructiveItemModalsHost,
   EMPTY_TRASH: DestructiveItemModalsHost,
   MERGE_DUPLICATES: CurationModalsHost,
-  RESOLVE_CONFLICT: CurationModalsHost,
   TYPE_CONVERSION: CurationModalsHost,
-  CONVERT_ITEM_TYPE: CurationModalsHost,
   SAVED_SEARCH: SavedSearchModalHost,
   ADD_BY_IDENTIFIER: IngestionAndUtilityModalsHost,
   IMPORT_FROM_USER: IngestionAndUtilityModalsHost,
@@ -529,7 +519,7 @@ export function LibraryModals({ spaceId }: { spaceId?: string }) {
   const restoreProcessModal = useProcessModalStore((s) => s.restoreModal);
 
   // Resume polling on reload if there is an in-progress batch run
-  useResumeBatchIngestionPolling(
+  useResumeBatchPolling(
     processModalState.data?.spaceId || effectiveScope,
     processModalState.runId,
     processModalState.isComplete,

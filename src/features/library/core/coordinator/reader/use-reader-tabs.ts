@@ -18,7 +18,7 @@ import {
   normalizeReaderFitMode,
   normalizeReaderTheme,
   normalizeReaderZoom,
-} from '@/features/library/core/adapters/project-context.adapter';
+} from '@/features/library/core/adapters/local-storage.adapter';
 import type {
   AnnotationRect,
   ReaderDocument,

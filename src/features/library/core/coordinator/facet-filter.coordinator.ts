@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
+import { useTags } from '@/features/library/sdk/queries/tags.queries';
 import type { TagWithCount } from '@/features/library/types/items.types';
 import {
   useLibraryCountsQuery,

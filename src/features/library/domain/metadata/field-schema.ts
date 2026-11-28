@@ -7,8 +7,12 @@ import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type 
 import { cleanDoi } from '../identifiers';
 import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './mapper';
 import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './extra-rules';
-import { applyCoupledFieldSynchronization } from './field-descriptors';
-import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './field-descriptors';
+import {
+  applyCoupledFieldSynchronization,
+  type FieldLookupSource,
+  type InspectorFieldDescriptor,
+  INSPECTOR_FIELD_DESCRIPTORS,
+} from './field-descriptors';
 import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata/mapper';
 
 /**

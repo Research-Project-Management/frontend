@@ -40,7 +40,7 @@ import {
   PdfPagePreview,
   type PdfPageCanvasProps,
   type PdfPagePreviewProps,
-} from "./InfoSection";
+} from "./PdfPagePreview";
 
 export {
   PdfPageCanvas,

@@ -5,7 +5,7 @@ import {
   loadReaderStorageState,
   saveReaderTabsToStorage,
   READER_TABS_STORAGE_KEY,
-} from '../adapters/project-context.adapter';
+} from '../adapters/local-storage.adapter';
 import {
   normalizeReaderZoom,
   normalizeReaderTab,
@@ -370,7 +370,7 @@ if (typeof window !== 'undefined') {
   });
 
   window.addEventListener('storage', (e: StorageEvent) => {
-    if (e.key === READER_TABS_STORAGE_KEY) {
+    if (e.key === READER_TABS_STORAGE_KEY || e.key?.startsWith(`${READER_TABS_STORAGE_KEY}:`)) {
       rehydrateReaderStoreFromStorage();
     }
   });

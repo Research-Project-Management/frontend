@@ -19,22 +19,24 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
-import { executeExportScopeFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { executeExportScopeFormat } from '@/features/library/core/coordinator/citation.coordinator';
 import {
   useCollections,
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
   useBatchDetachItemsMutation,
+  useCollectionCoordinator,
 } from '@/features/library/core/coordinator/collection.coordinator';
-import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
+  useSavedSearches,
   useTrash,
   useDeleteLibraryItemsMutation,
-} from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+} from '@/features/library/core/coordinator/saved-search.coordinator';
 import {
   useBatchRestoreItemsMutation,
   useLibraryCountsQuery,
+  useDropToMyPublications,
 } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
@@ -52,11 +54,10 @@ import type { SavedSearch } from '@/features/library/types/ingestion.types';
 import { buildCollectionTree, filterCollections } from '@/features/library/domain/collection-tree';
 import { usePanelResize } from '@/shared/hooks/use-panel-resize';
 import { useIsMobile } from '@/shared/hooks/use-media-query';
-import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
-import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
 import { CollectionTree } from './CollectionTree';
 import { SidebarHeader, SidebarSystemNav, SidebarResizer } from './SidebarSystemNav';
-import { FeedsListSection, ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './FeedsListSection';
+import { FeedsListSection } from './FeedsListSection';
+import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './ProjectLibrariesSection';
 
 /**
  * LibrarySidebar Zone

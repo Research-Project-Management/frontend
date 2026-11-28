@@ -39,7 +39,7 @@ import type {
   Item,
 } from "@/features/library/types/core.types";
 
-interface ImportFromPersonalModalProps {
+interface ImportPersonalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   spaceId: string;
@@ -48,14 +48,14 @@ interface ImportFromPersonalModalProps {
   onSuccess?: () => void;
 }
 
-export default function ImportFromPersonalModal({
+export default function ImportPersonalModal({
   open,
   onOpenChange,
   spaceId,
   projectName,
   existingTitles = [],
   onSuccess,
-}: ImportFromPersonalModalProps) {
+}: ImportPersonalModalProps) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedScope, setSelectedScope] = useState<string>("all"); // 'all' | 'unfiled' | collectionId

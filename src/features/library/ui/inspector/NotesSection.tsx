@@ -20,7 +20,7 @@ import {
   normalizeNotes,
   type NormalizedNote,
 } from "@/features/library/domain/metadata/mapper";
-import { useNotes } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+import { useNotes } from "@/features/library/core/coordinator/saved-search.coordinator";
 import {
   useLibraryCommandStore,
   createAddNoteCommand,

@@ -13,31 +13,38 @@ import {
 } from '@/features/library/ui/content/LibraryContent';
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
-import { useLibraryNavigation, useActiveLibrarySpace } from '@/features/library/core/coordinator/navigation.coordinator';
+import {
+  useLibraryNavigation,
+  useActiveLibrarySpace,
+  useLibraryPermissions,
+  useLibraryDeltaSync,
+} from '@/features/library/core/coordinator/navigation.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
-import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 import {
   useLibraryCommandStore,
 } from '@/features/library/core/manager/command.manager';
 import {
   clearGroupMergeDraft,
   computeDuplicateSetKey,
-  executeDuplicateMergeWithCommand,
+  mergeDuplicatesWithUndo,
   getGroupMergeDraft,
+  useMergeDuplicates,
+  useDuplicateGroups,
+  useIngestMutation,
 } from '@/features/library/core/coordinator/curation.coordinator';
 import {
   extractExplicitUserMergeOverrides,
   selectBestMasterItemId,
 } from '@/features/library/domain/diff';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
-import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
-import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
-import { useTrash } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
-import { useLibraryDeltaSync } from '@/features/library/core/coordinator/navigation.coordinator';
+import {
+  useSavedSearches,
+  useTrash,
+} from '@/features/library/core/coordinator/saved-search.coordinator';
 import {
   useLibraryBootstrapQuery,
   useLibraryCountsQuery,
@@ -47,16 +54,11 @@ import {
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
 } from '@/features/library/core/coordinator/item-action.coordinator';
-import {
-  useMergeDuplicates,
-  useDuplicateGroups,
-  useIngestMutation,
-} from '@/features/library/core/coordinator/curation.coordinator';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata/mapper';
 import { parseEmojiPrefix } from '@/features/library/domain/citations';
 import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
 import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser';
-import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { saveFeedEntry } from '@/features/library/core/coordinator/feeds.coordinator';
 import type { Item, DuplicateGroup, Collection } from '@/features/library/types/core.types';
 
 const DuplicateMergeInspector = dynamic(
@@ -526,7 +528,7 @@ export function LibraryPage({
       mergedFields: Partial<Item>,
       duplicateIdsToDelete: string[],
     ) => {
-      await executeDuplicateMergeWithCommand({
+      await mergeDuplicatesWithUndo({
         masterPaper,
         mergedFields: mergedFields as Record<string, unknown>,
         duplicateIdsToDelete,
@@ -583,7 +585,7 @@ export function LibraryPage({
   const { mutateAsync: ingestFeedItem } = useIngestMutation(effectiveSpaceId);
 
   const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
-    await executeSaveFeedEntryWithFeedback({
+    await saveFeedEntry({
       entry,
       spaceId: effectiveSpaceId,
       targetCollectionId: targetColId,

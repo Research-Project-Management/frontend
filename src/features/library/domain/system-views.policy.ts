@@ -401,8 +401,9 @@ export function doesItemMatchSystemView(
 
   switch (normalizedView) {
     case 'all':
-    case 'recent':
       return true;
+    case 'recent':
+      return Boolean(item.lastReadAt);
     case 'starred':
     case 'favorites':
       return isItemStarred(item);

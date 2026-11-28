@@ -670,4 +670,3 @@ class DocumentStorageService {
 }
 
 export const documentStorage = new DocumentStorageService();
-export const readerDocumentStorage = documentStorage;

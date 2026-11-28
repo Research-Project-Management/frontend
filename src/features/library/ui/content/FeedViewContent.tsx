@@ -19,9 +19,9 @@ import {
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser';
-import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { saveFeedEntry } from '@/features/library/core/coordinator/feeds.coordinator';
 import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
-import { isEditableOrModalElementFocused } from '@/features/library/core/coordinator/keyboard-shortcuts.coordinator';
+import { isInputOrModalFocused } from '@/features/library/core/coordinator/shortcuts.coordinator';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -243,7 +243,7 @@ export function FeedViewContent({
 
   const handleSaveEntry = useCallback(
     async (entry: ParsedFeedEntry, targetCollectionId?: string) => {
-      await executeSaveFeedEntryWithFeedback({
+      await saveFeedEntry({
         entry,
         spaceId,
         targetCollectionId,
@@ -269,7 +269,7 @@ export function FeedViewContent({
   const keydownHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     keydownHandlerRef.current = (e: KeyboardEvent) => {
-      if (isEditableOrModalElementFocused(e.target)) {
+      if (isInputOrModalFocused(e.target)) {
         return;
       }
 

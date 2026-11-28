@@ -10,6 +10,8 @@
  * persistence and eviction policies in-memory without touching `window.localStorage`.
  */
 
+import { getAuthToken } from '@/shared/lib/api';
+import { extractStableUserNamespace } from './reader-storage.adapter';
 import {
   type LibrarySchemaRegistrySnapshot,
   updateLibrarySchemaRegistry,
@@ -199,12 +201,18 @@ if (isBrowser()) {
 const FEED_READ_IDS_STORAGE_KEY = 'flux_feed_read_entry_ids_v1';
 const MAX_PERSISTED_FEED_READ_IDS = 2000;
 
+export function resolveUserScopedStorageKey(baseKey: string): string {
+  const token = typeof window !== 'undefined' ? getAuthToken() : null;
+  const ns = extractStableUserNamespace(token);
+  return ns === 'anon' ? baseKey : `${baseKey}:${ns}`;
+}
+
 export function loadFeedReadEntryIdsFromStorage(
   storage = getActiveStorage(),
 ): Set<string> {
   if (!storage) return new Set();
   try {
-    const raw = storage.getItem(FEED_READ_IDS_STORAGE_KEY);
+    const raw = storage.getItem(resolveUserScopedStorageKey(FEED_READ_IDS_STORAGE_KEY));
     if (!raw) return new Set();
     const parsed: unknown = JSON.parse(raw);
     if (Array.isArray(parsed)) {
@@ -231,7 +239,11 @@ export function saveFeedReadEntryIdsToStorage(
       arr.length > MAX_PERSISTED_FEED_READ_IDS
         ? arr.slice(arr.length - MAX_PERSISTED_FEED_READ_IDS)
         : arr;
-    safeSetStorageItem(FEED_READ_IDS_STORAGE_KEY, JSON.stringify(bounded), storage);
+    safeSetStorageItem(
+      resolveUserScopedStorageKey(FEED_READ_IDS_STORAGE_KEY),
+      JSON.stringify(bounded),
+      storage,
+    );
   } catch {
     // Ignore storage quota error
   }
@@ -261,14 +273,16 @@ export function loadReaderStorageState(
   }
 
   try {
-    const raw = storage.getItem(READER_TABS_STORAGE_KEY);
+    const tabsKey = resolveUserScopedStorageKey(READER_TABS_STORAGE_KEY);
+    const activeTabKey = resolveUserScopedStorageKey(READER_ACTIVE_TAB_STORAGE_KEY);
+    const raw = storage.getItem(tabsKey);
     let sessionActive: string | null = null;
     try {
-      sessionActive = sessionStorage?.getItem(READER_ACTIVE_TAB_STORAGE_KEY) ?? null;
+      sessionActive = sessionStorage?.getItem(activeTabKey) ?? null;
     } catch {
       sessionActive = null;
     }
-    const rawActive = sessionActive || storage.getItem(READER_ACTIVE_TAB_STORAGE_KEY);
+    const rawActive = sessionActive || storage.getItem(activeTabKey);
     const parsed = raw ? JSON.parse(raw) : null;
     if (Array.isArray(parsed) && parsed.length > 0) {
       const filtered = parsed
@@ -318,7 +332,7 @@ export function mergeReaderTabsWithStorage(
 
   const removedSet = new Set(options?.removedIds ?? []);
   try {
-    const raw = storage.getItem(READER_TABS_STORAGE_KEY);
+    const raw = storage.getItem(resolveUserScopedStorageKey(READER_TABS_STORAGE_KEY));
     const parsed = raw ? JSON.parse(raw) : null;
     if (!Array.isArray(parsed) || parsed.length === 0) {
       return localTabs;
@@ -393,10 +407,12 @@ export function saveReaderTabsToStorage(
     storage,
   });
   const boundedTabs = enforceMaxReaderTabs(merged, activeTabId);
-  safeSetStorageItem(READER_TABS_STORAGE_KEY, JSON.stringify(boundedTabs), storage);
-  safeSetStorageItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId, storage);
+  const tabsKey = resolveUserScopedStorageKey(READER_TABS_STORAGE_KEY);
+  const activeTabKey = resolveUserScopedStorageKey(READER_ACTIVE_TAB_STORAGE_KEY);
+  safeSetStorageItem(tabsKey, JSON.stringify(boundedTabs), storage);
+  safeSetStorageItem(activeTabKey, activeTabId, storage);
   if (sessionStorage) {
-    safeSetStorageItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId, sessionStorage);
+    safeSetStorageItem(activeTabKey, activeTabId, sessionStorage);
   }
   return boundedTabs;
 }

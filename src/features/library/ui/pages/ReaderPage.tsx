@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "rea
 import dynamic from "next/dynamic";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { useRouter, useSearchParams } from "next/navigation";
-import { openInNewTab } from "@/features/library/core/coordinator/citation-export.coordinator";
+import { openInNewTab } from "@/features/library/core/coordinator/citation.coordinator";
 import { cn } from "@/shared/lib/utils";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -27,10 +27,10 @@ import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/f
 import {
   useReaderTabHistory, useReaderTabPresentation, useReaderKeyboardShortcuts,
 } from "@/features/library/core/coordinator/reader/use-reader-tabs";
-import { isEditableOrModalElementFocused } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
+import { isInputOrModalFocused } from "@/features/library/core/coordinator/shortcuts.coordinator";
 
 const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar"), { ssr: false });
-const BibtexModal = dynamic(() => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog), { ssr: false });
+const BibtexModal = dynamic(() => import("@/features/library/ui/modals/BibtexModal").then((m) => m.PaperBibtexDialog), { ssr: false });
 const AiCompanionSidebar = dynamic(() => import("@/features/ai").then((m) => m.CompanionDrawer), { ssr: false, loading: () => null });
 
 const Viewer = dynamic<import("@/features/library/ui/reader/viewer/PdfViewer").ViewerProps>(
@@ -185,7 +185,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-        if (isEditableOrModalElementFocused(e.target)) return;
+        if (isInputOrModalFocused(e.target)) return;
         e.preventDefault();
         setIsSearchOpen((v) => !v);
       }
@@ -434,7 +434,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   // Escape key exits distraction-free reading mode or resets active annotation tool to 'select'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || isEditableOrModalElementFocused(e.target)) return;
+      if (e.key !== "Escape" || isInputOrModalFocused(e.target)) return;
       if (isReadingMode) { setIsReadingMode(false); return; }
       if (activeTool && activeTool !== "select") setActiveTool("select");
     };

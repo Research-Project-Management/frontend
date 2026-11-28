@@ -30,19 +30,6 @@ export function useActiveLibrarySpace() {
   };
 }
 
-function resolveActiveLibrarySpaceId(
-  activeScope?: { type?: string; id?: string; projectId?: string } | null,
-  explicitSpaceId?: string | null,
-  fallbackProjectId?: string | null,
-): string {
-  if (explicitSpaceId) return explicitSpaceId;
-  if (fallbackProjectId) return fallbackProjectId;
-  if (activeScope?.type === 'project') {
-    return activeScope.projectId || activeScope.id || 'user';
-  }
-  return 'user';
-}
-
 /**
  * Permissions Coordinator Hook
  *

@@ -389,7 +389,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Library Sorting Utility (sort-items.ts)", () => {
     it("should pin processing items to the top regardless of sort direction", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/metadata/extra-mapper");
+        await import("@/features/library/domain/item-sort");
       const items: any[] = [
         { id: "1", title: "Beta", year: 2020 },
         { id: "2", title: "Alpha", year: 2024, _isProcessing: true },
@@ -403,7 +403,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should sort regular items alphabetically and numerically", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/metadata/extra-mapper");
+        await import("@/features/library/domain/item-sort");
       const items: any[] = [
         { id: "1", title: "Charlie", year: 2020 },
         { id: "2", title: "Alpha", year: 2024 },
@@ -418,7 +418,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle author and date aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/metadata/extra-mapper");
+        await import("@/features/library/domain/item-sort");
       const items: any[] = [
         { id: "1", authors: ["Knuth"], createdAt: "2024-01-01" },
         { id: "2", authors: ["Einstein"], createdAt: "2024-05-01" },
@@ -432,7 +432,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle publication and dateDeleted aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/metadata/extra-mapper");
+        await import("@/features/library/domain/item-sort");
       const items: any[] = [
         {
           id: "1",
@@ -481,6 +481,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       expect(perms.canCreateItem).toBe(true);
       expect(perms.canEditItem).toBe(true);
       expect(perms.canDeleteItem).toBe(true);
+      expect(perms.canPurgeItem).toBe(true);
       expect(perms.canManageCollections).toBe(true);
       expect(perms.canImport).toBe(true);
       expect(perms.canExport).toBe(true);
@@ -538,6 +539,22 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       expect(perms.canManageCollections).toBe(true);
       expect(perms.canImport).toBe(true);
       expect(perms.canExport).toBe(true);
+
+      // Verify Backend effectivePermissions tokens (library:upload, library:update, library:annotate)
+      const tokenPerms = getLibraryPermissions(contributorScope, {
+        role: "contributor",
+        effectivePermissions: [
+          "library:read",
+          "library:upload",
+          "library:update",
+          "library:export",
+          "library:annotate",
+        ],
+      });
+      expect(tokenPerms.canCreateItem).toBe(true);
+      expect(tokenPerms.canImport).toBe(true);
+      expect(tokenPerms.canEditItem).toBe(true);
+      expect(tokenPerms.canManageCollections).toBe(true);
     });
 
     it("should enforce strict read-only/annotation restrictions for Reviewer role", () => {

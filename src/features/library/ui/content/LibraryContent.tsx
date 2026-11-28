@@ -18,12 +18,12 @@ import {
   useLibraryCommandStore,
   createBatchDetachCommand,
 } from '@/features/library/core/manager/command.manager';
-import { useSavedSearchResults, useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { useSavedSearchResults, useSavedSearches } from '@/features/library/core/coordinator/saved-search.coordinator';
 import { ContentSkeleton } from './LibraryIllustrations';
 import { ItemTable } from './ItemTable';
 import { DuplicatesContent } from './DuplicatesContent';
 import { FeedViewContent } from './FeedViewContent';
-import { LibraryEmptyState } from './ItemTableHeader';
+import { LibraryEmptyState } from './LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
@@ -31,7 +31,7 @@ import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { createProvisionalUploadItem } from '@/features/library/domain/metadata/mapper';
-import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import {
   type Item,
@@ -519,7 +519,6 @@ export function LibraryContent({
 
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const setActiveCollectionId = useLibraryUIStore((s) => s.setActiveCollectionId);
-  const setActiveSavedSearchId = useLibraryUIStore((s) => s.setActiveSavedSearchId);
 
   const prevRouteContextRef = React.useRef<{
     view?: string;
@@ -529,7 +528,6 @@ export function LibraryContent({
 
   React.useEffect(() => {
     setActiveCollectionId(collectionId ?? null);
-    setActiveSavedSearchId(effectiveSavedSearchId ?? null);
 
     const prev = prevRouteContextRef.current;
     if (
@@ -551,7 +549,6 @@ export function LibraryContent({
     effectiveSavedSearchId,
     clearSelection,
     setActiveCollectionId,
-    setActiveSavedSearchId,
   ]);
 
   // Zotero 7 Quick Copy Coordinator (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)

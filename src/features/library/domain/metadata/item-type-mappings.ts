@@ -451,13 +451,10 @@ export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [
   },
   {
     id: 'articles',
-    label: 'Articles & Web Content',
+    label: 'Articles & Periodicals',
     types: [
       { value: 'magazineArticle', label: 'Magazine Article' },
       { value: 'newspaperArticle', label: 'Newspaper Article' },
-      { value: 'webpage', label: 'Web Page' },
-      { value: 'blogPost', label: 'Blog Post' },
-      { value: 'forumPost', label: 'Forum Post' },
     ],
   },
   {
@@ -487,9 +484,12 @@ export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [
   },
   {
     id: 'documents',
-    label: 'Documents & Communication',
+    label: 'Documents, Web & Communication',
     types: [
       { value: 'document', label: 'Document' },
+      { value: 'webpage', label: 'Web Page' },
+      { value: 'blogPost', label: 'Blog Post' },
+      { value: 'forumPost', label: 'Forum Post' },
       { value: 'computerProgram', label: 'Software' },
       { value: 'letter', label: 'Letter' },
       { value: 'email', label: 'E-mail' },

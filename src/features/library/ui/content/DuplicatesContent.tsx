@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation.coordinator';
 import {
   GitMerge, Layers, FileText, Calendar, ExternalLink, ChevronRight, Columns, CheckSquare, X,
 } from 'lucide-react';
@@ -22,14 +22,12 @@ import {
   useDismissDuplicatesMutation,
   useMergeDuplicates,
   useBatchMergeDuplicates,
-} from '@/features/library/core/coordinator/curation.coordinator';
-import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
-import {
   clearGroupMergeDraft,
   computeDuplicateSetKey,
   getDeterministicDuplicateGroupKey,
   getGroupMergeDraft,
 } from '@/features/library/core/coordinator/curation.coordinator';
+import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import {
   extractExplicitUserMergeOverrides,
   inspectItemDifferences,

@@ -23,11 +23,9 @@ import {
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "./LibraryDisplayPopover";
-import { TopbarSearch } from "./LibraryDisplayPopover";
-import {
-  TopbarNewItemDropdown,
-  TopbarNewFeedDropdown,
-} from "./TopbarNewItemDropdown";
+import { TopbarSearch } from "./TopbarSearch";
+import { TopbarNewItemDropdown } from "./TopbarNewItemDropdown";
+import { TopbarNewFeedDropdown } from "./TopbarNewFeedDropdown";
 import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import {
   useLibraryNavigation,

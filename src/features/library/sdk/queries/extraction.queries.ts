@@ -2,12 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  CitationService,
-  AttachmentsService,
-  UploadService,
-  ExportsService,
-} from "../clients/attachments-annotations.client";
+import { CitationService, ExportsService } from "../clients/citations.client";
+import { AttachmentsService, UploadService } from "../clients/attachments.client";
 import { resolveLibraryUrl, resolveLibraryRawPath } from "../clients/http.client";
 import type { ItemAttachment, CslStyle } from "@/features/library/types/core.types";
 

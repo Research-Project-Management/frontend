@@ -104,8 +104,11 @@ export function mapFeedEntryToCreateItemPayload(
 ): CreateLibraryItemFromFeedPayload {
   const spaceId = options?.spaceId || 'user';
   const collectionId = options?.collectionId || undefined;
+  const venueLower = (entry.publicationTitle || '').toLowerCase();
+  const isPreprintVenue = /\b(biorxiv|medrxiv|chemrxiv|ssrn|preprint|arxiv)\b/i.test(venueLower);
   const isPreprint = Boolean(
-    entry.arxivId && (!entry.doi || entry.doi.toLowerCase().includes('arxiv')),
+    (entry.arxivId && (!entry.doi || entry.doi.toLowerCase().includes('arxiv'))) ||
+      isPreprintVenue,
   );
 
   const creators: CreatorCredit[] = (entry.creators && entry.creators.length > 0)
@@ -385,7 +388,7 @@ export function resolveFeedVirtualizationPlan(
     const queryTerm = encodeURIComponent(rawCat);
     return {
       kind: 'openalex',
-      endpointUrl: `https://api.openalex.org/works?filter= indexed_in:arxiv&search=${queryTerm}&sort=publication_date:desc&per-page=${rows}`,
+      endpointUrl: `https://api.openalex.org/works?filter=indexed_in:arxiv&search=${queryTerm}&sort=publication_date:desc&per-page=${rows}`,
       feedTitle: `arXiv: ${rawCat}`,
       primaryCategory: rawCat,
     };

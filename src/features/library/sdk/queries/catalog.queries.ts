@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { ItemsService, type ItemTypesResponse } from '../clients/items.client';
-import { SearchService } from '../clients/catalog-entities.client';
+import { SearchService } from '../clients/search-state.client';
 import type {
   Item, Collection, CursorPaginationMeta, ItemQueryParams, SearchFacets,
 } from '@/features/library/types/core.types';
@@ -300,10 +300,11 @@ export function useViewItems(
   const limit =
     typeof searchOrOptions === 'object' ? searchOrOptions?.limit : options?.limit;
   const extraKeyMeta =
-    collectionId || checkInProjectId
+    collectionId || checkInProjectId || limit !== undefined
       ? {
           ...(collectionId ? { collectionId } : {}),
           ...(checkInProjectId ? { checkInProjectId } : {}),
+          ...(limit !== undefined ? { limit } : {}),
         }
       : undefined;
   const trimmedSearch = search?.trim() || undefined;
@@ -617,7 +618,13 @@ export function useLibraryItemsQuery(
           }
 
           return { items, total, meta, hasNextPage, nextCursor, facets: searchRes?.facets };
-        } catch {
+        } catch (err: unknown) {
+          if (
+            signal?.aborted ||
+            (err instanceof Error && err.name === 'AbortError')
+          ) {
+            throw err;
+          }
           // Graceful fallback to catalog ItemsService.getAll if /search endpoint is unreachable
         }
       }
@@ -714,4 +721,4 @@ export {
 };
 export {
   useDeleteLibraryItemsMutation, useBatchRestoreItemsMutation, useBatchPurgeItemsMutation,
-} from './tags-notes.queries';
+} from './trash.queries';

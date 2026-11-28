@@ -70,7 +70,7 @@ interface KeyboardShortcutCommand {
 const MODAL_OR_POPUP_SELECTOR =
   '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="combobox"], [data-radix-popper-content-wrapper]';
 
-export function isEditableOrModalElementFocused(
+export function isInputOrModalFocused(
   target?: EventTarget | null,
 ): boolean {
   if (useLibraryUIStore.getState().activeModal !== null) {
@@ -335,7 +335,7 @@ export function useLibraryKeyboardShortcuts({
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const key = e.key.toLowerCase();
       if (key !== "z" && key !== "y") return;
-      if (activeModal !== null || isEditableOrModalElementFocused(e.target)) {
+      if (activeModal !== null || isInputOrModalFocused(e.target)) {
         return;
       }
 
@@ -355,7 +355,7 @@ export function useLibraryKeyboardShortcuts({
     (e: React.KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (
-        isEditableOrModalElementFocused(target) ||
+        isInputOrModalFocused(target) ||
         (target &&
           (target.tagName === "BUTTON" ||
             target.closest("button") ||

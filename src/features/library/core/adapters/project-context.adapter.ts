@@ -4,38 +4,6 @@ import { useMemo } from 'react';
 import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
-export {
-  getSchemaRegistryVersion,
-  getLibrarySchemaSnapshot,
-  registerSchemaRegistryUpdateListener,
-  type LibrarySchemaRegistrySnapshot,
-  DEFAULT_READER_TABS,
-  MAX_READER_TABS,
-  MIN_READER_ZOOM,
-  MAX_READER_ZOOM,
-  enforceMaxReaderTabs,
-  normalizeReaderZoom,
-  normalizeReaderFitMode,
-  normalizeReaderTheme,
-  normalizeReaderTab,
-  resolveNextActiveTabOnClose,
-  type StorageLike,
-  setLibraryStorageProvider,
-  setLibrarySessionStorageProvider,
-  isBrowser,
-  SCHEMA_VERSION,
-  syncDynamicSchemasToMemory,
-  saveSchemaCache,
-  loadSchemaCache,
-  loadFeedReadEntryIdsFromStorage,
-  saveFeedReadEntryIdsToStorage,
-  loadReaderStorageState,
-  mergeReaderTabsWithStorage,
-  saveReaderTabsToStorage,
-  READER_TABS_STORAGE_KEY,
-  READER_ACTIVE_TAB_STORAGE_KEY,
-  FEED_READ_IDS_STORAGE_KEY,
-} from './local-storage.adapter';
 
 interface LibraryProjectScope {
   id: string;

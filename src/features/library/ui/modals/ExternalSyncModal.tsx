@@ -46,7 +46,7 @@ import {
   type Collection,
 } from '@/features/library/types/core.types';
 
-interface ExternalLibrarySyncModalProps {
+interface ExternalSyncModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProvider?: 'zotero' | 'mendeley';
@@ -55,13 +55,13 @@ interface ExternalLibrarySyncModalProps {
   defaultCollectionId?: string | null;
 }
 
-export default function ExternalLibrarySyncModal({
+export default function ExternalSyncModal({
   open,
   onOpenChange,
   spaceId = 'user',
   collections = [],
   defaultCollectionId = null,
-}: ExternalLibrarySyncModalProps) {
+}: ExternalSyncModalProps) {
   const syncExternalBibtexMutation = useSyncExternalBibtexMutation(spaceId);
   const [selectedRemoteCollection, setSelectedRemoteCollection] =
     useState<string>('');

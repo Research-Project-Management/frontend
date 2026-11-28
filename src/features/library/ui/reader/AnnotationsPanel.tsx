@@ -38,8 +38,10 @@ import type {
 } from '@/features/library/types/reader.types';
 import {
   extractAnnotationFacets,
-  computeRangeSelectedAnnotationIds,
+  computeAnnotationRangeIds,
   filterAndSortAnnotations,
+} from '@/features/library/domain/reader/annotation-filter';
+import {
   AnnotationsPanelCard,
   AnnotationsBottomSelectorDock,
 } from './AnnotationsPanelParts';
@@ -261,7 +263,7 @@ export function AnnotationsPanel({
         }
         setLastSelectedId(annotation.id);
       } else if (e.shiftKey && lastSelectedId && onSelectIds) {
-        const next = computeRangeSelectedAnnotationIds(
+        const next = computeAnnotationRangeIds(
           filteredAnnotations,
           selectedIds,
           lastSelectedId,

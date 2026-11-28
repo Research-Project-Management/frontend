@@ -720,13 +720,26 @@ export function resolveCachedItemFromScope(
  * updating collections) immediately patch or invalidate Tab 2's cache even with
  * `refetchOnWindowFocus: false`.
  */
-const registeredQueryClients = new WeakSet<QueryClient>();
+const registeredQueryClientSyncs = new WeakMap<
+  QueryClient,
+  { refCount: number; unsubscribe: () => void }
+>();
 
 export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => void {
-  if (registeredQueryClients.has(queryClient)) {
-    return () => undefined;
+  const existing = registeredQueryClientSyncs.get(queryClient);
+  if (existing) {
+    existing.refCount += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      existing.refCount -= 1;
+      if (existing.refCount <= 0) {
+        registeredQueryClientSyncs.delete(queryClient);
+        existing.unsubscribe();
+      }
+    };
   }
-  registeredQueryClients.add(queryClient);
 
   const unsubscribe = multiTabBus.subscribe((event) => {
     if (event.type === 'LIBRARY_ITEMS_DELETED') {
@@ -759,9 +772,18 @@ export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => 
     }
   });
 
+  const entry = { refCount: 1, unsubscribe };
+  registeredQueryClientSyncs.set(queryClient, entry);
+
+  let released = false;
   return () => {
-    registeredQueryClients.delete(queryClient);
-    unsubscribe();
+    if (released) return;
+    released = true;
+    entry.refCount -= 1;
+    if (entry.refCount <= 0) {
+      registeredQueryClientSyncs.delete(queryClient);
+      entry.unsubscribe();
+    }
   };
 }
 

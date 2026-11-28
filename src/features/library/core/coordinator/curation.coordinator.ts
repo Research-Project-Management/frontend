@@ -161,7 +161,7 @@ interface ExecuteDuplicateMergeWithCommandOptions {
   invalidateScopeItemsAndCounts: (spaceId?: string) => Promise<void> | void;
 }
 
-export async function executeDuplicateMergeWithCommand({
+export async function mergeDuplicatesWithUndo({
   masterPaper,
   mergedFields,
   duplicateIdsToDelete,

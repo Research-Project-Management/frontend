@@ -506,7 +506,6 @@ interface LibraryCommandState {
   redoStack: LibraryCommand[];
   isExecuting: boolean;
   isUndoing: boolean;
-  lastCommand: LibraryCommand | null;
   epoch: number;
   currentSpaceId: string | null;
 }
@@ -515,10 +514,8 @@ interface LibraryCommandActions {
   executeCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => Promise<T>;
   pushExecutedCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => void;
   undo: (expectedCommandId?: string) => Promise<boolean>;
-  undoById: (commandId: string) => Promise<boolean>;
   redo: (expectedCommandId?: string) => Promise<boolean>;
   clearHistory: () => void;
-  clear: () => void;
   setScope: (spaceId?: string | null) => void;
 }
 
@@ -538,7 +535,7 @@ function resolveCommandToastId(id: string): string {
 }
 
 export const useLibraryCommandStore = create<LibraryCommandState & LibraryCommandActions>((set, get) => ({
-  undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, lastCommand: null, epoch: 0, currentSpaceId: null,
+  undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, epoch: 0, currentSpaceId: null,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
     const ensuredCommand: LibraryCommand<T> = {
@@ -560,7 +557,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       const executedWithNow: LibraryCommand<T> = { ...ensuredCommand, timestamp: Date.now() };
       set((s) => ({
         undoStack: [executedWithNow, ...s.undoStack.filter((c) => c.id !== executedWithNow.id).slice(0, MAX_HISTORY_LENGTH - 1)],
-        redoStack: [], lastCommand: executedWithNow, isExecuting: stillExecuting,
+        redoStack: [], isExecuting: stillExecuting,
       }));
       if (!options.silentToast) {
         toast.success(executedWithNow.description, {
@@ -583,11 +580,9 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       id: command.id || `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: command.timestamp || Date.now(),
     };
-    const startEpoch = get().epoch;
-    if (get().epoch !== startEpoch) return;
     set((s) => ({
       undoStack: [ensuredCommand, ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1)],
-      redoStack: [], lastCommand: ensuredCommand,
+      redoStack: [],
     }));
     if (!options.silentToast) {
       toast.success(ensuredCommand.description, {
@@ -611,7 +606,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       set((s) => ({
         undoStack: s.undoStack.filter((c) => c.id !== commandToUndo.id),
         redoStack: [undoneEntry, ...s.redoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
-        lastCommand: undoneEntry, isUndoing: false,
+        isUndoing: false,
       }));
       toast.info(`Undone: ${commandToUndo.description}`, { id: resolveCommandToastId(commandToUndo.id) });
       return true;
@@ -621,8 +616,6 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       return false;
     }
   },
-
-  undoById: async (commandId: string): Promise<boolean> => get().undo(commandId),
 
   redo: async (expectedCommandId?: string): Promise<boolean> => {
     const { redoStack, isExecuting, isUndoing } = get();
@@ -645,7 +638,6 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       set((s) => ({
         redoStack: s.redoStack.filter((c) => c.id !== commandToRedo.id),
         undoStack: [redoneEntry, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
-        lastCommand: redoneEntry,
         isExecuting: activeExecutionsCount > 0,
       }));
       toast.success(`Redone: ${commandToRedo.description}`, { id: resolveCommandToastId(commandToRedo.id) });
@@ -663,16 +655,13 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     noteIdRemapRegistry.clear();
     noteVersionRemapRegistry.clear();
     notifyDraftCacheCleared();
-    set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
+    set((s) => ({ undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
-
-  clear: () => { get().clearHistory(); },
 
   setScope: (spaceId?: string | null) => {
     const normalized = spaceId || 'user';
     if (get().currentSpaceId && get().currentSpaceId !== normalized) {
       get().clearHistory();
-      notifyDraftCacheCleared();
     }
     set({ currentSpaceId: normalized });
   },

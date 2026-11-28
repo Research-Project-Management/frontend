@@ -46,7 +46,7 @@ import {
 } from '@/features/library/domain/system-views.policy';
 
 const RetractionNoticeModal = dynamic(
-  () => import('@/features/library/ui/modals/DeleteModal').then((m) => m.RetractionNoticeModal),
+  () => import('@/features/library/ui/modals/RetractionNoticeModal').then((m) => m.RetractionNoticeModal),
   { ssr: false },
 );
 const DeleteModal = dynamic(

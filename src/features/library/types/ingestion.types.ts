@@ -143,7 +143,7 @@ export const savedFeedSubscriptionSchema = z.object({
   url: z.string().url(),
   lastRefreshed: z.string().optional(),
   retentionDays: feedRetentionDaysSchema.optional().default(30),
-  cleanupReadAfter: feedRetentionDaysSchema.optional().default(7),
+  cleanupReadAfter: feedRetentionDaysSchema.optional().default(30),
   cleanupUnreadAfter: feedRetentionDaysSchema.optional().default(30),
 });
 
@@ -602,14 +602,12 @@ export const savedSearchSortBySchema = z.enum([
   'title',
   'creator',
   'authors',
-  'firstAuthor',
   'publication',
   'publicationTitle',
   'citationKey',
   'deletedAt',
   'dateDeleted',
   'updatedAt',
-  'dateModified',
 ]);
 
 export const savedSearchSchema = z.object({
@@ -688,7 +686,7 @@ export type SavedSearchPreviewResponse = z.infer<
 
 // ── Domain & SDK Shared Feed & Saved-Search AST Types ────────────────────────
 
-export type FeedFormat = 'atom' | 'rss2' | 'rdf';
+export type FeedFormat = 'atom' | 'rss2' | 'rss1-rdf' | 'rdf';
 
 export interface FeedCreatorApiItem {
   firstName?: string;

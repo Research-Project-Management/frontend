@@ -20,22 +20,23 @@ import {
 import {
   useLibraryCommandStore,
   createTrashCommand,
-  createRestoreCommand,
   buildPreConversionSnapshot,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
 } from '@/features/library/core/manager/command.manager';
 import {
   useSavedSearches,
   useTrash,
-} from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+} from '@/features/library/core/coordinator/saved-search.coordinator';
 import type {
   Collection,
   CollectionFormValues,
   Item,
   CreateSavedSearchInput,
 } from '@/features/library/types/core.types';
-import type { SavedSearch } from '@/features/library/types/ingestion.types';
-import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
+import type {
+  SavedSearch,
+  SavedFeedSubscription,
+} from '@/features/library/types/ingestion.types';
 
 export {
   buildPreConversionSnapshot,
@@ -45,7 +46,7 @@ export {
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
 const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'), { ssr: false });
 const DeleteModal = dynamic(() => import('./DeleteModal'), { ssr: false });
-const ExternalLibrarySyncModal = dynamic(() => import('./ExternalLibrarySyncModal'), { ssr: false });
+const ExternalSyncModal = dynamic(() => import('./ExternalSyncModal'), { ssr: false });
 const FeedsManagerModal = dynamic(() => import('./FeedsManagerModal'), { ssr: false });
 
 export interface LibraryModalPayload {
@@ -119,7 +120,7 @@ export function WorkspaceIntegrationsModalsHost({
 
   if (isExternalSyncOpen) {
     return (
-      <ExternalLibrarySyncModal
+      <ExternalSyncModal
         open={isExternalSyncOpen}
         onOpenChange={(open) => !open && closeModal()}
         defaultProvider={payload?.provider || 'zotero'}
@@ -153,11 +154,7 @@ export function WorkspaceIntegrationsModalsHost({
 export function CollectionModalsHost(props: ModalHostProps) {
   const { activeModal, payload, effectiveScope, closeModal } = props;
   const activeScope = useLibraryUIStore((s) => s.activeScope);
-  const isCreateCollectionOpen =
-    activeModal === 'CREATE_COLLECTION' || activeModal === 'RENAME_COLLECTION';
-  const isDeleteCollectionOpen = activeModal === 'DELETE_COLLECTION';
-  const isIntegrationModalOpen =
-    activeModal === 'EXPORT_LIBRARY' || activeModal === 'FEEDS_MANAGER';
+  const isCreateCollectionOpen = activeModal === 'CREATE_COLLECTION';
 
   const collectionsController = useCollections({
     spaceId: effectiveScope,
@@ -169,11 +166,7 @@ export function CollectionModalsHost(props: ModalHostProps) {
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const [isCustomSubmitting, setIsCustomSubmitting] = React.useState(false);
 
-  if (isIntegrationModalOpen) {
-    return <WorkspaceIntegrationsModalsHost {...props} />;
-  }
-
-  const handleCreateOrRenameCollection = async (data: CollectionFormValues) => {
+  const handleCreateCollection = async (data: CollectionFormValues) => {
     if (typeof payload?.onSubmit === 'function') {
       setIsCustomSubmitting(true);
       try {
@@ -182,19 +175,6 @@ export function CollectionModalsHost(props: ModalHostProps) {
       } finally {
         setIsCustomSubmitting(false);
       }
-      return;
-    }
-
-    if (activeModal === 'RENAME_COLLECTION' && payload?.collectionId) {
-      await collectionsController.updateCollection({
-        collectionId: payload.collectionId,
-        name: data.name,
-        description: data.description,
-        color: data.color,
-        parentId: data.parentId,
-        spaceId: effectiveScope,
-      });
-      closeModal();
       return;
     }
 
@@ -227,26 +207,6 @@ export function CollectionModalsHost(props: ModalHostProps) {
     closeModal();
   };
 
-  const handleConfirmDeleteCollection = async () => {
-    if (payload?.onConfirm) {
-      setIsCustomSubmitting(true);
-      try {
-        await payload.onConfirm();
-        closeModal();
-      } finally {
-        setIsCustomSubmitting(false);
-      }
-      return;
-    }
-    if (payload?.collectionId) {
-      await collectionsController.deleteCollection({
-        collectionId: payload.collectionId,
-        spaceId: effectiveScope,
-      });
-    }
-    closeModal();
-  };
-
   if (isCreateCollectionOpen) {
     const resolvedCollectionList = Array.isArray(payload?.collections)
       ? payload.collections
@@ -256,26 +216,20 @@ export function CollectionModalsHost(props: ModalHostProps) {
       (payload?.collectionId
         ? resolvedCollectionList.find((c) => c.id === payload.collectionId)
         : undefined);
-    const isRenameMode = activeModal === 'RENAME_COLLECTION';
 
     return (
       <CreateCollectionModal
         open={isCreateCollectionOpen}
         onOpenChange={(open) => !open && closeModal()}
-        onSubmit={handleCreateOrRenameCollection}
-        isPending={
-          createCollectionMutation.isPending ||
-          collectionsController.isUpdating ||
-          isCustomSubmitting
-        }
+        onSubmit={handleCreateCollection}
+        isPending={createCollectionMutation.isPending || isCustomSubmitting}
         collections={resolvedCollectionList}
         defaultParentId={
           payload?.parentId !== undefined
             ? payload.parentId
             : (targetCollection?.parentId ?? null)
         }
-        mode={isRenameMode ? 'rename' : 'create'}
-        editingCollectionId={isRenameMode ? (payload?.collectionId ?? targetCollection?.id) : undefined}
+        mode="create"
         initialName={
           payload?.initialName ?? payload?.name ?? targetCollection?.name ?? ''
         }
@@ -295,23 +249,6 @@ export function CollectionModalsHost(props: ModalHostProps) {
         rootType={
           payload?.rootType || (activeScope.type === 'project' ? 'project' : 'user')
         }
-      />
-    );
-  }
-
-  if (isDeleteCollectionOpen) {
-    return (
-      <DeleteModal
-        open={isDeleteCollectionOpen}
-        onOpenChange={(open) => !open && closeModal()}
-        title={payload?.title || 'Delete Collection'}
-        description={
-          payload?.description ||
-          'Are you sure you want to delete this collection?'
-        }
-        confirmLabel={payload?.confirmLabel || 'Delete Collection'}
-        onConfirm={handleConfirmDeleteCollection}
-        isDeleting={collectionsController.isDeleting || isCustomSubmitting}
       />
     );
   }
@@ -341,7 +278,6 @@ export function DestructiveItemModalsHost({
   const [isCustomSubmitting, setIsCustomSubmitting] = React.useState(false);
 
   const itemIds: string[] = payload?.itemIds || [];
-  const isRestoreMode = activeModal === 'CONFIRM_RESTORE';
   const isEmptyTrashMode = activeModal === 'EMPTY_TRASH';
   const isPermanentDelete = Boolean(payload?.permanent) || isEmptyTrashMode;
   const customConfirmCallback = payload?.onConfirm;
@@ -380,17 +316,7 @@ export function DestructiveItemModalsHost({
 
     if (itemIds.length === 0) return;
 
-    if (isRestoreMode) {
-      await executeCommand(
-        createRestoreCommand({
-          itemIds,
-          restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
-          deleteMutation: { mutateAsync: deleteItemsMutation.mutateAsync },
-        }),
-        { silentToast: true },
-      );
-      clearSelection();
-    } else if (isPermanentDelete) {
+    if (isPermanentDelete) {
       await purgeItemsMutation.mutateAsync(itemIds);
       clearCommandHistory();
       if (isEmptyTrashMode) {
@@ -420,43 +346,33 @@ export function DestructiveItemModalsHost({
       onOpenChange={(open) => !open && closeModal()}
       title={
         payload?.title ||
-        (isRestoreMode
-          ? 'Restore Items'
-          : isEmptyTrashMode
-            ? 'Empty Trash'
-            : isPermanentDelete
-              ? 'Permanently Delete Items'
-              : 'Move to Trash')
+        (isEmptyTrashMode
+          ? 'Empty Trash'
+          : isPermanentDelete
+            ? 'Permanently Delete Items'
+            : 'Move to Trash')
       }
       description={
         payload?.description ||
-        (isRestoreMode
-          ? `Are you sure you want to restore ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'} from the trash?`
-          : isEmptyTrashMode
-            ? 'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.'
-            : isPermanentDelete
-              ? `Are you sure you want to permanently delete ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
-              : `Are you sure you want to move ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'} to the trash?`)
+        (isEmptyTrashMode
+          ? 'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.'
+          : isPermanentDelete
+            ? `Are you sure you want to permanently delete ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
+            : `Are you sure you want to move ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'} to the trash?`)
       }
       confirmLabel={
         payload?.confirmLabel ||
-        (isRestoreMode
-          ? 'Restore'
-          : isEmptyTrashMode
-            ? 'Empty Trash'
-            : isPermanentDelete
-              ? 'Permanently Delete'
-              : 'Move to Trash')
+        (isEmptyTrashMode
+          ? 'Empty Trash'
+          : isPermanentDelete
+            ? 'Permanently Delete'
+            : 'Move to Trash')
       }
-      buttonVariant={isRestoreMode ? 'primary' : 'destructive'}
+      buttonVariant="destructive"
       onConfirm={handleConfirm}
       isDeleting={
         isCustomSubmitting ||
-        (isRestoreMode
-          ? restoreItemsMutation.isPending
-          : isPermanentDelete
-            ? purgeItemsMutation.isPending
-            : deleteItemsMutation.isPending)
+        (isPermanentDelete ? purgeItemsMutation.isPending : deleteItemsMutation.isPending)
       }
     />
   );

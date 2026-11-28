@@ -10,16 +10,18 @@ import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import type { Collection, CslStyle, Item } from '@/features/library/types/core.types';
 import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
-import { executeCopyMultiCite, executeCopyInTextCite, executeExportAllBibtex, executeDownloadBibFile } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
+import {
+  executeCopyMultiCite,
+  executeCopyInTextCite,
+  executeExportAllBibtex,
+  executeDownloadBibFile,
+  useCitationStyles,
+} from '@/features/library/core/coordinator/citation.coordinator';
 import { useBatchRenameAttachmentsMutation } from '@/features/library/core/coordinator/item-action.coordinator';
 import { formatCitationStyleLabel } from '@/features/library/domain/citations';
 import { BatchMoveCollectionPopover, BatchCitationExportPopovers, BatchSmartViewActions, BatchLifecycleActions } from '@/features/library/ui/content/BatchBarPopovers';
 
-type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinator>;
-
 interface BatchBarProps {
-  coordinator?: BatchActionCoordinator;
   items?: Item[];
   collectionId?: string | null;
   view?: string;
@@ -37,7 +39,6 @@ const EXCLUDED_CITATION_STYLE_IDS = new Set([
 ]);
 
 export function BatchBar({
-  coordinator: externalCoordinator,
   items = [],
   collectionId,
   view,
@@ -54,7 +55,7 @@ export function BatchBar({
     params?.projectId ||
     (isProjectScope && activeScope.id ? activeScope.id : "user");
 
-  const internalCoordinator = useLibraryBatchCoordinator({
+  const coordinator = useLibraryBatchCoordinator({
     items,
     spaceId: effectiveSpaceId,
     collectionId: collectionId || undefined,
@@ -62,8 +63,6 @@ export function BatchBar({
     isTrash,
     canEdit,
   });
-
-  const coordinator = externalCoordinator || internalCoordinator;
 
   const rootLibraryName = isProjectScope
     ? activeScope.name || "Project"

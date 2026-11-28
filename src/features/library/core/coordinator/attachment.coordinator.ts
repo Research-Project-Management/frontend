@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
 import { classifyAttachmentDescriptor } from '@/features/library/domain/reader/reader';
-import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/citation.coordinator';
 import {
   useAttachments,
   useRenameAttachment,

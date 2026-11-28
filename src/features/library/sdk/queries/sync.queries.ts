@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SyncService } from '../clients/catalog-entities.client';
+import { SyncService } from '../clients/search-state.client';
 import {
   mapBackendItem,
   hasExplicitUserStateInPayload,

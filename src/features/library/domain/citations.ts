@@ -226,6 +226,12 @@ const CITATION_STYLE_ALIAS_MAP: Readonly<Record<string, string>> = {
   nature: 'nature',
   tcvn: 'tcvn',
   'tcvn-author-date': 'tcvn',
+  'tcvn-numeric': 'tcvn-numeric',
+  'tcvn-7539': 'tcvn',
+  'bo-giao-duc': 'tcvn',
+  vietnam: 'tcvn',
+  auto: 'auto',
+  'auto-numeric': 'auto-numeric',
   bibtex: 'bibtex',
   ris: 'ris',
 };

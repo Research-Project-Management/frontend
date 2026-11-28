@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FileText, X, ExternalLink, Loader2, Search, Plus, Folder, Library, } from 'lucide-react';
-import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { useRelations } from '@/features/library/core/coordinator/saved-search.coordinator';
 import { useViewItems, useLibraryCountsQuery } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';

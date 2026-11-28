@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { getAuthToken } from '@/shared/lib/api';
+import { extractStableUserNamespace } from '../adapters/reader-storage.adapter';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   IngestionProgressItem,
@@ -115,8 +117,11 @@ export function classifyProcessItemStage(
   if (TERMINAL_SUCCESS_ITEM_STATUSES.has(status)) {
     return 'SUCCEEDED';
   }
-  if (batchPhase === 'COMPLETED' || batchPhase === 'PARTIAL_FAILURE') {
+  if (batchPhase === 'COMPLETED') {
     return 'SUCCEEDED';
+  }
+  if (batchPhase === 'PARTIAL_FAILURE') {
+    return 'FAILED';
   }
   if (
     batchPhase === 'RUNNING' &&
@@ -179,7 +184,6 @@ interface ProcessModalStore {
     },
   ) => void;
   completeBatchRun: (error?: string | null, provisionalIdsToRemove?: Iterable<string>) => void;
-  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => void;
   startBatchUpload: (
     files: File[],
     options: ProcessBatchUploadOptions,
@@ -448,10 +452,6 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     });
   },
 
-  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => {
-    get().patchBatchItemAndRecalculate(index, patch);
-  },
-
   closeModal: () => {
     set((s) => ({
       state: {
@@ -520,17 +520,40 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       partialize: (state) => ({
         state: state.state,
         processingItems: state.processingItems,
+        _ownerNamespace: extractStableUserNamespace(
+          typeof window !== 'undefined' ? getAuthToken() : null,
+        ),
       }),
-      onRehydrateStorage: () => (rehydrated) => {
-        if (rehydrated?.state && !rehydrated.state.isComplete && !activeBatchAbortController) {
-          const currentData = rehydrated.state.data;
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<ProcessModalStore> & {
+          _ownerNamespace?: string;
+        };
+        const currentNamespace = extractStableUserNamespace(
+          typeof window !== 'undefined' ? getAuthToken() : null,
+        );
+        // Isolate persisted upload modal state across user accounts on shared devices
+        if (
+          persisted._ownerNamespace &&
+          currentNamespace !== 'anon' &&
+          persisted._ownerNamespace !== currentNamespace
+        ) {
+          return currentState;
+        }
+
+        let nextModalState = persisted.state ?? currentState.state;
+        let nextProcessingItems = Array.isArray(persisted.processingItems)
+          ? persisted.processingItems
+          : currentState.processingItems;
+
+        if (nextModalState && !nextModalState.isComplete && !activeBatchAbortController) {
+          const currentData = nextModalState.data;
           const nextDataStatus =
             currentData &&
             ACTIVE_ITEM_STATUSES.has(String(currentData.status || '').toUpperCase())
               ? 'FAILED'
               : (currentData?.status ?? 'FAILED');
-          rehydrated.state = {
-            ...rehydrated.state,
+          nextModalState = {
+            ...nextModalState,
             isComplete: true,
             error: 'Upload interrupted by page reload.',
             ...(currentData
@@ -542,20 +565,24 @@ export const useProcessModalStore = create<ProcessModalStore>()(
                 }
               : {}),
           };
-          if (Array.isArray(rehydrated.processingItems)) {
-            rehydrated.processingItems = rehydrated.processingItems.map((item) => {
-              const upperStatus = String(item.status || '').toUpperCase();
-              if (upperStatus === 'UPLOADING' || upperStatus === 'PENDING') {
-                return {
-                  ...item,
-                  status: 'FAILED',
-                  error: 'Upload interrupted by page reload.',
-                };
-              }
-              return item;
-            });
-          }
+          nextProcessingItems = nextProcessingItems.map((item) => {
+            const upperStatus = String(item.status || '').toUpperCase();
+            if (upperStatus === 'UPLOADING' || upperStatus === 'PENDING') {
+              return {
+                ...item,
+                status: 'FAILED',
+                error: 'Upload interrupted by page reload.',
+              };
+            }
+            return item;
+          });
         }
+
+        return {
+          ...currentState,
+          state: nextModalState,
+          processingItems: nextProcessingItems,
+        };
       },
     },
   ),

@@ -38,9 +38,6 @@ export const RelationsService = {
       };
     }),
 
-  list: (spaceId: string | undefined, itemId: string) =>
-    RelationsService.getRelated(spaceId, itemId).then((r) => r.relatedItems),
-
   link: (
     spaceId: string | undefined,
     itemId: string,
@@ -93,7 +90,7 @@ interface LibraryBootstrapResponse {
     spaceId: string;
   };
   itemTypes?: Record<string, unknown>;
-  feedSubscriptions?: import('./curation.client').FeedSubscriptionResponse[];
+  feedSubscriptions?: import('./feeds.client').FeedSubscriptionResponse[];
   items?: Item[];
   meta?: CursorPaginationMeta;
   pagination?: CursorPaginationMeta;
@@ -265,12 +262,6 @@ export const ItemsService = {
     });
   },
 
-  list: (
-    spaceId?: string,
-    params?: ItemQueryParams,
-    options?: { signal?: AbortSignal },
-  ) => ItemsService.getAll(spaceId, params, options),
-
   getById: (spaceId: string | undefined, itemId: string) =>
     libraryClient.get<Item | { item?: Item }>(
       getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
@@ -327,31 +318,6 @@ export const ItemsService = {
     return unwrapItemResponse(res);
   },
 
-  patch: (
-    spaceId: string | undefined,
-    itemId: string,
-    data: Partial<Item> | Record<string, unknown>,
-    expectedVersion?: number,
-  ): Promise<Item> =>
-    ItemsService.update(spaceId, itemId, data, expectedVersion),
-
-  replace: async (
-    spaceId: string | undefined,
-    itemId: string,
-    data: Partial<Item> | Record<string, unknown>,
-    expectedVersion?: number,
-  ): Promise<Item> => {
-    const payload = sanitizeItemPayload(data as Record<string, unknown>);
-    if (expectedVersion !== undefined) {
-      payload.expectedVersion = expectedVersion;
-    }
-    const res = await libraryClient.put<Record<string, unknown>>(
-      getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
-      payload,
-    );
-    return unwrapItemResponse(res);
-  },
-
   delete: (spaceId: string | undefined, itemId: string) =>
     libraryClient.delete(
       getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
@@ -369,11 +335,6 @@ export const ItemsService = {
       return { success: true, item };
     });
   },
-
-  purge: (spaceId: string | undefined, itemId: string) =>
-    libraryClient.delete<{ success: boolean; data: { purged: boolean } }>(
-      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/purge`),
-    ),
 
   emptyTrash: (spaceId: string | undefined) =>
     libraryClient
@@ -442,9 +403,6 @@ export const ItemsService = {
         };
       }),
 
-  bulkDelete: (spaceId: string | undefined, itemIds: string[]) =>
-    ItemsService.bulkTrash(spaceId, itemIds),
-
   bulkRestore: (spaceId: string | undefined, itemIds: string[]) =>
     libraryClient
       .post<{
@@ -467,12 +425,6 @@ export const ItemsService = {
           failedIds: res?.failedIds ?? [],
         };
       }),
-
-  reindex: (spaceId: string | undefined, itemId: string) =>
-    libraryClient.post<{ success?: boolean; message?: string; itemId?: string; data?: unknown }>(
-      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/reindex`),
-      {},
-    ).then((res) => res?.data || res || { success: true }),
 
   reResolve: (
     spaceId: string | undefined,
@@ -540,13 +492,7 @@ export const ItemsService = {
 
   getItemFileUrl,
 
-  updateItem: (spaceId: string | undefined, itemId: string, data: Partial<Item>) =>
-    ItemsService.update(spaceId || 'user', itemId, data),
-
   fetchPdfBlob,
-
-  getRelated: (spaceId: string | undefined, itemId: string) =>
-    RelationsService.getRelated(spaceId, itemId),
 
   setMyPublication: (
     spaceId: string | undefined,

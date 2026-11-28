@@ -29,7 +29,8 @@ import {
 import {
   useCslCitation,
   useCitationStyles,
-} from "@/features/library/core/coordinator/citation-export.coordinator";
+  triggerBrowserTextDownload,
+} from "@/features/library/core/coordinator/citation.coordinator";
 import type {
   Item,
   CslStyle,
@@ -39,7 +40,6 @@ import {
   getCleanStyleLabel,
   normalizeCitationStyleId,
 } from "@/features/library/domain/citations";
-import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { useLibraryUIStore } from "@/features/library/core/store/ui.store";
 import DOMPurify from "dompurify";
 

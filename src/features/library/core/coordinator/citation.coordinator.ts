@@ -16,7 +16,7 @@ import {
 } from '@/features/library/sdk/queries/extraction.queries';
 import type { Item, CslStyle } from '@/features/library/types/core.types';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
-import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
+import { isInputOrModalFocused } from './shortcuts.coordinator';
 
 export {
   copyToClipboard,
@@ -535,7 +535,7 @@ export function useQuickCopyCoordinator({
         : false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isEditableOrModalElementFocused(e.target)) return;
+      if (isInputOrModalFocused(e.target)) return;
 
       const modifier = isMac ? e.metaKey : e.ctrlKey;
       if (!modifier || !e.shiftKey) return;

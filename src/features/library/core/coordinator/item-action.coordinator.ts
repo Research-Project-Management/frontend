@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
+import {
+  openInNewTab,
+  buildReaderPaperUrl,
+  executeCopyMultiCite,
+  executeCopyInTextCite,
+  executeExportAllBibtex,
+} from '@/features/library/core/coordinator/citation.coordinator';
 import { isProjectScope } from '@/features/library/domain/identifiers';
 import {
   isPersistedItemId,
@@ -52,11 +58,6 @@ export {
 } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import {
-  executeCopyMultiCite,
-  executeCopyInTextCite,
-  executeExportAllBibtex,
-} from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   DEFAULT_CITATION_STYLES,
   getCleanStyleLabel,

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   normalizePagePoint,
   denormalizePagePoint,
@@ -8,17 +8,10 @@ import {
   smoothPointsToSvgPath,
   type NormalizedPoint,
 } from '@/features/library/domain/reader/ink-canvas';
-import { getOutboxStorage } from '@/features/library/core/adapters/outbox-storage.adapter';
-import { enqueueOfflineMutation } from '@/features/library/core/coordinator/offline-sync.coordinator';
 import { isUuidV7, uuidv7 } from '@/shared/utils/uuid.util';
 
 describe('PDF Native Annotation & Canvas Drawing Engine (Phân hệ 2)', () => {
-  beforeEach(async () => {
-    await getOutboxStorage().clear();
-  });
-
-  afterEach(async () => {
-    await getOutboxStorage().clear();
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
@@ -161,69 +154,10 @@ describe('PDF Native Annotation & Canvas Drawing Engine (Phân hệ 2)', () => {
     });
   });
 
-  describe('5. Offline Outbox Integration with UUIDv7', () => {
+  describe('5. UUIDv7 Generation for Annotation Mutations', () => {
     it('generates valid RFC 9562 UUIDv7 for annotation mutations', () => {
       const id = uuidv7();
       expect(isUuidV7(id)).toBe(true);
-    });
-
-    it('enqueues freehand ink and highlight annotations into persistent outbox when offline', async () => {
-      const storage = getOutboxStorage();
-      const annotationId = uuidv7();
-
-      const mutation = await enqueueOfflineMutation({
-        spaceId: 'user',
-        entityType: 'annotation',
-        entityId: annotationId,
-        action: 'CREATE',
-        endpoint: '/api/v1/library/attachments/att-123/annotations',
-        method: 'POST',
-        payload: {
-          id: annotationId,
-          type: 'ink',
-          pageIndex: 0,
-          color: '#ff6b6b',
-          rects: [
-            {
-              x1: 0.1,
-              y1: 0.2,
-              x2: 0.4,
-              y2: 0.5,
-              width: 0.3,
-              height: 0.3,
-              paths: ['M 0 0 Q 50 20, 100 100 L 100 100'],
-            },
-          ],
-        },
-      });
-
-      expect(mutation.id).toBeDefined();
-      expect(mutation.idempotencyKey).toBeDefined();
-      expect(await storage.count()).toBe(1);
-
-      const queued = await storage.peekNext();
-      expect(queued?.entityId).toBe(annotationId);
-      expect((queued?.payload as { type: string }).type).toBe('ink');
-    });
-
-    it('enqueues delete annotation operations into outbox during offline periods', async () => {
-      const storage = getOutboxStorage();
-      const annId = uuidv7();
-
-      await enqueueOfflineMutation({
-        spaceId: 'user',
-        entityType: 'annotation',
-        entityId: annId,
-        action: 'DELETE',
-        endpoint: `/api/v1/library/attachments/att-123/annotations/${annId}`,
-        method: 'DELETE',
-        payload: { expectedVersion: 2 },
-      });
-
-      expect(await storage.count()).toBe(1);
-      const queued = await storage.peekNext();
-      expect(queued?.action).toBe('DELETE');
-      expect(queued?.entityId).toBe(annId);
     });
   });
 });

@@ -147,6 +147,22 @@ export const SYSTEM_INTERNAL_METADATA_KEYS = new Set<string>([
   'collectionids',
   'extra',
   'extrafields',
+  // Backend internal ingestion / merge / publication / retraction telemetry keys
+  'enrichmentstatus',
+  'matchstatus',
+  'statuscode',
+  'contenthash',
+  'sourceurl',
+  'demotedtoextra',
+  'demotedextralines',
+  'mergedduplicateids',
+  'mergedintoid',
+  'mergehistory',
+  'retractionsource',
+  'mypublicationnote',
+  'mypublicationaddedat',
+  'openaccesslicense',
+  'lockedfields',
 ]);
 
 export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([

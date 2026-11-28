@@ -16,10 +16,9 @@ export {
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
   useBatchDetachItemsMutation,
-  useDetachItemFromCollectionMutation,
   useCreateCollectionMutation,
 } from '@/features/library/sdk/queries/collections.queries';
-import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation.coordinator';
 import { canMoveCollection } from '@/features/library/domain/collection-tree';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';

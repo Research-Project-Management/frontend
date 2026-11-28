@@ -28,7 +28,7 @@ import {
   useItemTypeConversion,
   useItemTypeConversionPreviewQuery,
   type TypeConversionPreview,
-} from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+} from "@/features/library/core/coordinator/saved-search.coordinator";
 import { useLibraryCacheSynchronizer } from "@/features/library/core/coordinator/item-action.coordinator";
 
 type TypeConversionItemLike = {

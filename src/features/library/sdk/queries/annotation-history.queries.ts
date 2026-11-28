@@ -2,7 +2,7 @@
 
 import type { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { AnnotationsService } from '../clients/attachments-annotations.client';
+import { AnnotationsService } from '../clients/annotations.client';
 import { annotationKeys } from '@/features/library/sdk/query-keys';
 import type { ReaderAnnotation } from '@/features/library/types/reader.types';
 
@@ -33,17 +33,6 @@ export type UndoAction =
         id: string;
         prevColor: string;
         newColor: string;
-        version: number;
-        previousData: ReaderAnnotation;
-      }[];
-      timestamp?: number;
-    }
-  | {
-      type: 'tag';
-      items: {
-        id: string;
-        prevTags: string[];
-        newTags: string[];
         version: number;
         previousData: ReaderAnnotation;
       }[];
@@ -282,78 +271,6 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       toast.success('Re-applied color change', { id: 'reader-history-action', duration: 1500 });
     },
   },
-  tag: {
-    prune: (entry, deletedSet) => {
-      const remaining = entry.items.filter((it) => !deletedSet.has(it.id));
-      return remaining.length === 0 ? null : { ...entry, items: remaining };
-    },
-    undo: async (entry, ctx) => {
-      const existing =
-        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.spaceId, ctx.effectiveAttachmentId)) || [];
-      const existingMap = new Map(existing.map((a) => [a.id, a]));
-      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
-      if (liveItems.length === 0) {
-        ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
-        return;
-      }
-      await executeAnnotationBatchSync(ctx.qc, ctx.spaceId, ctx.effectiveAttachmentId, {
-        upserts: liveItems.map((item) => {
-          const found = existingMap.get(item.id)!;
-          return {
-            id: item.id,
-            pageIndex: found.pageIndex,
-            pageLabel: found.pageLabel ?? item.previousData.pageLabel ?? null,
-            annotationSortIndex: found.annotationSortIndex ?? item.previousData.annotationSortIndex ?? null,
-            color: found.color,
-            rects: found.rects,
-            boundingRect: found.boundingRect ?? item.previousData.boundingRect,
-            quoteText: found.quoteText,
-            comment: found.comment,
-            tags: item.prevTags,
-            type: found.type,
-            expectedVersion: found.version ?? item.version,
-          };
-        }),
-        deletes: [],
-      });
-      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
-      ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Reverted tag change', { id: 'reader-history-action', duration: 1500 });
-    },
-    redo: async (entry, ctx) => {
-      const existing =
-        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.spaceId, ctx.effectiveAttachmentId)) || [];
-      const existingMap = new Map(existing.map((a) => [a.id, a]));
-      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
-      if (liveItems.length === 0) {
-        ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
-        return;
-      }
-      await executeAnnotationBatchSync(ctx.qc, ctx.spaceId, ctx.effectiveAttachmentId, {
-        upserts: liveItems.map((item) => {
-          const found = existingMap.get(item.id)!;
-          return {
-            id: item.id,
-            pageIndex: found.pageIndex,
-            pageLabel: found.pageLabel ?? item.previousData.pageLabel ?? null,
-            annotationSortIndex: found.annotationSortIndex ?? item.previousData.annotationSortIndex ?? null,
-            color: found.color,
-            rects: found.rects,
-            boundingRect: found.boundingRect ?? item.previousData.boundingRect,
-            quoteText: found.quoteText,
-            comment: found.comment,
-            tags: item.newTags,
-            type: found.type,
-            expectedVersion: found.version ?? item.version,
-          };
-        }),
-        deletes: [],
-      });
-      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
-      ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Re-applied tag change', { id: 'reader-history-action', duration: 1500 });
-    },
-  },
 };
 
 export function pruneAnnotationHistoryEntry(
@@ -378,16 +295,4 @@ export async function runRedoAnnotationHistoryAction(
 ): Promise<void> {
   const handler = ANNOTATION_HISTORY_HANDLERS[action.type] as AnnotationHistoryStrategy<UndoAction>;
   await handler.redo(action, ctx);
-}
-
-export async function executeAnnotationHistoryEntry(
-  action: UndoAction,
-  ctx: AnnotationHistoryContext,
-  direction: 'undo' | 'redo',
-): Promise<void> {
-  if (direction === 'undo') {
-    await runUndoAnnotationHistoryAction(action, ctx);
-  } else {
-    await runRedoAnnotationHistoryAction(action, ctx);
-  }
 }

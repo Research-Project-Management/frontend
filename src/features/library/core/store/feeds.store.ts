@@ -4,8 +4,8 @@ import {
   loadFeedReadEntryIdsFromStorage,
   saveFeedReadEntryIdsToStorage,
   FEED_READ_IDS_STORAGE_KEY,
-} from '../adapters/project-context.adapter';
-import { FeedsService } from '@/features/library/sdk/clients/curation.client';
+} from '../adapters/local-storage.adapter';
+import { FeedsService } from '@/features/library/sdk/clients/feeds.client';
 import type {
   SavedFeedSubscription,
   FeedReadFilterType,
@@ -413,7 +413,7 @@ if (typeof window !== 'undefined') {
   });
 
   window.addEventListener('storage', (e: StorageEvent) => {
-    if (e.key === FEED_READ_IDS_STORAGE_KEY) {
+    if (e.key === FEED_READ_IDS_STORAGE_KEY || e.key?.startsWith(`${FEED_READ_IDS_STORAGE_KEY}:`)) {
       rehydrateFeedsReadIdsFromStorage();
     }
   });

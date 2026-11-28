@@ -1,17 +1,17 @@
 /**
  * doc-export.ts
  *
- * Data-driven single-document formatted export (`POST /api/v1/pages/docs/:pageId/export`)
- * with native zero-copy `Uint8Array.fromBase64` binary decoding when supported by runtime.
+ * Single-document formatted export (`POST /api/v1/pages/docs/:pageId/export`)
+ * with native zero-copy `Uint8Array.fromBase64` binary decoding when supported.
  */
 
 import { exportDocs } from '../pages/export.client';
-import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
-import { sanitizeDocExportSlug, triggerFileDownload } from './download';
+import type { DocumentExportFormat } from '../pages/types';
+import { sanitizeSlug, triggerFileDownload } from './download';
 
-export interface ExportSingleDocOptions {
+export interface ExportDocOptions {
   docId: string;
-  projectTitle?: string;
+  title?: string;
   includeChildren?: boolean;
 }
 
@@ -21,7 +21,7 @@ interface DocFormatSpec {
   binary: boolean;
 }
 
-const DOC_FORMATS: Partial<Record<DocumentExportFormat, DocFormatSpec>> = {
+const DOC_FORMATS: Record<DocumentExportFormat, DocFormatSpec> = {
   docx: {
     extension: 'docx',
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -63,9 +63,9 @@ function decodeBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-export async function exportFormattedDocument(
+export async function exportDoc(
   format: DocumentExportFormat,
-  { docId, projectTitle, includeChildren = true }: ExportSingleDocOptions,
+  { docId, title, includeChildren = true }: ExportDocOptions,
 ): Promise<string> {
   const spec = DOC_FORMATS[format];
   if (!spec) {
@@ -73,23 +73,23 @@ export async function exportFormattedDocument(
   }
 
   const res = await exportDocs.exportDocument(docId, format, includeChildren);
-  const payload = spec.binary ? decodeBase64ToBytes(res.content) : res.content;
-  const blob = new Blob([payload], { type: spec.mimeType });
-  const filename =
-    res.filename || `${sanitizeDocExportSlug(projectTitle)}.${spec.extension}`;
+  const isBase64 = res.isBase64 ?? spec.binary;
+  const payload = isBase64 ? decodeBase64ToBytes(res.content) : res.content;
+  const blob = new Blob([payload], { type: res.mimeType || spec.mimeType });
+  const filename = res.filename || `${sanitizeSlug(title)}.${spec.extension}`;
 
   triggerFileDownload(blob, filename);
   return filename;
 }
 
-export function exportDocumentAsWord(options: ExportSingleDocOptions): Promise<string> {
-  return exportFormattedDocument('docx', options);
+export function exportDocx(options: ExportDocOptions): Promise<string> {
+  return exportDoc('docx', options);
 }
 
-export function exportDocumentAsMarkdown(options: ExportSingleDocOptions): Promise<string> {
-  return exportFormattedDocument('md', options);
+export function exportMarkdown(options: ExportDocOptions): Promise<string> {
+  return exportDoc('md', options);
 }
 
-export function exportDocumentAsHtml(options: ExportSingleDocOptions): Promise<string> {
-  return exportFormattedDocument('html', options);
+export function exportHtml(options: ExportDocOptions): Promise<string> {
+  return exportDoc('html', options);
 }

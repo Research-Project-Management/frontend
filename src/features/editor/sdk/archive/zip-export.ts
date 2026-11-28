@@ -1,7 +1,7 @@
 /**
  * zip-export.ts
  *
- * Flat, data-driven Project ZIP, arXiv Submission ZIP, and Historical Version ZIP exports.
+ * Workspace ZIP, arXiv submission ZIP, and historical version ZIP exports.
  */
 
 import { updater } from '../pages/docs.client';
@@ -12,25 +12,22 @@ import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { sanitizeArchiveName, triggerFileDownload } from './download';
 
 export interface ExportZipOptions {
-  parentPageId: string;
   spaceId?: string;
   pageId?: string;
-  projectTitle?: string;
+  title?: string;
 }
 
 export interface ExportVersionZipOptions {
   spaceId?: string;
-  projectId?: string;
-  parentPageId?: string;
   pageId?: string;
   version?: number | string;
   versionId?: string;
   revisionDate?: string | Date;
   revisionLabel?: string;
-  projectTitle?: string;
+  title?: string;
 }
 
-interface WorkspaceZipPreset {
+interface ZipPreset {
   mode: 'standard' | 'arxiv';
   cleanArxiv: boolean;
   includePdf: boolean;
@@ -38,12 +35,12 @@ interface WorkspaceZipPreset {
   prefix: string;
 }
 
-const WORKSPACE_ZIP_PRESETS: Record<'standard' | 'arxiv', WorkspaceZipPreset> = {
+const ZIP_PRESETS: Record<'standard' | 'arxiv', ZipPreset> = {
   standard: {
     mode: 'standard',
     cleanArxiv: false,
     includePdf: true,
-    defaultTitle: 'flux-project',
+    defaultTitle: 'flux-archive',
     prefix: '',
   },
   arxiv: {
@@ -55,7 +52,7 @@ const WORKSPACE_ZIP_PRESETS: Record<'standard' | 'arxiv', WorkspaceZipPreset> = 
   },
 };
 
-async function flushDirtyDocuments(spaceId: string): Promise<void> {
+async function flushDirtyDocs(spaceId: string): Promise<void> {
   const hasDirty =
     typeof sessionCoordinator.hasDirtyDocuments === 'function'
       ? sessionCoordinator.hasDirtyDocuments()
@@ -68,23 +65,19 @@ async function flushDirtyDocuments(spaceId: string): Promise<void> {
   }
 }
 
-async function downloadWorkspaceZip(
-  preset: WorkspaceZipPreset,
-  options: ExportZipOptions,
-): Promise<string> {
-  if (!options.parentPageId && !options.spaceId) {
-    throw new Error('Project or page identifier is required to export ZIP.');
+async function downloadZip(preset: ZipPreset, options: ExportZipOptions): Promise<string> {
+  if (!options.pageId && !options.spaceId) {
+    throw new Error('Space or page identifier is required to export ZIP.');
   }
 
   const store = usePageStore.getState();
-  const spaceId =
-    options.spaceId || store.spaceId || store.projectId || options.parentPageId;
-  const pageId = options.pageId || store.rootPageId || options.parentPageId;
-  const cleanTitle = sanitizeArchiveName(options.projectTitle, preset.defaultTitle);
+  const spaceId = options.spaceId || store.spaceId || store.projectId || options.pageId || '';
+  const pageId = options.pageId || store.rootPageId;
+  const cleanTitle = sanitizeArchiveName(options.title, preset.defaultTitle);
 
-  await flushDirtyDocuments(spaceId);
+  await flushDirtyDocs(spaceId);
 
-  const zipBlob = await exportDocs.exportProjectZip(spaceId, {
+  const zipBlob = await exportDocs.exportZip(spaceId, {
     cleanArxiv: preset.cleanArxiv,
     includePdf: preset.includePdf,
     mode: preset.mode,
@@ -97,30 +90,28 @@ async function downloadWorkspaceZip(
   return filename;
 }
 
-export function exportProjectAsZip(options: ExportZipOptions): Promise<string> {
-  return downloadWorkspaceZip(WORKSPACE_ZIP_PRESETS.standard, options);
+export function exportZip(options: ExportZipOptions): Promise<string> {
+  return downloadZip(ZIP_PRESETS.standard, options);
 }
 
-export function exportArxivSubmissionZip(options: ExportZipOptions): Promise<string> {
-  return downloadWorkspaceZip(WORKSPACE_ZIP_PRESETS.arxiv, options);
+export function exportArxivZip(options: ExportZipOptions): Promise<string> {
+  return downloadZip(ZIP_PRESETS.arxiv, options);
 }
 
-export async function exportVersionAsZip(options: ExportVersionZipOptions): Promise<string> {
+export async function exportVersionZip(options: ExportVersionZipOptions): Promise<string> {
   const store = usePageStore.getState();
   const spaceId =
-    options.spaceId ||
-    options.projectId ||
-    store.spaceId ||
-    store.projectId ||
-    options.parentPageId ||
-    '';
+    options.spaceId || store.spaceId || store.projectId || options.pageId || '';
   if (!spaceId) {
     throw new Error('Space ID is required to export version ZIP.');
   }
 
-  const version = options.version ?? options.versionId ?? 1;
-  const cleanTitle = sanitizeArchiveName(options.projectTitle, 'flux-project');
+  const version = options.version ?? options.versionId;
+  if (version === undefined || version === null || String(version).trim() === '') {
+    throw new Error('Version identifier is required to export version ZIP.');
+  }
 
+  const cleanTitle = sanitizeArchiveName(options.title, 'flux-archive');
   await sessionCoordinator.flushAllPending().catch(() => null);
 
   const zipBlob = await history.exportVersionZip(
@@ -132,11 +123,15 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
   const effectiveLabel =
     options.revisionLabel || (options.version ? `v${options.version}` : undefined);
-  const suffix = effectiveLabel
-    ? `-${sanitizeArchiveName(effectiveLabel, 'snapshot')}`
-    : options.revisionDate
-      ? `-${new Date(options.revisionDate).toISOString().slice(0, 10)}`
-      : '-snapshot';
+  let suffix = '-snapshot';
+  if (effectiveLabel) {
+    suffix = `-${sanitizeArchiveName(effectiveLabel, 'snapshot')}`;
+  } else if (options.revisionDate) {
+    const parsedDate = new Date(options.revisionDate);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      suffix = `-${parsedDate.toISOString().slice(0, 10)}`;
+    }
+  }
 
   const filename = `${cleanTitle}${suffix}.zip`;
   triggerFileDownload(zipBlob, filename);

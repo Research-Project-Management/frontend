@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  exportProjectAsZip,
-  exportArxivSubmissionZip,
+  exportZip,
+  exportArxivZip,
 } from '@/features/editor/sdk/archive/zip-export';
 import {
-  exportDocumentAsWord,
-  exportDocumentAsMarkdown,
-  exportDocumentAsHtml,
+  exportDocx,
+  exportMarkdown,
+  exportHtml,
 } from '@/features/editor/sdk/archive/doc-export';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 
@@ -15,11 +15,11 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
     vi.clearAllMocks();
   });
 
-  describe('1. Project Source & arXiv ZIP Export', () => {
-    it('requests standard project ZIP from backend and triggers download', async () => {
+  describe('1. Source & arXiv ZIP Export', () => {
+    it('requests standard ZIP from backend and triggers download', async () => {
       const mockZip = new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' });
       const exportZipSpy = vi
-        .spyOn(pagesService.export, 'exportProjectZip')
+        .spyOn(pagesService.export, 'exportZip')
         .mockResolvedValue(mockZip);
 
       let createdBlob: Blob | null = null;
@@ -42,10 +42,10 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
       }) as typeof document.body.appendChild;
       document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
-      const filename = await exportProjectAsZip({
+      const filename = await exportZip({
         spaceId: 'space-1',
-        parentPageId: 'doc-1',
-        projectTitle: 'Paper Draft',
+        pageId: 'doc-1',
+        title: 'Paper Draft',
       });
 
       expect(exportZipSpy).toHaveBeenCalledWith('space-1', {
@@ -68,15 +68,15 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
     it('requests cleanArxiv ZIP bundle from backend without PDF', async () => {
       const mockZip = new Blob(['PK\x03\x04arxiv-zip'], { type: 'application/zip' });
       const exportZipSpy = vi
-        .spyOn(pagesService.export, 'exportProjectZip')
+        .spyOn(pagesService.export, 'exportZip')
         .mockResolvedValue(mockZip);
 
       const origCreateObjectURL = globalThis.URL.createObjectURL;
       globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock-arxiv-url');
 
-      const filename = await exportArxivSubmissionZip({
-        parentPageId: 'doc-arxiv',
-        projectTitle: 'arXiv_Manuscript',
+      const filename = await exportArxivZip({
+        pageId: 'doc-arxiv',
+        title: 'arXiv_Manuscript',
       });
 
       expect(exportZipSpy).toHaveBeenCalledWith('doc-arxiv', {
@@ -113,9 +113,9 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
       }) as typeof document.body.appendChild;
       document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
-      const result = await exportDocumentAsWord({
+      const result = await exportDocx({
         docId: 'doc-report-1',
-        projectTitle: 'Research Report',
+        title: 'Research Report',
       });
 
       expect(result).toBe('report.docx');
@@ -134,9 +134,9 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
         sizeBytes: 30,
       });
 
-      const result = await exportDocumentAsMarkdown({
+      const result = await exportMarkdown({
         docId: 'doc-draft-1',
-        projectTitle: 'Draft Manuscript',
+        title: 'Draft Manuscript',
       });
       expect(result).toBe('draft.md');
 
@@ -144,9 +144,9 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
         new Error('Backend unavailable'),
       );
       await expect(
-        exportDocumentAsMarkdown({
+        exportMarkdown({
           docId: 'doc-draft-offline',
-          projectTitle: 'Offline Paper',
+          title: 'Offline Paper',
         }),
       ).rejects.toThrow('Backend unavailable');
     });
@@ -160,9 +160,9 @@ describe('Export Pipeline Unit Tests (Authoritative Server-Side)', () => {
         sizeBytes: 64,
       });
 
-      const result = await exportDocumentAsHtml({
+      const result = await exportHtml({
         docId: 'doc-html-1',
-        projectTitle: 'Thesis Final',
+        title: 'Thesis Final',
       });
 
       expect(pagesService.export.exportDocument).toHaveBeenCalledWith('doc-html-1', 'html', true);

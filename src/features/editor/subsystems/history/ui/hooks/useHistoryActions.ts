@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { pagesService, historyKeys } from '@/features/editor/sdk/pages.service';
-import { exportVersionAsZip } from '@/features/editor/sdk/archive/zip-export';
+import { exportVersionZip } from '@/features/editor/sdk/archive/zip-export';
 import {
   clearYjsProviderPool,
   evictYjsProviderByDocId,
-} from '@/features/editor/sdk/realtime/provider';
+} from '@/features/editor/sdk/realtime';
 import {
   editorCommandBus,
   sessionCoordinator,
@@ -272,11 +272,11 @@ export function useHistoryActions({
       if (!spaceId || !version || isDownloadingZip) return;
       setIsDownloadingZip(true);
       try {
-        await exportVersionAsZip({
-          projectId: spaceId,
+        await exportVersionZip({
+          spaceId,
           pageId: pageId || undefined,
           version,
-          projectTitle: projectTitle || 'project',
+          title: projectTitle || 'archive',
         });
       } catch (err: unknown) {
         toast.error(

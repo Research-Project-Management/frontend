@@ -62,7 +62,7 @@ export const docs = {
     return res.page;
   },
 
-  updateTitle: async (docId: string, title: string, _oldTitle?: string): Promise<Page> => {
+  updateTitle: async (docId: string, title: string): Promise<Page> => {
     if (!docId) throw new Error('docId is required');
     const res = await apiPut<{ page: Page }>(`${PAGES_API_BASE}/docs/${docId}`, { title });
     return res.page;
@@ -158,14 +158,6 @@ export const docs = {
     });
   },
 
-  createFile: async (params: {
-    parentPageId: string;
-    title: string;
-    content?: string;
-  }): Promise<PageFile> => {
-    return docs.createChildFile(params);
-  },
-
   setMain: async (
     params: string | { pageId: string; fileId: string; projectId?: string },
   ): Promise<{ id: string; mainFileId: string }> => {
@@ -185,12 +177,6 @@ export const docs = {
 
     await structure.setRootDoc(effectiveProjectId, fileId);
     return { id: pageId, mainFileId: fileId };
-  },
-
-  setMainFile: async (
-    params: string | { pageId: string; fileId: string; projectId?: string },
-  ): Promise<{ id: string; mainFileId: string }> => {
-    return docs.setMain(params);
   },
 
   syncIncremental: async (

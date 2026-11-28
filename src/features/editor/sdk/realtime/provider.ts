@@ -740,19 +740,3 @@ export class YjsSocketIOProvider {
     this.doc.destroy();
   }
 }
-
-export {
-  acquireYjsProvider,
-  getOrCreateYjsProvider,
-  releaseYjsProvider,
-  markHttpSavedWhileDisconnected,
-  flushYjsProvider,
-  flushYjsProviders,
-  getActiveYjsProvider,
-  updateActiveYjsDocContent,
-  evictYjsProviderByDocId,
-  evictYjsProvidersByProject,
-  clearYjsProviderPool,
-  subscribeYjsPoolCleared,
-  getYjsPoolEpoch,
-} from './provider-pool';

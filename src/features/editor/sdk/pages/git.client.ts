@@ -1,42 +1,73 @@
 /**
  * git.client.ts
  *
- * Git Smart-HTTP & Git Access Token sub-API for Pages.
+ * GoF Facade + Virtual Single-Flight Proxy (`coalesce`) for Backend `TokenController`.
  */
 
-import { apiGet, apiPost, apiDelete } from '@/shared/lib/api';
+import { apiDelete, apiGet, apiPost } from '@/shared/lib/api';
 import { PAGES_API_BASE } from './base';
 
-export interface GitTokenInfo {
+export interface GitToken {
   id: string;
   label: string;
   prefix: string;
   createdAt: string;
+  expiresAt: string;
   lastUsedAt: string | null;
+}
+
+export interface CreatedGitToken extends GitToken {
+  token: string;
 }
 
 export interface GitRepoInfo {
   enabled: boolean;
+  repoId: string;
   cloneUrl: string;
   branch: string;
+  username: string;
   canPush: boolean;
-  tokens: GitTokenInfo[];
+  maxTokens: number;
+  tokens: GitToken[];
+}
+
+const inFlight = new Map<string, Promise<unknown>>();
+
+function coalesce<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const active = inFlight.get(key) as Promise<T> | undefined;
+  if (active) return active;
+
+  const req = fn().finally(() => {
+    inFlight.delete(key);
+  });
+  inFlight.set(key, req);
+  return req;
 }
 
 export const gitApi = {
-  getRepoInfo: async (projectId: string): Promise<GitRepoInfo> => {
-    return apiGet<GitRepoInfo>(`${PAGES_API_BASE}/spaces/${projectId}/git`);
+  getRepoInfo: (
+    spaceId: string,
+    opts?: { pageId?: string },
+  ): Promise<GitRepoInfo> => {
+    const sid = spaceId.trim();
+    const pid = opts?.pageId?.trim();
+    const qs = pid && pid !== sid ? `?pageId=${encodeURIComponent(pid)}` : '';
+    return coalesce(`repo:${sid}:${pid ?? ''}`, () =>
+      apiGet<GitRepoInfo>(
+        `${PAGES_API_BASE}/spaces/${encodeURIComponent(sid)}/git${qs}`,
+      ),
+    );
   },
 
-  listTokens: async (): Promise<{ tokens: GitTokenInfo[] }> => {
-    return apiGet<{ tokens: GitTokenInfo[] }>(`${PAGES_API_BASE}/git/tokens`);
+  createToken: (label?: string): Promise<CreatedGitToken> => {
+    const clean = label?.trim();
+    return apiPost<CreatedGitToken>(`${PAGES_API_BASE}/git/tokens`, {
+      ...(clean ? { label: clean.slice(0, 100) } : {}),
+    });
   },
 
-  createToken: async (label?: string): Promise<{ token: string }> => {
-    return apiPost<{ token: string }>(`${PAGES_API_BASE}/git/tokens`, { label });
-  },
-
-  revokeToken: async (tokenId: string): Promise<{ success: boolean }> => {
-    return apiDelete<{ success: boolean }>(`${PAGES_API_BASE}/git/tokens/${tokenId}`);
-  },
+  revokeToken: (tokenId: string): Promise<{ success: boolean }> =>
+    apiDelete<{ success: boolean }>(
+      `${PAGES_API_BASE}/git/tokens/${encodeURIComponent(tokenId)}`,
+    ),
 };

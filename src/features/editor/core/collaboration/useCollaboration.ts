@@ -25,7 +25,7 @@ import {
   getYjsPoolEpoch,
   type YjsSocketIOProvider,
   type ConnectionStatus,
-} from '@/features/editor/sdk/realtime/provider';
+} from '@/features/editor/sdk/realtime';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 

@@ -24,10 +24,10 @@ import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import {
   isZipFile,
-  inferArchiveProjectName,
-  importZipToProject,
+  inferArchiveName,
+  importZip,
   type ImportZipProgress,
-} from '@/features/editor/subsystems/explorer';
+} from '@/features/editor/sdk/archive/zip-import';
 
 export interface UploadProjectZipModalProps {
   open: boolean;
@@ -85,7 +85,7 @@ export function UploadProjectZipModal({
 
     setFileError(null);
     setSelectedFile(file);
-    setProjectName(inferArchiveProjectName(file));
+    setProjectName(inferArchiveName(file));
   }, []);
 
   const handleDrop = useCallback(
@@ -110,26 +110,26 @@ export function UploadProjectZipModal({
   const handleStartImport = async () => {
     if (!selectedFile || isImporting) return;
 
-    const trimmedName = projectName.trim() || inferArchiveProjectName(selectedFile);
+    const trimmedName = projectName.trim() || inferArchiveName(selectedFile);
     setIsImporting(true);
 
     try {
-      const result = await importZipToProject({
-        zipFile: selectedFile,
-        projectName: trimmedName,
+      const result = await importZip({
+        file: selectedFile,
+        name: trimmedName,
         onProgress: setProgress,
       });
 
       toast.success(`Project "${trimmedName}" created and imported successfully!`);
       handleClose();
-      onSuccess?.(result);
+      onSuccess?.({ projectId: result.spaceId, rootPageId: result.rootPageId });
 
       if (result.rootPageId) {
-        const isPersonal = !result.projectId || result.projectId === 'personal';
+        const isPersonal = !result.spaceId || result.spaceId === 'personal';
         router.push(
           isPersonal
             ? `/pages/${result.rootPageId}`
-            : `/projects/${result.projectId}/pages/${result.rootPageId}`,
+            : `/projects/${result.spaceId}/pages/${result.rootPageId}`,
         );
       }
     } catch (err: unknown) {

@@ -352,7 +352,7 @@ export function useFileUpload({
         for (const zipItem of zipUnpackItems) {
           try {
             toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
-            const importRes = await pagesService.export.importProjectZip(
+            const importRes = await pagesService.export.importZip(
               targetZipId,
               zipItem.file,
               { pageId: parentPageId },

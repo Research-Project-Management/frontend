@@ -16,7 +16,7 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
-} from '@/features/editor/sdk/realtime/provider';
+} from '@/features/editor/sdk/realtime';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
 import { editorCommandBus } from '../bus/command-bus';

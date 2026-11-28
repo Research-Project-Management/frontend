@@ -23,7 +23,7 @@ import {
   editorCommandBus,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/provider';
+import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime';
 import { pageKeys, invalidateFileTreeQueries } from './document.queries';
 import { toast } from 'sonner';
 
@@ -162,7 +162,7 @@ export function usePageActions() {
       ) {
         pageStore.setWorkspaceTitle(title);
       }
-      return await pagesService.docs.updateTitle(pageId, title, oldTitle);
+      return await pagesService.docs.updateTitle(pageId, title);
     },
     onSuccess: (_, variables) => {
       const parentPageId =

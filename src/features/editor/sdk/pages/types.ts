@@ -31,7 +31,6 @@ import type {
   ProjectFileDiff,
   VersionLabelItem,
 } from '@/features/editor/domain/types/history.types';
-import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 
 export type {
   ProjectVersionListItem,
@@ -516,6 +515,8 @@ export interface BatchReplaceOptions {
   pageId?: string;
 }
 
+export type DocumentExportFormat = 'tex' | 'docx' | 'html' | 'md';
+
 export interface ExportFileResult {
   filename: string;
   mimeType: string;
@@ -559,8 +560,7 @@ export interface CollaborationEvent {
   timestamp: number;
 }
 
-export interface ImportProjectZipResult {
-  spaceId?: string | null;
+export interface ImportZipResult {
   projectId: string;
   totalEntries: number;
   totalDocs: number;

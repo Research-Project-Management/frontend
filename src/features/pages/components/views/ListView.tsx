@@ -1,0 +1,418 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import {
+  FileText,
+  ArrowUp,
+  ArrowDown,
+  MoreHorizontal,
+  ExternalLink,
+  Pencil,
+  Link2,
+  Copy,
+  Archive,
+  Trash2,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/shared/components/ui/alert-dialog';
+import { usePageActions } from '../../hooks/use-page';
+import type { Page } from '../../types/page.types';
+import { buildPageEditorHref } from '../../utils/page-url';
+import { formatDate, copyToClipboard, cn } from '@/shared/lib/utils';
+import { toast } from 'sonner';
+
+interface ListViewProps {
+  pages: Page[];
+  onEdit?: (page: Page) => void;
+}
+
+export const ListView = React.memo(function ListView({ pages, onEdit }: ListViewProps) {
+  const router = useRouter();
+  const params = useParams<{ projectId?: string }>();
+  const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [pendingDeletePage, setPendingDeletePage] = useState<{ id: string; title: string } | null>(null);
+  const { deletePage, duplicatePage, updateStatus } = usePageActions();
+
+  const handleSort = (column: 'title' | 'author' | 'updatedAt' | 'status') => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === 'title' ? 'asc' : 'desc');
+    }
+  };
+
+  const renderSortIndicator = (key: string) => {
+    if (sortColumn !== key) return null;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="size-3 text-foreground shrink-0" strokeWidth={1.8} />
+    ) : (
+      <ArrowDown className="size-3 text-foreground shrink-0" strokeWidth={1.8} />
+    );
+  };
+
+  const sortedPages = useMemo(() => {
+    return [...pages].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      if (sortColumn === 'title') {
+        aVal = a.title?.toLowerCase() || '';
+        bVal = b.title?.toLowerCase() || '';
+      } else if (sortColumn === 'author') {
+        aVal = a.author?.name?.toLowerCase() || '';
+        bVal = b.author?.name?.toLowerCase() || '';
+      } else if (sortColumn === 'status') {
+        aVal = a.status || 'draft';
+        bVal = b.status || 'draft';
+      } else if (sortColumn === 'updatedAt') {
+        aVal = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        bVal = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [pages, sortColumn, sortDirection]);
+
+  const handleCopyLink = async (url: string) => {
+    if (typeof window !== 'undefined') {
+      const fullUrl = `${window.location.origin}${url}`;
+      const ok = await copyToClipboard(fullUrl);
+      if (ok) toast.success('Copied link');
+      else toast.error('Copy failed');
+    }
+  };
+
+  const handleToggleArchive = (pageId: string, isArchived: boolean) => {
+    updateStatus.mutate({
+      pageId,
+      status: isArchived ? 'draft' : 'archived',
+    });
+  };
+
+  const handleDelete = (pageId: string, pageTitle: string) => {
+    setPendingDeletePage({ id: pageId, title: pageTitle });
+  };
+
+  return (
+    <>
+    <div className="flex-1 w-full overflow-x-auto select-none scrollbar-none pb-8 touch-pan-x">
+      <table className="w-full min-w-[780px] table-fixed text-left border-collapse">
+        {/* Golden Ratio Proportions: 36% Title | 12% Status | 16% Author | 22% Labels | 10% Updated | 4% Actions */}
+        <colgroup>
+          <col style={{ width: '36%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '22%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '4%' }} />
+        </colgroup>
+
+        <thead className="sticky top-0 z-10 bg-background select-none">
+          <tr className="h-8 text-12 font-medium text-muted-foreground border-b border-border">
+            {/* Title */}
+            <th
+              onClick={() => handleSort('title')}
+              className="px-4 min-w-[260px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>Page</span>
+                {renderSortIndicator('title')}
+              </div>
+            </th>
+
+            {/* Status */}
+            <th
+              onClick={() => handleSort('status')}
+              className="px-3 min-w-[100px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>Status</span>
+                {renderSortIndicator('status')}
+              </div>
+            </th>
+
+            {/* Author */}
+            <th
+              onClick={() => handleSort('author')}
+              className="px-3 min-w-[140px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>Author</span>
+                {renderSortIndicator('author')}
+              </div>
+            </th>
+
+            {/* Labels */}
+            <th className="px-3 min-w-[180px] h-8 align-middle text-muted-foreground select-none text-left border-b border-border">
+              <span>Labels</span>
+            </th>
+
+            {/* Updated Date */}
+            <th
+              onClick={() => handleSort('updatedAt')}
+              className="px-3 min-w-[110px] h-8 align-middle cursor-pointer text-muted-foreground hover:text-foreground transition-colors select-none text-left border-b border-border"
+            >
+              <div className="flex items-center gap-1.5">
+                <span>Updated</span>
+                {renderSortIndicator('updatedAt')}
+              </div>
+            </th>
+
+            {/* Actions Header */}
+            <th className="px-2 min-w-[44px] h-8 align-middle text-right border-b border-border" />
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-border/60">
+          {sortedPages.map((page) => {
+            const linkHref = buildPageEditorHref(page, params?.projectId);
+            const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
+            const authorName = page.author?.name;
+            const isArchived = page.status === 'archived';
+            const displayStatus = isArchived
+              ? 'Archived'
+              : page.status === 'published'
+                ? 'Published'
+                : 'Draft';
+
+            return (
+              <tr
+                key={page.id}
+                onClick={() => router.push(linkHref)}
+                className="cursor-pointer transition-colors duration-150 group select-none h-10 hover:bg-muted/40"
+              >
+                {/* 1. Title Column */}
+                <td className="px-4 h-10 py-0 align-middle min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                    <span
+                      className="truncate text-13 font-medium text-foreground"
+                      title={page.title}
+                    >
+                      {page.title}
+                    </span>
+                  </div>
+                </td>
+
+                {/* 2. Status Column */}
+                <td className="px-3 h-10 py-0 align-middle">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-11 font-mono font-medium",
+                      isArchived
+                        ? "bg-muted text-muted-foreground border border-border"
+                        : "bg-success/10 text-success border border-success/20"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full shrink-0",
+                        isArchived ? "bg-muted-foreground" : "bg-success"
+                      )}
+                    />
+                    <span>{displayStatus}</span>
+                  </span>
+                </td>
+
+                {/* 3. Author Column */}
+                <td className="px-3 h-10 py-0 align-middle truncate font-normal">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {authorName ? (
+                      <>
+                        {page.author?.avatar ? (
+                          <img
+                            src={page.author.avatar}
+                            alt={authorName}
+                            className="size-5 rounded-full object-cover shrink-0 ring-1 ring-border/50"
+                          />
+                        ) : (
+                          <span className="size-5 rounded-full bg-muted text-muted-foreground ring-1 ring-border/50 text-10 font-mono font-medium flex items-center justify-center shrink-0">
+                            {authorName.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="truncate text-13 text-foreground/85 font-normal" title={authorName}>
+                          {authorName}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground/40 text-12 font-normal">-</span>
+                    )}
+                  </div>
+                </td>
+
+                {/* 4. Labels Column */}
+                <td className="px-3 h-10 py-0 align-middle">
+                  <div className="flex items-center gap-1.5 overflow-hidden">
+                    {labels.length > 0 ? (
+                      labels.slice(0, 2).map((label, idx) => {
+                        const labelObj = typeof label === 'object' && label !== null ? label : null;
+                        const labelId = labelObj?.id || (typeof label === 'string' ? label : `label-${idx}`);
+                        const labelName = labelObj?.name || (typeof label === 'string' ? label : '');
+                        const labelColor = labelObj?.color || '#0969DA';
+                        return (
+                          <span
+                            key={labelId}
+                            className="inline-flex items-center gap-1 h-5 px-1.5 rounded-sm text-11 font-medium border shrink-0 transition-colors"
+                            style={{
+                              backgroundColor: `${labelColor}12`,
+                              borderColor: `${labelColor}30`,
+                              color: labelColor,
+                            }}
+                            title={labelName}
+                          >
+                            <span
+                              className="size-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: labelColor }}
+                            />
+                            <span className="truncate max-w-[110px]">{labelName}</span>
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-muted-foreground/40 text-12 font-normal">-</span>
+                    )}
+                    {labels.length > 2 && (
+                      <span className="inline-flex items-center h-5 text-11 font-mono font-medium text-muted-foreground px-1.5 rounded-sm bg-muted border border-border/50 shrink-0">
+                        +{labels.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </td>
+
+                {/* 5. Updated Column */}
+                <td className="px-3 h-10 py-0 align-middle text-12 font-mono tabular-nums text-muted-foreground whitespace-nowrap">
+                  {page.updatedAt ? formatDate(page.updatedAt) : '-'}
+                </td>
+
+                {/* 6. Actions Column */}
+                <td className="px-2 h-10 py-0 align-middle text-right">
+                  <div
+                    className="flex items-center justify-end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="relative size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted opacity-100 sm:opacity-0 sm:group-hover:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground transition-all outline-none focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none cursor-pointer relative before:absolute before:-inset-2 md:before:hidden"
+                          aria-label={`Options for ${page.title}`}
+                        >
+                          <MoreHorizontal className="size-3.5 shrink-0" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 text-12 shadow-overlay">
+                        <DropdownMenuItem
+                          onClick={() => router.push(linkHref)}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <ExternalLink className="size-3.5 text-muted-foreground" />
+                          <span>Open page</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onEdit?.(page);
+                          }}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <Pencil className="size-3.5 text-muted-foreground" />
+                          <span>Edit page</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleCopyLink(linkHref)}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <Link2 className="size-3.5 text-muted-foreground" />
+                          <span>Copy link</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => duplicatePage.mutate(page.id)}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <Copy className="size-3.5 text-muted-foreground" />
+                          <span>Duplicate</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleArchive(page.id, isArchived)}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <Archive className="size-3.5 text-muted-foreground" />
+                          <span>{isArchived ? 'Restore page' : 'Archive page'}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(page.id, page.title)}
+                          className="cursor-pointer gap-2 text-12 text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                          <span>Delete</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+
+    {pendingDeletePage && (
+      <AlertDialog
+        open={Boolean(pendingDeletePage)}
+        onOpenChange={(open) => !open && setPendingDeletePage(null)}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()} className="w-[95vw] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete page?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">&ldquo;{pendingDeletePage.title}&rdquo;</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel size="sm" className="h-8 text-xs cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              size="sm"
+              className="h-8 text-xs cursor-pointer"
+              onClick={() => {
+                deletePage.mutate(pendingDeletePage.id);
+                setPendingDeletePage(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    )}
+    </>
+  );
+});
+
+export default ListView;

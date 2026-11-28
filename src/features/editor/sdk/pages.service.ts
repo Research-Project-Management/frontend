@@ -32,9 +32,7 @@ import { search } from './pages/search.client';
 import { structure } from './pages/structure.client';
 import { filestore, linkedFiles } from './pages/filestore.client';
 import { citations } from './pages/citations.client';
-import { templates } from './pages/templates.client';
 import { spelling } from './pages/spelling.client';
-import { gitApi } from './pages/git.client';
 import { ai, suggestLatexFix } from './pages/ai.client';
 
 export * from './pages/base';
@@ -49,11 +47,9 @@ export * from './pages/search.client';
 export * from './pages/structure.client';
 export * from './pages/filestore.client';
 export * from './pages/citations.client';
-export * from './pages/templates.client';
 export * from './pages/spelling.client';
-export * from './pages/git.client';
 export * from './pages/ai.client';
-export * from './realtime/provider';
+export * from './realtime';
 export * from './archive/download';
 export * from './archive/zip-export';
 export * from './archive/zip-import';
@@ -72,13 +68,11 @@ export const pagesService = {
   export: exportDocs,
   structure,
   citations,
-  templates,
   filestore,
   updater,
   spelling,
   ai,
   suggestLatexFix,
-  git: gitApi,
   linkedFiles,
   restoreProjectVersionFile: history.restoreProjectVersionFile,
 };

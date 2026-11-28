@@ -107,7 +107,11 @@ export function SettingsModal() {
               {s.activeView === 'github' && (
                 <div className="space-y-4">
                   <GithubTab pageId={s.pageId} pageTitle={s.pageTitle} />
-                  <GitCloneCard projectId={s.pageId} open={s.open} />
+                  <GitCloneCard
+                    projectId={s.projectId || s.pageId}
+                    pageId={s.pageId}
+                    open={s.open}
+                  />
                 </div>
               )}
             </div>

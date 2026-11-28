@@ -35,15 +35,6 @@ export {
   normalizeVirtualPath,
 } from '@/features/editor/domain/document/document-naming';
 
-export {
-  isZipFile,
-  isTextFile,
-  inferArchiveProjectName,
-  importZipToProject,
-  type ImportZipOptions,
-  type ImportZipProgress,
-} from '@/features/editor/sdk/archive/zip-import';
-
 // 2. UI Presentation Layer
 export { default as FilesTab } from './ui/FilesTab';
 export { FileTreeContainer } from './ui/FileTreeContainer';

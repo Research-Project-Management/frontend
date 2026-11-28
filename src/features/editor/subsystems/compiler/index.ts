@@ -50,12 +50,9 @@ export {
   computeBoundingBox,
 } from './synctex/xy-cut';
 export {
-  extractPdfBookmarks,
-  extractOutlineFromContent,
   parseDocumentOutline,
   dtoToOutlineEntries,
   cacheBackendOutline,
-  OUTLINE_INDENT,
   type OutlineEntry,
 } from './synctex/outline';
 export {

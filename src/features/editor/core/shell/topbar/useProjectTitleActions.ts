@@ -14,7 +14,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
-import { useProjectExport } from '@/features/editor/core/hooks/useExport';
+import { useExport } from '@/features/editor/core/hooks/useExport';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
@@ -49,7 +49,7 @@ export function useProjectTitleActions({
     exportWord,
     exportMarkdown,
     exportHtml,
-  } = useProjectExport();
+  } = useExport();
   const { updateTitle: updateTitleMutation, duplicatePage: duplicatePageMutation } = usePageActions();
 
   const resolveTargetDocId = useCallback((): string => {
@@ -77,9 +77,8 @@ export function useProjectTitleActions({
     }
     void exportZip({
       spaceId: spaceId || undefined,
-      parentPageId: pageId || spaceId || '',
       pageId: pageId || undefined,
-      projectTitle: displayTitle,
+      title: displayTitle,
     });
   }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, exportZip]);
 
@@ -87,14 +86,13 @@ export function useProjectTitleActions({
     const pageId = currentPage?.id || fallbackRootId;
     const spaceId = effectiveProjectId || pageId;
     if (!spaceId && !pageId) {
-      toast.error('Unable to find project or document ID');
+      toast.error('Unable to find space or document ID');
       return;
     }
     void exportArxiv({
       spaceId: spaceId || undefined,
-      parentPageId: pageId || spaceId || '',
       pageId: pageId || undefined,
-      projectTitle: displayTitle,
+      title: displayTitle,
     });
   }, [effectiveProjectId, fallbackRootId, currentPage?.id, displayTitle, exportArxiv]);
 
@@ -106,7 +104,7 @@ export function useProjectTitleActions({
     }
     void exportWord({
       docId,
-      projectTitle: displayTitle,
+      title: displayTitle,
     });
   }, [resolveTargetDocId, displayTitle, exportWord]);
 
@@ -118,7 +116,7 @@ export function useProjectTitleActions({
     }
     void exportMarkdown({
       docId,
-      projectTitle: displayTitle,
+      title: displayTitle,
     });
   }, [resolveTargetDocId, displayTitle, exportMarkdown]);
 
@@ -130,7 +128,7 @@ export function useProjectTitleActions({
     }
     void exportHtml({
       docId,
-      projectTitle: displayTitle,
+      title: displayTitle,
     });
   }, [resolveTargetDocId, displayTitle, exportHtml]);
 

@@ -1,125 +1,10 @@
 ﻿/**
- * pdf-outline.ts
+ * outline.ts
  *
- * Utilities for extracting and resolving document outlines/bookmarks from PDF.js instances
- * and mapping backend-extracted LaTeX outline DTOs.
+ * LaTeX document outline parser and backend DTO mapper for FileOutlineSection.
  */
 
-import { logger } from '@/shared/lib/logger';
 import type { LatexOutlineEntryDto } from '@/features/editor/sdk/pages/types';
-import { resolveForward, type SyncTeXMap } from './synctex';
-
-export interface PdfOutlineItem {
-  id: string;
-  title: string;
-  pageNumber: number;
-  level: number;
-}
-
-interface PdfJsOutlineItem {
-  title: string;
-  dest?: string | unknown[];
-  items?: PdfJsOutlineItem[];
-}
-
-export interface PdfJsDocument {
-  getOutline: () => Promise<PdfJsOutlineItem[] | null>;
-  getDestination: (dest: string) => Promise<unknown[] | null>;
-  getPageIndex: (ref: unknown) => Promise<number>;
-}
-
-/**
- * Recursively extracts outline bookmarks from a PDF.js Document object.
- */
-export async function extractPdfBookmarks(
-  pdfDoc: PdfJsDocument | null | undefined,
-): Promise<PdfOutlineItem[]> {
-  if (!pdfDoc || typeof pdfDoc.getOutline !== 'function') {
-    return [];
-  }
-  const doc = pdfDoc;
-
-  try {
-    const rawOutline = await doc.getOutline();
-    if (!rawOutline || !Array.isArray(rawOutline) || rawOutline.length === 0) {
-      return [];
-    }
-
-    const destCache = new Map<string, unknown[] | null>();
-    const pageIndexCache = new Map<unknown, number>();
-
-    async function resolvePageNumber(item: PdfJsOutlineItem): Promise<number> {
-      try {
-        let dest: string | unknown[] | null | undefined = item.dest;
-        if (typeof dest === 'string') {
-          if (destCache.has(dest)) {
-            dest = destCache.get(dest);
-          } else {
-            const resolved = await doc.getDestination(dest);
-            destCache.set(dest, resolved);
-            dest = resolved;
-          }
-        }
-
-        if (Array.isArray(dest) && dest.length > 0) {
-          const ref = dest[0];
-          if (pageIndexCache.has(ref)) {
-            return pageIndexCache.get(ref)! + 1;
-          }
-          const pageIndex = await doc.getPageIndex(ref);
-          if (typeof pageIndex === 'number') {
-            pageIndexCache.set(ref, pageIndex);
-            return pageIndex + 1;
-          }
-        }
-      } catch {
-        // fallback to page 1
-      }
-      return 1;
-    }
-
-    async function traverse(
-      items: PdfJsOutlineItem[],
-      level = 0,
-    ): Promise<Array<Omit<PdfOutlineItem, 'id'>>> {
-      const resolvedList = await Promise.all(
-        items.map(async (item) => {
-          if (!item || !item.title) return null;
-          const pageNumber = Math.max(1, await resolvePageNumber(item));
-          const current: Omit<PdfOutlineItem, 'id'> = {
-            title: item.title.trim(),
-            pageNumber,
-            level,
-          };
-          const children =
-            Array.isArray(item.items) && item.items.length > 0
-              ? await traverse(item.items, level + 1)
-              : [];
-          return { current, children };
-        }),
-      );
-
-      const flat: Array<Omit<PdfOutlineItem, 'id'>> = [];
-      for (const res of resolvedList) {
-        if (!res) continue;
-        flat.push(res.current);
-        if (res.children.length > 0) {
-          flat.push(...res.children);
-        }
-      }
-      return flat;
-    }
-
-    const flatItems = await traverse(rawOutline, 0);
-    return flatItems.map((item, idx) => ({
-      id: `bm_${idx}_${item.level}_${item.pageNumber}`,
-      ...item,
-    }));
-  } catch (err) {
-    logger.warn('[pdf-outline] Failed to extract PDF bookmarks', { error: err });
-    return [];
-  }
-}
 
 export interface OutlineEntry {
   level: number;
@@ -142,8 +27,6 @@ export interface OutlineEntry {
     | 'abstract';
   sourceFile?: string;
 }
-
-export const OUTLINE_INDENT = [0, 8, 18, 28, 38, 48, 58];
 
 /**
  * Returns true if the character at `index` is preceded by an odd number of backslashes.
@@ -491,40 +374,4 @@ export function parseDocumentOutline(
   backendEntries?: LatexOutlineEntryDto[],
 ): OutlineEntry[] {
   return parseLatexHeadings(_content, _sourceFile, backendEntries);
-}
-
-/**
- * Maps outline entries to PDF pages using line-ratio or SyncTeX records.
- */
-export function extractOutlineFromContent(
-  latexContent: string,
-  numPages = 1,
-  synctexMap?: SyncTeXMap | Record<number, number> | null,
-  backendEntries?: LatexOutlineEntryDto[],
-): PdfOutlineItem[] {
-  const rawEntries = parseLatexHeadings(latexContent, undefined, backendEntries);
-  const totalLines = Math.max(1, (latexContent || '').split('\n').length);
-  const totalPages = Math.max(1, numPages);
-
-  return rawEntries.map((entry, index) => {
-    let page: number | null = null;
-    if (synctexMap) {
-      if ('lineToPage' in synctexMap) {
-        page = resolveForward(entry.line, synctexMap, undefined, totalPages);
-      } else if (entry.line in synctexMap) {
-        page = (synctexMap as Record<number, number>)[entry.line] ?? null;
-      }
-    }
-
-    if (page === null || page === undefined) {
-      page = Math.min(totalPages, Math.max(1, Math.ceil((entry.line / totalLines) * totalPages)));
-    }
-
-    return {
-      id: `sec_${index}_${entry.line}`,
-      title: entry.title,
-      pageNumber: page,
-      level: entry.level,
-    };
-  });
 }

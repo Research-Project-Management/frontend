@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import type { CommentStatus, PageComment } from '@/features/editor/domain/types/comment.types';
 import { lruDocumentCache } from '@/features/editor/core';
 import { pagesService } from '@/features/editor/sdk/pages.service';
-import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/provider';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { useSafeQueryClient } from '@/features/editor/core/queries/safe-query-client';
 import { encodeYjsAnchor } from '../../extensions/anchor';

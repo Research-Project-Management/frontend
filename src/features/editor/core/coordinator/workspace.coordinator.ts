@@ -14,7 +14,7 @@ import {
   isUnderVirtualFolder,
   parseVirtualFolderId,
 } from '@/features/editor/domain/document/document-naming';
-import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/provider';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime';
 import type {
   WorkspaceCoordinatorPorts,
   WorkspaceNotificationPort,

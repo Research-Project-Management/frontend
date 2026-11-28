@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import PagesPage from '@/features/projects/project-id/pages/ProjectPagesView';
+import PagesView from '@/features/pages/PagesView';
 
 export const metadata: Metadata = { title: 'Pages' };
 
 export default function ProjectPagesRoute() {
-  return <PagesPage />;
+  return <PagesView />;
 }

@@ -20,7 +20,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
-import { useProjectPages } from '@/features/projects/project-id/pages/hooks/use-page';
+import { usePages } from '@/features/pages/hooks/use-page';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { useUploadFilesWithToast } from '@/features/projects/project-id/work-items/hooks/use-attachment';
 import type {
@@ -74,7 +74,7 @@ export function Attachments({
   const [openLinkDialog, setOpenLinkDialog] = useState(false);
 
   // Attach Page State
-  const { data: rawProjectPages = [], isLoading: loadingPages } = useProjectPages(
+  const { data: rawProjectPages = [], isLoading: loadingPages } = usePages(
     openPageDialog && projectId ? projectId : '',
   );
   const projectPages = React.useMemo(
@@ -385,7 +385,7 @@ export function Attachments({
 
                     <div className="flex items-center gap-1">
                       <Link
-                        href={projectId ? `/projects/${projectId}/pages/${page.id}` : `/editor/${page.id}`}
+                        href={projectId ? `/projects/${projectId}/pages/${page.id}` : `/pages/${page.id}`}
                         target="_blank"
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
                         title={projectId ? "Open Page in Project" : "Open in LaTeX Editor"}

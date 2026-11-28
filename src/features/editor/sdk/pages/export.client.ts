@@ -1,41 +1,27 @@
 /**
  * export.client.ts
  *
- * Canonical 1:1 HTTP client for Backend `ExportImportController` (`api/v1/pages`)
- * with single-flight in-flight request coalescing for idempotent export endpoints.
+ * Canonical 1:1 HTTP client for Backend `ExportImportController` (`api/v1/pages`).
  */
 
 import { apiPost, rawFetch } from '@/shared/lib/api';
 import { PAGES_API_BASE, getPagesBaseUrl } from './base';
 import type {
+  DocumentExportFormat,
   ExportFileResult,
   ExportZipQuery,
   ImportFromUrlInput,
   ImportFromUrlResult,
-  ImportProjectZipResult,
+  ImportZipResult,
 } from './types';
-import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
-
-const inFlightExports = new Map<string, Promise<unknown>>();
-
-function coalesceInFlight<T>(key: string, factory: () => Promise<T>): Promise<T> {
-  const existing = inFlightExports.get(key) as Promise<T> | undefined;
-  if (existing) return existing;
-
-  const task = factory().finally(() => {
-    inFlightExports.delete(key);
-  });
-  inFlightExports.set(key, task);
-  return task;
-}
 
 function buildQuery(
   entries: Record<string, string | number | boolean | undefined>,
 ): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(entries)) {
-    if (value === undefined || value === false) continue;
-    const str = typeof value === 'boolean' ? 'true' : String(value).trim();
+    if (value === undefined) continue;
+    const str = typeof value === 'boolean' ? String(value) : String(value).trim();
     if (str) params.set(key, str);
   }
   const qs = params.toString();
@@ -57,7 +43,7 @@ async function parseErrorMessage(res: Response, fallbackPrefix: string): Promise
 }
 
 export const exportDocs = {
-  exportProjectZip: (
+  exportZip: async (
     spaceId: string,
     query: ExportZipQuery = {},
   ): Promise<Blob> => {
@@ -73,20 +59,18 @@ export const exportDocs = {
     });
     const url = `${getPagesBaseUrl()}/spaces/${encodeURIComponent(targetSpaceId)}/export/zip${qs}`;
 
-    return coalesceInFlight(`zip:${url}`, async () => {
-      const res = await rawFetch(url, 'GET');
-      if (!res.ok) {
-        throw new Error(await parseErrorMessage(res, 'Export ZIP failed'));
-      }
-      return res.blob();
-    });
+    const res = await rawFetch(url, 'GET');
+    if (!res.ok) {
+      throw new Error(await parseErrorMessage(res, 'Export ZIP failed'));
+    }
+    return res.blob();
   },
 
-  importProjectZip: async (
+  importZip: async (
     spaceId: string,
     file: File | Blob,
     options?: { preferredRootDoc?: string; pageId?: string },
-  ): Promise<ImportProjectZipResult> => {
+  ): Promise<ImportZipResult> => {
     const qs = buildQuery({
       preferredRootDoc: options?.preferredRootDoc,
       pageId: options?.pageId,
@@ -100,7 +84,7 @@ export const exportDocs = {
     if (!res.ok) {
       throw new Error(await parseErrorMessage(res, 'Import ZIP failed'));
     }
-    return (await res.json()) as ImportProjectZipResult;
+    return (await res.json()) as ImportZipResult;
   },
 
   importFromUrl: async (
@@ -122,7 +106,7 @@ export const exportDocs = {
     spaceId: string,
     file: File | Blob,
     options?: { format?: 'docx' | 'md'; pageId?: string },
-  ): Promise<ImportProjectZipResult> => {
+  ): Promise<ImportZipResult> => {
     const qs = buildQuery({
       format: options?.format,
       pageId: options?.pageId,
@@ -136,33 +120,16 @@ export const exportDocs = {
     if (!res.ok) {
       throw new Error(await parseErrorMessage(res, 'Document conversion failed'));
     }
-    return (await res.json()) as ImportProjectZipResult;
-  },
-
-  scaffoldTemplate: async (
-    spaceId: string,
-    templateId: string,
-    options?: { pageId?: string },
-  ): Promise<ImportProjectZipResult> => {
-    const cleanPageId = options?.pageId?.trim();
-    const qs = buildQuery({ pageId: cleanPageId });
-    return apiPost<ImportProjectZipResult>(
-      `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/templates/${encodeURIComponent(templateId)}/scaffold${qs}`,
-      cleanPageId ? { pageId: cleanPageId } : {},
-    );
+    return (await res.json()) as ImportZipResult;
   },
 
   exportDocument: (
     docId: string,
     format: DocumentExportFormat,
     includeChildren = true,
-  ): Promise<ExportFileResult> => {
-    const key = `doc:${docId}:${format}:${includeChildren}`;
-    return coalesceInFlight(key, () =>
-      apiPost<ExportFileResult>(
-        `${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/export`,
-        { format, includeChildren },
-      ),
-    );
-  },
+  ): Promise<ExportFileResult> =>
+    apiPost<ExportFileResult>(
+      `${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/export`,
+      { format, includeChildren },
+    ),
 };

@@ -3,552 +3,420 @@
 /**
  * TemplateGalleryModal.tsx
  *
- * Canonical Academic & Document LaTeX Template Selector (Block 7: UI Shell / Modals Layer).
- * Location: `features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal.tsx`
+ * Unified Academic & Custom LaTeX Template Gallery (Overleaf parity).
+ * Serves both Editor mode (`<TemplateGalleryModal />`) and Project Pages mode
+ * (`<TemplateGalleryModal mode="project" open={...} onOpenChange={...} projectId={...} />`).
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React from 'react';
 import {
   BookOpen,
+  Check,
   Copy,
-  FileCode,
+  FileArchive,
+  FileCheck,
   FileText,
   GraduationCap,
   Layout,
-  Scroll,
-  X,
-  FileCheck,
-  Search,
   Loader2,
+  Mail,
+  Plus,
+  Presentation,
+  Scroll,
+  Search,
+  Trash2,
+  X,
 } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { logger } from '@/shared/lib/logger';
 import {
   Dialog,
   DialogContent,
-  DialogTitle,
   DialogDescription,
+  DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/lib/utils';
-import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
-import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/provider';
-import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
-import { useEditorInstance } from '@/features/editor/core/bus/useEditorInstance';
-import { pagesService } from '@/features/editor/sdk/pages.service';
-import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
+import type { TemplateSummary } from '@/features/editor/sdk/pages/templates.client';
+import {
+  useTemplateGallery,
+  type GalleryMode,
+} from '../hooks/useTemplateGallery';
 
-type TemplateCategory = 'Conference' | 'Journal' | 'Preprint' | 'Thesis' | 'Resume';
+export type ProjectTemplate = TemplateSummary;
 
-type TemplateIconName =
-  | 'Layout'
-  | 'BookOpen'
-  | 'Scroll'
-  | 'FileCode'
-  | 'GraduationCap'
-  | 'FileText';
-
-export interface ProjectTemplate {
-  id: string;
-  name: string;
-  category: TemplateCategory;
-  publisher: string;
-  description: string;
-  iconName: TemplateIconName;
-  badge: string;
-  mainTex: string;
-  bibTex?: string;
+export interface TemplateGalleryModalProps {
+  mode?: GalleryMode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  projectId?: string;
+  initialCategory?: string;
 }
 
-const TEMPLATE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Layout,
-  BookOpen,
-  Scroll,
-  FileCode,
-  GraduationCap,
-  FileText,
-};
+const CATEGORIES = [
+  { id: 'all', label: 'All templates', icon: Layout },
+  { id: 'journal', label: 'Journal articles', icon: BookOpen },
+  { id: 'conference', label: 'Conferences', icon: Layout },
+  { id: 'thesis', label: 'Theses', icon: GraduationCap },
+  { id: 'book', label: 'Books', icon: BookOpen },
+  { id: 'presentation', label: 'Presentations', icon: Presentation },
+  { id: 'report', label: 'Reports', icon: Scroll },
+  { id: 'cv', label: 'CVs & résumés', icon: FileText },
+  { id: 'poster', label: 'Posters', icon: Layout },
+  { id: 'assignment', label: 'Assignments', icon: FileCheck },
+  { id: 'letter', label: 'Formal letters', icon: Mail },
+] as const;
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-export default function TemplateGalleryModal() {
-  const queryClient = useQueryClient();
-  const isTemplateModalOpen = useSettingsStore((s) => s.isTemplateModalOpen);
-  const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
-  const activeFileId = usePageStore((s) => s.activeFilePage?.id);
-  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const projectId = usePageStore(
-    (s) => s.projectId || s.spaceId || s.parentPageId || s.currentPage?.id || '',
-  );
-  const { engine } = useEditorInstance();
-  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
-  const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
-
-  // Query dynamic backend manuscript templates
-  const { data: serverTemplates = [], isLoading: isLoadingServer } = useQuery({
-    queryKey: ['manuscript-templates', categoryFilter, searchQuery],
-    queryFn: async () => {
-      try {
-        const res = await pagesService.templates.list({
-          category: categoryFilter === 'All' ? undefined : categoryFilter,
-          search: searchQuery || undefined,
-        });
-        return Array.isArray(res) ? res : [];
-      } catch {
-        return [];
-      }
-    },
-    enabled: isTemplateModalOpen,
-    staleTime: 5 * 60_000,
-    gcTime: 10 * 60_000,
-  });
-
-  const combinedTemplates = useMemo(() => {
-    const validCategories: ProjectTemplate['category'][] = [
-      'Conference',
-      'Journal',
-      'Preprint',
-      'Thesis',
-      'Resume',
-    ];
-    const iconByCat: Record<ProjectTemplate['category'], ProjectTemplate['iconName']> = {
-      Conference: 'Layout',
-      Journal: 'BookOpen',
-      Preprint: 'FileCode',
-      Thesis: 'GraduationCap',
-      Resume: 'FileText',
-    };
-
-    const list: ProjectTemplate[] = [];
-    const seenIds = new Set<string>();
-
-    // Primary source: Backend official & custom templates
-    serverTemplates.forEach((st) => {
-      if (!st.id || seenIds.has(st.id)) return;
-      seenIds.add(st.id);
-      const matchedCat = validCategories.find(
-        (c) => c.toLowerCase() === st.category?.toLowerCase(),
-      ) ?? 'Conference';
-
-      const templateName = st.name || st.title || 'Untitled Template';
-      list.push({
-        id: st.id,
-        name: templateName,
-        category: matchedCat,
-        publisher:
-          (typeof st.publisher === 'string' && st.publisher) ||
-          (typeof st.author === 'string' && st.author) ||
-          'Manuscripts',
-        description: st.description || 'Verified academic template from backend repository',
-        iconName: iconByCat[matchedCat] || 'Layout',
-        badge: (typeof st.badge === 'string' && st.badge) || 'latex',
-        mainTex:
-          (typeof st.mainTex === 'string' && st.mainTex) ||
-          (typeof st.content === 'string' && st.content) ||
-          `% Template: ${templateName}\n\\documentclass{article}\n\\begin{document}\n\\title{${templateName}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
-        bibTex: typeof st.bibTex === 'string' && st.bibTex ? st.bibTex : undefined,
-      });
-    });
-
-    return list.filter((tpl) => {
-      const matchCat =
-        categoryFilter === 'All' || tpl.category.toLowerCase() === categoryFilter.toLowerCase();
-      const matchQuery =
-        !searchQuery ||
-        tpl.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCat && matchQuery;
-    });
-  }, [serverTemplates, categoryFilter, searchQuery]);
-
-  // Keep selectedTemplate hydrated with full server mainTex/bibTex when serverTemplates resolve
-  React.useEffect(() => {
-    if (combinedTemplates.length === 0) {
-      setSelectedTemplate(null);
-      return;
-    }
-    const match =
-      (selectedTemplate &&
-        combinedTemplates.find(
-          (t) =>
-            t.id === selectedTemplate.id ||
-            t.name.toLowerCase() === selectedTemplate.name.toLowerCase(),
-        )) ||
-      combinedTemplates[0];
-    if (
-      !selectedTemplate ||
-      match.id !== selectedTemplate.id ||
-      match.mainTex !== selectedTemplate.mainTex ||
-      match.bibTex !== selectedTemplate.bibTex
-    ) {
-      setSelectedTemplate(match);
-    }
-  }, [combinedTemplates, selectedTemplate]);
-
-  const handleSelectTemplate = async (tpl: ProjectTemplate) => {
-    setSelectedTemplate(tpl);
-    setPreviewTab('main');
-    try {
-      const remoteDetails = await queryClient.fetchQuery({
-        queryKey: ['manuscript-template-detail', tpl.id],
-        queryFn: () => pagesService.templates.getById(tpl.id),
-        staleTime: 5 * 60_000,
-        gcTime: 10 * 60_000,
-      });
-      if (remoteDetails && (remoteDetails.mainTex || remoteDetails.content)) {
-        const mainTex = String(remoteDetails.mainTex || remoteDetails.content);
-        const bibTex = remoteDetails.bibTex ? String(remoteDetails.bibTex) : undefined;
-        setSelectedTemplate((prev) =>
-          prev
-            ? {
-                ...prev,
-                mainTex,
-                bibTex: bibTex || prev.bibTex,
-              }
-            : prev,
-        );
-      }
-    } catch {
-      // use existing mainTex
-    }
-  };
-
-  const [isScaffolding, setIsScaffolding] = useState(false);
-
-  const applyTemplate = useCallback(async () => {
-    if (!selectedTemplate) return;
-    try {
-      const targetDocId = activeFileId || currentPageId;
-      if (engine) {
-        engine.setContent(selectedTemplate.mainTex);
-        if (targetDocId) {
-          sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
-        }
-        toast.success(`Applied "${selectedTemplate.name}" to ${activeFileTitle || 'current document'}`, { id: 'apply-template' });
-        setIsTemplateModalOpen(false);
-      } else {
-        navigator.clipboard.writeText(selectedTemplate.mainTex);
-        toast.success('Copied template code', { id: 'copy-template' });
-        setIsTemplateModalOpen(false);
-      }
-    } catch {
-      toast.error('Could not apply template', { id: 'apply-template' });
-    }
-  }, [selectedTemplate, engine, activeFileId, activeFileTitle, currentPageId, setIsTemplateModalOpen]);
-
-  const scaffoldProject = useCallback(async () => {
-    if (!selectedTemplate) return;
-    if (!projectId) {
-      applyTemplate();
-      return;
-    }
-    setIsScaffolding(true);
-    try {
-      await pagesService.export.scaffoldTemplate(projectId, selectedTemplate.id, {
-        pageId: currentPageId || undefined,
-      });
-      sessionCoordinator.resetSession();
-      clearYjsProviderPool();
-      lruDocumentCache.clearAll();
-      if (engine) {
-        engine.setContent(selectedTemplate.mainTex);
-      }
-      invalidateFileTreeQueries(queryClient, {
-        includeRootDoc: true,
-        includeProjects: true,
-      });
-      editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success(`Scaffolded "${selectedTemplate.name}"`, { id: 'scaffold-template' });
-      setIsTemplateModalOpen(false);
-    } catch (err) {
-      logger.warn('[TemplateGallery] Backend scaffolding failed, falling back to active file update', { error: err });
-      applyTemplate();
-    } finally {
-      setIsScaffolding(false);
-    }
-  }, [selectedTemplate, projectId, applyTemplate, engine, queryClient, setIsTemplateModalOpen]);
-
-  const copyCode = useCallback(() => {
-    if (!selectedTemplate) return;
-    const code =
-      previewTab === 'bib' && selectedTemplate.bibTex
-        ? selectedTemplate.bibTex
-        : selectedTemplate.mainTex;
-    navigator.clipboard.writeText(code);
-    toast.success('Copied template code', { id: 'copy-template' });
-  }, [previewTab, selectedTemplate]);
+export function TemplateGalleryModal(props: TemplateGalleryModalProps = {}) {
+  const g = useTemplateGallery(props);
 
   return (
-    <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+    <Dialog open={g.open} onOpenChange={g.setOpen}>
       <DialogContent
         showCloseButton={false}
-        className="w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[90vh] h-[85vh] sm:h-[620px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/60 shadow-raised-400 text-foreground select-none"
+        className="w-[95vw] sm:max-w-4xl lg:max-w-5xl max-h-[88vh] h-[82vh] sm:h-[620px] flex flex-col p-0 overflow-hidden rounded-md bg-background border border-border/80 shadow-raised-400 text-foreground select-none"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border/60 shrink-0">
-          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-            Academic templates & starters
-          </DialogTitle>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
+          <div className="flex items-center gap-3">
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+              Template gallery
+            </DialogTitle>
+            <div className="hidden sm:flex items-center rounded-md bg-muted p-0.5 border border-border text-11">
+              {(
+                [
+                  ['all', 'All'],
+                  ['official', 'Official'],
+                  ['custom', 'Custom'],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => g.setScope(key)}
+                  className={cn(
+                    'px-2 py-0.5 rounded-sm transition-colors cursor-pointer',
+                    g.scope === key
+                      ? 'bg-background text-foreground font-medium shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={() => setIsTemplateModalOpen(false)}
-            aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+            onClick={() => g.setOpen(false)}
+            aria-label="Close template gallery"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
         </div>
         <DialogDescription className="sr-only">
-          Browse and apply academic LaTeX templates and starters
+          Browse, preview, publish, and scaffold LaTeX manuscript templates
         </DialogDescription>
 
-        {/* Modal Body: 2 Columns */}
-        <div className="flex-1 flex flex-col md:flex-row min-h-0 divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
-          {/* Left Column: Search & Template List (~340px) */}
-          <div className="w-full md:w-84 max-h-48 md:max-h-none flex flex-col bg-muted/10 shrink-0 overflow-hidden border-r border-border">
-            {/* Search Input */}
-            <div className="p-2.5 border-b border-border bg-background/50">
+        {/* 3-Column Body */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Column 1: Categories Sidebar */}
+          <nav
+            aria-label="Template categories"
+            className="hidden md:flex w-44 bg-muted/20 border-r border-border/60 p-2 flex-col gap-0.5 overflow-y-auto shrink-0"
+          >
+            {CATEGORIES.map((cat) => {
+              const Icon = cat.icon;
+              const active = g.category === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    g.setCategory(cat.id);
+                    g.setSelectedId(null);
+                  }}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-12 text-left cursor-pointer transition-colors',
+                    active
+                      ? 'bg-background text-foreground font-medium shadow-xs border border-border/60'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent',
+                  )}
+                >
+                  <Icon className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  <span className="truncate">{cat.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Column 2: Search & Template List */}
+          <div className="w-72 sm:w-80 border-r border-border flex flex-col bg-background shrink-0 min-h-0">
+            <div className="p-2.5 border-b border-border shrink-0">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <input
                   type="text"
+                  value={g.search}
+                  onChange={(e) => g.setSearch(e.target.value)}
+                  placeholder="Search templates, tags, classes…"
                   aria-label="Search templates"
-                  placeholder="Search templates..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus-visible:ring-1 focus-visible:ring-border text-foreground placeholder:text-muted-foreground"
+                  className="w-full h-8 pl-8 pr-7 text-12 rounded-md border border-border bg-background focus:border-ring focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground outline-none select-text"
                 />
+                {g.search && (
+                  <button
+                    type="button"
+                    onClick={() => g.setSearch('')}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Template List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {isLoadingServer && combinedTemplates.length === 0 ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 5 }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-md border border-border/60 bg-card space-y-2"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Skeleton className="size-7 rounded-md shrink-0" />
-                        <div className="flex-1 space-y-1.5">
-                          <Skeleton className="h-3.5 w-40 rounded-sm" />
-                          <Skeleton className="h-3 w-24 rounded-sm opacity-70" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-3 w-5/6 rounded-sm" />
-                    </div>
-                  ))}
-                </div>
-              ) : combinedTemplates.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+              {g.loadingList ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-md border border-border/60 bg-card space-y-2"
+                  >
+                    <Skeleton className="h-3.5 w-40 rounded-sm" />
+                    <Skeleton className="h-3 w-full rounded-sm opacity-70" />
+                  </div>
+                ))
+              ) : g.items.length === 0 ? (
                 <PlaneEmptyState
                   isCompact
                   variant="search"
                   title="No templates found"
-                  description={`No templates found matching "${searchQuery}".`}
+                  description="Try another category or clear your search."
                 />
               ) : (
-                combinedTemplates.map((tpl) => {
-                  const isSelected = selectedTemplate?.id === tpl.id;
-                  const IconComp = (tpl.iconName && TEMPLATE_ICON_MAP[tpl.iconName]) || Layout;
+                g.items.map((tpl) => {
+                  const isSelected = g.selected?.id === tpl.id;
                   return (
-                    <div
+                    <button
                       key={tpl.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleSelectTemplate(tpl)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSelectTemplate(tpl);
-                        }
-                      }}
+                      type="button"
+                      onClick={() => g.setSelectedId(tpl.id)}
                       className={cn(
-                        'p-3 rounded-md border transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-border',
+                        'w-full text-left p-2.5 rounded-md border transition-colors cursor-pointer flex flex-col gap-1',
                         isSelected
-                          ? 'bg-primary/10 border-primary'
-                          : 'border-border/60 hover:border-border hover:bg-muted/40'
+                          ? 'border-primary bg-primary/[0.06]'
+                          : 'border-border/60 hover:border-border hover:bg-muted/40',
                       )}
                     >
-                      <div className="flex items-center justify-between gap-1.5 mb-1">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={cn(
-                            'size-6 rounded-sm flex items-center justify-center shrink-0',
-                            isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                          )}>
-                            <IconComp className="size-3.5" />
-                          </div>
-                          <span className="text-xs font-semibold text-foreground truncate">
-                            {tpl.name}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="text-11 px-1 py-0 font-mono shrink-0 rounded-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-foreground truncate">
+                          {tpl.name}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 font-mono shrink-0 rounded-sm"
+                        >
                           {tpl.badge}
                         </Badge>
                       </div>
-                      <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
-                        {tpl.description}
-                      </p>
-                    </div>
+                      {tpl.description && (
+                        <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed">
+                          {tpl.description}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 pt-0.5">
+                        <span className="truncate">by {tpl.author}</span>
+                        <span className="font-mono shrink-0">
+                          {tpl.compiler} · {tpl.fileCount}{' '}
+                          {tpl.fileCount === 1 ? 'file' : 'files'}
+                        </span>
+                      </div>
+                    </button>
                   );
                 })
               )}
             </div>
           </div>
 
-          {/* Right Column: Preview & Apply Area */}
+          {/* Column 3: Multi-File Preview Pane */}
           <div className="flex-1 flex flex-col min-w-0 bg-background overflow-hidden">
-            {selectedTemplate ? (
+            {g.selected ? (
               <>
-                {/* Template Header & Switcher */}
-                <div className="px-5 py-3 border-b border-border flex items-center justify-between bg-muted/20">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Badge className="bg-primary text-primary-foreground text-11 font-semibold rounded-sm">
-                      {selectedTemplate.publisher}
-                    </Badge>
-                    <span className="text-xs font-semibold text-foreground truncate">
-                      {selectedTemplate.name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-11">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewTab('main')}
-                        className={cn(
-                          'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                          previewTab === 'main'
-                            ? 'bg-background text-foreground font-semibold'
-                            : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        main.tex
-                      </button>
-                      {selectedTemplate.bibTex && (
+                <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0 overflow-x-auto">
+                    {g.files.length > 0 ? (
+                      g.files.map((f) => (
                         <button
+                          key={f.path}
                           type="button"
-                          onClick={() => setPreviewTab('bib')}
+                          onClick={() => g.setActiveFilePath(f.path)}
                           className={cn(
-                            'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                            previewTab === 'bib'
-                              ? 'bg-background text-foreground font-semibold'
-                              : 'text-muted-foreground hover:text-foreground'
+                            'px-2 py-0.5 rounded-sm text-11 font-mono transition-colors cursor-pointer shrink-0 border',
+                            g.activeFile?.path === f.path
+                              ? 'bg-background text-foreground font-medium border-border shadow-xs'
+                              : 'bg-transparent text-muted-foreground hover:text-foreground border-transparent',
                           )}
                         >
-                          references.bib
+                          {f.path}
                         </button>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={copyCode}
-                      title="Copy code"
-                      aria-label="Copy template code"
-                      className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
-                    >
-                      <Copy className="size-3.5" />
-                    </button>
+                      ))
+                    ) : (
+                      <span className="text-11 font-mono text-muted-foreground">
+                        {g.selected.mainFile}
+                      </span>
+                    )}
                   </div>
-                </div>
 
-                {/* Code Preview Box */}
-                <div className="flex-1 overflow-auto p-4 bg-muted/5 font-mono text-xs text-foreground/90 leading-relaxed whitespace-pre select-text">
-                  {previewTab === 'bib' && selectedTemplate.bibTex
-                    ? selectedTemplate.bibTex
-                    : selectedTemplate.mainTex}
-                </div>
-
-                {/* Bottom Action Footer */}
-                <div className="px-5 py-2.5 border-t border-border/60 bg-background flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0 select-none">
-                  <div>
-                    {projectId && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {g.selected.license && (
+                      <span className="hidden lg:inline text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        {g.selected.license}
+                      </span>
+                    )}
+                    {g.selected.visibility !== 'official' && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={async () => {
-                          const toastId = toast.loading('Saving current project as template...');
-                          try {
-                            const mainContent = engine?.getContent() || selectedTemplate.mainTex;
-                            const targetMainFile = usePageStore.getState().mainFilePath || DEFAULT_MAIN_FILE;
-                            await pagesService.templates.createCustom({
-                              projectId,
-                              name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,
-                              description: 'Saved from active manuscript project',
-                              category: 'Academic',
-                              mainFile: targetMainFile,
-                              files: { [targetMainFile]: mainContent },
-                            });
-                            queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
-                            toast.success('Saved custom template', { id: toastId });
-                          } catch (err: unknown) {
-                            toast.error((err as Error)?.message || 'Failed to save custom template', { id: toastId });
-                          }
-                        }}
-                        className="h-8 px-3 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                        disabled={g.busy}
+                        onClick={g.deleteSelected}
+                        title="Delete custom template"
+                        aria-label="Delete custom template"
+                        className="h-7 px-2 text-11 text-muted-foreground hover:text-destructive cursor-pointer"
                       >
-                        Save current project as template
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                    {g.activeFile?.kind === 'doc' && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={g.copyPreview}
+                        className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                      >
+                        {g.copied ? (
+                          <Check className="size-3" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                        <span>{g.copied ? 'Copied' : 'Copy'}</span>
                       </Button>
                     )}
                   </div>
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsTemplateModalOpen(false)}
-                      className="h-8 px-4 text-12 font-medium"
-                    >
-                      Close
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={applyTemplate}
-                      disabled={isScaffolding}
-                      className="h-8 gap-1.5 px-3 text-12 font-medium rounded-md cursor-pointer shadow-none"
-                      title="Insert template code into current active file"
-                    >
-                      <FileText className="size-3.5" />
-                      <span>Insert into file</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={scaffoldProject}
-                      disabled={isScaffolding}
-                      className="h-8 gap-1.5 px-3.5 text-12 font-medium rounded-md cursor-pointer shadow-none"
-                      title="Scaffold complete multi-file project with .bib, style files, and assets"
-                    >
-                      {isScaffolding ? (
-                        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                      ) : (
-                        <FileCheck className="size-3.5" />
-                      )}
-                      <span>{isScaffolding ? 'Scaffolding...' : 'Scaffold project'}</span>
-                    </Button>
-                  </div>
+                </div>
+
+                <div className="flex-1 overflow-auto p-4 bg-muted/5 font-mono text-xs text-foreground/90 leading-relaxed whitespace-pre select-text">
+                  {g.loadingDetail && !g.activeFile ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-3.5 w-56 rounded-sm" />
+                      <Skeleton className="h-3.5 w-80 rounded-sm" />
+                      <Skeleton className="h-3.5 w-64 rounded-sm" />
+                    </div>
+                  ) : g.activeFile?.kind === 'file' ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center font-sans text-muted-foreground gap-2">
+                      <FileArchive className="size-7 opacity-60" />
+                      <div className="text-xs font-medium text-foreground">
+                        {g.activeFile.path}
+                      </div>
+                      <div className="text-11">
+                        Binary asset ({g.activeFile.mimeType} ·{' '}
+                        {formatBytes(g.activeFile.sizeBytes)}) — included
+                        automatically on scaffold
+                      </div>
+                    </div>
+                  ) : (
+                    g.activeFile?.content || '% Empty file'
+                  )}
                 </div>
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground p-6">
-                {isLoadingServer ? 'Loading template preview...' : 'Select a template to preview'}
+                Select a template to preview its files
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-2.5 border-t border-border bg-background flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+          <div>
+            {g.mode === 'editor' && g.spaceId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={g.busy}
+                onClick={g.publishCurrentPage}
+                className="h-8 gap-1.5 px-2.5 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <Plus className="size-3.5" />
+                <span>Save current page as template</span>
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={g.busy}
+              onClick={() => g.setOpen(false)}
+              className="h-8 px-3.5 text-12 font-medium cursor-pointer"
+            >
+              Cancel
+            </Button>
+
+            {g.mode === 'editor' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!g.selected || g.busy}
+                onClick={g.insertIntoActiveFile}
+                className="h-8 gap-1.5 px-3 text-12 font-medium cursor-pointer"
+              >
+                <FileText className="size-3.5" />
+                <span>Insert into file</span>
+              </Button>
+            )}
+
+            <Button
+              type="button"
+              size="sm"
+              disabled={!g.selected || g.busy}
+              onClick={g.scaffold}
+              className="h-8 gap-1.5 px-3.5 text-12 font-medium cursor-pointer"
+            >
+              {g.busy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <FileCheck className="size-3.5" />
+              )}
+              <span>
+                {g.busy
+                  ? 'Scaffolding…'
+                  : g.mode === 'project'
+                    ? 'Create from template'
+                    : 'Scaffold page'}
+              </span>
+            </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+export default TemplateGalleryModal;

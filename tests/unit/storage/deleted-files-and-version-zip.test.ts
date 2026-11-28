@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  exportVersionAsZip,
+  exportVersionZip,
   pagesService,
 } from '@/features/editor/sdk/pages.service';
 import { pageKeys } from '@/features/editor/core/queries/document.queries';
@@ -119,19 +119,19 @@ describe('Deleted Files Recovery & Download Version as ZIP (Overleaf Parity)', (
     });
   });
 
-  describe('3. Download Version as ZIP (exportVersionAsZip)', () => {
+  describe('3. Download Version as ZIP (exportVersionZip)', () => {
     it('bundles all files at historical revision into a ZIP and triggers download', async () => {
       const exportZipSpy = vi
         .spyOn(pagesService.history, 'exportVersionZip')
         .mockResolvedValue(new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' }));
 
       // Trigger export
-      await exportVersionAsZip({
-        parentPageId: 'root-1',
+      await exportVersionZip({
+        spaceId: 'root-1',
         versionId: 'ver-root-1',
         revisionDate: '2026-09-15T12:00:00Z',
         revisionLabel: 'CameraReady_v1',
-        projectTitle: 'Quantum Paper',
+        title: 'Quantum Paper',
       });
 
       // Verify backend history version ZIP endpoint was called and browser download was triggered
@@ -140,7 +140,7 @@ describe('Deleted Files Recovery & Download Version as ZIP (Overleaf Parity)', (
       expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     });
 
-    it('formats snapshot filename properly with sanitized project title and label', async () => {
+    it('formats snapshot filename properly with sanitized title and label', async () => {
       vi.spyOn(pagesService.history, 'exportVersionZip').mockResolvedValue(
         new Blob(['PK\x03\x04mock-zip'], { type: 'application/zip' }),
       );
@@ -163,15 +163,15 @@ describe('Deleted Files Recovery & Download Version as ZIP (Overleaf Parity)', (
         return document.createElement(tagName);
       });
 
-      await exportVersionAsZip({
-        parentPageId: 'root-1',
+      await exportVersionZip({
+        spaceId: 'root-1',
         versionId: 'ver-2',
         revisionDate: '2026-09-18T09:30:00Z',
         revisionLabel: 'Submission v2',
-        projectTitle: 'Deep Learning / AI Project: Final!!',
+        title: 'Deep Learning / AI Paper: Final!!',
       });
 
-      expect(capturedFilename).toBe('Deep_Learning_AI_Project_Final-Submission_v2.zip');
+      expect(capturedFilename).toBe('Deep_Learning_AI_Paper_Final-Submission_v2.zip');
     });
   });
 });

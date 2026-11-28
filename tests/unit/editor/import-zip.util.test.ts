@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   isZipFile,
-  isTextFile,
-  inferArchiveProjectName,
-  importZipToProject,
+  inferArchiveName,
+  importZip,
 } from '@/features/editor/sdk/archive/zip-import';
 import { pagesService, filestore } from '@/features/editor/sdk/pages.service';
-import type { ImportProjectZipResult } from '@/features/editor/sdk/pages/types';
+import type { ImportZipResult } from '@/features/editor/sdk/pages/types';
 
 describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
   afterEach(() => {
@@ -35,28 +34,18 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
     });
   });
 
-  describe('isTextFile & inferArchiveProjectName', () => {
-    it('identifies LaTeX text extensions correctly', () => {
-      expect(isTextFile('main.tex')).toBe(true);
-      expect(isTextFile('ref.bib')).toBe(true);
-      expect(isTextFile('custom.sty')).toBe(true);
-      expect(isTextFile('ieee.cls')).toBe(true);
-      expect(isTextFile('notes.md')).toBe(true);
-      expect(isTextFile('figure.png')).toBe(false);
-      expect(isTextFile('diagram.pdf')).toBe(false);
-    });
-
-    it('infers clean project title from File name', () => {
+  describe('inferArchiveName', () => {
+    it('infers clean title from File name', () => {
       const file = new File(['PK'], 'sample-paper.zip', { type: 'application/zip' });
-      expect(inferArchiveProjectName(file)).toBe('sample-paper');
-      expect(inferArchiveProjectName(new Blob(['PK']), 'Fallback Name')).toBe('Fallback Name');
+      expect(inferArchiveName(file)).toBe('sample-paper');
+      expect(inferArchiveName(new Blob(['PK']), 'Fallback Name')).toBe('Fallback Name');
     });
   });
 
-  describe('importZipToProject', () => {
-    it('passes projectId as spaceId and parentPageId as pageId scope when both exist', async () => {
-      const mockResult: ImportProjectZipResult = {
-        projectId: 'project-container-1',
+  describe('importZip', () => {
+    it('passes spaceId and pageId scope when both exist', async () => {
+      const mockResult: ImportZipResult = {
+        projectId: 'space-1',
         totalEntries: 5,
         totalDocs: 3,
         totalFiles: 2,
@@ -65,26 +54,26 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
         rootDocPath: 'main.tex',
       };
       const importSpy = vi
-        .spyOn(pagesService.export, 'importProjectZip')
+        .spyOn(pagesService.export, 'importZip')
         .mockResolvedValueOnce(mockResult);
 
       const zipFile = new File(['PK-bytes'], 'manuscript.zip', { type: 'application/zip' });
       const progressPhases: string[] = [];
 
-      const res = await importZipToProject({
-        projectId: 'project-container-1',
-        parentPageId: 'page-manuscript-99',
-        zipFile,
+      const res = await importZip({
+        spaceId: 'space-1',
+        pageId: 'page-manuscript-99',
+        file: zipFile,
         onProgress: (p) => progressPhases.push(p.phase),
       });
 
       expect(importSpy).toHaveBeenCalledTimes(1);
       expect(importSpy).toHaveBeenCalledWith(
-        'project-container-1',
+        'space-1',
         zipFile,
         { pageId: 'page-manuscript-99' },
       );
-      expect(res.projectId).toBe('project-container-1');
+      expect(res.spaceId).toBe('space-1');
       expect(res.rootPageId).toBe('doc-root-1');
       expect(res.mainFileId).toBe('doc-root-1');
       expect(res.summary).toEqual(mockResult);
@@ -93,9 +82,9 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
 
     it('forwards preferredRootDoc when explicitly specified', async () => {
       const importSpy = vi
-        .spyOn(pagesService.export, 'importProjectZip')
+        .spyOn(pagesService.export, 'importZip')
         .mockResolvedValueOnce({
-          projectId: 'project-container-2',
+          projectId: 'space-2',
           totalEntries: 2,
           totalDocs: 2,
           totalFiles: 0,
@@ -105,14 +94,14 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
 
       const zipFile = new File(['PK-bytes'], 'paper.zip', { type: 'application/zip' });
 
-      const res = await importZipToProject({
-        projectId: 'project-container-2',
-        zipFile,
+      const res = await importZip({
+        spaceId: 'space-2',
+        file: zipFile,
         preferredRootDoc: 'thesis.tex',
       });
 
       expect(importSpy).toHaveBeenCalledWith(
-        'project-container-2',
+        'space-2',
         zipFile,
         { preferredRootDoc: 'thesis.tex' },
       );
@@ -122,18 +111,18 @@ describe('zip-import (Authoritative Server-Side Archive SDK)', () => {
     it('throws when empty ZIP archive is provided', async () => {
       const emptyZip = new File([], 'empty.zip', { type: 'application/zip' });
       await expect(
-        importZipToProject({ projectId: 'project-1', zipFile: emptyZip }),
+        importZip({ spaceId: 'space-1', file: emptyZip }),
       ).rejects.toThrow('A non-empty ZIP archive file is required for import.');
     });
 
     it('rejects renamed non-ZIP files locally via 4-byte PKZIP magic header check before network upload', async () => {
-      const importSpy = vi.spyOn(pagesService.export, 'importProjectZip');
+      const importSpy = vi.spyOn(pagesService.export, 'importZip');
       const fakeZip = new File(['<html>not a zip</html>'], 'corrupted.zip', {
         type: 'application/zip',
       });
 
       await expect(
-        importZipToProject({ projectId: 'project-1', zipFile: fakeZip }),
+        importZip({ spaceId: 'space-1', file: fakeZip }),
       ).rejects.toThrow('Selected file is not a valid PKZIP archive.');
       expect(importSpy).not.toHaveBeenCalled();
     });

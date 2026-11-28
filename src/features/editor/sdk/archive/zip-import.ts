@@ -1,38 +1,28 @@
 /**
  * zip-import.ts
  *
- * O(1) 4-byte PKZIP magic-header pre-flight check + authoritative server-side project ZIP import
+ * O(1) 4-byte PKZIP magic-header pre-flight check + authoritative server-side ZIP import
  * (`POST /api/v1/pages/spaces/:spaceId/import/zip`).
  */
 
 import { exportDocs } from '../pages/export.client';
-import type { ImportProjectZipResult } from '../pages/types';
+import type { ImportZipResult } from '../pages/types';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 const MAX_CLIENT_ARCHIVE_BYTES = 500 * 1024 * 1024;
 
-const TEXT_EXTENSIONS = new Set([
-  'tex', 'ltx', 'bib', 'bst', 'cls', 'sty', 'def', 'cfg', 'clo', 'fd',
-  'bbx', 'cbx', 'lbx', 'dbx', 'ist', 'glo', 'gls', 'acr', 'alg', 'rtex',
-  'rnw', 'knw', 'tikz', 'pgf', 'asy', 'mp', 'txt', 'md', 'markdown',
-  'rst', 'csv', 'tsv', 'dat', 'json', 'yml', 'yaml', 'toml', 'ini',
-  'xml', 'html', 'htm', 'css', 'svg', 'sh', 'py', 'r', 'lua', 'pl',
-  'rb', 'js', 'ts', 'c', 'cpp', 'h', 'hpp', 'java', 'sql', 'gitignore',
-  'latexmkrc', 'dtx', 'ins',
-]);
-
 export interface ImportZipProgress {
-  phase: 'creating_project' | 'uploading' | 'done';
+  phase: 'creating' | 'uploading' | 'done';
   message: string;
   current: number;
   total: number;
 }
 
 export interface ImportZipOptions {
-  zipFile: File | Blob;
-  projectName?: string;
-  projectId?: string;
-  parentPageId?: string;
+  file: File | Blob;
+  name?: string;
+  spaceId?: string;
+  pageId?: string;
   preferredRootDoc?: string;
   onProgress?: (progress: ImportZipProgress) => void;
 }
@@ -41,8 +31,7 @@ export function isZipFile(file: File | Blob | string): boolean {
   if (typeof file === 'string') {
     const qIdx = file.indexOf('?');
     const hIdx = file.indexOf('#');
-    const cut =
-      qIdx === -1 ? hIdx : hIdx === -1 ? qIdx : Math.min(qIdx, hIdx);
+    const cut = qIdx === -1 ? hIdx : hIdx === -1 ? qIdx : Math.min(qIdx, hIdx);
     const clean = (cut === -1 ? file : file.slice(0, cut)).toLowerCase();
     return clean.endsWith('.zip');
   }
@@ -58,16 +47,7 @@ export function isZipFile(file: File | Blob | string): boolean {
   );
 }
 
-export function isTextFile(path: string): boolean {
-  const dotIdx = path.lastIndexOf('.');
-  if (dotIdx === -1) return false;
-  return TEXT_EXTENSIONS.has(path.slice(dotIdx + 1).toLowerCase());
-}
-
-export function inferArchiveProjectName(
-  file: File | Blob,
-  fallback = 'Imported Project',
-): string {
+export function inferArchiveName(file: File | Blob, fallback = 'Imported Archive'): string {
   if (file instanceof File && file.name) {
     const base = file.name.replace(/\.zip$/i, '').trim();
     if (base) return base;
@@ -75,10 +55,6 @@ export function inferArchiveProjectName(
   return fallback;
 }
 
-/**
- * O(1) time & 4-byte memory check verifying PKZIP magic signature (`0x50 0x4B` = 'PK')
- * before streaming multi-megabyte payloads over the network.
- */
 async function assertPkzipMagicSignature(blob: File | Blob): Promise<void> {
   if (blob.size < 2 || typeof blob.slice !== 'function') return;
   const headerSlice = blob.slice(0, 4);
@@ -89,7 +65,7 @@ async function assertPkzipMagicSignature(blob: File | Blob): Promise<void> {
   }
 }
 
-function extractCreatedProjectId(res: unknown): string {
+function extractCreatedId(res: unknown): string {
   if (!res || typeof res !== 'object') return '';
   const obj = res as Record<string, unknown>;
   if (obj.project && typeof obj.project === 'object' && 'id' in obj.project) {
@@ -104,68 +80,62 @@ function extractCreatedProjectId(res: unknown): string {
   return '';
 }
 
-export async function importZipToProject({
-  zipFile,
-  projectName,
-  projectId: existingProjectId,
-  parentPageId,
+export async function importZip({
+  file,
+  name,
+  spaceId: existingSpaceId,
+  pageId,
   preferredRootDoc,
   onProgress,
 }: ImportZipOptions): Promise<{
-  projectId: string;
+  spaceId: string;
   rootPageId: string;
   mainFileId?: string;
-  summary: ImportProjectZipResult;
+  summary: ImportZipResult;
 }> {
-  if (!zipFile || zipFile.size === 0) {
+  if (!file || file.size === 0) {
     throw new Error('A non-empty ZIP archive file is required for import.');
   }
-  if (zipFile.size > MAX_CLIENT_ARCHIVE_BYTES) {
+  if (file.size > MAX_CLIENT_ARCHIVE_BYTES) {
     throw new Error('ZIP archive exceeds maximum allowed size of 500 MB.');
   }
-  await assertPkzipMagicSignature(zipFile);
+  await assertPkzipMagicSignature(file);
 
-  const report = (
-    phase: ImportZipProgress['phase'],
-    message: string,
-    current: number,
-  ) => {
+  const report = (phase: ImportZipProgress['phase'], message: string, current: number) => {
     onProgress?.({ phase, message, current, total: 2 });
   };
 
-  const finalProjectName =
-    projectName?.trim() ||
-    inferArchiveProjectName(zipFile, 'Imported LaTeX Project');
+  const archiveName = name?.trim() || inferArchiveName(file, 'Imported LaTeX Archive');
 
-  let targetProjectId = existingProjectId?.trim() || '';
-  if (!targetProjectId && !parentPageId) {
-    report('creating_project', `Creating project "${finalProjectName}"...`, 0);
+  let targetSpaceId = existingSpaceId?.trim() || '';
+  if (!targetSpaceId && !pageId) {
+    report('creating', `Creating space "${archiveName}"...`, 0);
     const created = await ProjectService.create({
-      name: finalProjectName,
+      name: archiveName,
       modules: ['pages', 'work-items'],
     });
-    targetProjectId = extractCreatedProjectId(created);
-    if (!targetProjectId) {
-      throw new Error('Could not initialize project container.');
+    targetSpaceId = extractCreatedId(created);
+    if (!targetSpaceId) {
+      throw new Error('Could not initialize target space.');
     }
   }
 
-  const targetSpaceId = targetProjectId || parentPageId || '';
-  if (!targetSpaceId) {
+  const resolvedSpaceId = targetSpaceId || pageId || '';
+  if (!resolvedSpaceId) {
     throw new Error('Target space ID is required for ZIP import.');
   }
 
-  report('uploading', `Importing "${finalProjectName}" on server...`, 1);
-  const summary = await exportDocs.importProjectZip(targetSpaceId, zipFile, {
+  report('uploading', `Importing "${archiveName}" on server...`, 1);
+  const summary = await exportDocs.importZip(resolvedSpaceId, file, {
     ...(preferredRootDoc ? { preferredRootDoc } : {}),
-    ...(parentPageId ? { pageId: parentPageId } : {}),
+    ...(pageId ? { pageId } : {}),
   });
 
-  const rootPageId = summary.rootDocId || parentPageId || '';
-  report('done', 'Imported project archive successfully.', 2);
+  const rootPageId = summary.rootDocId || pageId || '';
+  report('done', 'Imported archive successfully.', 2);
 
   return {
-    projectId: summary.projectId || targetSpaceId,
+    spaceId: summary.projectId || resolvedSpaceId,
     rootPageId,
     mainFileId: summary.rootDocId || undefined,
     summary,

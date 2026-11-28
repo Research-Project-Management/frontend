@@ -23,7 +23,7 @@ export function sanitizeArchiveName(title: string | undefined, fallback: string)
   return cleaned || fallback;
 }
 
-export function sanitizeDocExportSlug(title: string | undefined, fallback = 'document'): string {
+export function sanitizeSlug(title: string | undefined, fallback = 'document'): string {
   const cleaned = (title || fallback)
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '_')

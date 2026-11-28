@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  exportDocumentSchema,
-  documentExportFormatSchema,
-} from '@/features/editor/domain/types/export.types';
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
-  exportDocumentAsWord,
-  exportDocumentAsMarkdown,
+  exportDocx,
+  exportMarkdown,
 } from '@/features/editor/sdk/archive/doc-export';
 
 describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
@@ -14,25 +10,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
     vi.clearAllMocks();
   });
 
-  describe('1. Export Schema Validation', () => {
-    it('validates tex, docx, html, and md format options', () => {
-      expect(documentExportFormatSchema.safeParse('tex').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('docx').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('html').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('md').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('markdown').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('pdf').success).toBe(true);
-      expect(documentExportFormatSchema.safeParse('invalid').success).toBe(false);
-    });
-
-    it('parses export input with defaults', () => {
-      const parsed = exportDocumentSchema.parse({ format: 'docx' });
-      expect(parsed.format).toBe('docx');
-      expect(parsed.includeChildren).toBe(true);
-    });
-  });
-
-  describe('2. exportDocumentAsWord', () => {
+  describe('1. exportDocumentAsWord', () => {
     it('calls export service with docx format and triggers client download', async () => {
       const mockBase64 = btoa('PK\x03\x04mock-docx-bytes');
 
@@ -65,9 +43,9 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
       }) as typeof document.body.appendChild;
       document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
-      await exportDocumentAsWord({
+      await exportDocx({
         docId: 'doc-123',
-        projectTitle: 'Quantum Paper',
+        title: 'Quantum Paper',
       });
 
       expect(pagesService.export.exportDocument).toHaveBeenCalledWith(
@@ -88,7 +66,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
     });
   });
 
-  describe('3. exportDocumentAsMarkdown', () => {
+  describe('2. exportDocumentAsMarkdown', () => {
     it('calls export service with md format and triggers client download', async () => {
       const mockMarkdown = '# Quantum Paper\n\nIntroduction paragraph.';
 
@@ -120,9 +98,9 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
       }) as typeof document.body.appendChild;
       document.body.removeChild = vi.fn() as typeof document.body.removeChild;
 
-      await exportDocumentAsMarkdown({
+      await exportMarkdown({
         docId: 'doc-123',
-        projectTitle: 'Quantum Paper',
+        title: 'Quantum Paper',
       });
 
       expect(pagesService.export.exportDocument).toHaveBeenCalledWith(

@@ -26,8 +26,8 @@ import {
   ProjectArchiveService,
   projectArchiveKeys,
 } from '@/features/projects/project-id/archives/services/archive.service';
-import { pageKeys } from '@/features/projects/project-id/pages/hooks/use-page';
-import { PageService } from '@/features/projects/project-id/pages/services/page.service';
+import { pageKeys } from '@/features/pages/hooks/use-page';
+import { PageService } from '@/features/pages/services/page.service';
 import {
   collectionKeys,
   itemKeys as libraryItemKeys,
@@ -242,8 +242,8 @@ export function prefetchProjectSubmodule(
 
     if (moduleKey === 'pages') {
       void queryClient.prefetchQuery({
-        queryKey: pageKeys.project(projectId),
-        queryFn: () => PageService.getProjectPages(projectId),
+        queryKey: pageKeys.space(projectId),
+        queryFn: () => PageService.list(projectId),
         staleTime: 60_000,
       });
       return;

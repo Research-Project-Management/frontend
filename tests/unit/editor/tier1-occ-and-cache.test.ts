@@ -259,4 +259,89 @@ describe('Khối 2 / Tầng 1 — OCC & UTF-8 LRU Cache', () => {
     expect('rev' in legacyMapped).toBe(false);
     expect('spaceId' in legacyMapped).toBe(false);
   });
+
+  describe('Single-Source-of-Truth Subscriptions, Derived Stores & Hierarchy', () => {
+    it('supports reactive zero-argument subscription and single-authority dirty tracking on lruDocumentCache', () => {
+      let notifyCount = 0;
+      const initialSnapshot = lruDocumentCache.getSnapshot();
+      const unsubscribe = lruDocumentCache.subscribe(() => {
+        notifyCount++;
+      });
+
+      lruDocumentCache.registerModel('file-ssot', {
+        content: 'Initial',
+        filePath: 'main.tex',
+        projectId: 'proj-ssot',
+      });
+      expect(notifyCount).toBe(1);
+      expect(lruDocumentCache.getSnapshot()).toBeGreaterThan(initialSnapshot);
+
+      lruDocumentCache.updateContent('file-ssot', 'Updated content', true);
+      expect(notifyCount).toBe(2);
+      expect(lruDocumentCache.isDirty('file-ssot')).toBe(true);
+      expect(lruDocumentCache.getDirtyFileIds()).toEqual(['file-ssot']);
+
+      // useCompileStore reflects dirty state from lruDocumentCache reactively
+      expect(useCompileStore.getState().isDirtyFile('file-ssot')).toBe(true);
+      expect(useCompileStore.getState().getDirtyFiles()).toEqual([
+        { fileId: 'file-ssot', content: 'Updated content' },
+      ]);
+
+      // WorkspaceTab.isDirty dynamically reads from lruDocumentCache
+      useWorkspaceStore.getState().openTab('proj-ssot', {
+        id: 'file-ssot',
+        title: 'main.tex',
+        path: 'main.tex',
+      });
+      const tab = useWorkspaceStore.getState().tabsByProject['proj-ssot']?.[0];
+      expect(tab?.isDirty).toBe(true);
+
+      lruDocumentCache.markClean('file-ssot');
+      expect(notifyCount).toBe(3);
+      expect(tab?.isDirty).toBe(false);
+      expect(useCompileStore.getState().isDirtyFile('file-ssot')).toBe(false);
+
+      unsubscribe();
+      lruDocumentCache.updateContent('file-ssot', 'Post-unsub edit', true);
+      expect(notifyCount).toBe(3);
+      useWorkspaceStore.getState().closeAllTabsForProject('proj-ssot');
+    });
+
+    it('synchronizes usePageStore hierarchy & active document pointers and isolates multi-manuscript tabs', () => {
+      const pageStore = usePageStore.getState();
+      pageStore.resetPageState();
+
+      const rootDoc = { id: 'root-doc', title: 'main.tex', content: '\\documentclass{article}' };
+      const subFile = { id: 'file-456', title: 'appendix.tex', content: '\\section{App}' };
+
+      pageStore.setCurrentPage(rootDoc as never);
+      expect(usePageStore.getState().currentPage).toEqual(rootDoc);
+      expect(usePageStore.getState().activeFilePage).toEqual(rootDoc);
+      expect(usePageStore.getState().getActiveDocumentId()).toBe('root-doc');
+
+      pageStore.setActiveFilePage(subFile as never);
+      expect(usePageStore.getState().currentPage).toEqual(rootDoc);
+      expect(usePageStore.getState().activeFilePage).toEqual(subFile);
+      expect(usePageStore.getState().getActiveDocumentTitle()).toBe('appendix.tex');
+
+      pageStore.setHierarchy({
+        projectId: 'proj-omega',
+        rootPageId: 'page-main-entry',
+        activeDocId: 'file-sub-section',
+      });
+      expect(usePageStore.getState().getProjectId()).toBe('proj-omega');
+      expect(usePageStore.getState().getRootPageId()).toBe('page-main-entry');
+      expect(usePageStore.getState().getActiveDocId()).toBe('file-sub-section');
+
+      const ws = useWorkspaceStore.getState();
+      ws.openTab('manuscript-page-1', { id: 'doc-p1-main', title: 'main.tex', path: 'main.tex' });
+      ws.openTab('manuscript-page-2', { id: 'doc-p2-paper', title: 'paper.tex', path: 'paper.tex' });
+      expect(ws.getActiveDocId('proj-omega', 'manuscript-page-1')).toBe('doc-p1-main');
+      expect(ws.getActiveDocId('proj-omega', 'manuscript-page-2')).toBe('doc-p2-paper');
+
+      ws.closeAllTabsForProject('manuscript-page-1');
+      ws.closeAllTabsForProject('manuscript-page-2');
+      pageStore.resetPageState();
+    });
+  });
 });

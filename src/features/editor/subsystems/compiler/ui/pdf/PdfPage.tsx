@@ -69,6 +69,105 @@ export function extractPageDimensionsPt(page: {
 export const normalizePdfTextItem = (item: { str: string }) =>
   item.str && item.str.includes('—') ? item.str.replace(/—/g, '-') : item.str;
 
+export interface PdfDoubleClickWordInfo {
+  text?: string;
+  rect?: { x: number; y: number; w: number; h: number };
+}
+
+/**
+ * Extracts the exact word and its page-relative bounding box at a pointer event
+ * over the PDF.js text layer so reverse SyncTeX can highlight the word on the PDF
+ * and place the code editor cursor at the exact matching word/character.
+ */
+export function extractClickedWordAndRect(
+  clientX: number,
+  clientY: number,
+  pageRect: DOMRect,
+): PdfDoubleClickWordInfo {
+  if (typeof document === 'undefined') return {};
+  try {
+    let textNode: Node | null = null;
+    let offset = 0;
+
+    const docWithCaret = document as Document & {
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+      caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    };
+
+    if (typeof docWithCaret.caretRangeFromPoint === 'function') {
+      const range = docWithCaret.caretRangeFromPoint(clientX, clientY);
+      if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
+        textNode = range.startContainer;
+        offset = range.startOffset;
+      }
+    } else if (typeof docWithCaret.caretPositionFromPoint === 'function') {
+      const pos = docWithCaret.caretPositionFromPoint(clientX, clientY);
+      if (pos && pos.offsetNode.nodeType === Node.TEXT_NODE) {
+        textNode = pos.offsetNode;
+        offset = pos.offset;
+      }
+    }
+
+    if (textNode && textNode.textContent) {
+      const content = textNode.textContent;
+      const clampedOffset = Math.max(0, Math.min(offset, content.length));
+      const isWordChar = (ch: string) => /[\p{L}\p{N}_'-]/u.test(ch);
+
+      let start = clampedOffset;
+      let end = clampedOffset;
+
+      if (start > 0 && (start === content.length || !isWordChar(content[start])) && isWordChar(content[start - 1])) {
+        start--;
+        end = start;
+      }
+
+      while (start > 0 && isWordChar(content[start - 1])) start--;
+      while (end < content.length && isWordChar(content[end])) end++;
+
+      const word = content.slice(start, end).trim();
+      if (word.length > 0) {
+        const wordRange = document.createRange();
+        wordRange.setStart(textNode, start);
+        wordRange.setEnd(textNode, end);
+        const wordRect = wordRange.getBoundingClientRect();
+        if (wordRect.width > 0 && wordRect.height > 0) {
+          return {
+            text: word,
+            rect: {
+              x: wordRect.left - pageRect.left,
+              y: wordRect.top - pageRect.top,
+              w: wordRect.width,
+              h: wordRect.height,
+            },
+          };
+        }
+        return { text: word };
+      }
+    }
+
+    const sel = window.getSelection();
+    const selectedText = sel?.toString().trim();
+    if (selectedText && sel && sel.rangeCount > 0) {
+      const selRect = sel.getRangeAt(0).getBoundingClientRect();
+      return {
+        text: selectedText.split(/\s+/)[0],
+        rect:
+          selRect.width > 0 && selRect.height > 0
+            ? {
+                x: selRect.left - pageRect.left,
+                y: selRect.top - pageRect.top,
+                w: selRect.width,
+                h: selRect.height,
+              }
+            : undefined,
+      };
+    }
+  } catch {
+    // Ignore DOM caret errors on non-text regions
+  }
+  return {};
+}
+
 export interface OptimizedPDFPageProps {
   pageIndex: number;
   scale: number;
@@ -86,6 +185,7 @@ export interface OptimizedPDFPageProps {
     ptY?: number,
     pixelX?: number,
     pixelY?: number,
+    wordInfo?: PdfDoubleClickWordInfo,
   ) => void;
   clickIndicator?: SynctexHighlightState | null;
   invertColors?: boolean;
@@ -146,7 +246,8 @@ export const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
     const effectiveScale = rect.width > 0 ? rect.width / widthPt : (scale > 0 ? scale : 1);
     const ptX = Math.round(clickX / effectiveScale);
     const ptY = Math.round(clickY / effectiveScale);
-    onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY);
+    const wordInfo = extractClickedWordAndRect(e.clientX, e.clientY, rect);
+    onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY, wordInfo);
   };
 
   const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {

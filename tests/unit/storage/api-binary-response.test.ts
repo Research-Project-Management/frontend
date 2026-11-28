@@ -4,11 +4,14 @@ import { ApiError } from '@/shared/types/api.types';
 import * as tokenStorage from '@/shared/lib/token-storage';
 
 describe('Frontend API Binary Response & Security Suite', () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   afterEach(() => {
+    globalThis.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 

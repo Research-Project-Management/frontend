@@ -386,4 +386,84 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
       expect(events).toContain('ctx-redo');
     });
   });
+
+  describe('retraction detection, reason parsing & BibTeX lint integration', () => {
+    it('detects legacy retraction flags, extracts reason/noticeUrl, and builds BibTeX retraction warnings', async () => {
+      const { buildRetractedCitationMap } = await import(
+        '@/features/editor/subsystems/citation/model/retraction'
+      );
+      const { runLatexLinter } = await import(
+        '@/features/editor/subsystems/diagnostics/model/latex-linter-core'
+      );
+      const {
+        isItemRetracted,
+        getRetractionInfo,
+        parseRetractionReasonParts,
+      } = await import('@/features/library/domain/system-views.policy');
+
+      const retractedItem = {
+        title: 'Wakefield MMR',
+        doi: '10.1016/S0140-6736(97)11096-0',
+        citationKey: 'wakefield1998',
+        isRetracted: true,
+        retractionNature: 'retraction',
+        retractionDetails: {
+          reason: 'Data falsification',
+          noticeUrl: 'https://doi.org/10.1016/S0140-6736(10)60175-4',
+        },
+      };
+
+      expect(isItemRetracted({ isRetracted: true })).toBe(true);
+      expect(isItemRetracted({ retractionStatus: 'retracted' })).toBe(true);
+      expect(isItemRetracted({ is_retracted: true })).toBe(true);
+      expect(isItemRetracted({})).toBe(false);
+      expect(isItemRetracted(null)).toBe(false);
+
+      expect(getRetractionInfo(retractedItem).reason).toBe('Data falsification');
+      expect(getRetractionInfo({ isRetracted: true, doi: '10.1/x' }).noticeUrl).toBe(
+        'https://doi.org/10.1/x',
+      );
+
+      const map = buildRetractedCitationMap(
+        [{ key: 'myKey', type: 'article', doi: 'https://doi.org/10.1016/s0140-6736(97)11096-0', sourceFile: 'refs.bib' }],
+        [retractedItem],
+      );
+      expect(map.get('myKey')?.reason).toBe('Data falsification');
+      expect(map.has('wakefield1998')).toBe(true);
+
+      const concernMap = buildRetractedCitationMap([], [
+        {
+          ...retractedItem,
+          retractionNature: 'expression_of_concern',
+          retractionDetails: { nature: 'expression_of_concern' },
+        },
+      ]);
+      expect(concernMap.size).toBe(0);
+
+      const diags = runLatexLinter('See \\cite{wakefield1998}.', {
+        retractedCitationsMap: map,
+      });
+      expect(
+        diags.some(
+          (d) =>
+            d.message.includes('Retracted Paper') ||
+            d.message.includes('CRITICAL ACADEMIC WARNING') ||
+            d.message.includes('Data falsification'),
+        ),
+      ).toBe(true);
+
+      expect(
+        parseRetractionReasonParts(
+          "Retracted on June 5, 2020 due to authors' inability to verify authenticity.",
+        ),
+      ).toEqual({
+        prefix: 'Retracted on June 5, 2020:',
+        body: "Due to authors' inability to verify authenticity.",
+      });
+      expect(parseRetractionReasonParts('Retracted: Data falsification detected.')).toEqual({
+        prefix: 'Retracted:',
+        body: 'Data falsification detected.',
+      });
+    });
+  });
 });

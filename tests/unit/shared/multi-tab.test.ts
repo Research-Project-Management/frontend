@@ -46,6 +46,7 @@ function createValidJwt(sub: string, expOffsetSeconds = 3600): string {
 
 describe('Browser Multi-Tab Coordination Architecture', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     multiTabBus.resetForTesting();
     setLibraryStorageProvider(null);
     setLibrarySessionStorageProvider(null);

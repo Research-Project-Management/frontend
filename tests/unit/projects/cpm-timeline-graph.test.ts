@@ -1,12 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import {
   analyzeCriticalPath,
-  detectGraphCycles,
   extractNormalizedEdges,
   getPixelForTimeBinarySearch,
-  calculateTaskDuration,
   wouldCauseCycle,
 } from '@/features/projects/project-id/work-items/utils/cpm-graph.utils';
+import {
+  buildTimelineData,
+  calculateDuration,
+  formatToDateStr,
+  parseDateOnly,
+  formatTimelineDisplayDate,
+  getStartOfWeek,
+  getEndOfWeek,
+  getISOWeekNumber,
+  mapItemToBar,
+  computeDependencyLines,
+  type TimelineBarData,
+} from '@/features/projects/project-id/work-items/components/views/TimelineView';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 describe('CPM (Critical Path Method) & DAG Graph Engine', () => {
@@ -257,6 +268,105 @@ describe('CPM (Critical Path Method) & DAG Graph Engine', () => {
       // Valid new branch: C -> D or A -> D
       expect(wouldCauseCycle('C', 'D', existingEdges)).toBe(false);
       expect(wouldCauseCycle('A', 'D', existingEdges)).toBe(false);
+    });
+  });
+});
+
+describe('TimelineView Calculations & Granularity', () => {
+  it('formats dates, durations, and ISO week boundaries accurately', () => {
+    const testDate = new Date(2026, 8, 16);
+    expect(formatToDateStr(testDate)).toBe('2026-09-16');
+
+    const parsed = parseDateOnly('2026-09-16');
+    expect(parsed?.getFullYear()).toBe(2026);
+    expect(parsed?.getMonth()).toBe(8);
+    expect(parsed?.getDate()).toBe(16);
+
+    expect(formatTimelineDisplayDate('2026-09-28T16:41:55.848Z')).toBe('Sept 28, 2026');
+    expect(formatTimelineDisplayDate('2026-10-08T16:41:55.848Z')).toBe('Oct 8, 2026');
+    expect(formatTimelineDisplayDate(null)).toBe('');
+    expect(formatTimelineDisplayDate(undefined)).toBe('');
+
+    expect(calculateDuration(null, null).label).toBe('');
+    expect(calculateDuration('2026-09-16', '2026-09-16').label).toBe('1 day');
+    expect(calculateDuration('2026-09-16', '2026-09-20').label).toBe('5 days');
+    expect(calculateDuration('2026-09-01', '2026-09-07').label).toBe('1 week');
+    expect(calculateDuration('2026-09-01', '2026-09-14').label).toBe('2 weeks');
+    expect(calculateDuration('2026-09-01', '2026-10-01').label).toBe('1 month');
+
+    const monday = getStartOfWeek(testDate);
+    expect(monday.getDay()).toBe(1);
+    expect(monday.getDate()).toBe(14);
+    const sunday = getEndOfWeek(testDate);
+    expect(sunday.getDay()).toBe(0);
+    expect(sunday.getDate()).toBe(20);
+    expect(getISOWeekNumber(testDate)).toBe(38);
+  });
+
+  it('builds week, month, and quarter timeline columns and groups', () => {
+    const weekData = buildTimelineData('week', new Date(2026, 8, 16));
+    expect(weekData.columns.length).toBe(98);
+    expect(weekData.tier1Groups.length).toBe(14);
+    expect(weekData.tier1Groups[0].spanCount).toBe(7);
+    expect(weekData.columns[0].width).toBe(48);
+
+    const monthData = buildTimelineData('month', new Date(2026, 8, 16));
+    expect(monthData.columns.length).toBeGreaterThanOrEqual(28);
+    expect(monthData.columns[0].width).toBe(84);
+    expect(monthData.columns[0].primaryLabel).toMatch(/^W\d+$/);
+
+    const quarterData = buildTimelineData('quarter', new Date(2026, 8, 16));
+    expect(quarterData.columns.length).toBe(22);
+    expect(quarterData.columns[0].width).toBe(110);
+  });
+
+  it('maps items to timeline bars and computes dependency connector lines', () => {
+    const { columns } = buildTimelineData('week', new Date(2026, 8, 16));
+    const datedItem = {
+      id: 'item-a',
+      title: 'Task A',
+      columnId: 'col-1',
+      priority: 'medium',
+      relations: [{ id: 'rel-1', type: 'blocks', targetId: 'item-b', targetWorkItemId: 'item-b' }],
+      startDate: '2026-09-16',
+      dueDate: '2026-09-18',
+      labels: [],
+    } as unknown as Item;
+    const undatedItem = {
+      id: 'item-b',
+      title: 'Task B',
+      columnId: 'col-1',
+      priority: 'none',
+      relations: [],
+      labels: [],
+    } as unknown as Item;
+
+    const barA = mapItemToBar(datedItem, columns, 'week');
+    expect(barA.hasDates).toBe(true);
+    expect(barA.pixelWidth).toBeGreaterThan(0);
+    expect(barA.durationLabel).toBe('3 days');
+
+    const barB = mapItemToBar(undatedItem, columns, 'week');
+    expect(barB.hasDates).toBe(false);
+    expect(barB.durationLabel).toBe('');
+
+    const barDataMap = new Map<string, TimelineBarData>([
+      ['item-a', { item: datedItem, hasDates: true, pixelLeft: 100, pixelWidth: 50, durationDays: 3, durationLabel: '3 days' }],
+      ['item-b', { item: undatedItem, hasDates: true, pixelLeft: 200, pixelWidth: 50, durationDays: 3, durationLabel: '3 days' }],
+    ]);
+    const rowYMap = new Map<string, number>([
+      ['item-a', 50],
+      ['item-b', 100],
+    ]);
+    const lines = computeDependencyLines([datedItem, undatedItem], barDataMap, rowYMap);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({
+      fromItemId: 'item-a',
+      toItemId: 'item-b',
+      type: 'FS',
+      fromX: 150,
+      toX: 200,
+      violated: false,
     });
   });
 });

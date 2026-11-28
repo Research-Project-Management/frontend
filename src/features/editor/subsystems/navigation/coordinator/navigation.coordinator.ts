@@ -47,6 +47,7 @@ interface OpenDocumentOptions {
   content?: string;
   line?: number;
   column?: number;
+  length?: number;
   highlight?: 'error' | 'synctex';
   preview?: boolean;
 }
@@ -56,6 +57,7 @@ interface PendingLineJump {
   filePath?: string;
   line: number;
   column?: number;
+  length?: number;
   highlight?: 'error' | 'synctex';
 }
 
@@ -127,17 +129,19 @@ export class NavigationCoordinator {
   }
 
   private executeLineJump(target: PendingLineJump): void {
-    const { fileId, line, column, highlight = 'synctex' } = target;
+    const { fileId, line, column, length, highlight = 'synctex' } = target;
     if (fileId) {
       const targetEngine = getEditorEngineForFile?.(fileId);
       if (targetEngine?.jumpToLine) {
-        targetEngine.jumpToLine(line, highlight);
+        targetEngine.jumpToLine(line, highlight, column, length);
+        return;
       }
     }
     editorCommandBus.dispatch({
       type: 'editor:jump-to-line',
       line,
       column,
+      length,
       highlight,
     });
   }
@@ -423,6 +427,7 @@ export class NavigationCoordinator {
         filePath: optPath || title,
         line,
         column,
+        length: options.length,
         highlight,
       };
       this.scheduleDeterministicAction(() => {
@@ -505,9 +510,10 @@ export class NavigationCoordinator {
     filePath?: string;
     line: number;
     column?: number;
+    length?: number;
     highlight?: 'error' | 'synctex';
   }): void {
-    const { fileId, filePath, line, column, highlight = 'synctex' } = options;
+    const { fileId, filePath, line, column, length, highlight = 'synctex' } = options;
 
     if (this.isDetachedPreviewWindow()) {
       this.detachedPreviewBridge.postMessage({
@@ -528,7 +534,7 @@ export class NavigationCoordinator {
 
     if (isMountedInSecondaryPane && resolvedFileId) {
       layoutState.setActiveEditorPane('secondary');
-      this.executeLineJump({ fileId: resolvedFileId, filePath, line, column, highlight });
+      this.executeLineJump({ fileId: resolvedFileId, filePath, line, column, length, highlight });
       return;
     }
 
@@ -539,12 +545,13 @@ export class NavigationCoordinator {
         path: filePath || resolvedTitle,
         line,
         column,
+        length,
         highlight,
       });
       return;
     }
 
-    this.executeLineJump({ fileId: resolvedFileId, filePath, line, column, highlight });
+    this.executeLineJump({ fileId: resolvedFileId, filePath, line, column, length, highlight });
   }
 
   private stepDiagnostic(direction: 1 | -1, severity: 'error' | 'warning' = 'error'): void {

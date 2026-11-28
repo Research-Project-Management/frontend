@@ -47,6 +47,8 @@ import {
   OptimizedPDFPage,
   extractPageDimensionsPt,
   normalizePdfTextItem,
+  extractClickedWordAndRect,
+  type PdfDoubleClickWordInfo,
 } from './PdfPage';
 import { usePdfViewportVirtualizer } from '@/features/editor/subsystems/compiler/hooks/usePdfVirtualizer';
 
@@ -92,6 +94,8 @@ interface PdfSurfaceProps {
     pageNum?: number,
     x?: number,
     y?: number,
+    highlightType?: 'error' | 'synctex',
+    clickedText?: string,
   ) => void;
   onCompile?: () => void;
   invertColors?: boolean;
@@ -280,6 +284,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
       ptY?: number,
       _pixelX?: number,
       _pixelY?: number,
+      wordInfo?: PdfDoubleClickWordInfo,
     ) => {
       if (!onJumpToSource) return;
       const pageDims = perPageDimensions[pageNum] || effectiveDefaultDimensions;
@@ -298,6 +303,8 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
         pageNum,
         ptX,
         ptY,
+        'synctex',
+        wordInfo?.text,
       );
     },
     [onJumpToSource, synctexMap, perPageDimensions, effectiveDefaultDimensions],
@@ -414,7 +421,8 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
                 const effectiveScale = rect.width > 0 ? rect.width / singlePageWidthPt : (scale > 0 ? scale : 1);
                 const ptX = Math.round(clickX / effectiveScale);
                 const ptY = Math.round(clickY / effectiveScale);
-                handleDoubleClickPage(effectivePageNumber, clickFraction, ptX, ptY, clickX, clickY);
+                const wordInfo = extractClickedWordAndRect(e.clientX, e.clientY, rect);
+                handleDoubleClickPage(effectivePageNumber, clickFraction, ptX, ptY, clickX, clickY, wordInfo);
               }}
               className={cn(
                 'bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0',

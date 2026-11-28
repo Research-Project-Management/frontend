@@ -813,6 +813,69 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       expect(hashA).toBe(hashB);
     });
   });
+
+  describe('Silent Metadata Auto-save & Cache Patcher', () => {
+    it('classifies metadata-only vs membership patches and patches cache in-place without list invalidation', async () => {
+      const { QueryClient } = await import('@tanstack/react-query');
+      const {
+        isMetadataOnlyPatch,
+        doesPatchAffectMembership,
+        MEMBERSHIP_MUTATION_KEYS,
+        patchItemAcrossScopeCaches,
+      } = await import('@/features/library/sdk/queries/cache-patcher.queries');
+      const { itemKeys } = await import('@/features/library/sdk/query-keys');
+
+      for (const patch of [
+        { shortTitle: 'Attention Paper' },
+        { title: 'Attention Is All You Need' },
+        { doi: '10.1145/3065386' },
+        { year: 2017 },
+        { authors: ['Vaswani, Ashish'] },
+      ]) {
+        expect(isMetadataOnlyPatch(patch)).toBe(true);
+        expect(doesPatchAffectMembership(patch)).toBe(false);
+      }
+
+      for (const key of ['isStarred', 'deletedAt', 'status', 'collectionId', 'collectionIds']) {
+        expect(MEMBERSHIP_MUTATION_KEYS.has(key)).toBe(true);
+      }
+      expect(isMetadataOnlyPatch({ tags: ['deep-learning'] })).toBe(false);
+      expect(doesPatchAffectMembership({ tags: ['deep-learning'] })).toBe(false);
+      expect(doesPatchAffectMembership({ isStarred: true })).toBe(true);
+
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const sampleItems = [
+        { id: 'item-1', title: 'Paper 1', version: 1 },
+        { id: 'item-2', title: 'Paper 2', version: 1 },
+        { id: 'item-10', title: 'ImageNet CNN', shortTitle: '', version: 1 },
+      ] as any[];
+
+      queryClient.setQueryData(itemKeys.all('user'), { items: sampleItems, total: 3 });
+      queryClient.setQueryData(itemKeys.byId('user', 'item-10'), sampleItems[2]);
+
+      patchItemAcrossScopeCaches(
+        queryClient,
+        'user',
+        'item-10',
+        { shortTitle: 'ImageNet', updatedAt: '2026-10-27T17:07:50Z' },
+        { membershipPatch: { shortTitle: 'ImageNet' } },
+      );
+      expect(invalidateSpy).not.toHaveBeenCalled();
+      expect(
+        (queryClient.getQueryData(itemKeys.all('user')) as { items: any[] }).items[2].shortTitle,
+      ).toBe('ImageNet');
+
+      patchItemAcrossScopeCaches(
+        queryClient,
+        'user',
+        'item-1',
+        { isStarred: true },
+        { membershipPatch: { isStarred: true } },
+      );
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+  });
 });
 
 

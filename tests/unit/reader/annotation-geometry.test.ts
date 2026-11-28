@@ -13,6 +13,14 @@ import {
   extractPdfPageHoverGeometry,
   resolveExactHoverRectFromPdfGeometry,
 } from '@/features/library/domain/reader/annotation-geometry';
+import {
+  normalizePagePoint,
+  denormalizePagePoint,
+  calculatePointsBoundingBox,
+  simplifyPointsRdp,
+  smoothPointsToSvgPath,
+  type NormalizedPoint,
+} from '@/features/library/domain/reader/ink-canvas';
 import type { AnnotationRect } from '@/features/library/types/reader.types';
 import { AUTHOR_YEAR_CITATION_RE } from '@/features/library/ui/reader/viewer/ViewerSmartHover';
 
@@ -362,6 +370,74 @@ describe('annotation-geometry domain', () => {
         prose.matchAll(new RegExp(AUTHOR_YEAR_CITATION_RE.source, 'gu')),
       );
       expect(matches).toHaveLength(0);
+    });
+  });
+
+  describe('ink-canvas vector normalization, RDP simplification & Bézier smoothing', () => {
+    it('clamps normalized coordinates to [0, 1], denormalizes accurately, and handles collapsed bounds', () => {
+      const pageRect = { left: 100, top: 200, width: 800, height: 1000 };
+      expect(normalizePagePoint(500, 700, pageRect)).toEqual({ x: 0.5, y: 0.5 });
+      expect(normalizePagePoint(-50, 1500, pageRect)).toEqual({ x: 0, y: 1 });
+      expect(denormalizePagePoint({ x: 0.25, y: 0.75 }, { width: 600, height: 900 })).toEqual({
+        px: 150,
+        py: 675,
+      });
+
+      const zero = normalizePagePoint(100, 100, { left: 0, top: 0, width: 0, height: 0 });
+      expect(zero).toEqual({ x: 0, y: 0 });
+    });
+
+    it('computes padded bounding boxes, simplifies micro-jitter via RDP, and generates smooth Bézier SVG paths', () => {
+      const points: NormalizedPoint[] = [
+        { x: 0.1, y: 0.2 },
+        { x: 0.3, y: 0.5 },
+        { x: 0.2, y: 0.4 },
+        { x: 0.4, y: 0.6 },
+      ];
+      const box = calculatePointsBoundingBox(points, 0.01);
+      expect(box.x1).toBe(0.09);
+      expect(box.y1).toBe(0.19);
+      expect(box.x2).toBe(0.41);
+      expect(box.y2).toBe(0.61);
+
+      const singleBox = calculatePointsBoundingBox([{ x: 0.5, y: 0.5 }], 0.001);
+      expect(singleBox.width).toBeGreaterThanOrEqual(0.01);
+      expect(singleBox.height).toBeGreaterThanOrEqual(0.01);
+
+      const jitteredLine: NormalizedPoint[] = [
+        { x: 0.1, y: 0.1 },
+        { x: 0.2, y: 0.2001 },
+        { x: 0.3, y: 0.2999 },
+        { x: 0.4, y: 0.4 },
+        { x: 0.5, y: 0.5 },
+      ];
+      const simplified = simplifyPointsRdp(jitteredLine, 0.001);
+      expect(simplified.length).toBeLessThan(jitteredLine.length);
+
+      const vCurve: NormalizedPoint[] = [
+        { x: 0.1, y: 0.1 },
+        { x: 0.2, y: 0.3 },
+        { x: 0.3, y: 0.5 },
+        { x: 0.4, y: 0.3 },
+        { x: 0.5, y: 0.1 },
+      ];
+      expect(simplifyPointsRdp(vCurve, 0.01).some((p) => p.x === 0.3 && p.y === 0.5)).toBe(true);
+
+      const path = smoothPointsToSvgPath(points);
+      expect(path.startsWith('M ')).toBe(true);
+      expect(path.includes(' Q ')).toBe(true);
+      expect(path.includes(' L ')).toBe(true);
+
+      const relPath = smoothPointsToSvgPath(
+        [
+          { x: 0.1, y: 0.2 },
+          { x: 0.2, y: 0.4 },
+          { x: 0.3, y: 0.6 },
+        ],
+        { x1: 0.1, y1: 0.2, width: 0.2, height: 0.4 },
+      );
+      expect(relPath.startsWith('M 0 0') || relPath.startsWith('M 0.00 0.00')).toBe(true);
+      expect(relPath.endsWith('100 100') || relPath.endsWith('100.00 100.00')).toBe(true);
     });
   });
 });

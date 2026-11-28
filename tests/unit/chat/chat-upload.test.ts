@@ -124,25 +124,29 @@ describe('Chat Attachment & File Upload Unit Tests', () => {
       });
       Object.defineProperty(validImage, 'size', { value: 1024 * 50 });
 
-      // Mock presign failure
-      vi.spyOn(chatService, 'presignAttachment').mockRejectedValue(
-        new Error('Presign endpoint offline'),
-      );
-
-      const fallbackMock = vi
-        .spyOn(chatService, 'uploadAttachmentDirect')
-        .mockResolvedValue({
-          id: 'att-fallback',
-          name: 'figure1.png',
-          url: '/api/chat/attachments/stream?key=chat/conv-1/figure1.png',
-          size: 1024 * 50,
-          mimeType: 'image/png',
-          type: 'image',
-        });
+      mockedApiPost.mockImplementation(async (path: string) => {
+        if (path.includes('/attachments/presign')) {
+          throw new Error('Presign endpoint offline');
+        }
+        if (path.includes('/attachments/upload')) {
+          return {
+            id: 'att-fallback',
+            name: 'figure1.png',
+            url: '/api/chat/attachments/stream?key=chat/conv-1/figure1.png',
+            size: 1024 * 50,
+            mimeType: 'image/png',
+            type: 'image',
+          };
+        }
+        return {};
+      });
 
       const result = await chatService.uploadChatFile('conv-1', validImage);
 
-      expect(fallbackMock).toHaveBeenCalledWith('conv-1', expect.any(FormData));
+      expect(mockedApiPost).toHaveBeenCalledWith(
+        '/api/chat/conversations/conv-1/attachments/upload',
+        expect.any(FormData),
+      );
       expect(result.id).toBe('att-fallback');
       expect(result.type).toBe('image');
     });

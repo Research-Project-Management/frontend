@@ -6,6 +6,12 @@ import {
   stripLatexComments,
   parseLatexDirectives,
 } from '@/features/editor/domain/latex/dependency-graph';
+import {
+  LRUDocumentCache,
+  type DocumentModelState,
+} from '@/features/editor/domain/document/lru-document-cache';
+import { PrefixTrie } from '@/features/editor/domain/latex/prefix-trie';
+import { LatexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 
 describe('LatexDependencyGraph (Include Dependency Graph & Subfiles Parity)', () => {
   let dag: LatexDependencyGraph;
@@ -228,6 +234,81 @@ Not a comment: \\% still here
         inferredBy: 'explicit',
         hasCycleWarning: false,
       });
+    });
+  });
+
+  describe('6. Path Helpers, Bounded LRU Eviction & Prefix-Trie Symbol Index', () => {
+    it('normalizes and resolves relative LaTeX paths', () => {
+      expect(normalizeLatexPath('chapters/intro.tex')).toBe('chapters/intro.tex');
+      expect(normalizeLatexPath('chapters/intro')).toBe('chapters/intro.tex');
+      expect(resolveRelativeLatexPath('figures', '../main.tex')).toBe('main.tex');
+    });
+
+    it('evicts least recently used model when LRUDocumentCache exceeds capacity and preserves view state', () => {
+      const evicted: Array<{ fileId: string; model: DocumentModelState }> = [];
+      const cache = new LRUDocumentCache();
+      cache.setCapacity(3);
+      cache.onEvict((fileId, model) => evicted.push({ fileId, model }));
+
+      cache.registerModel('file1', { filePath: 'main.tex', content: 'Doc 1' });
+      cache.registerModel('file2', { filePath: 'intro.tex', content: 'Doc 2' });
+      cache.registerModel('file3', { filePath: 'methods.tex', content: 'Doc 3' });
+      cache.getModel('file1'); // touch file1 -> MRU
+      cache.registerModel('file4', { filePath: 'results.tex', content: 'Doc 4' });
+
+      expect(cache.getStats().size).toBe(3);
+      expect(cache.hasModel('file2')).toBe(false);
+      expect(evicted.map((e) => e.fileId)).toEqual(['file2']);
+
+      cache.updateViewState('file1', { anchor: 5, head: 5 }, { top: 120, left: 0 });
+      expect(cache.getModel('file1')?.selection).toEqual({ anchor: 5, head: 5 });
+      expect(cache.getModel('file1')?.scrollViewport).toEqual({ top: 120, left: 0 });
+    });
+
+    it('performs O(K) diacritic-normalized prefix lookups and resolves citations/labels in LatexSymbolsIndex', () => {
+      const trie = new PrefixTrie<{ name: string }>();
+      trie.insertNormalized('Nguyễn Văn An', { name: 'Nguyen Van An' });
+      trie.insert('vaswani2017attention', { name: 'Citation Key' });
+      trie.insert('test1', { name: 'Test 1' });
+      trie.insert('test2', { name: 'Test 2' });
+      trie.insert('test3', { name: 'Test 3' });
+
+      expect(trie.findExact('vaswani2017attention')?.name).toBe('Citation Key');
+      expect(trie.findPrefix('nguyen')[0]?.name).toBe('Nguyen Van An');
+      expect(trie.findPrefix('Nguyễn')[0]?.name).toBe('Nguyen Van An');
+      expect(trie.findPrefix('test', { limit: 2 })).toHaveLength(2);
+
+      const index = new LatexSymbolsIndex();
+      index.setLibraryCitations([
+        {
+          id: 'c1',
+          citationKey: 'knuth1984texbook',
+          title: 'The TeXbook',
+          authors: [{ fullName: 'Donald E. Knuth' }],
+          year: 1984,
+        },
+        {
+          id: 'c2',
+          citationKey: 'lamport1994latex',
+          title: 'LaTeX: A Document Preparation System',
+          authors: [{ fullName: 'Leslie Lamport' }],
+          year: 1994,
+        },
+      ]);
+
+      expect(index.getCitationByKey('knuth1984texbook')?.title).toBe('The TeXbook');
+      expect(index.getCitations('lamport')).toHaveLength(1);
+      index.indexFile(
+        'main.tex',
+        'main.tex',
+        '\\label{sec:introduction}\n\\newcommand{\\customMacro}{foo}',
+        true,
+      );
+      expect(index.getLabels('sec:').some((l) => l.name === 'sec:introduction')).toBe(true);
+      expect(index.getLabels('introduction').some((l) => l.name === 'sec:introduction')).toBe(
+        true,
+      );
+      index.dispose();
     });
   });
 });

@@ -114,7 +114,7 @@ describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save t
       expect(updated?.retentionDays).toBe(7);
     });
 
-    it('filters out entries older than retention cutoff while preserving recent ones', () => {
+    it('filters out entries older than retention cutoff and retains all when retentionDays <= 0', () => {
       const now = Date.now();
       const dayMs = 24 * 60 * 60 * 1000;
 
@@ -148,46 +148,11 @@ describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save t
         },
       ];
 
-      // Retention: 14 days
-      const retentionDays = 14;
-      const cutoff = now - retentionDays * dayMs;
-
-      const filtered = entries.filter((e) => {
-        if (!e.publishedAt) return true;
-        const t = Date.parse(e.publishedAt);
-        if (isNaN(t)) return true;
-        return t >= cutoff;
-      });
-
+      const filtered = filterFeedEntriesByRetention(entries, 14);
       expect(filtered.map((e) => e.id)).toEqual(['fresh-1', 'fresh-2', 'undated']);
-    });
 
-    it('retains all entries if retentionDays is 0 or negative (keep forever)', () => {
-      const now = Date.now();
-      const dayMs = 24 * 60 * 60 * 1000;
-
-      const entries: ParsedFeedEntry[] = [
-        {
-          id: 'ancient',
-          title: 'Paper from 2 years ago',
-          authors: ['Ancient Author'],
-          feedFormat: 'rss2',
-          publishedAt: new Date(now - 730 * dayMs).toISOString(),
-        },
-      ];
-
-      const retentionDays = 0; // Never delete
-      const filtered = retentionDays && retentionDays > 0
-        ? entries.filter((e) => {
-            if (!e.publishedAt) return true;
-            const t = Date.parse(e.publishedAt);
-            if (isNaN(t)) return true;
-            return t >= now - retentionDays * dayMs;
-          })
-        : entries;
-
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0]?.id).toBe('ancient');
+      const keptForever = filterFeedEntriesByRetention(entries, 0);
+      expect(keptForever).toHaveLength(4);
     });
 
     it('virtualizes per-user read vs unread retention windows independently', () => {

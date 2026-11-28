@@ -55,9 +55,9 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
       indicator.h !== undefined && indicator.h > 0
         ? indicator.h
         : Math.max(14 * (scale > 0 ? scale : 1), 14);
-    const height = Math.max(rawH + 6, 16);
-    // In SyncTeX, y is the text baseline measured from the top of the page, while glyphs extend upward by ascent (~0.8 * rawH)
-    const top = Math.max(0, indicator.y - rawH * 0.8);
+    const height = Math.max(rawH + 2, 14);
+    // In SyncTeX, y (v) is the baseline at the bottom of the line box; glyphs extend upward by height
+    const top = Math.max(0, indicator.y - height);
 
     return (
       <div
@@ -72,12 +72,7 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
           width: `${width}px`,
           height: `${height}px`,
         }}
-      >
-        <div
-          data-testid="synctex-pdf-accent-bar"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-warning shadow-none"
-        />
-      </div>
+      />
     );
   }
 

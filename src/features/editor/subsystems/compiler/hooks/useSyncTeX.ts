@@ -170,7 +170,7 @@ export function useViewerSyncTeX({
     [pageFiles],
   );
 
-  // Jump from PDF click / SyncTeX backward jump directly to source line in editor
+  // Jump from PDF click / SyncTeX backward jump directly to source line (and exact clicked word) in editor
   const handleJumpToSource = useCallback(
     async (
       sourcePath: string | null,
@@ -179,6 +179,7 @@ export function useViewerSyncTeX({
       x?: number,
       y?: number,
       highlightType: 'error' | 'synctex' = 'synctex',
+      clickedText?: string,
     ) => {
       let targetPath = sourcePath;
       let targetLine = line;
@@ -200,11 +201,44 @@ export function useViewerSyncTeX({
         } catch {}
       }
 
+      // Resolve exact column & selection length on targetLine when a PDF word was double-clicked
+      const resolveWordPosition = (docContent?: string): { column?: number; length?: number } => {
+        const needle = clickedText?.trim();
+        if (!needle || !docContent) return {};
+        const lines = docContent.split('\n');
+        const lineText = lines[Math.max(0, Math.min(targetLine - 1, lines.length - 1))];
+        if (!lineText) return {};
+
+        const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // 1. Exact word-boundary match
+        const exactBoundary = new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'u').exec(lineText);
+        if (exactBoundary && exactBoundary.index !== undefined) {
+          return { column: exactBoundary.index, length: exactBoundary[0].length };
+        }
+        // 2. Case-insensitive word-boundary match
+        const ciBoundary = new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'iu').exec(lineText);
+        if (ciBoundary && ciBoundary.index !== undefined) {
+          return { column: ciBoundary.index, length: ciBoundary[0].length };
+        }
+        // 3. Fallback substring match
+        const idx = lineText.toLowerCase().indexOf(needle.toLowerCase());
+        if (idx >= 0) {
+          return { column: idx, length: needle.length };
+        }
+        return {};
+      };
+
       if (targetPath) {
         const cleanPath = targetPath.replace(/^\.\//, '');
         const targetPage = findPageByBasename(cleanPath);
 
         if (targetPage) {
+          const cachedContent =
+            lruDocumentCache.getModel(targetPage.id)?.content ??
+            (targetPage as ViewerPageFileEntry).content ??
+            getActiveEditorEngine()?.getContent?.();
+          const { column, length } = resolveWordPosition(cachedContent);
+
           // Instant 0ms document switch via navigation coordinator (no page reload)
           navigationCoordinator.openDocument({
             fileId: targetPage.id,
@@ -212,6 +246,8 @@ export function useViewerSyncTeX({
             path: targetPage.path,
             content: (targetPage as ViewerPageFileEntry).content,
             line: targetLine,
+            column,
+            length,
             highlight: highlightType,
           });
           return;
@@ -222,9 +258,15 @@ export function useViewerSyncTeX({
       const pageStore = usePageStore.getState();
       const fallbackDoc = pageStore.activeFilePage || pageStore.currentPage;
       if (fallbackDoc) {
+        const activeContent =
+          getActiveEditorEngine()?.getContent?.() ??
+          lruDocumentCache.getModel(fallbackDoc.id)?.content;
+        const { column, length } = resolveWordPosition(activeContent);
         navigationCoordinator.jumpToLine({
           fileId: fallbackDoc.id,
           line: targetLine,
+          column,
+          length,
           highlight: highlightType,
         });
       }

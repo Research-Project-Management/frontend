@@ -1,10 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import { ItemRowActions, ItemTableHeader } from '@/features/library/ui/content/ItemRowActions';
 import { ItemTableRow } from '@/features/library/ui/content/ItemTableRow';
 import { BatchBar } from '@/features/library/ui/content/BatchBar';
 import { DuplicatesContent } from '@/features/library/ui/content/DuplicatesContent';
+import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { DEFAULT_COLLECTION_COLOR } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/ui.store';
 import type { Item, Collection, DuplicateGroup } from '@/features/library/types/core.types';
@@ -14,6 +15,22 @@ vi.mock('next/navigation', () => ({
     push: vi.fn(),
   }),
   useParams: () => ({}),
+  usePathname: () => '/library',
+}));
+
+vi.mock('@/features/library/ui/content/LibraryIllustrations', () => ({
+  libraryIllustrationStyles: '',
+  StarredStackIllustration: () => <div data-testid="starred-icon" />,
+  TrashStackIllustration: () => <div data-testid="trash-icon" />,
+  RetractedStackIllustration: () => <div data-testid="retracted-icon" />,
+  UnfiledStackIllustration: () => <div data-testid="unfiled-icon" />,
+  PublicationsStackIllustration: () => <div data-testid="publications-icon" />,
+  CollectionStackIllustration: () => <div data-testid="collection-icon" />,
+  AllReferencesStackIllustration: () => <div data-testid="all-icon" />,
+  SearchStackIllustration: () => <div data-testid="search-icon" />,
+  FeedStackIllustration: () => <div data-testid="feed-icon" />,
+  FeedAllReadIllustration: () => <div data-testid="feed-all-read-icon" />,
+  RecentlyReadVerticalStackIllustration: () => <div data-testid="recently-read-icon" />,
 }));
 
 vi.mock('@/features/library/sdk/queries/extraction.queries', () => ({
@@ -147,6 +164,10 @@ describe('ItemRowActions & Actions Column Parity', () => {
   beforeEach(() => {
     useLibraryUIStore.getState().clearSelection();
     useLibraryUIStore.getState().setActiveItem(null);
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('renders 3-dots actions trigger for active library items', () => {
@@ -384,5 +405,19 @@ describe('ItemRowActions & Actions Column Parity', () => {
 
   it('exports canonical DEFAULT_COLLECTION_COLOR from collection.coordinator', () => {
     expect(DEFAULT_COLLECTION_COLOR).toBe('#2563eb');
+  });
+
+  it('transitions LibraryEmptyState across default, recent, trash, and search states without hook order violations', () => {
+    const { rerender } = render(<LibraryEmptyState activeFilter={null} search="" />);
+    expect(screen.getByText('Start with your first reference')).toBeDefined();
+
+    rerender(<LibraryEmptyState activeFilter="recent" search="" />);
+    expect(screen.getByTestId('recently-read-empty')).toBeDefined();
+
+    rerender(<LibraryEmptyState activeFilter="trash" search="" />);
+    expect(screen.getByText('Trash is empty')).toBeDefined();
+
+    rerender(<LibraryEmptyState activeFilter="recent" search="quantum" />);
+    expect(screen.getByText('No matching references')).toBeDefined();
   });
 });

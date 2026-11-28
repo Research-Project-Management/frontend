@@ -2,7 +2,9 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
     "src/app/**/{page,layout,template,error,not-found,loading,route,default}.{js,ts,jsx,tsx}",
-    "next.config.{js,ts,mjs}"
+    "next.config.{js,ts,mjs}",
+    "scripts/gates/run-gates.ts",
+    "scripts/gates/verify-diff-coverage.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
   "ignoreDependencies": ["tw-animate-css"]

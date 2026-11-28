@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BoardView } from '@/features/projects/project-id/work-items/components/views/BoardView';
+import { CalendarView } from '@/features/projects/project-id/work-items/components/views/CalendarView';
 import { ListView } from '@/features/projects/project-id/work-items/components/views/ListView';
 import { TableView } from '@/features/projects/project-id/work-items/components/views/TableView';
 import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
@@ -12,11 +13,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/projects/proj-1',
-}));
-
-vi.mock('@/features/projects/project-id/work-items/hooks/use-label', () => ({
-  useLabelsQuery: () => ({ data: [], isLoading: false }),
-  useCreateLabel: () => ({ mutateAsync: vi.fn() }),
 }));
 
 describe('Work Items DOM Virtualization (@tanstack/react-virtual)', () => {
@@ -246,6 +242,62 @@ describe('Work Items DOM Virtualization (@tanstack/react-virtual)', () => {
       expect(screen.getAllByText('Todo')[0]).toBeInTheDocument();
       // Verify row items are actually rendered in both groups
       expect(screen.getAllByText('Research Task 1').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('CalendarView Month Grid & Date Ranges', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-10-05T12:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('renders sticky weekday headers and multi-day task date range badges', () => {
+      const calendarColumns: Column[] = [
+        { id: 'todo', name: 'To Do', color: '#6B7280', sequence: 0 },
+        { id: 'in_progress', name: 'In Progress', color: '#3B82F6', sequence: 1 },
+      ];
+      const calendarItems: Item[] = [
+        {
+          id: 'item-1',
+          sequenceNumber: 19,
+          identifier: 'FLUX-19',
+          title: 'Implement Adam optimizer',
+          columnId: 'in_progress',
+          startDate: '2026-09-28T00:00:00.000Z',
+          dueDate: '2026-10-08T00:00:00.000Z',
+          labels: [],
+        },
+        {
+          id: 'item-2',
+          sequenceNumber: 23,
+          identifier: 'FLUX-23',
+          title: 'Draft Section 2',
+          columnId: 'in_progress',
+          startDate: '2026-09-29T00:00:00.000Z',
+          dueDate: '2026-10-10T00:00:00.000Z',
+          labels: [],
+        },
+      ];
+
+      renderWithProviders(
+        <CalendarView
+          items={calendarItems}
+          columns={calendarColumns}
+          projectId="proj-1"
+          onAddCard={vi.fn()}
+          onOpenCardDetail={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('Mon')).toBeInTheDocument();
+      expect(screen.getByText('Sun')).toBeInTheDocument();
+      expect(screen.getAllByText('Implement Adam optimizer').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Draft Section 2').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('28/09 → 08/10')[0]).toBeInTheDocument();
     });
   });
 });

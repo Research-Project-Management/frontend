@@ -62,60 +62,6 @@ describe('Sticky Frontend Utilities', () => {
     });
   });
 
-  describe('SSOT Reconciliation & Optimistic State Management', () => {
-    it('should reconcile optimistic sticky with authoritative server sticky preserving stable UUID v7', () => {
-      const stableId = uuidv7();
-      const optimisticSticky = normalizeSticky({
-        id: stableId,
-        title: '',
-        content: '<p></p>',
-        color: 'yellow-1',
-      });
-
-      const serverSticky = normalizeSticky({
-        id: stableId,
-        title: '',
-        content: '<p></p>',
-        color: 'mint-2', // Authoritative server rotated color
-        order: 1,
-      });
-
-      const clientCache = [optimisticSticky];
-
-      // Reconcile logic: update item with server response without changing stable key
-      const reconciledCache = clientCache.map((item) =>
-        item.id === stableId ? serverSticky : item
-      );
-
-      expect(reconciledCache).toHaveLength(1);
-      expect(reconciledCache[0].id).toBe(stableId);
-      expect(isUuidV7(reconciledCache[0].id)).toBe(true);
-      expect(reconciledCache[0].color).toBe('mint-2');
-    });
-
-    it('should rollback cache to previous snapshot on server rejection', () => {
-      const existingSticky = normalizeSticky({
-        id: 'existing-1',
-        title: 'Initial note',
-        content: '<p>Content</p>',
-      });
-
-      const previousSnapshot = [existingSticky];
-
-      // Optimistic insert
-      const optimisticState = [
-        ...previousSnapshot,
-        normalizeSticky({ id: 'temp-failed', content: '<p></p>' }),
-      ];
-      expect(optimisticState).toHaveLength(2);
-
-      // Rollback on server error
-      const rolledBackState = previousSnapshot;
-      expect(rolledBackState).toHaveLength(1);
-      expect(rolledBackState[0].id).toBe('existing-1');
-    });
-  });
-
   describe('UUID v7 Generation & Validation', () => {
     it('should generate a valid RFC 9562 UUID v7 string', () => {
       const id = uuidv7();

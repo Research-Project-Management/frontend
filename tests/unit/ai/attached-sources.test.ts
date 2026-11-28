@@ -6,7 +6,12 @@ import {
   getRagDocumentId,
   sourceEntryToAttachedPayload,
   sourcesToAttachments,
+  type SourceEntry,
 } from '@/features/ai/context/source.port';
+import {
+  buildTurnPayload,
+  buildWebSearchSites,
+} from '@/features/ai/context/turn-payload';
 import {
   librarySourceAdapter,
   loadCollectionSources,
@@ -293,6 +298,111 @@ describe('Attached Sources, ID Separation, Collection Loading & Storage Removal'
 
       expect(attachments[0].type).toBe('pdf');
       expect(attachments[0].type).not.toBe('Deep Residual Learning for Image Recognition');
+    });
+  });
+
+  describe('buildWebSearchSites & buildTurnPayload', () => {
+    it('resolves webSearchSites with disabled, wildcard, explicit copy, and override semantics', () => {
+      expect(buildWebSearchSites(false, ['arxiv.org'])).toBeUndefined();
+      expect(buildWebSearchSites(false)).toBeUndefined();
+      expect(buildWebSearchSites(true)).toEqual(['*']);
+      expect(buildWebSearchSites(true, [])).toEqual(['*']);
+
+      const sites = ['arxiv.org', 'nature.com'];
+      const result = buildWebSearchSites(true, sites);
+      expect(result).toEqual(['arxiv.org', 'nature.com']);
+      expect(result).not.toBe(sites);
+
+      expect(buildWebSearchSites(false, [], ['ieee.org'])).toEqual(['ieee.org']);
+      expect(buildWebSearchSites(true, ['arxiv.org'], null)).toBeUndefined();
+      expect(buildWebSearchSites(true, ['arxiv.org'], [])).toBeUndefined();
+    });
+
+    it('assembles chat and paper turn payloads from enabled sources, deduplicates extraDocumentIds, and omits empty fields', () => {
+      const enabledUpload: SourceEntry = {
+        id: 'upload-1',
+        name: 'notes.md',
+        enabled: true,
+        sourceType: 'upload',
+        size: 512,
+      };
+      const disabledUpload: SourceEntry = {
+        id: 'upload-disabled',
+        name: 'ignored.pdf',
+        enabled: false,
+        sourceType: 'upload',
+      };
+      const enabledLibraryPaper: SourceEntry = {
+        id: 'item-1',
+        name: 'Attention Is All You Need',
+        enabled: true,
+        sourceType: 'library',
+        itemId: 'item-1',
+        fileId: 'file-1',
+        ragDocId: 'file-1',
+        hasPdf: true,
+        indexed: true,
+      };
+
+      const chatPayload = buildTurnPayload({
+        mode: 'chat',
+        spaceId: 'sp-1',
+        chatId: 'chat-1',
+        sources: [enabledUpload, disabledUpload, enabledLibraryPaper],
+        webSearchEnabled: true,
+        webSearchSites: ['arxiv.org'],
+      });
+      expect(chatPayload.documentIds).toEqual(['upload-1', 'file-1']);
+      expect(chatPayload.attachedSources).toHaveLength(2);
+      expect(chatPayload.attachments?.map((a) => a.id)).toEqual(['upload-1', 'item-1']);
+      expect(chatPayload.webSearchSites).toEqual(['arxiv.org']);
+
+      const emptyPayload = buildTurnPayload({
+        mode: 'chat',
+        spaceId: null,
+        chatId: null,
+        sources: [disabledUpload],
+        webSearchEnabled: false,
+      });
+      expect(emptyPayload).toEqual({
+        mode: 'chat',
+        spaceId: null,
+        chatId: null,
+        documentIds: undefined,
+        attachedSources: undefined,
+        attachments: undefined,
+        webSearchSites: undefined,
+      });
+
+      const readerPaperSource: SourceEntry = {
+        id: 'paper-1',
+        name: 'Graph Neural Networks',
+        enabled: true,
+        sourceType: 'paper',
+        ragDocId: 'file-paper-1',
+      };
+      const paperPayload = buildTurnPayload({
+        mode: 'paper',
+        spaceId: 'sp-2',
+        chatId: 'chat-2',
+        sources: [readerPaperSource, enabledUpload],
+        attachmentSources: [enabledUpload],
+        extraDocumentIds: ['file-paper-1', 'extra-doc-9', ''],
+        webSearchEnabled: true,
+        webSearchSites: ['arxiv.org'],
+        webSearchSitesOverride: ['*'],
+        paper: {
+          paperId: 'paper-1',
+          paperTitle: 'Graph Neural Networks',
+          quotedPassage: 'Message passing',
+          pageNumber: 3,
+        },
+      });
+      expect(paperPayload.documentIds).toEqual(['file-paper-1', 'extra-doc-9', 'upload-1']);
+      expect(paperPayload.attachedSources).toHaveLength(2);
+      expect(paperPayload.attachments?.map((a) => a.id)).toEqual(['upload-1']);
+      expect(paperPayload.webSearchSites).toEqual(['*']);
+      expect(paperPayload.paper?.pageNumber).toBe(3);
     });
   });
 });

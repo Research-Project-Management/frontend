@@ -245,12 +245,11 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
   const handleOutlineClick = useCallback(
     (line: number) => {
       if (engine) {
-        engine.jumpToLine(line, 'synctex');
+        engine.jumpToLine(line);
         engine.focus();
       } else {
-        editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
+        editorCommandBus.dispatch({ type: 'editor:jump-to-line', line });
       }
-      editorCommandBus.dispatch({ type: 'synctex:forward', line });
     },
     [engine],
   );

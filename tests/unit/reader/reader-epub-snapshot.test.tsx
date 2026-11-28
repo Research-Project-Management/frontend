@@ -27,7 +27,7 @@ describe('Epub and Web Snapshot Parity (Zotero 7 Reader Standard)', () => {
   });
 
   describe('1. resolveEpubOrSnapshot resolution domain helper', () => {
-    it('returns null for standard PDF attachments so PDF.js viewer is used', () => {
+    it('returns null for standard, imported_url, or mislabeled-snapshot PDF attachments so PDF.js viewer is used', () => {
       const paperWithPdf = {
         id: 'p1',
         title: 'Deep Residual Learning',
@@ -35,9 +35,40 @@ describe('Epub and Web Snapshot Parity (Zotero 7 Reader Standard)', () => {
           { id: 'att-1', filename: 'paper.pdf', contentType: 'application/pdf', fileUrl: '/files/paper.pdf' },
         ],
       } as any;
+      expect(resolveEpubOrSnapshot(paperWithPdf, '/files/paper.pdf', 'att-1')).toBeNull();
 
-      const res = resolveEpubOrSnapshot(paperWithPdf, '/files/paper.pdf', 'att-1');
-      expect(res).toBeNull();
+      const importedUrlPdf = {
+        id: 'paper-vit',
+        title: 'ViT',
+        attachments: [
+          {
+            id: 'att-pdf-1',
+            itemId: 'paper-vit',
+            filename: 'vit-paper.pdf',
+            mimeType: 'application/pdf',
+            linkMode: 'imported_url',
+            attachmentType: 'imported_file',
+            url: 'https://arxiv.org/pdf/2010.11929.pdf',
+          },
+        ],
+      } as any;
+      expect(resolveEpubOrSnapshot(importedUrlPdf, 'https://arxiv.org/pdf/2010.11929.pdf')).toBeNull();
+
+      const mislabeledPdf = {
+        id: 'paper-vit-2',
+        title: 'Mislabeled PDF',
+        attachments: [
+          {
+            id: 'att-mislabeled',
+            itemId: 'paper-vit-2',
+            filename: 'paper.pdf',
+            mimeType: 'application/pdf',
+            attachmentType: 'snapshot',
+            url: '/api/v1/storage/paper.pdf',
+          },
+        ],
+      } as any;
+      expect(resolveEpubOrSnapshot(mislabeledPdf, null, 'att-mislabeled')).toBeNull();
     });
 
     it('correctly resolves .epub attachments as mode: epub', () => {

@@ -235,19 +235,14 @@
   position: absolute;
   z-index: 30;
   pointer-events: none;
-  transform: translate(0, -50%);
-  border-radius: 4px;
-  border: 2px solid #eab308;
-  background: rgba(234, 179, 8, 0.22);
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.42), inset 0 0 6px rgba(234, 179, 8, 0.18);
+  border-radius: 2px;
+  background: rgba(59, 130, 246, 0.24);
   animation: synctex-pdf-box-fade 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  will-change: opacity, transform;
+  will-change: opacity;
 }
 
 .dark .synctex-pdf-highlight-box {
-  border-color: #facc15;
-  background: rgba(250, 204, 21, 0.28);
-  box-shadow: 0 0 14px rgba(250, 204, 21, 0.5), inset 0 0 8px rgba(250, 204, 21, 0.22);
+  background: rgba(96, 165, 250, 0.28);
 }
 
 @media (prefers-reduced-motion: reduce) {

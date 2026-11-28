@@ -1,0 +1,326 @@
+{
+  "src/app/api/library/pdf-proxy/route.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/ai/engine/flux-engine.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/ai/ui/companion/CompanionDrawer.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/ai/ui/composer/Composer.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/ai/ui/parts/HitlApprovalPart.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/coordinator/session.coordinator.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/coordinator/workspace.coordinator.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/engine/adapters/codemirror.adapter.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/engine/extensions/latex-visual-floats.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/engine/extensions/selection-gutter-actions.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/store/workspace-tabs.slice.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/core/surface/CodeMirrorView.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/domain/latex/latex-symbols-index.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/sdk/realtime/provider.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/ai/ui/AiTab.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/citation/hooks/useCitationModal.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/compiler/coordinator/compiler.coordinator.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/compiler/coordinator/pipeline.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/compiler/hooks/useLogsState.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/compiler/hooks/usePdfSearch.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/explorer/hooks/useFilesTabController.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/insert/ui/table/TableModal.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/editor/subsystems/review/coordinator/resolver.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/components/ExperimentsContent.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/components/ExperimentsInspector.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/components/ExperimentsModals.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/components/ExperimentsSidebar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/components/ExperimentsTopbar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/experiments/data/mock-experiments.data.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/adapters/reader-storage.adapter.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/coordinator/batch-action.coordinator.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/coordinator/file-ingest.strategies.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/coordinator/reader/use-pdf-interaction.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/coordinator/reader/use-reader-tabs.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/coordinator/reader/use-reader.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/core/manager/command.manager.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/creators.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/diff.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/feed-parser.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/identifiers.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/metadata/extra-rules.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/metadata/field-descriptors.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/metadata/item-type-mappings.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/metadata/mapper.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/metadata/sanitizers.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/reader/annotation-geometry.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/reader/reader.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/reader/search-outline.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/reader/semantic-index.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/domain/saved-search-ast.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/clients/http.client.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/queries/cache-patcher.queries.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/queries/catalog.queries.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/queries/ingestion.queries.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/queries/reader.queries.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/queries/sync.queries.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/sdk/query-keys.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/types/ingestion.types.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/types/items.types.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/content/DuplicatesContent.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/content/LibraryContent.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/inspector/CreatorFields.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/inspector/LibraryInspector.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/inspector/NotesSection.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/inspector/RelatedSection.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/modals/ConditionRowEditor.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/pages/LibraryPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/pages/ReaderPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/AnnotationsPanel.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/AnnotationsPanelParts.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/ReaderSidebar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/viewer/EpubAndSnapshotViewer.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/viewer/PageAnnotationOverlay.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/viewer/PdfViewer.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/viewer/ViewerSearchBar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/reader/viewer/ViewerSmartHover.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/sidebar/CollectionTree.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/sidebar/LibrarySidebar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/library/ui/topbar/LibraryTopbar.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/settings/pages/LabelPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/settings/pages/StatePage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/api/work-item.api.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/filters/FilterDropdown.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/Activities.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/Attachments.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/CreateModal.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/DetailModal.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/BoardView.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/CalendarView.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/ListView.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/TimelineView.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/list/ItemRow.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/table/RowItem.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/hooks/use-crud.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/pages/WorkItemPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/types/work-item.types.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/utils/filter-engine.utils.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/project-id/work-items/utils/work-item.utils.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/shell/components/project/CreateProjectModal.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/shell/hooks/use-project.ts": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/shell/pages/ProjectsPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/projects/your-work/components/shared/ItemList.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/settings/pages/LabelsPage.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/shell/components/StickyDock.tsx": {
+    "over-600-loc": 1
+  },
+  "src/features/storage/components/layout/StorageIllustrations.tsx": {
+    "over-600-loc": 1
+  },
+  "src/shared/lib/api.ts": {
+    "over-600-loc": 1
+  },
+  "src/shared/lib/smart-upload-engine.ts": {
+    "over-600-loc": 1
+  }
+}

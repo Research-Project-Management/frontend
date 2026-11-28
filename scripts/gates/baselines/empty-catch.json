@@ -1,0 +1,308 @@
+{
+  "src/features/ai/context/use-context.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/ai/transport/flux.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/ai/ui/parts/citations.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/auth/services/auth.service.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/core/bus/engine-registry.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/core/coordinator/session-persistence.strategy.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/core/engine/adapters/codemirror.adapter.ts": {
+    "83a44251aebfb854": 1
+  },
+  "src/features/editor/core/engine/extensions/latex-visual-floats.cache.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/core/store/editor-tabs-storage.adapter.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/core/surface/codemirror-state-factory.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/editor/domain/document/lru-document-cache.ts": {
+    "83a44251aebfb854": 4
+  },
+  "src/features/editor/sdk/realtime/cross-tab.ts": {
+    "07feee9faddb957c": 5
+  },
+  "src/features/editor/sdk/realtime/inbound-events.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/sdk/realtime/provider-pool.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/subsystems/citation/hooks/useCitationModal.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/compiler/coordinator/pipeline.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/compiler/hooks/usePdfSearch.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/subsystems/compiler/hooks/useSyncTeX.ts": {
+    "83a44251aebfb854": 2
+  },
+  "src/features/editor/subsystems/compiler/store/compiler.store.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/subsystems/compiler/ui/pdf/DetachedViewer.tsx": {
+    "83a44251aebfb854": 2
+  },
+  "src/features/editor/subsystems/compiler/ui/pdf/PdfPage.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/diagnostics/model/latex-linter-core.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/explorer/hooks/useFileTree.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/subsystems/insert/ui/FigureModal.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/navigation/coordinator/detached-preview.bridge.ts": {
+    "07feee9faddb957c": 4
+  },
+  "src/features/editor/subsystems/navigation/coordinator/navigation.coordinator.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/editor/subsystems/review/coordinator/resolver.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/search/hooks/useSearchActions.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/editor/subsystems/spelling/extensions/extension.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/core/adapters/local-storage.adapter.ts": {
+    "07feee9faddb957c": 5
+  },
+  "src/features/library/core/adapters/reader-storage.adapter.ts": {
+    "07feee9faddb957c": 11
+  },
+  "src/features/library/core/coordinator/attachment.coordinator.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/core/coordinator/batch-action.coordinator.ts": {
+    "07feee9faddb957c": 7
+  },
+  "src/features/library/core/coordinator/feeds.coordinator.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/core/coordinator/file-ingest.strategies.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/core/coordinator/ingestion.coordinator.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/core/coordinator/reader/use-reader.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/library/core/coordinator/saved-search.coordinator.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/core/store/feeds.store.ts": {
+    "07feee9faddb957c": 5
+  },
+  "src/features/library/domain/feed-parser.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/domain/identifiers.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/library/domain/metadata/extra-mapper.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/domain/reader/epub-html.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/domain/reader/search-outline.ts": {
+    "07feee9faddb957c": 4
+  },
+  "src/features/library/sdk/clients/curation.client.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/sdk/clients/http.client.ts": {
+    "07feee9faddb957c": 6
+  },
+  "src/features/library/sdk/clients/ingestion.client.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/library/sdk/queries/trash.queries.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/types/core.types.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/content/BatchBar.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/content/DuplicatesContent.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/ui/content/FeedViewContent.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/content/ItemTable.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/modals/RetractionNoticeModal.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/pages/ReaderPage.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/AnnotationsPanel.tsx": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/library/ui/reader/AnnotationsPanelParts.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/ReaderThumbnailsPanel.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/ui/reader/viewer/PageAnnotationOverlay.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/viewer/PagePdfLinkOverlay.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/viewer/PdfViewer.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/viewer/ViewerSearchBar.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/reader/viewer/ViewerSmartHover.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/library/ui/sidebar/FeedsListSection.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/library/ui/sidebar/LibrarySidebar.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/pages/components/layout/PagesSidebar.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/pages/components/modals/EditModal.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/pages/hooks/use-pages-workspace.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/projects/favorite/hooks/use-favorites.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/projects/favorite/pages/FavoritesPage.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/home/utils/home-page.util.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/invitation/components/ProjectInvitesModal.tsx": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/projects/project-id/settings/pages/LabelPage.tsx": {
+    "07feee9faddb957c": 4
+  },
+  "src/features/projects/project-id/settings/pages/MemberPage.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/Attachments.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/CreateModal.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/project-id/work-items/components/modals/DetailModal.tsx": {
+    "83a44251aebfb854": 3
+  },
+  "src/features/projects/project-id/work-items/components/views/ListView.tsx": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/projects/project-id/work-items/components/views/TimelineView.tsx": {
+    "83a44251aebfb854": 2
+  },
+  "src/features/projects/project-id/work-items/hooks/use-topbar.ts": {
+    "83a44251aebfb854": 4
+  },
+  "src/features/projects/project-id/work-items/pages/WorkItemPage.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/projects/project-id/work-items/utils/modal.utils.ts": {
+    "83a44251aebfb854": 1
+  },
+  "src/features/projects/project-id/work-items/utils/work-item.utils.ts": {
+    "83a44251aebfb854": 1
+  },
+  "src/features/projects/shell/components/ProjectLayout.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/projects/shell/components/project/ManageProjectTagsModal.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/projects/shell/pages/ProjectsPage.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/settings/pages/LabelsPage.tsx": {
+    "07feee9faddb957c": 3
+  },
+  "src/features/settings/utils/oauth-popup.util.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/features/shell/store/workspace-context.store.ts": {
+    "83a44251aebfb854": 4
+  },
+  "src/features/storage/components/modal/VersionHistoryModal.tsx": {
+    "07feee9faddb957c": 2
+  },
+  "src/features/storage/components/preview/Preview.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/shared/components/ui/PlaneErrorState.tsx": {
+    "83a44251aebfb854": 1
+  },
+  "src/shared/components/ui/sonner.tsx": {
+    "07feee9faddb957c": 1
+  },
+  "src/shared/lib/api.ts": {
+    "07feee9faddb957c": 4
+  },
+  "src/shared/lib/logger.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/shared/lib/memory-governor.ts": {
+    "07feee9faddb957c": 1
+  },
+  "src/shared/lib/multi-tab.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/shared/lib/network.ts": {
+    "07feee9faddb957c": 2
+  },
+  "src/shared/lib/smart-upload-engine.ts": {
+    "07feee9faddb957c": 5
+  },
+  "src/shared/lib/token-storage.ts": {
+    "07feee9faddb957c": 3
+  },
+  "src/shared/providers/theme-provider.tsx": {
+    "07feee9faddb957c": 6
+  },
+  "src/shared/realtime/socket-pool.ts": {
+    "07feee9faddb957c": 1
+  }
+}

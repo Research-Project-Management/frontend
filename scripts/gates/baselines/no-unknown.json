@@ -1,0 +1,136 @@
+{
+  "src/app/api/library/pdf-proxy/route.ts": {
+    "5ecae1ffdbb2d2da": 1
+  },
+  "src/features/ai/context/library.ts": {
+    "f30749b549ddea54": 1
+  },
+  "src/features/ai/context/source.port.ts": {
+    "9aa3bf8d72eaa56b": 3
+  },
+  "src/features/ai/engine/shell.ts": {
+    "1ba6db10bd884c66": 2
+  },
+  "src/features/ai/transport/sse.ts": {
+    "23f044f0d81a4892": 1
+  },
+  "src/features/editor/core/bus/command-bus.ts": {
+    "c705644f8d033ff2": 1
+  },
+  "src/features/library/core/coordinator/feeds.coordinator.ts": {
+    "01a7966309eb18c3": 1
+  },
+  "src/features/library/core/coordinator/file-ingest.strategies.ts": {
+    "cf43c28cd48735f1": 1,
+    "e97a368f160b72ce": 1
+  },
+  "src/features/library/core/coordinator/reader/use-reader-tabs.ts": {
+    "dcda6c82cf236842": 1
+  },
+  "src/features/library/core/store/ui.store.ts": {
+    "8a70c1ac540bfb02": 1
+  },
+  "src/features/library/domain/identifiers.ts": {
+    "781c2e01b4919ca6": 1
+  },
+  "src/features/library/domain/metadata/field-schema.ts": {
+    "3cbda5b025c855e8": 1,
+    "995b62ee710550ce": 1
+  },
+  "src/features/library/domain/metadata/mapper.ts": {
+    "0e3c22cb1c6061a5": 1,
+    "872cd19d8b6b8bd6": 1
+  },
+  "src/features/library/sdk/clients/curation.client.ts": {
+    "1ba6db10bd884c66": 1,
+    "f924ca7dc46b05b5": 1
+  },
+  "src/features/library/sdk/clients/http.client.ts": {
+    "69d0272233a8c1d8": 1
+  },
+  "src/features/library/sdk/queries/cache-patcher.queries.ts": {
+    "23f044f0d81a4892": 2,
+    "66ae4d4e201b43a6": 1,
+    "d4f8b97e1f970a30": 1,
+    "e71db61a0faf3708": 1,
+    "e76050a1bbc38ca9": 1
+  },
+  "src/features/library/sdk/queries/reader.queries.ts": {
+    "e4fa51172484406f": 1
+  },
+  "src/features/library/ui/content/LibraryContent.tsx": {
+    "00ac52e43d73f7f0": 1
+  },
+  "src/features/library/ui/reader/viewer/PdfViewer.tsx": {
+    "8386fa187109c33e": 1,
+    "a2db66a9997b370b": 1
+  },
+  "src/features/pages/services/page.service.ts": {
+    "55156029573e83fa": 1
+  },
+  "src/features/projects/project-id/work-items/components/views/ListView.tsx": {
+    "9f109e356a18915b": 1
+  },
+  "src/features/projects/project-id/work-items/hooks/use-archive.ts": {
+    "f30749b549ddea54": 1
+  },
+  "src/features/projects/project-id/work-items/hooks/use-crud.ts": {
+    "4476dfeb7bb9e74a": 8,
+    "f30749b549ddea54": 2
+  },
+  "src/features/projects/project-id/work-items/hooks/use-query.ts": {
+    "e848413ec2319641": 1
+  },
+  "src/features/projects/project-id/work-items/hooks/use-topbar.ts": {
+    "7375270ca57b0b33": 1,
+    "9cbbfdd81b55a059": 2
+  },
+  "src/features/projects/project-id/work-items/utils/filter-engine.utils.ts": {
+    "e040c60ea8e0d065": 1
+  },
+  "src/features/projects/shell/hooks/use-project.ts": {
+    "2797f6c1103fbaa2": 2
+  },
+  "src/features/projects/your-work/components/shared/ActivityFeedItem.tsx": {
+    "c1bd9d0d8dee1cd2": 1
+  },
+  "src/features/projects/your-work/components/shared/ItemDetailModal.tsx": {
+    "862ec0d24f303b56": 1,
+    "aa279e3f4880cd1d": 1
+  },
+  "src/features/projects/your-work/components/shared/ItemList.tsx": {
+    "61f29ff53d13220e": 1
+  },
+  "src/features/shell/components/SpaceSwitcher.tsx": {
+    "966f1b5354c9ff82": 1
+  },
+  "src/features/storage/components/views/ListView.tsx": {
+    "4f516a1886d6701e": 1
+  },
+  "src/features/storage/services/drive.service.ts": {
+    "681312f927e993d7": 1,
+    "b82d02ab2f338e23": 1
+  },
+  "src/shared/lib/api.ts": {
+    "0b77ca161aea291a": 1,
+    "0e2f09c99f1539a8": 1,
+    "1c39cadba30bd7d5": 1,
+    "87ea6d8b7091a3d3": 1,
+    "8fa825111da6e23c": 1
+  },
+  "src/shared/lib/dom-polyfill.ts": {
+    "9dc5a857969b5372": 1,
+    "f5aa8d3ee61639a5": 1
+  },
+  "src/shared/lib/memory-governor.ts": {
+    "13e80d20e59ff0b9": 1
+  },
+  "src/shared/lib/pdfjs-worker.ts": {
+    "7ec361ef71f6bdf1": 1,
+    "8a70c1ac540bfb02": 2,
+    "a8363fdd0a8f9b46": 1
+  },
+  "src/shared/utils/error.util.ts": {
+    "9f875ad63d9cb781": 1
+  }
+}

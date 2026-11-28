@@ -29,7 +29,7 @@ export default defineConfig({
     teardownTimeout: 30000,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'lcov', 'html'],
       include: ['src/**/*.{ts,tsx}'],
     },
   },

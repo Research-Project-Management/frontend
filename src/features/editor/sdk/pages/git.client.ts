@@ -31,6 +31,25 @@ export interface GitRepoInfo {
   tokens: GitToken[];
 }
 
+export interface ImportGithubRepoInput {
+  spaceId?: string;
+  pageId?: string;
+  title?: string;
+  repoFullName: string;
+  branch?: string;
+}
+
+export interface ImportGithubRepoResult {
+  pageId: string;
+  rootDocId: string;
+  spaceId: string;
+  isPersonal: boolean;
+  importedCount: number;
+  commitSha: string;
+  repoFullName: string;
+  branch: string;
+}
+
 const inFlight = new Map<string, Promise<unknown>>();
 
 function coalesce<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -70,4 +89,7 @@ export const gitApi = {
     apiDelete<{ success: boolean }>(
       `${PAGES_API_BASE}/git/tokens/${encodeURIComponent(tokenId)}`,
     ),
+
+  importGithubRepo: (dto: ImportGithubRepoInput): Promise<ImportGithubRepoResult> =>
+    apiPost<ImportGithubRepoResult>('/api/v1/integrations/github/import', dto),
 };

@@ -131,11 +131,11 @@ export async function importZip({
     ...(pageId ? { pageId } : {}),
   });
 
-  const rootPageId = summary.rootDocId || pageId || '';
+  const rootPageId = summary.pageId || summary.rootDocId || pageId || '';
   report('done', 'Imported archive successfully.', 2);
 
   return {
-    spaceId: summary.projectId || resolvedSpaceId,
+    spaceId: summary.spaceId || summary.projectId || resolvedSpaceId,
     rootPageId,
     mainFileId: summary.rootDocId || undefined,
     summary,

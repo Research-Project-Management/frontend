@@ -156,14 +156,35 @@ export const suggestions = {
   },
 
   createSuggestion: async (payload: CreateSuggestionPayload): Promise<PageSuggestion> => {
-    const { pageId, idempotencyKey, ...body } = payload;
-    const data = idempotencyKey
+    const {
+      pageId,
+      idempotencyKey,
+      silent,
+      headers,
+      ...body
+    } = payload;
+    const resolvedHeaders: Record<string, string> = {
+      ...(headers ?? {}),
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+    };
+    const resolvedIdempotencyKey =
+      idempotencyKey || resolvedHeaders['Idempotency-Key'] || resolvedHeaders['idempotency-key'];
+    const hasRequestOptions =
+      Object.keys(resolvedHeaders).length > 0 || silent !== undefined || Boolean(resolvedIdempotencyKey);
+    const data = hasRequestOptions
       ? await apiPost<{ suggestion: PageSuggestion }>(
           `${PAGES_API_BASE}/docs/${pageId}/suggestions`,
           body,
-          { idempotencyKey },
+          {
+            ...(Object.keys(resolvedHeaders).length > 0 ? { headers: resolvedHeaders } : {}),
+            ...(resolvedIdempotencyKey ? { idempotencyKey: resolvedIdempotencyKey } : {}),
+            ...(silent !== undefined ? { silent } : {}),
+          },
         )
-      : await apiPost<{ suggestion: PageSuggestion }>(`${PAGES_API_BASE}/docs/${pageId}/suggestions`, body);
+      : await apiPost<{ suggestion: PageSuggestion }>(
+          `${PAGES_API_BASE}/docs/${pageId}/suggestions`,
+          body,
+        );
     return data.suggestion;
   },
 

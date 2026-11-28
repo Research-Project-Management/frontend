@@ -24,6 +24,16 @@ import type {
 } from './types/docs.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
+export interface UpdatePageMetadataPayload {
+  title?: string;
+  description?: string;
+  status?: string;
+  compiler?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+  texlive?: string;
+  spellLang?: string;
+  rootDocId?: string;
+}
+
 export const docs = {
   getById: async (docId: string): Promise<Page> => {
     if (!docId) throw new Error('docId is required');
@@ -98,10 +108,105 @@ export const docs = {
     return res.page;
   },
 
+  purge: async (docId: string): Promise<{ success: boolean; purgedPageId: string }> => {
+    if (!docId) throw new Error('docId is required');
+    return await apiDelete<{ success: boolean; purgedPageId: string }>(
+      `${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/permanent`,
+    );
+  },
+
   duplicate: async (docId: string): Promise<Page> => {
     if (!docId) throw new Error('docId is required');
     const res = await apiPost<{ page: Page }>(`${PAGES_API_BASE}/docs/${docId}/duplicate`, {});
     return res.page;
+  },
+
+  duplicatePage: async <TPage = Page>(docId: string) => {
+    if (!docId) throw new Error('docId is required');
+    return await apiPost<{
+      page: TPage;
+      mainFile?: { id: string; [key: string]: unknown } | string | null;
+      rootPageId?: string;
+      mainFileId?: string | null;
+    }>(`${PAGES_API_BASE}/docs/${encodeURIComponent(docId)}/duplicate`, {});
+  },
+
+  updateMetadata: async <TPage = Page>(
+    pageId: string,
+    data: UpdatePageMetadataPayload,
+  ): Promise<TPage> => {
+    if (!pageId) throw new Error('pageId is required');
+    const res = await apiPatch<{ page?: TPage } & TPage>(
+      `${PAGES_API_BASE}/docs/${encodeURIComponent(pageId)}/metadata`,
+      data,
+    );
+    return (res && typeof res === 'object' && 'page' in res && res.page ? res.page : res) as TPage;
+  },
+
+  listSpacePages: async <TPage = Page>(
+    spaceId: string,
+    status?: string,
+    search?: string,
+  ): Promise<TPage[]> => {
+    const targetScope = !spaceId ? 'personal' : spaceId;
+    const params: Record<string, string> = {};
+    if (status && status !== 'all') params.status = status;
+    if (search && search.trim()) params.search = search.trim();
+    const res = await apiGet<{ pages: TPage[]; total?: number; isEmpty?: boolean }>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(targetScope)}/docs`,
+      { params },
+    );
+    return res?.pages ?? [];
+  },
+
+  createSpacePage: async <TPage extends { id?: string } = Page>(input: {
+    spaceId: string;
+    title: string;
+    content?: unknown;
+    status?: string;
+    labelIds?: string[];
+    templateType?: 'blank' | 'example';
+  }) => {
+    const targetScope = !input.spaceId ? 'personal' : input.spaceId;
+    const res = await apiPost<{
+      page: TPage;
+      mainFile?: { id: string; [key: string]: unknown } | string | null;
+    }>(`${PAGES_API_BASE}/spaces/${encodeURIComponent(targetScope)}/docs`, {
+      title: input.title,
+      content: input.content,
+      status: input.status,
+      labelIds: input.labelIds,
+      templateType: input.templateType,
+    });
+    const mainFile = res.mainFile || null;
+    const mainFileId =
+      typeof mainFile === 'object' && mainFile !== null
+        ? mainFile.id || null
+        : typeof mainFile === 'string'
+          ? mainFile
+          : null;
+    return {
+      page: res.page,
+      mainFile,
+      rootPageId: res.page?.id || '',
+      mainFileId,
+    };
+  },
+
+  getTrash: async <TPage = Page>(spaceId: string): Promise<TPage[]> => {
+    const targetScope = !spaceId ? 'personal' : spaceId;
+    const res = await apiGet<{ pages: TPage[]; total?: number }>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(targetScope)}/trash`,
+    );
+    return res?.pages ?? [];
+  },
+
+  replaceLabels: (spaceId: string, pageId: string, labelIds: string[]) => {
+    const targetScope = !spaceId ? 'personal' : spaceId;
+    return apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(targetScope)}/docs/${encodeURIComponent(pageId)}/labels`,
+      { labelIds },
+    );
   },
 
   getFiles: async (docId: string): Promise<PageFile[]> => {

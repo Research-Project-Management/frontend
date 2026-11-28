@@ -9,11 +9,9 @@ import {
   apiGet,
   apiPost,
   apiDelete,
-  rawFetch,
 } from '@/shared/lib/api';
 import {
   PAGES_API_BASE,
-  getPagesBaseUrl,
   resolveFilestoreCollectionRoute,
 } from './base';
 import { structure } from './structure.client';
@@ -53,30 +51,15 @@ export const filestore = {
     const formData = new FormData();
     formData.append('file', file, name);
     const { basePath, pageQuery } = resolveFilestoreCollectionRoute(
-      getPagesBaseUrl(),
+      PAGES_API_BASE,
       projectIdOrPageId,
       pageId,
       getStoreContext(),
     );
-    const res = await rawFetch(
+    return await apiPost<FileMetadataDto>(
       `${basePath}?name=${encodeURIComponent(name)}${pageQuery ? `&${pageQuery}` : ''}`,
-      'POST',
       formData,
     );
-    if (!res.ok) {
-      let message = res.statusText || `HTTP ${res.status}`;
-      try {
-        const errBody = (await res.json()) as {
-          message?: string;
-          error?: { message?: string };
-        };
-        message = errBody?.error?.message || errBody?.message || message;
-      } catch {
-        // Non-JSON response fallback
-      }
-      throw new Error(`File upload failed: ${message}`);
-    }
-    return (await res.json()) as FileMetadataDto;
   },
 
   getSignedUrl: async (

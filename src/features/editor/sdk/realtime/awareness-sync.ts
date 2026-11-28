@@ -62,18 +62,6 @@ export interface RemotePresencePayload {
 export type RemoteCursorPayload = RemotePresencePayload;
 export type RemoteUserJoinedPayload = RemotePresencePayload;
 
-export interface ProjectChatMessage {
-  id: string;
-  spaceId: string;
-  userId: string;
-  userName: string;
-  userColor?: string;
-  userAvatar?: string;
-  text: string;
-  replyToId?: string;
-  createdAt: string;
-}
-
 export interface YjsSocketIOProviderOptions {
   user?: CollaboratorUser;
   baseUrl?: string;
@@ -87,7 +75,6 @@ export interface YjsSocketIOProviderOptions {
   onUpdatesAcked?: (docId: string) => void;
   onEvicted?: (docId: string) => void;
   onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
-  onChatMessage?: (message: ProjectChatMessage) => void;
   enableCrossTabSync?: boolean;
   enableCrossTabMultiplexing?: boolean;
   broadcastChannelFactory?: (name: string) => BroadcastChannel;

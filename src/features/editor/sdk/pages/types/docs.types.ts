@@ -71,8 +71,22 @@ interface EditorBootstrapWorkspaceDto {
   projectName: string | null;
   title: string;
   mainFilePath: string;
+  compiler?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+  texlive?: string;
+  spellLang?: string;
   permissions: EditorBootstrapPermissionsDto;
   githubLink: EditorBootstrapGithubLinkDto | null;
+}
+
+interface EditorBootstrapPageMetadataDto {
+  id?: string;
+  title?: string;
+  description?: string | null;
+  status?: string;
+  compiler?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+  texlive?: string;
+  spellLang?: string;
+  rootDocId?: string;
 }
 
 interface EditorBootstrapActiveDocDto {
@@ -90,6 +104,9 @@ interface EditorBootstrapActiveDocDto {
     mainFile: { id: string; title: string };
     mainFileId: string;
     rootPageId: string;
+    compiler?: 'pdflatex' | 'xelatex' | 'lualatex' | 'latex';
+    texlive?: string;
+    spellLang?: string;
     version: number;
     rev: number;
     hash?: string | null;
@@ -114,6 +131,7 @@ interface EditorBootstrapLastBuildDto {
 
 export interface EditorBootstrapResponseDto {
   workspace: EditorBootstrapWorkspaceDto;
+  page?: EditorBootstrapPageMetadataDto | null;
   tree: StructureNodeDto[];
   activeDoc: EditorBootstrapActiveDocDto;
   symbols: ProjectSymbolsResponseDto | null;

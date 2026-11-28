@@ -6,10 +6,13 @@
 
 import * as Y from 'yjs';
 import { io, type Socket } from 'socket.io-client';
+import { toast } from 'sonner';
 import { NAMESPACES, TRANSPORT_DEFAULTS } from '@/shared/realtime/config';
 import { getRealtimeBaseUrl, getAuthToken } from '@/shared/lib/api';
 import { logger } from '@/shared/lib/logger';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import type { CollaborationPresence } from '../pages/types';
 import {
   YjsCrossTabBridge,
@@ -19,7 +22,6 @@ import type {
   CompileProgressPayload,
   ConnectionStatus,
   DocContentUpdatedPayload,
-  ProjectChatMessage,
   RemoteCursorData,
   RemoteCursorPayload,
   RemotePresencePayload,
@@ -33,7 +35,8 @@ const RELAYABLE_SOCKET_EVENTS = [
   'doc:persisted',
   'fileTree:update',
   'doc:content-updated',
-  'project:chat:new',
+  'access:revoked',
+  'access:updated',
 ] as const;
 
 const REVIEW_SOCKET_EVENTS = [
@@ -63,11 +66,10 @@ const REVIEW_EVENT_MAP: Record<string, string> = {
 };
 
 export interface InboundEventContext {
+  readonly spaceId?: string;
   readonly pageId: string;
   readonly isDestroyed: () => boolean;
   readonly getCommandBus: () => IEditorCommandBus | undefined;
-  readonly getChatListeners: () => Iterable<(message: ProjectChatMessage) => void>;
-  readonly onChatMessage?: (message: ProjectChatMessage) => void;
   readonly onDocEvicted: () => void;
 }
 
@@ -134,16 +136,48 @@ export function dispatchInboundServerEventHelper(
     return;
   }
 
-  if (eventName === 'project:chat:new') {
-    const msg = rawData as ProjectChatMessage | undefined;
-    if (!msg) return;
-    ctx.onChatMessage?.(msg);
-    for (const listener of ctx.getChatListeners()) {
-      try {
-        listener(msg);
-      } catch (err) {
-        logger.warn('[YjsSocketIOProvider] Chat listener error', { error: err });
-      }
+  if (eventName === 'access:revoked') {
+    const data = rawData as { spaceId?: string; reason?: string } | undefined;
+    if (data?.spaceId && ctx.spaceId && data.spaceId !== ctx.spaceId) return;
+    const message =
+      data?.reason === 'project_deleted'
+        ? 'This project has been deleted. Editor switched to read-only.'
+        : 'Your access to this workspace has been revoked.';
+    toast.warning(message, { id: 'realtime-access-revoked' });
+    useSettingsStore.getState().setIsLocked(true);
+    const pageStore = usePageStore.getState();
+    pageStore.setWorkspaceContext({
+      spaceId: pageStore.spaceId || ctx.spaceId || '',
+      permissions: { role: 'revoked', canEdit: false, canCompile: false },
+    });
+    ctx.onDocEvicted();
+    return;
+  }
+
+  if (eventName === 'access:updated') {
+    const data = rawData as
+      | { spaceId?: string; userId?: string; role?: string; canWrite?: boolean }
+      | undefined;
+    if (data?.spaceId && ctx.spaceId && data.spaceId !== ctx.spaceId) return;
+    const role = data?.role || 'reviewer';
+    const canEdit =
+      typeof data?.canWrite === 'boolean'
+        ? data.canWrite
+        : !['reviewer', 'viewer'].includes(role.toLowerCase());
+    useSettingsStore.getState().setIsLocked(!canEdit);
+    const pageStore = usePageStore.getState();
+    pageStore.setWorkspaceContext({
+      spaceId: data?.spaceId || pageStore.spaceId || ctx.spaceId || '',
+      permissions: { role, canEdit, canCompile: canEdit },
+    });
+    if (!canEdit) {
+      toast.warning(`Your workspace role changed to ${role} (read-only).`, {
+        id: 'realtime-access-updated',
+      });
+    } else {
+      toast.info(`Your workspace role was updated to ${role}.`, {
+        id: 'realtime-access-updated',
+      });
     }
     return;
   }
@@ -164,10 +198,8 @@ export interface SocketListenerCallbacks {
   readonly spaceId: string;
   readonly pageId: string;
   readonly isDestroyed: () => boolean;
-  readonly isChatOnlyRoom: () => boolean;
   readonly isEvicted: () => boolean;
   readonly onConnected: () => void;
-  readonly onChatOnlyConnected: () => void;
   readonly onInitialDocPresence: (presence: RemotePresencePayload[]) => void;
   readonly onInitiateYjsSync: () => void;
   readonly onDisconnect: () => void;
@@ -197,11 +229,6 @@ export function registerProviderSocketListeners(
         }
       },
     );
-
-    if (cb.isChatOnlyRoom()) {
-      cb.onChatOnlyConnected();
-      return;
-    }
 
     if (cb.isEvicted()) {
       return;
@@ -401,7 +428,6 @@ export function createCrossTabBridgeForProvider(host: CrossTabBridgeHost): YjsCr
 
 export function resolveCrossTabTransportConfig(
   options: YjsSocketIOProviderOptions,
-  isChatOnlyRoom: boolean,
 ): {
   canBroadcast: boolean;
   resolvedLocks: YjsSocketIOProviderOptions['locksApi'];
@@ -411,7 +437,6 @@ export function resolveCrossTabTransportConfig(
     options.socketFactory || (globalThis as { __fluxFakeSocket?: unknown }).__fluxFakeSocket,
   );
   const canBroadcast =
-    !isChatOnlyRoom &&
     options.enableCrossTabSync !== false &&
     (Boolean(options.broadcastChannelFactory) ||
       (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' && !hasCustomTestSocket));
@@ -419,7 +444,6 @@ export function resolveCrossTabTransportConfig(
     options.locksApi ??
     (typeof navigator !== 'undefined' && navigator.locks ? navigator.locks : undefined);
   const useMultiplexing =
-    !isChatOnlyRoom &&
     Boolean(resolvedLocks?.request) &&
     canBroadcast &&
     (options.enableCrossTabMultiplexing === true ||
@@ -454,12 +478,11 @@ export function emitSocketDisconnectAndLeave(
   socket: Socket,
   spaceId: string,
   pageId: string,
-  isChatOnlyRoom: boolean,
   isEvicted: boolean,
 ): void {
   try {
     if (socket.connected) {
-      if (!isChatOnlyRoom && !isEvicted) {
+      if (!isEvicted) {
         socket.emit('doc:leave', { spaceId, docId: pageId });
       }
       socket.emit('project:leave', { spaceId });
@@ -469,46 +492,4 @@ export function emitSocketDisconnectAndLeave(
   } catch {
     // Socket cleanup error ignored on unmount
   }
-}
-
-export function emitProjectChatSend(
-  socket: Socket | null,
-  isDestroyed: boolean,
-  spaceId: string,
-  text: string,
-  replyToId?: string,
-): Promise<ProjectChatMessage | null> {
-  return new Promise((resolve) => {
-    if (isDestroyed || !socket || !socket.connected || !text.trim()) {
-      resolve(null);
-      return;
-    }
-    socket.emit(
-      'project:chat:send',
-      { spaceId, text: text.trim(), replyToId },
-      (res?: { success?: boolean; message?: ProjectChatMessage }) => {
-        resolve(res?.success && res.message ? res.message : null);
-      },
-    );
-  });
-}
-
-export function fetchProjectChatHistory(
-  socket: Socket | null,
-  isDestroyed: boolean,
-  spaceId: string,
-): Promise<ProjectChatMessage[]> {
-  return new Promise((resolve) => {
-    if (isDestroyed || !socket || !socket.connected) {
-      resolve([]);
-      return;
-    }
-    socket.emit(
-      'project:chat:history',
-      { spaceId },
-      (res?: { success?: boolean; messages?: ProjectChatMessage[] }) => {
-        resolve(res?.success && Array.isArray(res.messages) ? res.messages : []);
-      },
-    );
-  });
 }

@@ -100,12 +100,16 @@ export interface ExportFileResult {
 }
 
 export interface ImportZipResult {
-  projectId: string;
-  totalEntries: number;
+  pageId?: string;
+  projectId?: string;
+  spaceId?: string;
+  title?: string;
+  totalEntries?: number;
   totalDocs: number;
   totalFiles: number;
-  totalFolders: number;
-  rootDocId?: string | null;
+  totalFolders?: number;
+  skippedFiles?: string[];
+  rootDocId: string;
   rootDocPath?: string | null;
 }
 

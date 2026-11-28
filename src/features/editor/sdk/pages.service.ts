@@ -33,6 +33,8 @@ import { structure } from './pages/structure.client';
 import { filestore } from './pages/filestore.client';
 import { citations } from './pages/citations.client';
 import { spelling } from './pages/spelling.client';
+import { templatesApi } from './pages/templates.client';
+import { gitApi } from './pages/git.client';
 import { ai, suggestLatexFix } from './pages/ai.client';
 
 export * from './pages/base';
@@ -48,6 +50,8 @@ export * from './pages/structure.client';
 export * from './pages/filestore.client';
 export * from './pages/citations.client';
 export * from './pages/spelling.client';
+export * from './pages/templates.client';
+export * from './pages/git.client';
 export * from './pages/ai.client';
 export * from './realtime';
 export * from './archive/download';
@@ -71,6 +75,8 @@ export const pagesService = {
   filestore,
   updater,
   spelling,
+  templates: templatesApi,
+  git: gitApi,
   ai,
   suggestLatexFix,
   restoreProjectVersionFile: history.restoreProjectVersionFile,

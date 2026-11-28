@@ -34,16 +34,13 @@ import {
   type RemotePresencePayload,
   type RemoteCursorPayload,
   type RemoteUserJoinedPayload,
-  type ProjectChatMessage,
   type YjsSocketIOProviderOptions,
 } from './awareness-sync';
 import {
   createCrossTabBridgeForProvider,
   createRealtimeSocketInstance,
   dispatchInboundServerEventHelper,
-  emitProjectChatSend,
   emitSocketDisconnectAndLeave,
-  fetchProjectChatHistory,
   registerProviderSocketListeners,
   resolveCrossTabTransportConfig,
 } from './inbound-events';
@@ -78,7 +75,6 @@ export {
   type RemotePresencePayload,
   type RemoteCursorPayload,
   type RemoteUserJoinedPayload,
-  type ProjectChatMessage,
   type YjsSocketIOProviderOptions,
 };
 
@@ -113,7 +109,6 @@ export class YjsSocketIOProvider {
 
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
   private syncedListeners = new Set<() => void>();
-  private chatListeners = new Set<(message: ProjectChatMessage) => void>();
   private localDocUpdateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null;
   private httpSavedWhileDisconnected = false;
   private resyncInFlight = false;
@@ -135,15 +130,10 @@ export class YjsSocketIOProvider {
     return this.httpSavedWhileDisconnected;
   }
 
-  private isChatOnlyRoom(): boolean {
-    return this.pageId.startsWith('chat:');
-  }
-
   private attachIndexeddbPersistence(): void {
     if (
       typeof window === 'undefined' ||
       typeof indexedDB === 'undefined' ||
-      this.isChatOnlyRoom() ||
       !this.spaceId ||
       !this.pageId
     ) {
@@ -181,7 +171,6 @@ export class YjsSocketIOProvider {
 
     const { canBroadcast, resolvedLocks, useMultiplexing } = resolveCrossTabTransportConfig(
       options,
-      this.isChatOnlyRoom(),
     );
 
     if (typeof window !== 'undefined' && spaceId && pageId) {
@@ -290,21 +279,6 @@ export class YjsSocketIOProvider {
     this.broadcastLeaderPresence();
   }
 
-  public subscribeChatMessages(listener: (message: ProjectChatMessage) => void): () => void {
-    this.chatListeners.add(listener);
-    return () => {
-      this.chatListeners.delete(listener);
-    };
-  }
-
-  public sendChatMessage(text: string, replyToId?: string): Promise<ProjectChatMessage | null> {
-    return emitProjectChatSend(this.socket, this.destroyed, this.spaceId, text, replyToId);
-  }
-
-  public getChatHistory(): Promise<ProjectChatMessage[]> {
-    return fetchProjectChatHistory(this.socket, this.destroyed, this.spaceId);
-  }
-
   private emitStatus(status: ConnectionStatus): void {
     this.options.onStatusChange?.(status);
     for (const listener of this.statusListeners) {
@@ -356,15 +330,10 @@ export class YjsSocketIOProvider {
       spaceId: this.spaceId,
       pageId: this.pageId,
       isDestroyed: () => this.destroyed,
-      isChatOnlyRoom: () => this.isChatOnlyRoom(),
       isEvicted: () => this.isEvicted,
       onConnected: () => {
         this.status = 'connected';
         this.emitStatus('connected');
-      },
-      onChatOnlyConnected: () => {
-        this.isSynced = true;
-        this.emitSynced();
       },
       onInitialDocPresence: (docPresence) => this.handleInitialDocPresence(docPresence),
       onInitiateYjsSync: () => this.initiateYjsSync(),
@@ -419,11 +388,10 @@ export class YjsSocketIOProvider {
   private dispatchInboundServerEvent(eventName: string, rawData: unknown): void {
     dispatchInboundServerEventHelper(
       {
+        spaceId: this.spaceId,
         pageId: this.pageId,
         isDestroyed: () => this.destroyed,
         getCommandBus: () => this.commandBus,
-        getChatListeners: () => this.chatListeners,
-        onChatMessage: this.options.onChatMessage,
         onDocEvicted: () => {
           this.isEvicted = true;
           this.pendingUpdates = [];
@@ -716,7 +684,6 @@ export class YjsSocketIOProvider {
         this.socket,
         this.spaceId,
         this.pageId,
-        this.isChatOnlyRoom(),
         this.isEvicted,
       );
       this.socket = null;

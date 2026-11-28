@@ -42,7 +42,7 @@ export interface ReviewStatusResponse {
 
 export interface CreateSuggestionPayload {
   pageId: string;
-  type: SuggestionType;
+  type: 'insert' | 'delete';
   originalText?: string;
   suggestedText?: string;
   fromLine: number;
@@ -55,7 +55,7 @@ export interface CreateSuggestionPayload {
   baseDocRev?: number;
   description?: string;
   spaceId?: string | null;
-  projectId?: string;
+  headers?: Record<string, string>;
   idempotencyKey?: string;
   silent?: boolean;
 }

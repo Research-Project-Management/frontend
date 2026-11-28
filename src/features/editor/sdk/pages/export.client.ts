@@ -76,15 +76,10 @@ export const exportDocs = {
       pageId: options?.pageId,
     });
 
-    const res = await rawFetch(
-      `${getPagesBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/import/zip${qs}`,
-      'POST',
+    return apiPost<ImportZipResult>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/import/zip${qs}`,
       toFileFormData(file),
     );
-    if (!res.ok) {
-      throw new Error(await parseErrorMessage(res, 'Import ZIP failed'));
-    }
-    return (await res.json()) as ImportZipResult;
   },
 
   importFromUrl: async (
@@ -112,15 +107,10 @@ export const exportDocs = {
       pageId: options?.pageId,
     });
 
-    const res = await rawFetch(
-      `${getPagesBaseUrl()}/spaces/${encodeURIComponent(spaceId)}/import/convert${qs}`,
-      'POST',
+    return apiPost<ImportZipResult>(
+      `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/import/convert${qs}`,
       toFileFormData(file),
     );
-    if (!res.ok) {
-      throw new Error(await parseErrorMessage(res, 'Document conversion failed'));
-    }
-    return (await res.json()) as ImportZipResult;
   },
 
   exportDocument: (

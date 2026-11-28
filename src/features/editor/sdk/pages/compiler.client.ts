@@ -201,15 +201,11 @@ export const compiler = {
   ): Promise<AuxFileItem[]> => {
     if (!pageId) return [];
     try {
-      const res = await rawFetch(
-        `${getClsiBaseUrl()}/pages/${encodeURIComponent(pageId)}/artifacts`,
-        'GET',
-        undefined,
+      const data = await apiGet<{ files?: AuxFileItem[] }>(
+        `${CLSI_API_BASE}/pages/${encodeURIComponent(pageId)}/artifacts`,
         { silent: true },
       );
-      if (!res.ok) return [];
-      const data = (await res.json()) as { files?: AuxFileItem[] };
-      return data.files || [];
+      return Array.isArray(data?.files) ? data.files : [];
     } catch {
       return [];
     }
@@ -340,14 +336,6 @@ export const compiler = {
       return await apiGet<{ status: string; engines: string[]; offline?: boolean }>(`${CLSI_API_BASE}/status`);
     } catch {
       return { status: 'degraded', engines: ['pdflatex', 'xelatex', 'lualatex', 'latex'], offline: true };
-    }
-  },
-
-  getMetricsSummary: async (): Promise<Record<string, unknown>> => {
-    try {
-      return await apiGet<Record<string, unknown>>(`${CLSI_API_BASE}/metrics/summary`);
-    } catch {
-      return {};
     }
   },
 };

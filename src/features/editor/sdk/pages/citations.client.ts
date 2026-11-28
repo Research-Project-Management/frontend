@@ -22,18 +22,22 @@ export interface BibMutationResponse {
 
 export const citations = {
   list: async (
-    projectId: string,
+    spaceId: string,
     query = '',
     limit = 500,
+    pageId?: string,
   ): Promise<ListCitationsResponse> => {
-    if (!projectId) return { items: [], total: 0 };
+    if (!spaceId) return { items: [], total: 0 };
     const params = new URLSearchParams({ limit: String(limit) });
     if (query.trim()) {
       params.set('query', query.trim());
     }
+    if (pageId?.trim()) {
+      params.set('pageId', pageId.trim());
+    }
     try {
       return await apiGet<ListCitationsResponse>(
-        `${PAGES_API_BASE}/spaces/${projectId}/citations?${params.toString()}`,
+        `${PAGES_API_BASE}/spaces/${encodeURIComponent(spaceId)}/citations?${params.toString()}`,
         { silent: true },
       );
     } catch {

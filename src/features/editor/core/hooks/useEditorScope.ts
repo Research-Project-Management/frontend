@@ -24,6 +24,7 @@ export function useEditorScope(overrides?: EditorScopeOverrides): ResolvedEditor
 
   const storeSlice = usePageStore(
     useShallow((s) => ({
+      spaceType: s.spaceType,
       spaceId: s.spaceId,
       projectId: s.projectId,
       rootPageId: s.rootPageId,
